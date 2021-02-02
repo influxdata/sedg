@@ -2,3 +2,5 @@ active
 retired
 ignored
 *.swp
+__pycache__
+.coverage

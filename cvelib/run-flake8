@@ -1,0 +1,10 @@
+#!/bin/bash
+set -e
+
+if command -v flake8 > /dev/null ; then
+    dir=$(dirname "${BASH_SOURCE[0]}")
+    flake8 --version
+    "$dir"/run-py-helper flake8
+else
+    echo "Could not find flake8"
+fi

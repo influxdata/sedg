@@ -1,0 +1,10 @@
+#!/bin/bash
+set -e
+
+
+if command -v black > /dev/null ; then
+   dir=$(dirname "${BASH_SOURCE[0]}")
+   "$dir"/run-py-helper black
+else
+    echo "Could not find black"
+fi

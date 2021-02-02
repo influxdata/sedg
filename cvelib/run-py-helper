@@ -1,0 +1,32 @@
+#!/bin/sh
+set -e
+
+exe=
+args=
+case "$1" in
+    flake8)
+        exe="$1"
+        ;;
+    black)
+        exe="$1"
+        # for now, only check
+        args="--diff --quiet"
+        ;;
+    pylint3|pylint)
+        exe="$1"
+        # for now, only errors
+        args="-E --disable=no-member"
+        ;;
+    *)
+        echo "run-helper black|flake8|pylint3|pylint"
+        exit 1
+        ;;
+esac
+
+echo "= $exe ="
+for i in ./cvelib/*py \
+         ./cvelib/tests/*py \
+         ./bin/cve-check-syntax ; do
+    echo "Checking $i"
+    "$exe" $args "$i"
+done

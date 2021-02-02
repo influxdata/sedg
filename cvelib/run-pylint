@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+
+dir=$(dirname "${BASH_SOURCE[0]}")
+if command -v pylint3 > /dev/null ; then
+    "$dir"/run-py-helper pylint3
+elif command -v pylint > /dev/null ; then
+    "$dir"/run-py-helper pylint
+else
+    echo "Could not find pylint"
+fi
