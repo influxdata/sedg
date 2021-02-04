@@ -1,0 +1,7 @@
+In no particular order:
+
+* update data format for tracking OCIs
+* unfold correctly so we can differentiate different lines (useful for checking
+  'References' when have 'https://foo.bar (baz)'
+* finish checks for various fields
+* add a mechanism for listing projects we care about (eg, in -cve-data?)
