@@ -242,9 +242,9 @@ class TestCve(TestCase):
         hdrs = self._mockHeaders({"PublicDate": "bad"})
         with self.assertRaises(cvelib.common.CveException) as context:
             cvelib.cve.CVE()._verifyPublicDate(hdrs)
-            self.assertEqual(
-                "invalid PublicDate: 'bad' %s" % suffix, str(context.exception)
-            )
+        self.assertEqual(
+            "invalid PublicDate: 'bad' %s" % suffix, str(context.exception)
+        )
 
     def test__verifyCRD(self):
         """Test _verifyCRD()"""
@@ -258,7 +258,7 @@ class TestCve(TestCase):
         hdrs = self._mockHeaders({"CRD": "bad"})
         with self.assertRaises(cvelib.common.CveException) as context:
             cvelib.cve.CVE()._verifyCRD(hdrs)
-            self.assertEqual("invalid CRD: 'bad' %s" % suffix, str(context.exception))
+        self.assertEqual("invalid CRD: 'bad' %s" % suffix, str(context.exception))
 
     def test__verifyPriority(self):
         """Test _verifyCRD()"""
