@@ -50,8 +50,10 @@ def readCveHeaders(fn):
 
 # Compile common regex on import
 pats = {
-    # CVE-YYYY-XXXX, CVE-YYYY-NNNX or longer
-    "CVE": re.compile(r"^CVE-[0-9]{4}-[0-9N]{3}[0-9N]*[0-9]+$"),
+    # CVE-YYYY-XXXX (1-12 X's)
+    # CVE-YYYY-NNNX (1-11 N's)
+    # CVE-YYYY-GHXXXX#AAAA (1-12 X's, 1-40 A's)
+    "CVE": re.compile(r"^CVE-[0-9]{4}-([0-9N]{3,11}[0-9]|GH[0-9]{1,12}#[a-z0-9+.-]{1,40})$"),
     # date only: YYYY-MM-DD
     # date and time: YYYY-MM-DD HH:MM:SS
     # date and time with timezone: YYYY-MM-DD HH:MM:SS TZ|+-N
