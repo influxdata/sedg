@@ -1,12 +1,11 @@
 " Vim syntax file
-" Language: UCT CVEs
 " Latest Revision: Feb 2020
 "
 " To use:
 " $ mkdir -p ~/.vim/syntax
-" $ ln -s $UCT/scripts/cve.vim ~/.vim/syntax/cve.vim
+" $ ln -s /path/to/cvelib/cve.vim ~/.vim/syntax/cve.vim
 " Add to ~/.vimrc:
-" autocmd BufNewFile,BufRead CVE-[0-9][0-9][0-9][0-9]-[0-9N]\\\{4,\} set syntax=cve
+" autocmd BufNewFile,BufRead CVE-[0-9][0-9][0-9][0-9]-[0-9GN]* set syntax=cve
 " autocmd BufNewFile,BufRead 00boilerplate.* set syntax=cve
 "
 
@@ -25,7 +24,7 @@ syn match cveElse "^.*$"
 " TODO: github, oci, etc
 syn match cveRelease "\(|upstream\|snap\)"
 syn match cveSrcPkg contained "[a-z0-9][a-z0-9+.-]\+"
-syn match cveId contained "CVE-[0-9][0-9][0-9][0-9]-[0-9N]\{4,}"
+syn match cveId contained "CVE-[0-9][0-9][0-9][0-9]-\([0-9N]\{4,}\|GH[0-9]\+#[a-z0-9+.-]\+\)"
 syn match cveDate contained  "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\( [0-2][0-9]:[0-5][0-9]:[0-5][0-9] \([A-Z][A-Z][A-Z]\|[+-][01][0-9][0-9][0-9]\)\)\?"
 syn match cveStatus contained "\(needs\-triage\|needed\|deferred\|pending\|released\|ignored\|not\-affected\|DNE\)"
 syn match cveStatusExtra contained " (.\+)"
