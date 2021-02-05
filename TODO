@@ -5,3 +5,9 @@ In no particular order:
   'References' when have 'https://foo.bar (baz)'
 * finish checks for various fields
 * add a mechanism for listing projects we care about (eg, in -cve-data?)
+* add check for use org/proj#NN for PR or issue (eg, if reference github in
+  references or bugs, then look for ' NNNN ' in description and notes). See
+  https://docs.github.com/en/github/writing-on-github/autolinked-references-and-urls
+* document the CVE file format. Note additions from UCT:
+ * released (<hash>) # ie, instead of version, put the hash for rolling
+   releases
