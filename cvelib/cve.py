@@ -1,89 +1,11 @@
 #!/usr/bin/env python3
 
 import datetime
-import re
-import sys
-
 # The CVE file format follows RFC6532 (UTF-8 of RFC5322)
 from email.message import EmailMessage
-from email.parser import BytesHeaderParser
 
-# TODO: we want RFC6532
-from email.policy import default
-
-
-#
-# Utility functions
-#
-def msg(out, output=sys.stdout):
-    """Print message"""
-    try:
-        print("%s" % (out), file=output)
-    except IOError:
-        pass
-
-
-def warn(out):
-    """Print warning message"""
-    try:
-        print("WARN: %s" % (out), file=sys.stderr)
-    except IOError:
-        pass
-
-
-def error(out, exitCode=1, do_exit=True):
-    """Print error message"""
-    try:
-        print("ERROR: %s" % (out), file=sys.stderr)
-    except IOError:
-        pass
-
-    if do_exit:
-        sys.exit(exitCode)
-
-
-def readCveHeaders(fn):
-    """Read CVE data from file"""
-    with open(fn, "rb") as fp:
-        return BytesHeaderParser(policy=default).parse(fp)
-
-
-# Compile common regex on import
-pats = {
-    # CVE-YYYY-XXXX (1-12 X's)
-    # CVE-YYYY-NNNX (1-11 N's)
-    # CVE-YYYY-GHXXXX#AAAA (1-12 X's, 1-40 A's)
-    "CVE": re.compile(r"^CVE-[0-9]{4}-([0-9N]{3,11}[0-9]|GH[0-9]{1,12}#[a-z0-9+.-]{1,40})$"),
-    # date only: YYYY-MM-DD
-    # date and time: YYYY-MM-DD HH:MM:SS
-    # date and time with timezone: YYYY-MM-DD HH:MM:SS TZ|+-N
-    "date-only": re.compile(r"20[0-9][0-9]-[01][0-9]-[0-3][0-9]$"),
-    "date-time": re.compile(
-        r"20[0-9][0-9]-[01][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9]$"
-    ),
-    "date-full-offset": re.compile(
-        r"20[0-9][0-9]-[01][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9] [+-][01][0-9]+$"
-    ),
-    "date-full-tz": re.compile(
-        r"20[0-9][0-9]-[01][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9] [A-Z]+$"
-    ),
-    "date-full": re.compile(
-        r"20[0-9][0-9]-[01][0-9]-[0-3][0-9](| [0-2][0-9]:[0-5][0-9]:[0-5][0-9](| ([+-][01][0-9]+|[A-Z]+)))$"
-    ),
-}
-
-
-#
-# Utility classes
-#
-class CveException(Exception):
-    """This class represents CVE exceptions"""
-
-    def __init__(self, value):
-        self.value = value
-
-    def __str__(self):
-        return self.value
+from cvelib.common import CveException, rePatterns
+import cvelib.common
 
 
 class CVE(object):
@@ -128,7 +50,7 @@ class CVE(object):
         if fn is None:
             return
 
-        headers = readCveHeaders(fn)
+        headers = cvelib.common.readCveHeaders(fn)
         self.verifyCve(headers)
 
         # members
@@ -179,7 +101,7 @@ class CVE(object):
         key = "Candidate"
         self._isPresent(headers, key)
         val = headers[key]
-        if not pats["CVE"].search(val):
+        if not rePatterns["CVE"].search(val):
             raise CveException("invalid %s: '%s'" % (key, val))
 
     def _verifyDate(self, key, date):
@@ -189,26 +111,26 @@ class CVE(object):
             date,
         )
         # quick and dirty
-        if not pats["date-full"].search(date):
+        if not rePatterns["date-full"].search(date):
             raise CveException(err)
 
         # Use datetime.datetime.strptime to avoid external dependencies
-        if pats["date-only"].search(date):
+        if rePatterns["date-only"].search(date):
             try:
                 datetime.datetime.strptime(date, "%Y-%m-%d")
             except ValueError:
                 raise CveException(err)
-        if pats["date-time"].search(date):
+        if rePatterns["date-time"].search(date):
             try:
                 datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
             except ValueError:
                 raise CveException(err)
-        if pats["date-full-offset"].search(date):
+        if rePatterns["date-full-offset"].search(date):
             try:
                 datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S %z")
             except ValueError:
                 raise CveException(err)
-        if pats["date-full-tz"].search(date):
+        if rePatterns["date-full-tz"].search(date):
             try:
                 datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S %Z")
             except ValueError:

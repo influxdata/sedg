@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 import copy
 
 import cvelib.cve
+import cvelib.common
 
 
 class TestCve(TestCase):
@@ -18,22 +19,22 @@ class TestCve(TestCase):
     def tearDown(self):
         """Teardown functions common for all tests"""
         if self.orig_readCveHeaders is not None:
-            cvelib.cve.readCveHeaders = self.orig_readCveHeaders
+            cvelib.common.readCveHeaders = self.orig_readCveHeaders
 
     def _mockHeaders(self, header_dict):
         """Mock headers for use with"""
         # TODO: we want RFC6532
-        msg = EmailMessage()
+        m = EmailMessage()
         for k in header_dict:
-            msg.__setitem__(k, header_dict[k])
+            m.__setitem__(k, header_dict[k])
 
-        return msg
+        return m
 
     def _mock_readCveHeaders(self, header_dict):
         """Mock readCveHeaders() and return the expected value"""
         expected = self._mockHeaders(header_dict)
-        self.orig_readCveHeaders = cvelib.cve.readCveHeaders
-        cvelib.cve.readCveHeaders = MagicMock(return_value=expected)
+        self.orig_readCveHeaders = cvelib.common.readCveHeaders
+        cvelib.common.readCveHeaders = MagicMock(return_value=expected)
 
         return expected
 
@@ -55,18 +56,6 @@ class TestCve(TestCase):
                 "CVSS": "...",
             }
         )
-
-    def test_msg(self):
-        """Test msg()"""
-        cvelib.cve.msg("Test msg")
-
-    def test_warn(self):
-        """Test warn()"""
-        cvelib.cve.warn("Test warning")
-
-    def test_error(self):
-        """Test error()"""
-        cvelib.cve.error("Test error", do_exit=False)
 
     def test___init__valid(self):
         """Test __init__()"""
@@ -94,7 +83,7 @@ class TestCve(TestCase):
         hdrs = self._mockHeaders({"Foo": "blah"})
         cvelib.cve.CVE()._isPresent(hdrs, "Foo")
         hdrs = self._mockHeaders({"Foo": ""})
-        with self.assertRaises(cvelib.cve.CveException) as context:
+        with self.assertRaises(cvelib.common.CveException) as context:
             cvelib.cve.CVE()._isPresent(hdrs, "Foo", canBeEmpty=False)
         self.assertEqual("empty field 'Foo'", str(context.exception))
 
@@ -104,16 +93,16 @@ class TestCve(TestCase):
 
         # explicit cannot be empty
         hdrs = self._mockHeaders({"Foo": ""})
-        with self.assertRaises(cvelib.cve.CveException) as context:
+        with self.assertRaises(cvelib.common.CveException) as context:
             cvelib.cve.CVE()._isPresent(hdrs, "Foo", canBeEmpty=False)
         self.assertEqual("empty field 'Foo'", str(context.exception))
 
-        with self.assertRaises(cvelib.cve.CveException) as context:
+        with self.assertRaises(cvelib.common.CveException) as context:
             cvelib.cve.CVE()._isPresent(hdrs, "Bar")
         self.assertEqual("missing field 'Bar'", str(context.exception))
 
         hdrs = ["foo"]
-        with self.assertRaises(cvelib.cve.CveException) as context:
+        with self.assertRaises(cvelib.common.CveException) as context:
             cvelib.cve.CVE()._isPresent(hdrs, "Foo")
         self.assertEqual("headers not of type 'EmailMessage'", str(context.exception))
 
@@ -126,9 +115,9 @@ class TestCve(TestCase):
         )
         try:
             cvelib.cve.CVE(fn="fake")
-        except cvelib.cve.CveException:
+        except cvelib.common.CveException:
             pass
-        except Exception:
+        except Exception:  # pragma: nocover
             raise
 
     def test_verifyCve(self):
@@ -140,7 +129,7 @@ class TestCve(TestCase):
         # invalid
         hdrs = self._mockHeaders(self._cve_template())
         del hdrs["Candidate"]
-        with self.assertRaises(cvelib.cve.CveException) as context:
+        with self.assertRaises(cvelib.common.CveException) as context:
             cvelib.cve.CVE().verifyCve(hdrs)
         self.assertEqual("missing required field 'Candidate'", str(context.exception))
 
@@ -188,7 +177,7 @@ class TestCve(TestCase):
             if valid:
                 cvelib.cve.CVE()._verifyCandidate(hdrs)
             else:
-                with self.assertRaises(cvelib.cve.CveException) as context:
+                with self.assertRaises(cvelib.common.CveException) as context:
                     cvelib.cve.CVE()._verifyCandidate(hdrs)
                 self.assertEqual(
                     "invalid Candidate: '%s'" % cand, str(context.exception)
@@ -234,7 +223,7 @@ class TestCve(TestCase):
                 cvelib.cve.CVE()._verifyDate("PublicDate", date)
             else:
                 suffix = "(use empty, YYYY-MM-DD [HH:MM:SS [TIMEZONE]]"
-                with self.assertRaises(cvelib.cve.CveException) as context:
+                with self.assertRaises(cvelib.common.CveException) as context:
                     cvelib.cve.CVE()._verifyDate("PublicDate", date)
                 self.assertEqual(
                     "invalid PublicDate: '%s' %s" % (date, suffix),
@@ -251,7 +240,7 @@ class TestCve(TestCase):
         # invalid
         suffix = "(use empty, YYYY-MM-DD [HH:MM:SS [TIMEZONE]]"
         hdrs = self._mockHeaders({"PublicDate": "bad"})
-        with self.assertRaises(cvelib.cve.CveException) as context:
+        with self.assertRaises(cvelib.common.CveException) as context:
             cvelib.cve.CVE()._verifyPublicDate(hdrs)
             self.assertEqual(
                 "invalid PublicDate: 'bad' %s" % suffix, str(context.exception)
@@ -267,7 +256,7 @@ class TestCve(TestCase):
         # invalid
         suffix = "(use empty, YYYY-MM-DD [HH:MM:SS [TIMEZONE]]"
         hdrs = self._mockHeaders({"CRD": "bad"})
-        with self.assertRaises(cvelib.cve.CveException) as context:
+        with self.assertRaises(cvelib.common.CveException) as context:
             cvelib.cve.CVE()._verifyCRD(hdrs)
             self.assertEqual("invalid CRD: 'bad' %s" % suffix, str(context.exception))
 
@@ -294,7 +283,7 @@ class TestCve(TestCase):
             if valid:
                 cvelib.cve.CVE()._verifyPriority(hdrs)
             else:
-                with self.assertRaises(cvelib.cve.CveException) as context:
+                with self.assertRaises(cvelib.common.CveException) as context:
                     cvelib.cve.CVE()._verifyPriority(hdrs)
                 self.assertEqual(
                     "invalid %s: '%s'" % (key, val), str(context.exception)
