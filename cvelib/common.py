@@ -22,6 +22,8 @@ rePatterns = {
     "CVE": re.compile(
         r"^CVE-[0-9]{4}-([0-9N]{3,11}[0-9]|GH[0-9]{1,12}#[a-z0-9+.-]{1,40})$"
     ),
+    # CVE priorities
+    "priorities": re.compile(r"^(negligible|low|medium|high|critical)$"),
     # date only: YYYY-MM-DD
     # date and time: YYYY-MM-DD HH:MM:SS
     # date and time with timezone: YYYY-MM-DD HH:MM:SS TZ|+-N

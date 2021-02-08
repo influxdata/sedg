@@ -26,19 +26,9 @@ class CVE(object):
     cve_optional = [
         "CRD",
     ]
-    priorities = set(
-        [
-            "negligible",
-            "low",
-            "medium",
-            "high",
-            "critical",
-        ]
-    )
 
     def __str__(self):
         s = []
-        # XXX
         for key in self.headers:
             s.append("  %s=%s" % (key, self.headers[key]))
         return self.candidate + "\n" + "\n".join(s)
@@ -46,19 +36,54 @@ class CVE(object):
     def __repr__(self):
         return self.__str__()
 
-    def __init__(self, fn=None):
+    def onDiskFormat(self):
+        s = """Candidate:%(candidate)s
+PublicDate:%(publicDate)s
+CRD:%(crd)s
+References:%(references)s
+Description:%(description)s
+Notes:%(notes)s
+Mitigation:%(mitigation)s
+Bugs:%(bugs)s
+Priority:%(priority)s
+Discovered-by:%(discoveredBy)s
+Assigned-to:%(assignedTo)s
+CVSS:%(cvss)s
+""" % (
+            {
+                "candidate": " %s" % self.candidate if self.candidate else "",
+                "publicDate": " %s" % self.publicDate if self.publicDate else "",
+                "crd": " %s" % self.crd if self.crd else "",
+                "references": "\n %s" % "\n ".join(self.references)
+                if self.references
+                else "",
+                "description": "\n %s" % "\n ".join(self.description)
+                if self.description
+                else "",
+                "notes": "\n %s" % "\n ".join(self.notes) if self.notes else "",
+                "mitigation": " %s" % self.mitigation if self.mitigation else "",
+                "bugs": "\n %s" % "\n ".join(self.bugs) if self.bugs else "",
+                "priority": " %s" % self.priority if self.priority else "",
+                "discoveredBy": " %s" % self.discoveredBy if self.discoveredBy else "",
+                "assignedTo": " %s" % self.assignedTo if self.assignedTo else "",
+                "cvss": " %s" % self.cvss if self.cvss else "",
+            }
+        )
+        return s
+
+    def __init__(self, fn=None, untriagedOk=False):
         # XXX
         self.headers = {}
         if fn is None:
             return
 
         headers = cvelib.common.readCveHeaders(fn)
-        self._setFromHeaders(headers)
+        self._setFromHeaders(headers, untriagedOk=untriagedOk)
 
     # set methods
-    def _setFromHeaders(self, headers):
+    def _setFromHeaders(self, headers, untriagedOk=False):
         """Set members from headers"""
-        self._verifyCve(headers)
+        self._verifyCve(headers, untriagedOk=untriagedOk)
         # members
         self.setCandidate(headers["Candidate"])
         self.setPublicDate(headers["PublicDate"])
@@ -74,6 +99,8 @@ class CVE(object):
 
         if "CRD" in headers:
             self.setCRD(headers["CRD"])
+        else:
+            self.setCRD("")
 
         for field in headers:  # convert to common dict()
             self.headers[field] = headers[field]
@@ -93,22 +120,22 @@ class CVE(object):
     def setCRD(self, s):
         """Set CRD"""
         self._verifyCRD("CRD", s)
-        self.publicDate = s
-        self.headers["CRD"] = self.publicDate
+        self.crd = s
+        self.headers["CRD"] = self.crd
 
     def setReferences(self, s):
         """Set References"""
-        self.references = s
+        self.references = s.splitlines()
         self.headers["References"] = self.references
 
     def setDescription(self, s):
         """Set Description"""
-        self.description = s
+        self.description = s.splitlines()
         self.headers["Description"] = self.description
 
     def setNotes(self, s):
         """Set Notes"""
-        self.notes = s
+        self.notes = s.splitlines()
         self.headers["Notes"] = self.notes
 
     def setMitigation(self, s):
@@ -118,12 +145,12 @@ class CVE(object):
 
     def setBugs(self, s):
         """Set Bugs"""
-        self.bugs = s
+        self.bugs = s.splitlines()
         self.headers["Bugs"] = self.bugs
 
     def setPriority(self, s):
         """Set Priority"""
-        self._verifyPriority("Priority", s)
+        self._verifyPriority("Priority", s, untriagedOk=True)
         self.priority = s
         self.headers["Priority"] = self.priority
 
@@ -150,7 +177,7 @@ class CVE(object):
             raise CveException("missing field '%s'" % key)
 
     # TODO: use schema/templates
-    def _verifyCve(self, headers):
+    def _verifyCve(self, headers, untriagedOk=False):
         """Verify the CVE"""
         self._verifyRequired(headers)
 
@@ -162,7 +189,7 @@ class CVE(object):
             elif key == "PublicDate":
                 self._verifyPublicDate(key, val)
             elif key == "Priority":
-                self._verifyPriority(key, val)
+                self._verifyPriority(key, val, untriagedOk=untriagedOk)
 
         # optional
         for key in self.cve_optional:
@@ -231,9 +258,11 @@ class CVE(object):
         if val != "":  # empty is ok
             self._verifyDate(key, val)
 
-    def _verifyPriority(self, key, val):
+    def _verifyPriority(self, key, val, untriagedOk=False):
         """Verify CVE Priority"""
-        if val not in self.priorities:
+        if untriagedOk and val == "untriaged":
+            return
+        if not rePatterns["priorities"].search(val):
             raise CveException("invalid %s: '%s'" % (key, val))
 
     def cveFromUrl(self, url):

@@ -16,6 +16,7 @@ class TestCve(TestCase):
     def setUp(self):
         """Setup functions common for all tests"""
         self.orig_readCveHeaders = None
+        self.maxDiff = None
 
     def tearDown(self):
         """Teardown functions common for all tests"""
@@ -78,6 +79,31 @@ class TestCve(TestCase):
         cve = cvelib.cve.CVE(fn="fake")
         self.assertTrue("Candidate=" in cve.__repr__())
 
+    def test_onDiskFormat(self):
+        """Test onDiskFormat()"""
+        self.maxDiff = 1024
+        self._mock_readCveHeaders(self._cve_template())
+        exp = """Candidate: CVE-2020-1234
+PublicDate: 2020-06-30
+CRD: 2020-06-30 01:02:03 -0700
+References:
+ http://example.com
+Description:
+ Some description
+Notes:
+ Some notes
+Mitigation: Some mitigation
+Bugs:
+ http://example.com/bug
+Priority: medium
+Discovered-by: Jane Doe (jdoe)
+Assigned-to: John Doe (johnny)
+CVSS: ...
+"""
+        cve = cvelib.cve.CVE(fn="fake")
+        res = cve.onDiskFormat()
+        self.assertEqual(res, exp)
+
     def test__isPresent(self):
         """Test _isPresent()"""
         # default cannot be empty
@@ -111,6 +137,11 @@ class TestCve(TestCase):
         """Test _setFromHeaders()"""
         # valid
         hdrs = self._mockHeaders(self._cve_template())
+        cvelib.cve.CVE()._setFromHeaders(hdrs)
+
+        # optional missing is ok
+        hdrs = self._mockHeaders(self._cve_template())
+        del hdrs["CRD"]
         cvelib.cve.CVE()._setFromHeaders(hdrs)
 
         # invalid
@@ -267,26 +298,30 @@ class TestCve(TestCase):
         """Test _verifyCRD()"""
         tsts = [
             # valid
-            ("Priority", "negligible", True),
-            ("Priority", "low", True),
-            ("Priority", "medium", True),
-            ("Priority", "high", True),
-            ("Priority", "critical", True),
-            ("Priority_foo", "negligible", True),
-            ("Priority_foo", "low", True),
-            ("Priority_foo", "medium", True),
-            ("Priority_foo", "high", True),
-            ("Priority_foo", "critical", True),
+            ("Priority", "negligible", False, True),
+            ("Priority", "low", False, True),
+            ("Priority", "medium", False, True),
+            ("Priority", "high", False, True),
+            ("Priority", "critical", False, True),
+            ("Priority_foo", "negligible", False, True),
+            ("Priority_foo", "low", False, True),
+            ("Priority_foo", "medium", False, True),
+            ("Priority_foo", "high", False, True),
+            ("Priority_foo", "critical", False, True),
+            ("Priority", "untriaged", True, True),
+            ("Priority_foo", "untriaged", True, True),
             # invalid
-            ("Priority", "untriaged", False),
-            ("Priority_foo", "untriaged", False),
+            ("Priority", "untriaged", False, False),
+            ("Priority_foo", "untriaged", False, False),
+            ("Priority", "bad", True, False),
+            ("Priority", "bad", False, False),
         ]
-        for (key, val, valid) in tsts:
+        for (key, val, untriagedOk, valid) in tsts:
             if valid:
-                cvelib.cve.CVE()._verifyPriority(key, val)
+                cvelib.cve.CVE()._verifyPriority(key, val, untriagedOk=untriagedOk)
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
-                    cvelib.cve.CVE()._verifyPriority(key, val)
+                    cvelib.cve.CVE()._verifyPriority(key, val, untriagedOk=untriagedOk)
                 self.assertEqual(
                     "invalid %s: '%s'" % (key, val), str(context.exception)
                 )
