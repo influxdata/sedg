@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import datetime
+
 # The CVE file format follows RFC6532 (UTF-8 of RFC5322)
 from email.message import EmailMessage
 
@@ -244,5 +245,5 @@ class CVE(object):
             raise CveException("invalid url: '%s' (only support github issues)" % url)
 
         year = datetime.datetime.now().year
-        tmp = url.split('/')  # based on rePatterns, we know we have 7 elements
+        tmp = url.split("/")  # based on rePatterns, we know we have 7 elements
         return "CVE-%s-GH%s#%s" % (year, tmp[6], tmp[4])

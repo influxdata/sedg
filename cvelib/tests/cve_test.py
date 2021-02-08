@@ -157,7 +157,7 @@ class TestCve(TestCase):
             ("CVE-2020-GH1#a", True),
             ("CVE-2020-GH1234#abcdefg-1.2beta", True),
             ("CVE-2020-GH123456789012#a", True),
-            ("CVE-2020-GH1#%s" % ('a' * 40), True),
+            ("CVE-2020-GH1#%s" % ("a" * 40), True),
             ("BAD", False),
             ("CVE-202O-1234", False),
             ("CV3-2020-1234", False),
@@ -180,7 +180,7 @@ class TestCve(TestCase):
             ("CVE-2020-GH1234#@", False),
             ("CVE-2020-GH!234#foo", False),
             ("CVE-2020-GH1234#f@o", False),
-            ("CVE-2020-GH1#%s" % ('a' * 41), False),
+            ("CVE-2020-GH1#%s" % ("a" * 41), False),
         ]
         for (cand, valid) in tsts:
             if valid:
@@ -298,13 +298,29 @@ class TestCve(TestCase):
         year = datetime.datetime.now().year
         tsts = [
             # valid
-            ("https://github.com/influxdata/idpe/issues/5519", "CVE-%s-GH5519#idpe" % year, None),
+            (
+                "https://github.com/influxdata/idpe/issues/5519",
+                "CVE-%s-GH5519#idpe" % year,
+                None,
+            ),
             ("https://github.com/foo/bar/issues/1", "CVE-%s-GH1#bar" % year, None),
             # invalid
             ("bad", None, "unsupported url: 'bad' (only support github)"),
-            ("http://example.com", None, "unsupported url: 'http://example.com' (only support github)"),
-            ("https://launchpad.net/bugs/1234", None, "unsupported url: 'https://launchpad.net/bugs/1234' (only support github)"),
-            ("https://github.com/influxdata/idpe/pull/6238", None, "invalid url: 'https://github.com/influxdata/idpe/pull/6238' (only support github issues)"),
+            (
+                "http://example.com",
+                None,
+                "unsupported url: 'http://example.com' (only support github)",
+            ),
+            (
+                "https://launchpad.net/bugs/1234",
+                None,
+                "unsupported url: 'https://launchpad.net/bugs/1234' (only support github)",
+            ),
+            (
+                "https://github.com/influxdata/idpe/pull/6238",
+                None,
+                "invalid url: 'https://github.com/influxdata/idpe/pull/6238' (only support github issues)",
+            ),
         ]
         for (url, exp, exp_fail) in tsts:
             if exp is not None:
