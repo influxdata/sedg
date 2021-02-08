@@ -4,6 +4,7 @@ from email.message import EmailMessage
 from unittest import TestCase
 from unittest.mock import MagicMock
 import copy
+import datetime
 
 import cvelib.cve
 import cvelib.common
@@ -288,4 +289,31 @@ class TestCve(TestCase):
                     cvelib.cve.CVE()._verifyPriority(key, val)
                 self.assertEqual(
                     "invalid %s: '%s'" % (key, val), str(context.exception)
+                )
+
+    def test_cveFromUrl(self):
+        """Test cveFromUrl()"""
+        # If this runs before Jan 1 00:00:00 but the test runs after, it will
+        # fail.
+        year = datetime.datetime.now().year
+        tsts = [
+            # valid
+            ("https://github.com/influxdata/idpe/issues/5519", "CVE-%s-GH5519#idpe" % year, None),
+            ("https://github.com/foo/bar/issues/1", "CVE-%s-GH1#bar" % year, None),
+            # invalid
+            ("bad", None, "unsupported url: 'bad' (only support github)"),
+            ("http://example.com", None, "unsupported url: 'http://example.com' (only support github)"),
+            ("https://launchpad.net/bugs/1234", None, "unsupported url: 'https://launchpad.net/bugs/1234' (only support github)"),
+            ("https://github.com/influxdata/idpe/pull/6238", None, "invalid url: 'https://github.com/influxdata/idpe/pull/6238' (only support github issues)"),
+        ]
+        for (url, exp, exp_fail) in tsts:
+            if exp is not None:
+                res = cvelib.cve.CVE().cveFromUrl(url)
+                self.assertEqual(res, exp)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    cvelib.cve.CVE().cveFromUrl(url)
+                self.assertEqual(
+                    exp_fail,
+                    str(context.exception),
                 )

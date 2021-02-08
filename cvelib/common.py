@@ -38,6 +38,10 @@ rePatterns = {
     "date-full": re.compile(
         r"20[0-9][0-9]-[01][0-9]-[0-3][0-9](| [0-2][0-9]:[0-5][0-9]:[0-5][0-9](| ([+-][01][0-9]+|[A-Z]+)))$"
     ),
+    # https://github.com/<org>/<project>/issues/<num>
+    "github-issue": re.compile(
+        r"^https://github.com/[a-z0-9+.-]{1,40}/[a-z0-9+.-]{1,40}/issues/[0-9]{1,12}"
+    ),
 }
 
 

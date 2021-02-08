@@ -234,3 +234,15 @@ class CVE(object):
         """Verify CVE Priority"""
         if val not in self.priorities:
             raise CveException("invalid %s: '%s'" % (key, val))
+
+    def cveFromUrl(self, url):
+        """Return a CVE based on the url"""
+        if not url.startswith("https://github.com/"):
+            raise CveException("unsupported url: '%s' (only support github)" % url)
+
+        if not rePatterns["github-issue"].match(url):
+            raise CveException("invalid url: '%s' (only support github issues)" % url)
+
+        year = datetime.datetime.now().year
+        tmp = url.split('/')  # based on rePatterns, we know we have 7 elements
+        return "CVE-%s-GH%s#%s" % (year, tmp[6], tmp[4])
