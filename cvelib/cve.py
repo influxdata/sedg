@@ -47,27 +47,99 @@ class CVE(object):
 
     def __init__(self, fn=None):
         # XXX
+        self.headers = {}
         if fn is None:
             return
 
         headers = cvelib.common.readCveHeaders(fn)
-        self.verifyCve(headers)
+        self._setFromHeaders(headers)
 
+    # set methods
+    def _setFromHeaders(self, headers):
+        """Set members from headers"""
+        self._verifyCve(headers)
         # members
-        self.candidate = headers["Candidate"]
-        self.publicDate = headers["PublicDate"]
-        self.references = headers["References"]
-        self.description = headers["Description"]
-        self.notes = headers["Notes"]
-        self.mitigation = headers["Mitigation"]
-        self.bugs = headers["Bugs"]
-        self.priority = headers["Priority"]
-        self.discoveredBy = headers["Discovered-by"]
-        self.assignedTo = headers["Assigned-to"]
-        self.cvss = headers["CVSS"]
-        self.headers = {}  # convert to common dict()
-        for field in headers:
+        self.setCandidate(headers["Candidate"])
+        self.setPublicDate(headers["PublicDate"])
+        self.setReferences(headers["References"])
+        self.setDescription(headers["Description"])
+        self.setNotes(headers["Notes"])
+        self.setMitigation(headers["Mitigation"])
+        self.setBugs(headers["Bugs"])
+        self.setPriority(headers["Priority"])
+        self.setDiscoveredBy(headers["Discovered-by"])
+        self.setAssignedTo(headers["Assigned-to"])
+        self.setCVSS(headers["CVSS"])
+
+        if "CRD" in headers:
+            self.setCRD(headers["CRD"])
+
+        for field in headers:  # convert to common dict()
             self.headers[field] = headers[field]
+
+    def setCandidate(self, s):
+        """Set candidate"""
+        self._verifyCandidate("Candidate", s)
+        self.candidate = s
+        self.headers["Candidate"] = self.candidate
+
+    def setPublicDate(self, s):
+        """Set PublicDate"""
+        self._verifyPublicDate("PublicDate", s)
+        self.publicDate = s
+        self.headers["PublicDate"] = self.publicDate
+
+    def setCRD(self, s):
+        """Set CRD"""
+        self._verifyCRD("CRD", s)
+        self.publicDate = s
+        self.headers["CRD"] = self.publicDate
+
+    def setReferences(self, s):
+        """Set References"""
+        self.references = s
+        self.headers["References"] = self.references
+
+    def setDescription(self, s):
+        """Set Description"""
+        self.description = s
+        self.headers["Description"] = self.description
+
+    def setNotes(self, s):
+        """Set Notes"""
+        self.notes = s
+        self.headers["Notes"] = self.notes
+
+    def setMitigation(self, s):
+        """Set Mitigation"""
+        self.mitigation = s
+        self.headers["Mitigation"] = self.mitigation
+
+    def setBugs(self, s):
+        """Set Bugs"""
+        self.bugs = s
+        self.headers["Bugs"] = self.bugs
+
+    def setPriority(self, s):
+        """Set Priority"""
+        self._verifyPriority("Priority", s)
+        self.priority = s
+        self.headers["Priority"] = self.priority
+
+    def setDiscoveredBy(self, s):
+        """Set Discovered-by"""
+        self.discoveredBy = s
+        self.headers["Discovered-by"] = self.discoveredBy
+
+    def setAssignedTo(self, s):
+        """Set Assigned-to"""
+        self.assignedTo = s
+        self.headers["Assigned-to"] = self.assignedTo
+
+    def setCVSS(self, s):
+        """Set CVSS"""
+        self.cvss = s
+        self.headers["CVSS"] = self.cvss
 
     def _isPresent(self, headers, key, canBeEmpty=False):
         """Ensure headers has key"""
@@ -75,20 +147,35 @@ class CVE(object):
             raise CveException("headers not of type 'EmailMessage'")
         if key not in headers:
             raise CveException("missing field '%s'" % key)
-        if not canBeEmpty and headers[key] == "":
-            raise CveException("empty field '%s'" % key)
 
     # TODO: use schema/templates
-    def verifyCve(self, headers):
+    def _verifyCve(self, headers):
         """Verify the CVE"""
         self._verifyRequired(headers)
-        self._verifyCandidate(headers)
-        self._verifyPublicDate(headers)
-        self._verifyPriority(headers)
+
+        for key in self.cve_required:
+            self._isPresent(headers, key)
+            val = headers[key]
+            if key == "Candidate":
+                self._verifyCandidate(key, val)
+            elif key == "PublicDate":
+                self._verifyPublicDate(key, val)
+            elif key == "Priority":
+                self._verifyPriority(key, val)
 
         # optional
-        if "CRD" in headers:
-            self._verifyCRD(headers)
+        for key in self.cve_optional:
+            if key not in headers:
+                continue
+            val = headers[key]
+            if key == "CRD":
+                self._verifyCRD(key, val)
+
+        # namespaced keys
+        for key in headers:
+            val = headers[key]
+            if key.startswith("Priority_"):
+                self._verifyPriority(key, val)
 
     def _verifyRequired(self, headers):
         """Verify have all required fields"""
@@ -96,11 +183,8 @@ class CVE(object):
             if field not in headers:
                 raise CveException("missing required field '%s'" % field)
 
-    def _verifyCandidate(self, headers):
+    def _verifyCandidate(self, key, val):
         """Verify CVE candidate number"""
-        key = "Candidate"
-        self._isPresent(headers, key)
-        val = headers[key]
         if not rePatterns["CVE"].search(val):
             raise CveException("invalid %s: '%s'" % (key, val))
 
@@ -136,26 +220,17 @@ class CVE(object):
             except ValueError:
                 raise CveException(err)
 
-    def _verifyPublicDate(self, headers):
+    def _verifyPublicDate(self, key, val):
         """Verify CVE public date"""
-        key = "PublicDate"
-        self._isPresent(headers, key, canBeEmpty=True)
-        val = headers[key]
         if val != "":  # empty is ok
             self._verifyDate(key, val)
 
-    def _verifyCRD(self, headers):
+    def _verifyCRD(self, key, val):
         """Verify CVE CRD"""
-        key = "CRD"
-        self._isPresent(headers, key, canBeEmpty=True)
-        val = headers[key]
         if val != "":  # empty is ok
             self._verifyDate(key, val)
 
-    def _verifyPriority(self, headers):
+    def _verifyPriority(self, key, val):
         """Verify CVE Priority"""
-        for key in headers:
-            val = headers[key]
-            if key == "Priority" or key.startswith("Priority_"):
-                if val not in self.priorities:
-                    raise CveException("invalid %s: '%s'" % (key, val))
+        if val not in self.priorities:
+            raise CveException("invalid %s: '%s'" % (key, val))

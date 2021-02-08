@@ -82,20 +82,6 @@ class TestCve(TestCase):
         # default cannot be empty
         hdrs = self._mockHeaders({"Foo": "blah"})
         cvelib.cve.CVE()._isPresent(hdrs, "Foo")
-        hdrs = self._mockHeaders({"Foo": ""})
-        with self.assertRaises(cvelib.common.CveException) as context:
-            cvelib.cve.CVE()._isPresent(hdrs, "Foo", canBeEmpty=False)
-        self.assertEqual("empty field 'Foo'", str(context.exception))
-
-        # explicit can be empty
-        hdrs = self._mockHeaders({"Foo": ""})
-        cvelib.cve.CVE()._isPresent(hdrs, "Foo", canBeEmpty=True)
-
-        # explicit cannot be empty
-        hdrs = self._mockHeaders({"Foo": ""})
-        with self.assertRaises(cvelib.common.CveException) as context:
-            cvelib.cve.CVE()._isPresent(hdrs, "Foo", canBeEmpty=False)
-        self.assertEqual("empty field 'Foo'", str(context.exception))
 
         with self.assertRaises(cvelib.common.CveException) as context:
             cvelib.cve.CVE()._isPresent(hdrs, "Bar")
@@ -120,17 +106,40 @@ class TestCve(TestCase):
         except Exception:  # pragma: nocover
             raise
 
-    def test_verifyCve(self):
-        """Test verifyCve()"""
+    def test__setFromHeaders(self):
+        """Test _setFromHeaders()"""
         # valid
         hdrs = self._mockHeaders(self._cve_template())
-        cvelib.cve.CVE().verifyCve(hdrs)
+        cvelib.cve.CVE()._setFromHeaders(hdrs)
 
         # invalid
         hdrs = self._mockHeaders(self._cve_template())
         del hdrs["Candidate"]
         with self.assertRaises(cvelib.common.CveException) as context:
-            cvelib.cve.CVE().verifyCve(hdrs)
+            cvelib.cve.CVE()._setFromHeaders(hdrs)
+        self.assertEqual("missing required field 'Candidate'", str(context.exception))
+
+    def test__verifyCve(self):
+        """Test _verifyCve()"""
+        # valid
+        hdrs = self._mockHeaders(self._cve_template())
+        cvelib.cve.CVE()._verifyCve(hdrs)
+
+        # optional
+        hdrs = self._mockHeaders(self._cve_template())
+        hdrs["Priority_foo"] = "medium"
+        cvelib.cve.CVE()._verifyCve(hdrs)
+
+        # missing optional is ok
+        hdrs = self._mockHeaders(self._cve_template())
+        del hdrs["CRD"]
+        cvelib.cve.CVE()._verifyCve(hdrs)
+
+        # invalid
+        hdrs = self._mockHeaders(self._cve_template())
+        del hdrs["Candidate"]
+        with self.assertRaises(cvelib.common.CveException) as context:
+            cvelib.cve.CVE()._verifyCve(hdrs)
         self.assertEqual("missing required field 'Candidate'", str(context.exception))
 
     def test__verifyCandidate(self):
@@ -173,12 +182,11 @@ class TestCve(TestCase):
             ("CVE-2020-GH1#%s" % ('a' * 41), False),
         ]
         for (cand, valid) in tsts:
-            hdrs = self._mockHeaders({"Candidate": cand})
             if valid:
-                cvelib.cve.CVE()._verifyCandidate(hdrs)
+                cvelib.cve.CVE()._verifyCandidate("Candidate", cand)
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
-                    cvelib.cve.CVE()._verifyCandidate(hdrs)
+                    cvelib.cve.CVE()._verifyCandidate("Candidate", cand)
                 self.assertEqual(
                     "invalid Candidate: '%s'" % cand, str(context.exception)
                 )
@@ -233,15 +241,12 @@ class TestCve(TestCase):
     def test__verifyPublicDate(self):
         """Test _verifyPublicDate()"""
         # valid
-        hdrs = self._mockHeaders({"PublicDate": ""})
-        cvelib.cve.CVE()._verifyPublicDate(hdrs)
-        hdrs = self._mockHeaders({"PublicDate": "2021-01-25"})
-        cvelib.cve.CVE()._verifyPublicDate(hdrs)
+        cvelib.cve.CVE()._verifyPublicDate("PublicDate", "")
+        cvelib.cve.CVE()._verifyPublicDate("PublicDate", "2021-01-25")
         # invalid
         suffix = "(use empty, YYYY-MM-DD [HH:MM:SS [TIMEZONE]]"
-        hdrs = self._mockHeaders({"PublicDate": "bad"})
         with self.assertRaises(cvelib.common.CveException) as context:
-            cvelib.cve.CVE()._verifyPublicDate(hdrs)
+            cvelib.cve.CVE()._verifyPublicDate("PublicDate", "bad")
         self.assertEqual(
             "invalid PublicDate: 'bad' %s" % suffix, str(context.exception)
         )
@@ -249,15 +254,12 @@ class TestCve(TestCase):
     def test__verifyCRD(self):
         """Test _verifyCRD()"""
         # valid
-        hdrs = self._mockHeaders({"CRD": ""})
-        cvelib.cve.CVE()._verifyCRD(hdrs)
-        hdrs = self._mockHeaders({"CRD": "2021-01-25"})
-        cvelib.cve.CVE()._verifyCRD(hdrs)
+        cvelib.cve.CVE()._verifyCRD("CRD", "")
+        cvelib.cve.CVE()._verifyCRD("CRD", "2021-01-25")
         # invalid
         suffix = "(use empty, YYYY-MM-DD [HH:MM:SS [TIMEZONE]]"
-        hdrs = self._mockHeaders({"CRD": "bad"})
         with self.assertRaises(cvelib.common.CveException) as context:
-            cvelib.cve.CVE()._verifyCRD(hdrs)
+            cvelib.cve.CVE()._verifyCRD("CRD", "bad")
         self.assertEqual("invalid CRD: 'bad' %s" % suffix, str(context.exception))
 
     def test__verifyPriority(self):
@@ -279,12 +281,11 @@ class TestCve(TestCase):
             ("Priority_foo", "untriaged", False),
         ]
         for (key, val, valid) in tsts:
-            hdrs = self._mockHeaders({key: val})
             if valid:
-                cvelib.cve.CVE()._verifyPriority(hdrs)
+                cvelib.cve.CVE()._verifyPriority(key, val)
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
-                    cvelib.cve.CVE()._verifyPriority(hdrs)
+                    cvelib.cve.CVE()._verifyPriority(key, val)
                 self.assertEqual(
                     "invalid %s: '%s'" % (key, val), str(context.exception)
                 )
