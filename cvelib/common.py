@@ -22,12 +22,16 @@ rePatterns = {
     # foo, foo1, foo-bar, foo.bar, for-bar-1.0
     "pkg-software": re.compile(r"^[a-z0-9+.-]{1,40}$"),
     # we can do 'ubuntu', 'suse', 'debian', etc for this for other distros
-    "pkg-product": re.compile(r"^(git|snap|oci)$"),
+    "pkg-product": re.compile(r"^(git|snap|oci|upstream|ubuntu|debian|suse)$"),
     "pkg-status": re.compile(
         r"^(needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)$"
     ),
     # free form text
     "pkg-when": re.compile(r"^[a-z0-9 +.-]{1,40}$"),
+    # the string form
+    "pkg-full": re.compile(
+        r"^(git|snap|oci|upstream|ubuntu|debian|suse)(/[a-z0-9+.-]{1,40})?_[a-z0-9+.-]{1,40}(/[a-z0-9+.-]{1,40})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-z0-9 +.-]{1,40}\))?$"
+    ),
     # CVE-YYYY-XXXX (1-12 X's)
     # CVE-YYYY-NNNX (1-11 N's)
     # CVE-YYYY-GHXXXX#AAAA (1-12 X's, 1-40 A's)

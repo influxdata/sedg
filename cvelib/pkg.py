@@ -5,9 +5,13 @@ from cvelib.common import CveException, rePatterns
 
 # <product>[/<where or who>]_SOFTWARE[/<modifier>]: <status> [(<when>)]
 #
-# - <product> is the supporting technology (eg, 'git', 'snap', 'oci', etc)
+# - <product> is the supporting technology (eg, 'git', 'snap', 'oci', etc).
+#   Could also be distribution (eg, 'ubuntu', 'debian', suse', etc).
 # - <where or who> indicates where the software lives or in the case of snaps
-#   or other technologies with a concept of publishers, who the publisher is
+#   or other technologies with a concept of publishers, who the publisher is.
+#   For distributions (eg, 'ubuntu', 'debian', 'suse', etc), where indicates
+#   the release of the distribution (eg, 'ubuntu/focal' indicates 20.04 for
+#   Ubuntu).
 # - SOFTWARE is the name of the software as dictated by the product (eg, the
 #   deb source package, the name of the snap or the name of the software
 #   project)
@@ -92,3 +96,37 @@ class CvePkg(object):
         if not rePatterns["pkg-when"].search(when):
             raise CveException("invalid when '%s'" % when)
         self.when = when
+
+
+def parse(s):
+    """Parse a string and return a CvePkg"""
+    if not isinstance(s, str):
+        raise CveException("invalid package entry (not a string)")
+    if not rePatterns["pkg-full"].search(s):
+        raise CveException("invalid package entry '%s'" % s)
+
+    product = ""
+    software = ""
+    status = ""
+    where = ""
+    modifier = ""
+    when = ""
+
+    (product_software, status_when) = s.split(":")
+
+    product_where, software_mod = product_software.split("_")
+    if "/" in product_where:
+        product, where = product_where.split("/")
+    else:
+        product = product_where
+
+    if "/" in software_mod:
+        software, modifier = software_mod.split("/")
+    else:
+        software = software_mod
+
+    status = status_when.strip().split()[0]
+    if "(" in status_when:
+        when = status_when.split("(")[0].rstrip(")").strip()
+
+    return CvePkg(product, software, status, where=where, modifier=modifier, when=when)

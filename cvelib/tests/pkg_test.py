@@ -140,6 +140,8 @@ class TestPkg(TestCase):
             ("git", True),
             ("snap", True),
             ("oci", True),
+            ("ubuntu", True),
+            ("upstream", True),
             # invalid
             ("focal", False),
             ("bad", False),
@@ -256,3 +258,29 @@ class TestPkg(TestCase):
                 with self.assertRaises(cvelib.common.CveException) as context:
                     pkg.setWhen(s)
                 self.assertEqual("invalid when '%s'" % s, str(context.exception))
+
+    def test_parse(self):
+        """Test parse()"""
+        tsts = [
+            # valid
+            ("ubuntu_foo: needed", True),
+            ("ubuntu_foo: needed (123-4)", True),
+            ("ubuntu/focal_foo: needed (123-4)", True),
+            ("ubuntu/focal_foo/bar: needed (123-4)", True),
+            # invalid
+            ("b@d", False),
+            ("foo @", False),
+        ]
+        for s, valid in tsts:
+            if valid:
+                cvelib.pkg.parse(s)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    cvelib.pkg.parse(s)
+                self.assertEqual(
+                    "invalid package entry '%s'" % s, str(context.exception)
+                )
+
+        with self.assertRaises(cvelib.common.CveException) as context:
+            cvelib.pkg.parse(False)
+        self.assertEqual("invalid package entry (not a string)", str(context.exception))
