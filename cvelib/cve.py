@@ -7,6 +7,7 @@ from email.message import EmailMessage
 
 from cvelib.common import CveException, rePatterns
 import cvelib.common
+from cvelib.pkg import CvePkg
 
 
 class CVE(object):
@@ -37,6 +38,7 @@ class CVE(object):
         return self.__str__()
 
     def onDiskFormat(self):
+        """Return format suitable for writing out to disk"""
         s = """Candidate:%(candidate)s
 PublicDate:%(publicDate)s
 CRD:%(crd)s
@@ -69,11 +71,17 @@ CVSS:%(cvss)s
                 "cvss": " %s" % self.cvss if self.cvss else "",
             }
         )
+
+        for pkg in self.pkgs:
+            s += "\nPatches_%s:\n" % pkg.software
+            s += "%s\n" % pkg
+
         return s
 
     def __init__(self, fn=None, untriagedOk=False):
         # XXX
         self.headers = {}
+        self.pkgs = []
         if fn is None:
             return
 
@@ -168,6 +176,13 @@ CVSS:%(cvss)s
         """Set CVSS"""
         self.cvss = s
         self.headers["CVSS"] = self.cvss
+
+    def setPackages(self, pkgs):
+        """Set pkgs"""
+        for p in pkgs:
+            if not isinstance(p, CvePkg):
+                raise CveException("package is not of type cvelib.pkg.CvePkg")
+            self.pkgs.append(p)
 
     def _isPresent(self, headers, key, canBeEmpty=False):
         """Ensure headers has key"""

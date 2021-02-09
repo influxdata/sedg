@@ -104,6 +104,11 @@ CVSS: ...
         res = cve.onDiskFormat()
         self.assertEqual(res, exp)
 
+        pkgs = []
+        pkgs.append(cvelib.pkg.CvePkg("git", "foo", "needed"))
+        pkgs.append(cvelib.pkg.CvePkg("git", "foo", "needed", "pub", "inky", "123-4"))
+        cve.setPackages(pkgs)
+
     def test__isPresent(self):
         """Test _isPresent()"""
         # default cannot be empty
