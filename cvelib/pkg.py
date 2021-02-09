@@ -19,14 +19,14 @@ from cvelib.common import CveException, rePatterns
 # - <when> indicates 'when' the software will be/was fixed when used with the
 #   'pending' or 'released' status (eg, the source package version, snap #
 #   revision, etc)
-class CVEPkg(object):
-    def __init__(self):
-        self.product = ""
-        self.where = ""
-        self.software = ""
-        self.modifier = ""
-        self.status = ""
-        self.when = ""
+class CvePkg(object):
+    def __init__(self, product, software, status, where="", modifier="", when=""):
+        self.setProduct(product)
+        self.setWhere(where)
+        self.setSoftware(software)
+        self.setModifier(modifier)
+        self.setStatus(status)
+        self.setWhen(when)
 
     def __str__(self):
         s = ""
@@ -35,8 +35,11 @@ class CVEPkg(object):
             if self.where:
                 s += "/"
                 s += self.where
-                s += "_"
-        s += "%s: %s" % (self.software, self.status)
+            s += "_"
+        s += self.software
+        if self.modifier:
+            s += "/%s" % self.modifier
+        s += ": %s" % self.status
         if self.when:
             s += " (%s)" % (self.when)
 
@@ -46,32 +49,46 @@ class CVEPkg(object):
         return self.__str__()
 
     def setProduct(self, product):
-        # we can do 'ubuntu', 'suse', 'debian', etc for this for other distros
+        """Set product"""
         if not rePatterns["pkg-product"].search(product):
             raise CveException("invalid product '%s'" % product)
         self.product = product
 
     def setWhere(self, where):
-        if not rePatterns["pkg-name"].search(where):
+        """Set where"""
+        if where == "":
+            self.where = ""
+            return
+        if not rePatterns["pkg-software"].search(where):
             raise CveException("invalid where '%s'" % where)
         self.where = where
 
     def setSoftware(self, software):
-        if not rePatterns["pkg-name"].search(software):
+        """Set software"""
+        if not rePatterns["pkg-software"].search(software):
             raise CveException("invalid software '%s'" % software)
         self.software = software
 
     def setModifier(self, modifier):
-        if not rePatterns["pkg-name"].search(modifier):
+        """Set modifier"""
+        if modifier == "":
+            self.modifier = ""
+            return
+        if not rePatterns["pkg-software"].search(modifier):
             raise CveException("invalid modifier '%s'" % modifier)
         self.modifier = modifier
 
     def setStatus(self, status):
+        """Set status"""
         if not rePatterns["pkg-status"].search(status):
             raise CveException("invalid status '%s'" % status)
         self.status = status
 
     def setWhen(self, when):
+        """Set when"""
+        if when == "":
+            self.when = ""
+            return
         if not rePatterns["pkg-when"].search(when):
             raise CveException("invalid when '%s'" % when)
         self.when = when
