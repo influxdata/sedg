@@ -122,6 +122,14 @@ def readCveHeaders(fn):
         return BytesHeaderParser(policy=default).parse(fp)
 
 
+def setCveHeader(headers, key, val):
+    """Set header for CVE"""
+    if key in headers:
+        headers.replace_header(key, val)
+    else:
+        headers.add_header(key, val)
+
+
 def getConfigFilePath():
     """Return the path to influx-security-tools.conf"""
     if "XDG_CONFIG_HOME" in os.environ:
