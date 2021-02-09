@@ -179,6 +179,8 @@ CVSS:%(cvss)s
 
     def setPackages(self, pkgs):
         """Set pkgs"""
+        if not isinstance(pkgs, list):
+            raise CveException("pkgs is not a list")
         for p in pkgs:
             if not isinstance(p, CvePkg):
                 raise CveException("package is not of type cvelib.pkg.CvePkg")

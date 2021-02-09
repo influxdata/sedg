@@ -105,9 +105,26 @@ CVSS: ...
         self.assertEqual(res, exp)
 
         pkgs = []
-        pkgs.append(cvelib.pkg.CvePkg("git", "foo", "needed"))
-        pkgs.append(cvelib.pkg.CvePkg("git", "foo", "needed", "pub", "inky", "123-4"))
+        pkgs.append(cvelib.pkg.CvePkg("git", "pkg1", "needed"))
+        pkgs.append(cvelib.pkg.CvePkg("snap", "pkg2", "needed", "pub", "", "123-4"))
+        pkgs.append(cvelib.pkg.CvePkg("git", "pkg2", "released", "", "inky", "5678"))
         cve.setPackages(pkgs)
+
+        exp2 = (
+            exp
+            + """
+Patches_pkg1:
+git_pkg1: needed
+
+Patches_pkg2:
+snap/pub_pkg2: needed (123-4)
+
+Patches_pkg2:
+git_pkg2/inky: released (5678)
+"""
+        )
+        res = cve.onDiskFormat()
+        self.assertEqual(res, exp2)
 
     def test__isPresent(self):
         """Test _isPresent()"""
@@ -373,3 +390,31 @@ CVSS: ...
                     exp_fail,
                     str(context.exception),
                 )
+
+    def test_setPackages(self):
+        """Test setPackages()"""
+        self._mock_readCveHeaders(self._cve_template())
+        cve = cvelib.cve.CVE(fn="fake")
+        self.assertEqual(len(cve.pkgs), 0)
+
+        pkgs = [
+            cvelib.pkg.CvePkg("git", "pkg1", "needed"),
+            cvelib.pkg.CvePkg("git", "pkg2", "needed"),
+        ]
+        cve.setPackages(pkgs)
+        self.assertEqual(len(cve.pkgs), 2)
+
+        # invalid
+        cve = cvelib.cve.CVE(fn="fake")
+        self.assertEqual(len(cve.pkgs), 0)
+        with self.assertRaises(cvelib.common.CveException) as context:
+            cve.setPackages(False)
+        self.assertEqual("pkgs is not a list", str(context.exception))
+
+        cve = cvelib.cve.CVE(fn="fake")
+        self.assertEqual(len(cve.pkgs), 0)
+        with self.assertRaises(cvelib.common.CveException) as context:
+            cve.setPackages([False])
+        self.assertEqual(
+            "package is not of type cvelib.pkg.CvePkg", str(context.exception)
+        )
