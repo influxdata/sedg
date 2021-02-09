@@ -13,6 +13,8 @@ from email.parser import BytesHeaderParser
 # TODO: we want RFC6532
 from email.policy import default
 
+# cache of config
+configCache = None
 
 # Compile common regex on import
 rePatterns = {
@@ -124,7 +126,9 @@ def readCveHeaders(fn):
 
 def setCveHeader(headers, key, val):
     """Set header for CVE"""
-    if key in headers:
+    if val is None:
+        headers.__delitem__(key)  # no exception if missing
+    elif key in headers:
         headers.replace_header(key, val)
     else:
         headers.add_header(key, val)
@@ -139,25 +143,34 @@ def getConfigFilePath():
 
 def readConfig():
     """Read configuration for the tools"""
-    config = configparser.ConfigParser()
+    global configCache
     configFilePath = getConfigFilePath()
-    if os.path.exists(configFilePath):
-        config.read(configFilePath)
+    if configCache is not None:
+        config = configCache
     else:
-        parent = os.path.dirname(configFilePath)
-        if not os.path.isdir(parent):
-            os.mkdir(parent, 0o0700)
-        config["Locations"] = {
-            "cve-data": "/set/to/path/for/influx-security-tools-cve-data",
-        }
-        orig = os.umask(0o027)
-        with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
-            config.write(f)
-            f.flush()
-            shutil.copyfile(f.name, configFilePath, follow_symlinks=False)
-            os.unlink(f.name)
-            os.umask(orig)
-        msg("Created default config in %s" % configFilePath)
+        config = configparser.ConfigParser()
+        if os.path.exists(configFilePath):
+            config.read(configFilePath)
+        else:
+            parent = os.path.dirname(configFilePath)
+            if not os.path.isdir(parent):
+                os.mkdir(parent, 0o0700)
+            config["Locations"] = {
+                "cve-data": "/set/to/path/for/influx-security-tools-cve-data",
+            }
+            config["Behavior"] = {
+                "compat-ubuntu": "no",
+            }
+            orig = os.umask(0o027)
+            with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+                config.write(f)
+                f.flush()
+                shutil.copyfile(f.name, configFilePath, follow_symlinks=False)
+                os.unlink(f.name)
+                os.umask(orig)
+            msg("Created default config in %s" % configFilePath)
+
+        configCache = config
 
     return (config, configFilePath)
 
@@ -173,6 +186,18 @@ def getConfigCveDataPath():
             )
 
         return config["Locations"]["cve-data"]
+
+
+def getConfigCompatUbuntu():
+    (config, configFilePath) = readConfig()
+    if "Behavior" in config and "compat-ubuntu" in config["Behavior"]:
+        print("JAMIE: %s" % config["Behavior"]["compat-ubuntu"])
+        if config["Behavior"]["compat-ubuntu"].lower() == "yes":
+            return True
+
+        if config["Behavior"]["compat-ubuntu"].lower() not in ["yes", "no"]:
+            warn("'compat-ubuntu' in '[Behavior]' should be 'yes' or 'no'")
+    return False
 
 
 #
