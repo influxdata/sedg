@@ -1,6 +1,5 @@
 """test_cve.py: tests for cve.py module"""
 
-from email.message import EmailMessage
 from unittest import TestCase
 from unittest.mock import MagicMock
 import copy
@@ -15,28 +14,28 @@ class TestCve(TestCase):
 
     def setUp(self):
         """Setup functions common for all tests"""
-        self.orig_readCveHeaders = None
+        self.orig_readCve = None
         self.maxDiff = None
 
     def tearDown(self):
         """Teardown functions common for all tests"""
-        if self.orig_readCveHeaders is not None:
-            cvelib.common.readCveHeaders = self.orig_readCveHeaders
+        if self.orig_readCve is not None:
+            cvelib.common.readCve = self.orig_readCve
 
     def _mockHeaders(self, header_dict):
         """Mock headers for use with"""
         # TODO: we want RFC6532
-        m = EmailMessage()
+        m = {}
         for k in header_dict:
-            m.__setitem__(k, header_dict[k])
+            m[k] = header_dict[k]
 
         return m
 
-    def _mock_readCveHeaders(self, header_dict):
-        """Mock readCveHeaders() and return the expected value"""
+    def _mock_readCve(self, header_dict):
+        """Mock readCve() and return the expected value"""
         expected = self._mockHeaders(header_dict)
-        self.orig_readCveHeaders = cvelib.common.readCveHeaders
-        cvelib.common.readCveHeaders = MagicMock(return_value=expected)
+        self.orig_readCve = cvelib.common.readCve
+        cvelib.common.readCve = MagicMock(return_value=expected)
 
         return expected
 
@@ -61,28 +60,28 @@ class TestCve(TestCase):
 
     def test___init__valid(self):
         """Test __init__()"""
-        exp = self._mock_readCveHeaders(self._cve_template())
+        exp = self._mock_readCve(self._cve_template())
         cve = cvelib.cve.CVE(fn="fake")
         for key in exp:
-            self.assertTrue(key in cve.headers)
-            self.assertEqual(exp[key], cve.headers[key])
+            self.assertTrue(key in cve.data)
+            self.assertEqual(exp[key], cve.data[key])
 
     def test___str__(self):
         """Test __str__()"""
-        self._mock_readCveHeaders(self._cve_template())
+        self._mock_readCve(self._cve_template())
         cve = cvelib.cve.CVE(fn="fake")
         self.assertTrue("Candidate=" in cve.__str__())
 
     def test___repr__(self):
         """Test __repr__()"""
-        self._mock_readCveHeaders(self._cve_template())
+        self._mock_readCve(self._cve_template())
         cve = cvelib.cve.CVE(fn="fake")
         self.assertTrue("Candidate=" in cve.__repr__())
 
     def test_onDiskFormat(self):
         """Test onDiskFormat()"""
         self.maxDiff = 1024
-        self._mock_readCveHeaders(self._cve_template())
+        self._mock_readCve(self._cve_template())
         exp = """Candidate: CVE-2020-1234
 PublicDate: 2020-06-30
 CRD: 2020-06-30 01:02:03 -0700
@@ -139,11 +138,11 @@ git_pkg2/inky: released (5678)
         hdrs = ["foo"]
         with self.assertRaises(cvelib.common.CveException) as context:
             cvelib.cve.CVE()._isPresent(hdrs, "Foo")
-        self.assertEqual("headers not of type 'EmailMessage'", str(context.exception))
+        self.assertEqual("data not of type dict", str(context.exception))
 
     def test___init__bad(self):
         """Test __init__()"""
-        self._mock_readCveHeaders(
+        self._mock_readCve(
             {
                 "Candidate": "CVE-2020-1234",
             }
@@ -155,22 +154,22 @@ git_pkg2/inky: released (5678)
         except Exception:  # pragma: nocover
             raise
 
-    def test__setFromHeaders(self):
-        """Test _setFromHeaders()"""
+    def test__setFromData(self):
+        """Test _setFromData()"""
         # valid
         hdrs = self._mockHeaders(self._cve_template())
-        cvelib.cve.CVE()._setFromHeaders(hdrs)
+        cvelib.cve.CVE()._setFromData(hdrs)
 
         # optional missing is ok
         hdrs = self._mockHeaders(self._cve_template())
         del hdrs["CRD"]
-        cvelib.cve.CVE()._setFromHeaders(hdrs)
+        cvelib.cve.CVE()._setFromData(hdrs)
 
         # invalid
         hdrs = self._mockHeaders(self._cve_template())
         del hdrs["Candidate"]
         with self.assertRaises(cvelib.common.CveException) as context:
-            cvelib.cve.CVE()._setFromHeaders(hdrs)
+            cvelib.cve.CVE()._setFromData(hdrs)
         self.assertEqual("missing required field 'Candidate'", str(context.exception))
 
     def test__verifyCve(self):
@@ -393,7 +392,7 @@ git_pkg2/inky: released (5678)
 
     def test_setPackages(self):
         """Test setPackages()"""
-        self._mock_readCveHeaders(self._cve_template())
+        self._mock_readCve(self._cve_template())
         cve = cvelib.cve.CVE(fn="fake")
         self.assertEqual(len(cve.pkgs), 0)
 

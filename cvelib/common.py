@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import configparser
+import copy
 import os
 import re
 import shutil
@@ -8,7 +9,7 @@ import sys
 import tempfile
 
 # The CVE file format follows RFC6532 (UTF-8 of RFC5322)
-from email.parser import BytesHeaderParser
+from email.parser import BytesHeaderParser, HeaderParser
 
 # TODO: we want RFC6532
 from email.policy import default
@@ -118,10 +119,24 @@ def recursive_rm(dirPath, contents_only=False, top=True):
         os.rmdir(dirPath)
 
 
-def readCveHeaders(fn):
+def readCve(fn):
     """Read CVE data from file"""
+    d = {}
     with open(fn, "rb") as fp:
-        return BytesHeaderParser(policy=default).parse(fp)
+        # obtain the header content
+        headers = BytesHeaderParser(policy=default).parse(fp)
+        for k in headers:
+            d[k] = headers[k]
+
+        # The CVE file format has a blank line before the package parts but
+        # it still follows the RFC, so just take the content and feed it into
+        # the parser
+        s = headers.get_content()
+        cHeaders = HeaderParser(policy=default).parsestr(s, headersonly=True)
+        for k in cHeaders:
+            d[k] = cHeaders[k]
+
+    return copy.deepcopy(d)
 
 
 def setCveHeader(headers, key, val):
