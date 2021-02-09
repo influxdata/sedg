@@ -31,6 +31,7 @@ class CvePkg(object):
         self.setModifier(modifier)
         self.setStatus(status)
         self.setWhen(when)
+        self.patches = []
 
     def __str__(self):
         s = ""
@@ -96,6 +97,17 @@ class CvePkg(object):
         if not rePatterns["pkg-when"].search(when):
             raise CveException("invalid when '%s'" % when)
         self.when = when
+
+    def setPatches(self, patches):
+        """Set patches"""
+        if not isinstance(patches, list):
+            raise CveException("invalid patches (not a list)")
+
+        self.patches = []
+        for patch in patches:
+            if not rePatterns["pkg-patch"].search(patch):
+                raise CveException("invalid patch '%s'" % patch)
+            self.patches.append(patch)
 
 
 def parse(s):
