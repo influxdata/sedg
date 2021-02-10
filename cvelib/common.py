@@ -8,11 +8,8 @@ import shutil
 import sys
 import tempfile
 
-# The CVE file format follows RFC6532 (UTF-8 of RFC5322)
-from email.parser import BytesHeaderParser, HeaderParser
-
-# TODO: we want RFC6532
-from email.policy import default
+from email.parser import HeaderParser, BytesParser
+from email.policy import Compat32
 
 # cache of config
 configCache = None
@@ -60,6 +57,8 @@ rePatterns = {
     "github-issue": re.compile(
         r"^https://github.com/[a-z0-9+.-]{1,40}/[a-z0-9+.-]{1,40}/issues/[0-9]{1,12}"
     ),
+    "pkg-patch": re.compile(r"^(upstream|debdiff|vendor|other): [a-z0-9+.-].*"),
+    "pkg-patch-key": re.compile(r"^Patches_[a-z0-9+.-]{1,40}$"),
 }
 
 
@@ -124,19 +123,21 @@ def recursive_rm(dirPath, contents_only=False, top=True):
 
 
 def readCve(fn):
-    """Read CVE data from file"""
+    """Read raw CVE data from file"""
+    # Read in the data, but let callers do any specific formatting
     d = {}
     with open(fn, "rb") as fp:
-        # obtain the header content
-        headers = BytesHeaderParser(policy=default).parse(fp)
+        # Obtain the header content
+        policy = Compat32()
+        headers = BytesParser(policy=policy).parse(fp)
         for k in headers:
             d[k] = headers[k]
 
-        # The CVE file format has a blank line before the package parts but
-        # it still follows the RFC, so just take the content and feed it into
-        # the parser
-        s = headers.get_content()
-        cHeaders = HeaderParser(policy=default).parsestr(s, headersonly=True)
+        # Obtain the payload content. The CVE file format has a blank line
+        # before the package parts but it still follows the RFC, so just take
+        # the content and feed it into the parser
+        s = headers.get_payload()
+        cHeaders = HeaderParser(policy=policy).parsestr(s)
         for k in cHeaders:
             d[k] = cHeaders[k]
 
@@ -210,7 +211,6 @@ def getConfigCveDataPath():
 def getConfigCompatUbuntu():
     (config, configFilePath) = readConfig()
     if "Behavior" in config and "compat-ubuntu" in config["Behavior"]:
-        print("JAMIE: %s" % config["Behavior"]["compat-ubuntu"])
         if config["Behavior"]["compat-ubuntu"].lower() == "yes":
             return True
 

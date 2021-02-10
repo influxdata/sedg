@@ -40,15 +40,15 @@ class TestCve(TestCase):
         return expected
 
     def _cve_template(self):
-        """Generate a valid CVE"""
+        """Generate a valid CVE to mimic what readCve() might see"""
         return copy.deepcopy(
             {
                 "Candidate": "CVE-2020-1234",
                 "PublicDate": "2020-06-30",
                 "CRD": "2020-06-30 01:02:03 -0700",
                 "References": "http://example.com",
-                "Description": "Some description",
-                "Notes": "Some notes",
+                "Description": "\n Some description\n more desc",
+                "Notes": "\n person> some notes\n  more notes\nperson2> blah",
                 "Mitigation": "Some mitigation",
                 "Bugs": "http://example.com/bug",
                 "Priority": "medium",
@@ -60,11 +60,20 @@ class TestCve(TestCase):
 
     def test___init__valid(self):
         """Test __init__()"""
+        # just the required
         exp = self._mock_readCve(self._cve_template())
         cve = cvelib.cve.CVE(fn="fake")
         for key in exp:
             self.assertTrue(key in cve.data)
-            self.assertEqual(exp[key], cve.data[key])
+
+        # also with packages
+        t = self._cve_template()
+        t["Patches_foo"] = ""
+        t["snap/pub_foo/mod"] = "released (123-4)"
+        exp = self._mock_readCve(t)
+        cve = cvelib.cve.CVE(fn="fake")
+        for key in exp:
+            self.assertTrue(key in cve.data)
 
     def test___str__(self):
         """Test __str__()"""
@@ -89,8 +98,11 @@ References:
  http://example.com
 Description:
  Some description
+ more desc
 Notes:
- Some notes
+ person> some notes
+  more notes
+ person2> blah
 Mitigation: Some mitigation
 Bugs:
  http://example.com/bug
@@ -101,29 +113,36 @@ CVSS: ...
 """
         cve = cvelib.cve.CVE(fn="fake")
         res = cve.onDiskFormat()
-        self.assertEqual(res, exp)
+        self.assertEqual(exp, res)
 
         pkgs = []
+        # no patches for pkg1
         pkgs.append(cvelib.pkg.CvePkg("git", "pkg1", "needed"))
-        pkgs.append(cvelib.pkg.CvePkg("snap", "pkg2", "needed", "pub", "", "123-4"))
-        pkgs.append(cvelib.pkg.CvePkg("git", "pkg2", "released", "", "inky", "5678"))
+
+        # patches for these
+        pkg2a = cvelib.pkg.CvePkg("snap", "pkg2", "needed", "pub", "", "123-4")
+        pkg2a.setPatches(["upstream: http://a", "other: http://b"])
+        pkgs.append(pkg2a)
+
+        pkg2b = cvelib.pkg.CvePkg("git", "pkg2", "released", "", "inky", "5678")
+        pkgs.append(pkg2b)
+
         cve.setPackages(pkgs)
 
         exp2 = (
             exp
             + """
-Patches_pkg1:
 git_pkg1: needed
 
 Patches_pkg2:
+ upstream: http://a
+ other: http://b
 snap/pub_pkg2: needed (123-4)
-
-Patches_pkg2:
 git_pkg2/inky: released (5678)
 """
         )
         res = cve.onDiskFormat()
-        self.assertEqual(res, exp2)
+        self.assertEqual(exp2, res)
 
     def test__isPresent(self):
         """Test _isPresent()"""
@@ -163,6 +182,24 @@ git_pkg2/inky: released (5678)
         # optional missing is ok
         hdrs = self._mockHeaders(self._cve_template())
         del hdrs["CRD"]
+        cvelib.cve.CVE()._setFromData(hdrs)
+
+        # valid with packages
+        t = self._cve_template()
+        t["upstream_foo"] = "needed"
+        hdrs = self._mockHeaders(t)
+        cvelib.cve.CVE()._setFromData(hdrs)
+
+        # comment ignored
+        t = self._cve_template()
+        t["#blah_foo"] = "needed"
+        hdrs = self._mockHeaders(t)
+        cvelib.cve.CVE()._setFromData(hdrs)
+
+        # valide Patches_foo
+        t = self._cve_template()
+        t["Patches_foo"] = ""
+        hdrs = self._mockHeaders(t)
         cvelib.cve.CVE()._setFromData(hdrs)
 
         # invalid
@@ -400,7 +437,11 @@ git_pkg2/inky: released (5678)
             cvelib.pkg.CvePkg("git", "pkg1", "needed"),
             cvelib.pkg.CvePkg("git", "pkg2", "needed"),
         ]
-        cve.setPackages(pkgs)
+        patches = {
+            "pkg1": " upstream: http://a\n other: http://b",
+            "pkg2": " vendor: http://c\n debdiff: https://d",
+        }
+        cve.setPackages(pkgs, patches)
         self.assertEqual(len(cve.pkgs), 2)
 
         # invalid

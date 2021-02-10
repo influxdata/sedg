@@ -28,8 +28,8 @@ class CVE(object):
     def __str__(self):
         s = []
         for key in self.data:
-            s.append("  %s=%s" % (key, self.data[key]))
-        return self.candidate + "\n" + "\n".join(s)
+            s.append("%s=%s" % (key, self.data[key]))
+        return "# %s\n%s\n" % (self.candidate, "\n".join(s))
 
     def __repr__(self):
         return self.__str__()
@@ -69,8 +69,16 @@ CVSS:%(cvss)s
             }
         )
 
+        last_software = ""
         for pkg in self.pkgs:
-            s += "\nPatches_%s:\n" % pkg.software
+            if last_software != pkg.software:
+                s += "\n"
+            last_software = pkg.software
+
+            if len(pkg.patches) > 0:
+                s += "Patches_%s:\n " % pkg.software
+                s += "\n ".join(pkg.patches)
+                s += "\n"
             s += "%s\n" % pkg
 
         return s
@@ -107,8 +115,23 @@ CVSS:%(cvss)s
         else:
             self.setCRD("")
 
-        for field in data:  # convert to common dict()
-            self.data[field] = data[field]
+        # Any field with '_' is a package or patch. Since these could be out of
+        # order, collect them separately, then call setPackages()
+        pkgs = []
+        patches = {}
+        for k in data:
+            if k not in self.data:  # copy raw data for later
+                self.data[k] = data[k]
+            if "_" not in k or k.startswith("#"):
+                continue
+            if k.startswith("Patches_"):
+                pkg = k.split("_")[1]
+                patches[pkg] = data[k]
+            else:
+                s = "%s: %s" % (k, data[k])
+                pkgs.append(cvelib.pkg.parse(s))
+
+        self.setPackages(pkgs, patches)
 
     def setCandidate(self, s):
         """Set candidate"""
@@ -130,17 +153,33 @@ CVSS:%(cvss)s
 
     def setReferences(self, s):
         """Set References"""
-        self.references = s.splitlines()
+        self.references = []
+        for r in s.splitlines():
+            r = r.strip("\n")
+            if r != "" and r not in self.references:
+                self.references.append(r)
         self.data["References"] = self.references
 
     def setDescription(self, s):
         """Set Description"""
-        self.description = s.splitlines()
+        # strip newline off the front then strip whitespace from every line
+        self.description = [item.strip() for item in s.lstrip().splitlines()]
         self.data["Description"] = self.description
 
     def setNotes(self, s):
         """Set Notes"""
-        self.notes = s.splitlines()
+        # strip newline off the front, strip whitespace off end and then strip
+        # one space from the beginning of the line in order to preserve
+        # formatting of:
+        # Notes:
+        #  foo> blah blah blah blah blah blah blah
+        #   blah
+        self.notes = []
+        for line in [item.rstrip() for item in s.lstrip().splitlines()]:
+            if line.startswith(" "):
+                line = line[1:]
+            self.notes.append(line)
+
         self.data["Notes"] = self.notes
 
     def setMitigation(self, s):
@@ -150,7 +189,11 @@ CVSS:%(cvss)s
 
     def setBugs(self, s):
         """Set Bugs"""
-        self.bugs = s.splitlines()
+        self.bugs = []
+        for b in s.splitlines():
+            b = b.strip()
+            if b != "" and b not in self.bugs:
+                self.bugs.append(b)
         self.data["Bugs"] = self.bugs
 
     def setPriority(self, s):
@@ -174,13 +217,20 @@ CVSS:%(cvss)s
         self.cvss = s
         self.data["CVSS"] = self.cvss
 
-    def setPackages(self, pkgs):
+    def setPackages(self, pkgs, patches=[]):
         """Set pkgs"""
         if not isinstance(pkgs, list):
             raise CveException("pkgs is not a list")
         for p in pkgs:
             if not isinstance(p, CvePkg):
                 raise CveException("package is not of type cvelib.pkg.CvePkg")
+            if p.software in patches:
+                tmp = []
+                for patch in patches[p.software].splitlines():
+                    patch = patch.strip()
+                    if patch != "" and patch not in tmp:
+                        tmp.append(patch)
+                p.setPatches(tmp)
             self.pkgs.append(p)
 
     def _isPresent(self, data, key, canBeEmpty=False):
