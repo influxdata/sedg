@@ -22,7 +22,7 @@ syn case match
 syn match cveElse "^.*$"
 
 " TODO: github, oci, etc
-syn match cveRelease "\(|upstream\|snap\)"
+syn match cveRelease "\(git\|snap\|oci\|upstream\|ubuntu\|debian\|suse\)\(/[a-z0-9+.-]\+\)\?"
 syn match cveSrcPkg contained "[a-z0-9][a-z0-9+.-]\+"
 syn match cveId contained "CVE-[0-9][0-9][0-9][0-9]-\([0-9N]\{4,}\|GH[0-9]\+#[a-z0-9+.-]\+\)"
 syn match cveDate contained  "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\( [0-2][0-9]:[0-5][0-9]:[0-5][0-9] \([A-Z][A-Z][A-Z]\|[+-][01][0-9][0-9][0-9]\)\)\?"
@@ -35,7 +35,7 @@ syn match cveKey "^\%(Candidate\|PublicDate\|PublicDateAtUSN\|CRD\|References\|D
 " TODO: reuse the above definitions here
 " Release/status key
 " <release>_<srcpkg>: <status>
-syn match cveKeyRelease "^\%(upstream\|snap\)_[a-z0-9][a-z0-9+.-]\+: *"
+syn match cveKeyRelease "^\%(git\|snap\|oci\|upstream\|ubuntu\|debian\|suse\)\(/[a-z0-9+.-]\+\)\?_[a-z0-9][a-z0-9+.-]\+: *"
 
 " TODO: reuse the above definitions here
 " Priorities key
