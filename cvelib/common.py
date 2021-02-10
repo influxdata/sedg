@@ -8,7 +8,7 @@ import shutil
 import sys
 import tempfile
 
-from email.parser import HeaderParser, BytesParser
+from email.parser import HeaderParser, Parser
 from email.policy import Compat32
 
 # cache of config
@@ -130,10 +130,12 @@ def readCve(fn):
     """Read raw CVE data from file"""
     # Read in the data, but let callers do any specific formatting
     d = {}
-    with open(fn, "rb") as fp:
+    # Always encode to ascii (since we use strip() elsewhere), but don't lose
+    # data and escape
+    with open(fn, "r", encoding="ascii", errors="backslashreplace") as fp:
         # Obtain the header content
         policy = Compat32()
-        headers = BytesParser(policy=policy).parse(fp)
+        headers = Parser(policy=policy).parse(fp)
         for k in headers:
             d[k] = headers[k]
 
