@@ -1,8 +1,5 @@
 In no particular order:
 
-* update data format for tracking OCIs
-* unfold correctly so we can differentiate different lines (useful for checking
-  'References' when have 'https://foo.bar (baz)'
 * finish checks for various fields
 * add a mechanism for listing projects we care about (eg, in -cve-data?)
 * add check for use org/proj#NN for PR or issue (eg, if reference github in
@@ -11,3 +8,5 @@ In no particular order:
 * document the CVE file format. Note additions from UCT:
  * released (<hash>) # ie, instead of version, put the hash for rolling
    releases
+* implement appendCve in cve-add
+* add boilerplates for projects to capture vendored/forked code
