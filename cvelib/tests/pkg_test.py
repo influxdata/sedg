@@ -137,19 +137,23 @@ class TestPkg(TestCase):
         """Test setProduct()"""
         tsts = [
             # valid
-            ("git", True),
-            ("snap", True),
-            ("oci", True),
-            ("ubuntu", True),
-            ("upstream", True),
+            ("git", False, True),
+            ("snap", False, True),
+            ("oci", False, True),
+            ("ubuntu", False, True),
+            ("upstream", False, True),
+            # valid compatUbuntu
+            ("focal", True, True),
             # invalid
-            ("focal", False),
-            ("bad", False),
-            (" git", False),
-            ("git ", False),
+            ("focal", False, False),
+            ("bad", False, False),
+            (" git", False, False),
+            ("git ", False, False),
+            # invalid compatUbuntu
+            ("foc@l", True, False),
         ]
-        pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
-        for s, valid in tsts:
+        for s, compat, valid in tsts:
+            pkg = cvelib.pkg.CvePkg("git", "foo", "needed", compatUbuntu=compat)
             if valid:
                 pkg.setProduct(s)
             else:
@@ -313,20 +317,26 @@ class TestPkg(TestCase):
         """Test parse()"""
         tsts = [
             # valid
-            ("ubuntu_foo: needed", True),
-            ("ubuntu_foo: needed (123-4)", True),
-            ("ubuntu/focal_foo: needed (123-4)", True),
-            ("ubuntu/focal_foo/bar: needed (123-4)", True),
+            ("upstream_foo: needed", False, True),
+            ("upstream_foo: needed (123-4)", False, True),
+            ("debian/buster_foo: needed (123-4)", False, True),
+            ("debian/buster_foo/bar: needed (123-4)", False, True),
+            ("ubuntu/focal_foo: needed", False, True),
+            # valid compatUbuntu
+            ("focal_foo: needed", True, True),
             # invalid
-            ("b@d", False),
-            ("foo @", False),
+            ("b@d", False, False),
+            ("foo @", False, False),
+            ("ubuntu/foc@l_foo: needed", False, False),
+            # invalid compatUbuntu
+            ("foc@l_foo: needed", True, False),
         ]
-        for s, valid in tsts:
+        for s, compat, valid in tsts:
             if valid:
-                cvelib.pkg.parse(s)
+                cvelib.pkg.parse(s, compatUbuntu=compat)
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
-                    cvelib.pkg.parse(s)
+                    cvelib.pkg.parse(s, compatUbuntu=compat)
                 self.assertEqual(
                     "invalid package entry '%s'" % s, str(context.exception)
                 )

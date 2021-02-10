@@ -20,6 +20,7 @@ rePatterns = {
     "pkg-software": re.compile(r"^[a-z0-9+.-]{1,40}$"),
     # we can do 'ubuntu', 'suse', 'debian', etc for this for other distros
     "pkg-product": re.compile(r"^(git|snap|oci|upstream|ubuntu|debian|suse)$"),
+    "pkg-product-ubuntu": re.compile(r"^[a-z0-9+.-]{1,40}$"),
     "pkg-status": re.compile(
         r"^(needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)$"
     ),
@@ -28,6 +29,9 @@ rePatterns = {
     # the string form
     "pkg-full": re.compile(
         r"^(git|snap|oci|upstream|ubuntu|debian|suse)(/[a-z0-9+.-]{1,40})?_[a-z0-9+.-]{1,40}(/[a-z0-9+.-]{1,40})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-z0-9 +.-]{1,40}\))?$"
+    ),
+    "pkg-full-ubuntu": re.compile(
+        r"^[a-z0-9+.-]{1,40}(/[a-z0-9+.-]{1,40})?_[a-z0-9+.-]{1,40}(/[a-z0-9+.-]{1,40})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-z0-9 +.-]{1,40}\))?$"
     ),
     # CVE-YYYY-XXXX (1-12 X's)
     # CVE-YYYY-NNNX (1-11 N's)

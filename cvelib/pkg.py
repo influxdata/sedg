@@ -24,7 +24,17 @@ from cvelib.common import CveException, rePatterns
 #   'pending' or 'released' status (eg, the source package version, snap #
 #   revision, etc)
 class CvePkg(object):
-    def __init__(self, product, software, status, where="", modifier="", when=""):
+    def __init__(
+        self,
+        product,
+        software,
+        status,
+        where="",
+        modifier="",
+        when="",
+        compatUbuntu=False,
+    ):
+        self.compatUbuntu = compatUbuntu
         self.setProduct(product)
         self.setWhere(where)
         self.setSoftware(software)
@@ -55,7 +65,10 @@ class CvePkg(object):
 
     def setProduct(self, product):
         """Set product"""
-        if not rePatterns["pkg-product"].search(product):
+        if self.compatUbuntu:
+            if not rePatterns["pkg-product-ubuntu"].search(product):
+                raise CveException("invalid product '%s'" % product)
+        elif not rePatterns["pkg-product"].search(product):
             raise CveException("invalid product '%s'" % product)
         self.product = product
 
@@ -113,11 +126,14 @@ class CvePkg(object):
             self.patches.append(patch)
 
 
-def parse(s):
+def parse(s, compatUbuntu=False):
     """Parse a string and return a CvePkg"""
     if not isinstance(s, str):
         raise CveException("invalid package entry (not a string)")
-    if not rePatterns["pkg-full"].search(s):
+    if compatUbuntu:
+        if not rePatterns["pkg-full-ubuntu"].search(s):
+            raise CveException("invalid package entry '%s'" % s)
+    elif not rePatterns["pkg-full"].search(s):
         raise CveException("invalid package entry '%s'" % s)
 
     product = ""
@@ -144,4 +160,12 @@ def parse(s):
     if "(" in status_when:
         when = status_when.split("(")[0].rstrip(")").strip()
 
-    return CvePkg(product, software, status, where=where, modifier=modifier, when=when)
+    return CvePkg(
+        product,
+        software,
+        status,
+        where=where,
+        modifier=modifier,
+        when=when,
+        compatUbuntu=compatUbuntu,
+    )

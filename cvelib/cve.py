@@ -83,10 +83,11 @@ CVSS:%(cvss)s
 
         return s
 
-    def __init__(self, fn=None, untriagedOk=False):
+    def __init__(self, fn=None, untriagedOk=False, compatUbuntu=False):
         # XXX
         self.data = {}
         self.pkgs = []
+        self.compatUbuntu = compatUbuntu
         if fn is None:
             return
 
@@ -129,7 +130,7 @@ CVSS:%(cvss)s
                 patches[pkg] = data[k]
             else:
                 s = "%s: %s" % (k, data[k])
-                pkgs.append(cvelib.pkg.parse(s))
+                pkgs.append(cvelib.pkg.parse(s, compatUbuntu=self.compatUbuntu))
 
         self.setPackages(pkgs, patches)
 
