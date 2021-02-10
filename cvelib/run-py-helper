@@ -26,7 +26,8 @@ esac
 echo "= $exe ="
 for i in ./cvelib/*py \
          ./cvelib/tests/*py \
-         ./bin/cve-check-syntax ; do
+         ./bin/cve-* ; do
     echo "Checking $i"
+    #shellcheck disable=2086
     "$exe" $args "$i"
 done
