@@ -272,7 +272,7 @@ class TestPkg(TestCase):
             (["bad: foo"], False),
             (["upstream foo"], False),
             (["upstream:foo"], False),
-            (["upstream: "], False),
+            (["upstream:"], False),
         ]
         pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
         for t, valid in tsts:
@@ -297,6 +297,12 @@ class TestPkg(TestCase):
         self.assertEqual("invalid patch 'blah: foo'", str(context.exception))
 
         # bad input
+        pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
+        self.assertEqual(len(pkg.patches), 0)
+        with self.assertRaises(cvelib.common.CveException) as context:
+            pkg.setPatches([False])
+        self.assertEqual("invalid patch (not a string)", str(context.exception))
+
         pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
         self.assertEqual(len(pkg.patches), 0)
         with self.assertRaises(cvelib.common.CveException) as context:

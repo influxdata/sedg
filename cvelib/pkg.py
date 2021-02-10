@@ -105,6 +105,9 @@ class CvePkg(object):
 
         self.patches = []
         for patch in patches:
+            if not isinstance(patch, str):
+                raise CveException("invalid patch (not a string)")
+            patch = patch.strip()
             if not rePatterns["pkg-patch"].search(patch):
                 raise CveException("invalid patch '%s'" % patch)
             self.patches.append(patch)
