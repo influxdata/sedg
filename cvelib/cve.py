@@ -72,13 +72,11 @@ CVSS:%(cvss)s
         last_software = ""
         for pkg in self.pkgs:
             if last_software != pkg.software:
-                s += "\n"
+                s += "\nPatches_%s:\n" % pkg.software
             last_software = pkg.software
 
             if len(pkg.patches) > 0:
-                s += "Patches_%s:\n " % pkg.software
-                s += "\n ".join(pkg.patches)
-                s += "\n"
+                s += " " + "\n ".join(pkg.patches) + "\n"
             s += "%s\n" % pkg
 
         return s

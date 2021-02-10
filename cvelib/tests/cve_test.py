@@ -132,6 +132,7 @@ CVSS: ...
         exp2 = (
             exp
             + """
+Patches_pkg1:
 git_pkg1: needed
 
 Patches_pkg2:
