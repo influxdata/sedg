@@ -35,7 +35,7 @@ syn match cveKey "^\%(Candidate\|PublicDate\|PublicDateAtUSN\|CRD\|References\|D
 " TODO: reuse the above definitions here
 " Release/status key
 " <release>_<srcpkg>: <status>
-syn match cveKeyRelease "^\%(git\|snap\|oci\|upstream\|ubuntu\|debian\|suse\)\(/[a-z0-9+.-]\+\)\?_[a-z0-9][a-z0-9+.-]\+: *"
+syn match cveKeyRelease "^\%(git\|snap\|oci\|upstream\|ubuntu\|debian\|suse\)\(/[a-z0-9+.-]\+\)\?_[a-z0-9][a-z0-9+.-]\+\(/[a-z0-9+.-]\+\)\?: *"
 
 " TODO: reuse the above definitions here
 " Priorities key
