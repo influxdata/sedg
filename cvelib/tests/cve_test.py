@@ -46,11 +46,11 @@ class TestCve(TestCase):
                 "Candidate": "CVE-2020-1234",
                 "PublicDate": "2020-06-30",
                 "CRD": "2020-06-30 01:02:03 -0700",
-                "References": "http://example.com",
+                "References": "\n http://example.com",
                 "Description": "\n Some description\n more desc",
-                "Notes": "\n person> some notes\n  more notes\nperson2> blah",
+                "Notes": "\n person> some notes\n  more notes\n person2> blah",
                 "Mitigation": "Some mitigation",
-                "Bugs": "http://example.com/bug",
+                "Bugs": "\n http://example.com/bug",
                 "Priority": "medium",
                 "Discovered-by": "Jane Doe (jdoe)",
                 "Assigned-to": "John Doe (johnny)",
@@ -159,6 +159,50 @@ git_pkg2/inky: released (5678)
         with self.assertRaises(cvelib.common.CveException) as context:
             cvelib.cve.CVE()._isPresent(hdrs, "Foo")
         self.assertEqual("data not of type dict", str(context.exception))
+
+    def test__verifySingleline(self):
+        """Test _isSingleline()"""
+        cvelib.cve.CVE()._verifySingleline("Empty", "")
+        cvelib.cve.CVE()._verifySingleline("Key", "value")
+        with self.assertRaises(cvelib.common.CveException) as context:
+            cvelib.cve.CVE()._verifySingleline("Key", "foo\nbar")
+        self.assertEqual(
+            "invalid Key: 'foo\nbar' (expected single line)", str(context.exception)
+        )
+
+    def test__verifyMultiline(self):
+        """Test _isMultiline()"""
+        tsts = [
+            ("Empty", "", 0, None),
+            ("Key", "\n foo", 1, None),
+            ("Key", "\n foo\n", 1, None),
+            ("Key", "\n foo\n bar", 2, None),
+            ("Key", "\n foo\n .\n bar", 3, None),
+            # bad
+            ("Key", "\n", None, "invalid Key (empty)"),
+            ("Key", "single", None, "invalid Key: 'single' (missing leading newline)"),
+            (
+                "Key",
+                "no\nleading\nnewline",
+                None,
+                "invalid Key: 'no\nleading\nnewline' (missing leading newline)",
+            ),
+            (
+                "Key",
+                "\nno\nleading\nspace",
+                None,
+                "invalid Key: '\nno\nleading\nspace' (missing leading space)",
+            ),
+            ("Key", "\n foo\n\n", None, "invalid Key: '\n foo\n\n' (empty line)"),
+        ]
+        for key, val, num, err in tsts:
+            if num is not None:
+                lines = cvelib.cve.CVE()._verifyMultiline(key, val)
+                self.assertEqual(len(lines), num)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    cvelib.cve.CVE()._verifyMultiline(key, val)
+                self.assertEqual(err, str(context.exception))
 
     def test___init__bad(self):
         """Test __init__()"""
@@ -354,7 +398,7 @@ git_pkg2/inky: released (5678)
         self.assertEqual("invalid CRD: 'bad' %s" % suffix, str(context.exception))
 
     def test__verifyPriority(self):
-        """Test _verifyCRD()"""
+        """Test _verifyPriority()"""
         tsts = [
             # valid
             ("Priority", "negligible", False, True),
@@ -384,6 +428,109 @@ git_pkg2/inky: released (5678)
                 self.assertEqual(
                     "invalid %s: '%s'" % (key, val), str(context.exception)
                 )
+
+    def test__verifyBugsAndReferences(self):
+        """Test _verifyReferences() and _verifyBugs()"""
+        tsts = [
+            # valid
+            ("\n cvs://1", None),
+            ("\n ftp://1", None),
+            ("\n git://1", None),
+            ("\n http://1", None),
+            ("\n https://1", None),
+            ("\n sftp://1", None),
+            ("\n shttp://1", None),
+            ("\n svn://1", None),
+            ("\n https://github.com/foo/bar/issues/1234", None),
+            ("\n https://launchpad.net/bugs/1234", None),
+            ("\n https://launchpad.net/ubuntu/+source/foo/+bug/1234", None),
+            ("\n https://1\n http://2\n http://3", None),
+            ("\n https://1 (comment 1)\n http://2 (comment 2)\n http://3 blah", None),
+            # invalid
+            ("\n", "invalid %(key)s (empty)"),
+            ("\nhttp://1", "invalid %(key)s: '\nhttp://1' (missing leading space)"),
+            ("\n\n http://1", "invalid %(key)s: '\n\n http://1' (empty line)"),
+            ("\n https://", "invalid url in %(key)s: 'https://'"),
+        ]
+        for tstType in ["Bugs", "References"]:
+            fn = None
+            if tstType == "Bugs":
+                fn = cvelib.cve.CVE()._verifyBugs
+            elif tstType == "References":
+                fn = cvelib.cve.CVE()._verifyReferences
+
+            for val, err in tsts:
+                if not err:
+                    fn(tstType, val)
+                else:
+                    with self.assertRaises(cvelib.common.CveException) as context:
+                        fn(tstType, val)
+                    self.assertEqual(err % {"key": tstType}, str(context.exception))
+
+    def test__verifyDescriptionAndNotes(self):
+        """Test _verifyDescription() and _verifyNotes()"""
+        tsts = [
+            # valid
+            ("\n foo", None),
+            ("\n foo\n", None),
+            ("\n foo\n bar", None),
+            ("\n foo\n bar\n .\n baz", None),
+            ("\n person> foo\n  bar\n  .\n  baz", None),
+            # invalid
+            ("\n", "invalid %(key)s (empty)"),
+            ("\nfoo", "invalid %(key)s: '\nfoo' (missing leading space)"),
+            ("\n\n foo", "invalid %(key)s: '\n\n foo' (empty line)"),
+        ]
+        for tstType in ["Description", "Notes"]:
+            fn = None
+            if tstType == "Description":
+                fn = cvelib.cve.CVE()._verifyDescription
+            elif tstType == "Notes":
+                fn = cvelib.cve.CVE()._verifyNotes
+
+            for val, err in tsts:
+                if not err:
+                    fn(tstType, val)
+                else:
+                    with self.assertRaises(cvelib.common.CveException) as context:
+                        fn(tstType, val)
+                    self.assertEqual(err % {"key": tstType}, str(context.exception))
+
+    def test__verifyDiscoveredByAndAssignedTo(self):
+        """Test _verifyDiscoveredBy() and _verifyAssignedTo"""
+        tsts = [
+            # valid
+            ("nick", None),
+            ("Madonna", None),
+            ("Joe Schmoe", None),
+            ("Joe Schmoe (jschmoe)", None),
+            ("Joe Schmoe (@jschmoe)", None),
+            ("Harry Potter Jr.", None),
+            ("Alfred Foo-Bar", None),
+            ("Angus O'Hare", None),
+            # invalid
+            ("Joe\nSchmoe", "invalid %(key)s: 'Joe\nSchmoe' (expected single line)"),
+            ("Joe (", "invalid %(key)s: 'Joe ('"),
+            ("Joe )", "invalid %(key)s: 'Joe )'"),
+            ("Joe ()", "invalid %(key)s: 'Joe ()'"),
+            ("Joe (@)", "invalid %(key)s: 'Joe (@)'"),
+            ("Joe @joeschmoe", "invalid %(key)s: 'Joe @joeschmoe'"),
+            ("Joe Bár", "invalid %(key)s: 'Joe Bár'"),  # utf-8 not supported
+        ]
+        for tstType in ["Discovered-by", "Assigned-to"]:
+            fn = None
+            if tstType == "Discovered-by":
+                fn = cvelib.cve.CVE()._verifyDiscoveredBy
+            elif tstType == "Assigned-to":
+                fn = cvelib.cve.CVE()._verifyAssignedTo
+
+            for val, err in tsts:
+                if not err:
+                    fn(tstType, val)
+                else:
+                    with self.assertRaises(cvelib.common.CveException) as context:
+                        fn(tstType, val)
+                    self.assertEqual(err % {"key": tstType}, str(context.exception))
 
     def test_cveFromUrl(self):
         """Test cveFromUrl()"""

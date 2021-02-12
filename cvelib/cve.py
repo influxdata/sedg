@@ -34,53 +34,6 @@ class CVE(object):
     def __repr__(self):
         return self.__str__()
 
-    def onDiskFormat(self):
-        """Return format suitable for writing out to disk"""
-        s = """Candidate:%(candidate)s
-PublicDate:%(publicDate)s
-CRD:%(crd)s
-References:%(references)s
-Description:%(description)s
-Notes:%(notes)s
-Mitigation:%(mitigation)s
-Bugs:%(bugs)s
-Priority:%(priority)s
-Discovered-by:%(discoveredBy)s
-Assigned-to:%(assignedTo)s
-CVSS:%(cvss)s
-""" % (
-            {
-                "candidate": " %s" % self.candidate if self.candidate else "",
-                "publicDate": " %s" % self.publicDate if self.publicDate else "",
-                "crd": " %s" % self.crd if self.crd else "",
-                "references": "\n %s" % "\n ".join(self.references)
-                if self.references
-                else "",
-                "description": "\n %s" % "\n ".join(self.description)
-                if self.description
-                else "",
-                "notes": "\n %s" % "\n ".join(self.notes) if self.notes else "",
-                "mitigation": " %s" % self.mitigation if self.mitigation else "",
-                "bugs": "\n %s" % "\n ".join(self.bugs) if self.bugs else "",
-                "priority": " %s" % self.priority if self.priority else "",
-                "discoveredBy": " %s" % self.discoveredBy if self.discoveredBy else "",
-                "assignedTo": " %s" % self.assignedTo if self.assignedTo else "",
-                "cvss": " %s" % self.cvss if self.cvss else "",
-            }
-        )
-
-        last_software = ""
-        for pkg in self.pkgs:
-            if last_software != pkg.software:
-                s += "\nPatches_%s:\n" % pkg.software
-            last_software = pkg.software
-
-            if len(pkg.patches) > 0:
-                s += " " + "\n ".join(pkg.patches) + "\n"
-            s += "%s\n" % pkg
-
-        return s
-
     def __init__(self, fn=None, untriagedOk=False, compatUbuntu=False):
         # XXX
         self.data = {}
@@ -155,7 +108,7 @@ CVSS:%(cvss)s
         """Set References"""
         self.references = []
         for r in s.splitlines():
-            r = r.strip("\n")
+            r = r.strip()
             if r != "" and r not in self.references:
                 self.references.append(r)
         self.data["References"] = self.references
@@ -239,6 +192,54 @@ CVSS:%(cvss)s
             self.pkgs.append(p)
             self._pkgs_list.append(what)
 
+    # various other methods
+    def onDiskFormat(self):
+        """Return format suitable for writing out to disk"""
+        s = """Candidate:%(candidate)s
+PublicDate:%(publicDate)s
+CRD:%(crd)s
+References:%(references)s
+Description:%(description)s
+Notes:%(notes)s
+Mitigation:%(mitigation)s
+Bugs:%(bugs)s
+Priority:%(priority)s
+Discovered-by:%(discoveredBy)s
+Assigned-to:%(assignedTo)s
+CVSS:%(cvss)s
+""" % (
+            {
+                "candidate": " %s" % self.candidate if self.candidate else "",
+                "publicDate": " %s" % self.publicDate if self.publicDate else "",
+                "crd": " %s" % self.crd if self.crd else "",
+                "references": "\n %s" % "\n ".join(self.references)
+                if self.references
+                else "",
+                "description": "\n %s" % "\n ".join(self.description)
+                if self.description
+                else "",
+                "notes": "\n %s" % "\n ".join(self.notes) if self.notes else "",
+                "mitigation": " %s" % self.mitigation if self.mitigation else "",
+                "bugs": "\n %s" % "\n ".join(self.bugs) if self.bugs else "",
+                "priority": " %s" % self.priority if self.priority else "",
+                "discoveredBy": " %s" % self.discoveredBy if self.discoveredBy else "",
+                "assignedTo": " %s" % self.assignedTo if self.assignedTo else "",
+                "cvss": " %s" % self.cvss if self.cvss else "",
+            }
+        )
+
+        last_software = ""
+        for pkg in self.pkgs:
+            if last_software != pkg.software:
+                s += "\nPatches_%s:\n" % pkg.software
+            last_software = pkg.software
+
+            if len(pkg.patches) > 0:
+                s += " " + "\n ".join(pkg.patches) + "\n"
+            s += "%s\n" % pkg
+
+        return s
+
     def _isPresent(self, data, key, canBeEmpty=False):
         """Ensure data has key"""
         if not isinstance(data, dict):
@@ -246,7 +247,21 @@ CVSS:%(cvss)s
         if key not in data:
             raise CveException("missing field '%s'" % key)
 
-    # TODO: use schema/templates
+    def cveFromUrl(self, url):
+        """Return a CVE based on the url"""
+        if not url.startswith("https://github.com/"):
+            raise CveException("unsupported url: '%s' (only support github)" % url)
+
+        if not rePatterns["github-issue"].match(url):
+            raise CveException("invalid url: '%s' (only support github issues)" % url)
+
+        year = datetime.datetime.now().year
+        tmp = url.split("/")  # based on rePatterns, we know we have 7 elements
+        return "CVE-%s-GH%s#%s" % (year, tmp[6], tmp[4])
+
+    # Verifiers
+    # XXX: is there a sensible way to do this via schemas (since we aren't
+    # json)?
     def _verifyCve(self, data, untriagedOk=False):
         """Verify the CVE"""
         self._verifyRequired(data)
@@ -258,8 +273,22 @@ CVSS:%(cvss)s
                 self._verifyCandidate(key, val)
             elif key == "PublicDate":
                 self._verifyPublicDate(key, val)
+            elif key == "References":
+                self._verifyReferences(key, val)
+            elif key == "Description":
+                self._verifyDescription(key, val)
+            elif key == "Mitigation":
+                self._verifyMitigation(key, val)
+            elif key == "Notes":
+                self._verifyDescription(key, val)
+            elif key == "Bugs":
+                self._verifyBugs(key, val)
             elif key == "Priority":
                 self._verifyPriority(key, val, untriagedOk=untriagedOk)
+            elif key == "Discovered-by":
+                self._verifyDiscoveredBy(key, val)
+            elif key == "Assigned-to":
+                self._verifyAssignedTo(key, val)
 
         # optional
         for key in self.cve_optional:
@@ -275,6 +304,42 @@ CVSS:%(cvss)s
             if key.startswith("Priority_"):
                 self._verifyPriority(key, val)
 
+    def _verifySingleline(self, key, val):
+        """Verify multiline value"""
+        if val != "":
+            if "\n" in val:
+                raise CveException(
+                    "invalid %s: '%s' (expected single line)" % (key, val)
+                )
+
+    def _verifyMultiline(self, key, val):
+        """Verify multiline value"""
+        strippedList = []
+        lines = val.splitlines()
+        if not lines:
+            # empty is ok
+            return strippedList
+
+        if lines[0] != "":
+            # first line must be a newline
+            raise CveException(
+                "invalid %s: '%s' (missing leading newline)" % (key, val)
+            )
+        elif len(lines) == 1:
+            # but must have more than one line
+            raise CveException("invalid %s (empty)" % (key))
+
+        for line in lines[1:]:
+            if not line:
+                raise CveException("invalid %s: '%s' (empty line)" % (key, val))
+            if line[0] != " ":
+                raise CveException(
+                    "invalid %s: '%s' (missing leading space)" % (key, val)
+                )
+            strippedList.append(line.strip())
+
+        return strippedList
+
     def _verifyRequired(self, data):
         """Verify have all required fields"""
         for field in self.cve_required:
@@ -283,6 +348,7 @@ CVSS:%(cvss)s
 
     def _verifyCandidate(self, key, val):
         """Verify CVE candidate number"""
+        self._verifySingleline(key, val)
         if not rePatterns["CVE"].search(val):
             raise CveException("invalid %s: '%s'" % (key, val))
 
@@ -320,29 +386,63 @@ CVSS:%(cvss)s
 
     def _verifyPublicDate(self, key, val):
         """Verify CVE public date"""
+        self._verifySingleline(key, val)
         if val != "":  # empty is ok
             self._verifyDate(key, val)
 
     def _verifyCRD(self, key, val):
         """Verify CVE CRD"""
+        self._verifySingleline(key, val)
         if val != "":  # empty is ok
             self._verifyDate(key, val)
 
+    def _verifyUrl(self, key, url):
+        """Verify url"""
+        # This is intentionally dumb to avoid external dependencies
+        if not rePatterns["url-schemes"].search(url):
+            raise CveException("invalid url in %s: '%s'" % (key, url))
+
+    def _verifyReferences(self, key, val):
+        """Verify CVE References"""
+        for line in self._verifyMultiline(key, val):
+            self._verifyUrl(key, line)
+
+    def _verifyDescription(self, key, val):
+        """Verify CVE Description"""
+        self._verifyMultiline(key, val)
+
+    def _verifyNotes(self, key, val):
+        """Verify CVE Notes"""
+        self._verifyMultiline(key, val)
+
+    def _verifyMitigation(self, key, val):
+        """Verify CVE Mitigation"""
+        # TODO: more here?
+        self._verifySingleline(key, val)
+
+    def _verifyBugs(self, key, val):
+        """Verify CVE Bugs"""
+        for line in self._verifyMultiline(key, val):
+            self._verifyUrl(key, line)
+
     def _verifyPriority(self, key, val, untriagedOk=False):
         """Verify CVE Priority"""
+        self._verifySingleline(key, val)
         if untriagedOk and val == "untriaged":
             return
         if not rePatterns["priorities"].search(val):
             raise CveException("invalid %s: '%s'" % (key, val))
 
-    def cveFromUrl(self, url):
-        """Return a CVE based on the url"""
-        if not url.startswith("https://github.com/"):
-            raise CveException("unsupported url: '%s' (only support github)" % url)
+    def _verifyDiscoveredBy(self, key, val):
+        """Verify CVE Discovered-by"""
+        self._verifySingleline(key, val)
+        if val != "":
+            if not rePatterns["attribution"].search(val):
+                raise CveException("invalid %s: '%s'" % (key, val))
 
-        if not rePatterns["github-issue"].match(url):
-            raise CveException("invalid url: '%s' (only support github issues)" % url)
-
-        year = datetime.datetime.now().year
-        tmp = url.split("/")  # based on rePatterns, we know we have 7 elements
-        return "CVE-%s-GH%s#%s" % (year, tmp[6], tmp[4])
+    def _verifyAssignedTo(self, key, val):
+        self._verifySingleline(key, val)
+        """Verify CVE Assigned-to"""
+        if val != "":
+            if not rePatterns["attribution"].search(val):
+                raise CveException("invalid %s: '%s'" % (key, val))

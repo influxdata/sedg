@@ -63,6 +63,12 @@ rePatterns = {
     ),
     "pkg-patch": re.compile(r"^(upstream|debdiff|vendor|other): [a-z0-9+.-].*"),
     "pkg-patch-key": re.compile(r"^Patches_[a-z0-9+.-]{1,40}$"),
+    # urls
+    "url-schemes": re.compile(r"^(cvs|ftp|git|https?|sftp|shttp|svn)://."),
+    # People. We aren't accepting utf-8 elsewhere so only ascii here
+    # Some One
+    # Some One (someone-handle)
+    "attribution": re.compile(r"^[a-zA-Z0-9' .-]+( \(@?[a-zA-Z0-9._-]+\))?$"),
 }
 
 
