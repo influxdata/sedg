@@ -166,3 +166,50 @@ compat-ubuntu = %s
             )
             res = cvelib.common.getConfigCompatUbuntu()
             self.assertEqual(res, exp)
+
+    def test_readCVE(self):
+        """Test readCve()"""
+        self.tmpdir = self._createTmpDir()
+
+        tsts = [
+            # one stanza - single
+            ("foo: bar\n", {"foo": "bar"}),
+            ("foo: bar\nbaz: norf\n", {"foo": "bar", "baz": "norf"}),
+            # one stanza - empty
+            ("foo:\n", {"foo": ""}),
+            # one stanza - multi
+            ("foo:\n bar\n", {"foo": "\n bar"}),
+            ("foo:\n bar\n baz\n", {"foo": "\n bar\n baz"}),
+            # one stanza - mixed
+            (
+                "foo: bar\nbaz:\n norf\n corge\nqux: quux\n",
+                {"foo": "bar", "baz": "\n norf\n corge", "qux": "quux"},
+            ),
+            # multiple stanzas
+            ("foo: bar\n\nbaz: norf\n", {"foo": "bar", "baz": "norf"}),
+            (
+                "foo: bar\n\nbaz:\n norf\n corge\n\nqux: quux\n",
+                {"foo": "bar", "baz": "\n norf\n corge", "qux": "quux"},
+            ),
+            (
+                "foo: bar\n\n\nbaz:\n norf\n corge\n\n\n\nqux: quux\n\n\n",
+                {"foo": "bar", "baz": "\n norf\n corge", "qux": "quux"},
+            ),
+            # duplicates
+            ("foo: bar\nbaz: norf\nfoo: bar\n", {"foo": "bar", "baz": "norf"}),
+            ("foo: bar\nbaz: norf\n\nfoo: bar\n", {"foo": "bar", "baz": "norf"}),
+            # weird cases
+            ("bad", {}),
+            ("f\x00o: bar", {}),
+            ("foo: b\xaar", {"foo": "b\\xc2\\xaar"}),
+            ("😀: bar", {"\\xf0\\x9f\\x98\\x80": "bar"}),  # utf-8 F09F9880
+            ("foo: 😀", {"foo": "\\xf0\\x9f\\x98\\x80"}),
+        ]
+        for inp, exp in tsts:
+            fn = os.path.join(self.tmpdir, "testcve")
+            with open(fn, "w") as f:
+                f.write(inp)
+
+            res = cvelib.common.readCve(fn)
+            self.assertTrue(res == exp)
+            os.unlink(fn)
