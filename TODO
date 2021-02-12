@@ -8,5 +8,4 @@ In no particular order:
 * document the CVE file format. Note additions from UCT:
  * released (<hash>) # ie, instead of version, put the hash for rolling
    releases
-* implement appendCve in cve-add
 * add boilerplates for projects to capture vendored/forked code
