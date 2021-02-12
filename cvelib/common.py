@@ -133,19 +133,25 @@ def readCve(fn):
     # Always encode to ascii (since we use strip() elsewhere), but don't lose
     # data and escape
     with open(fn, "r", encoding="ascii", errors="backslashreplace") as fp:
-        # Obtain the header content
         policy = Compat32()
+
+        # Obtain the header content
         headers = Parser(policy=policy).parse(fp)
         for k in headers:
             d[k] = headers[k]
 
-        # Obtain the payload content. The CVE file format has a blank line
-        # before the package parts but it still follows the RFC, so just take
-        # the content and feed it into the parser
-        s = headers.get_payload()
-        cHeaders = HeaderParser(policy=policy).parsestr(s)
-        for k in cHeaders:
-            d[k] = cHeaders[k]
+        # Obtain the header content for any other stanzas (stanzas are
+        # separated by newlines so we need to grab the stanza'a headers from
+        # the payload in a loop.
+        last = None
+        while True:
+            s = headers.get_payload()
+            if s == last:
+                break
+            last = s
+            headers = HeaderParser(policy=policy).parsestr(s)
+            for k in headers:
+                d[k] = headers[k]
 
     return copy.deepcopy(d)
 
