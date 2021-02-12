@@ -6,3 +6,4 @@ In no particular order:
   references or bugs, then look for ' NNNN ' in description and notes). See
   https://docs.github.com/en/github/writing-on-github/autolinked-references-and-urls
 * add boilerplates for projects to capture vendored/forked code
+* do membership checks instead of rePatterns in common.py
