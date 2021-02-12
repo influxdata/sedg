@@ -85,6 +85,7 @@ CVSS:%(cvss)s
         # XXX
         self.data = {}
         self.pkgs = []
+        self._pkgs_list = []  # what is in self.pkgs
         self.compatUbuntu = compatUbuntu
         if fn is None:
             return
@@ -216,13 +217,18 @@ CVSS:%(cvss)s
         self.cvss = s
         self.data["CVSS"] = self.cvss
 
-    def setPackages(self, pkgs, patches=[]):
+    def setPackages(self, pkgs, patches=[], append=False):
         """Set pkgs"""
         if not isinstance(pkgs, list):
             raise CveException("pkgs is not a list")
+        if not append:
+            self.pkgs = []
         for p in pkgs:
             if not isinstance(p, CvePkg):
                 raise CveException("package is not of type cvelib.pkg.CvePkg")
+            what = p.what()
+            if what in self._pkgs_list:
+                continue
             if p.software in patches:
                 tmp = []
                 for patch in patches[p.software].splitlines():
@@ -231,6 +237,7 @@ CVSS:%(cvss)s
                         tmp.append(patch)
                 p.setPatches(tmp)
             self.pkgs.append(p)
+            self._pkgs_list.append(what)
 
     def _isPresent(self, data, key, canBeEmpty=False):
         """Ensure data has key"""

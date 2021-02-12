@@ -459,3 +459,34 @@ git_pkg2/inky: released (5678)
         self.assertEqual(
             "package is not of type cvelib.pkg.CvePkg", str(context.exception)
         )
+
+        # append
+        self._mock_readCve(self._cve_template())
+        cve = cvelib.cve.CVE(fn="fake")
+        self.assertEqual(len(cve.pkgs), 0)
+
+        # append one
+        pkgs = [cvelib.pkg.CvePkg("git", "pkg1", "needed")]
+        cve.setPackages(pkgs)
+        self.assertEqual(len(cve.pkgs), 1)
+        self.assertEqual(len(cve._pkgs_list), 1)
+        self.assertTrue(pkgs[0].what() in cve._pkgs_list)
+
+        # append another
+        pkgs = [cvelib.pkg.CvePkg("git", "pkg2", "needed")]
+        cve.setPackages(pkgs, append=True)
+        self.assertEqual(len(cve.pkgs), 2)
+        self.assertEqual(len(cve._pkgs_list), 2)
+        self.assertTrue(pkgs[0].what() in cve._pkgs_list)
+
+        # append with duplicates
+        pkgs = [
+            cvelib.pkg.CvePkg("git", "pkg1", "needed"),
+            cvelib.pkg.CvePkg("git", "pkg2", "needed"),
+            cvelib.pkg.CvePkg("git", "pkg3", "needed"),
+        ]
+        cve.setPackages(pkgs, append=True)
+        self.assertEqual(len(cve.pkgs), 3)
+        self.assertEqual(len(cve._pkgs_list), 3)
+        for p in pkgs:
+            self.assertTrue(p.what() in cve._pkgs_list)
