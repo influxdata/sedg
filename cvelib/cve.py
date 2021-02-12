@@ -21,6 +21,7 @@ class CVE(object):
         "Assigned-to",
         "CVSS",
     ]
+    # Tags_*, Patches_* and software are handled special
     cve_optional = [
         "CRD",
     ]
@@ -72,6 +73,7 @@ class CVE(object):
         # order, collect them separately, then call setPackages()
         pkgs = []
         patches = {}
+        tags = {}
         for k in data:
             if k not in self.data:  # copy raw data for later
                 self.data[k] = data[k]
@@ -80,11 +82,15 @@ class CVE(object):
             if k.startswith("Patches_"):
                 pkg = k.split("_")[1]
                 patches[pkg] = data[k]
+            elif k.startswith("Tags_"):
+                # XXX: Tags_foo_trusty
+                pkg = k.split("_")[1]
+                tags[pkg] = data[k]
             else:
                 s = "%s: %s" % (k, data[k])
                 pkgs.append(cvelib.pkg.parse(s, compatUbuntu=self.compatUbuntu))
 
-        self.setPackages(pkgs, patches)
+        self.setPackages(pkgs, patches=patches, tags=tags)
 
     def setCandidate(self, s):
         """Set candidate"""
@@ -170,7 +176,7 @@ class CVE(object):
         self.cvss = s
         self.data["CVSS"] = self.cvss
 
-    def setPackages(self, pkgs, patches=[], append=False):
+    def setPackages(self, pkgs, patches=[], tags=[], append=False):
         """Set pkgs"""
         if not isinstance(pkgs, list):
             raise CveException("pkgs is not a list")
@@ -189,6 +195,9 @@ class CVE(object):
                     if patch != "" and patch not in tmp:
                         tmp.append(patch)
                 p.setPatches(tmp)
+            if p.software in tags:
+                # XXX: Tags_foo_trusty
+                p.setTags(tags[p.software])
             self.pkgs.append(p)
             self._pkgs_list.append(what)
 
@@ -231,11 +240,16 @@ CVSS:%(cvss)s
         last_software = ""
         for pkg in self.pkgs:
             if last_software != pkg.software:
+                # always add this
                 s += "\nPatches_%s:\n" % pkg.software
             last_software = pkg.software
 
             if len(pkg.patches) > 0:
                 s += " " + "\n ".join(pkg.patches) + "\n"
+
+            if pkg.tags:
+                s += "Tags_%s: %s\n" % (pkg.software, " ".join(pkg.tags))
+
             s += "%s\n" % pkg
 
         return s

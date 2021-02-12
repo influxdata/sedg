@@ -68,6 +68,7 @@ class TestCve(TestCase):
 
         # also with packages
         t = self._cve_template()
+        t["Tags_foo"] = "pie"
         t["Patches_foo"] = ""
         t["snap/pub_foo/mod"] = "released (123-4)"
         exp = self._mock_readCve(t)
@@ -127,6 +128,10 @@ CVSS: ...
         pkg2b = cvelib.pkg.CvePkg("git", "pkg2", "released", "", "inky", "5678")
         pkgs.append(pkg2b)
 
+        pkg3 = cvelib.pkg.CvePkg("git", "pkg3", "needed")
+        pkg3.setTags("hardlink-restriction")
+        pkgs.append(pkg3)
+
         cve.setPackages(pkgs)
 
         exp2 = (
@@ -140,6 +145,10 @@ Patches_pkg2:
  other: http://b
 snap/pub_pkg2: needed (123-4)
 git_pkg2/inky: released (5678)
+
+Patches_pkg3:
+Tags_pkg3: hardlink-restriction
+git_pkg3: needed
 """
         )
         res = cve.onDiskFormat()
@@ -589,8 +598,16 @@ git_pkg2/inky: released (5678)
             "pkg1": " upstream: http://a\n other: http://b",
             "pkg2": " vendor: http://c\n debdiff: https://d",
         }
-        cve.setPackages(pkgs, patches)
+        tags = {
+            "pkg1": "pie hardlink-restriction",
+            "pkg2": "apparmor",
+        }
+        cve.setPackages(pkgs, patches=patches, tags=tags)
         self.assertEqual(len(cve.pkgs), 2)
+        self.assertEqual(len(cve.pkgs[0].patches), 2)
+        self.assertEqual(len(cve.pkgs[0].tags), 2)
+        self.assertEqual(len(cve.pkgs[1].patches), 2)
+        self.assertEqual(len(cve.pkgs[1].tags), 1)
 
         # invalid
         cve = cvelib.cve.CVE(fn="fake")
