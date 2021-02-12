@@ -14,6 +14,17 @@ from email.policy import Compat32
 # cache of config
 configCache = None
 
+# TODO: pull these out into dictionaries and move to membership checks (where
+# the value of the dict could be a description of the thing (eg, for tags):
+# - pkg-product
+# - pkg-status
+# - priorities
+# - pkg-patch
+# - pkg-tags
+#
+# In addition, tooling could augment the dictionaries for things it's
+# interested in.
+#
 # Compile common regex on import
 rePatterns = {
     # foo, foo1, foo-bar, foo.bar, for-bar-1.0
@@ -63,6 +74,10 @@ rePatterns = {
     ),
     "pkg-patch": re.compile(r"^(upstream|debdiff|vendor|other): [a-z0-9+.-].*"),
     "pkg-patch-key": re.compile(r"^Patches_[a-z0-9+.-]{1,40}$"),
+    "pkg-tags": re.compile(
+        r"^(apparmor|stack-protector|fortify-source|symlink-restriction|hardlink-restriction|heap-protector|pie)$"
+    ),
+    "pkg-tags-key": re.compile(r"^Patches_[a-z0-9+.-]{1,40}(_[a-z0-9+.-]{1,40})?$"),
     # urls
     "url-schemes": re.compile(r"^(cvs|ftp|git|https?|sftp|shttp|svn)://."),
     # People. We aren't accepting utf-8 elsewhere so only ascii here

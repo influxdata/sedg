@@ -313,6 +313,34 @@ class TestPkg(TestCase):
             pkg.setPatches(False)
         self.assertEqual("invalid patches (not a list)", str(context.exception))
 
+    def test_setTags(self):
+        """Test setTags()"""
+        # one patch
+        tsts = [
+            # valid
+            ("apparmor", None),
+            ("stack-protector", None),
+            ("fortify-source", None),
+            ("symlink-restriction", None),
+            ("hardlink-restriction", None),
+            ("heap-protector", None),
+            ("pie", None),
+            ("apparmor pie", None),
+            # invalid
+            ("bad", "invalid tag 'bad'"),
+            ("apparmor bad", "invalid tag 'bad'"),
+            ("bad apparmor", "invalid tag 'bad'"),
+            ([], "invalid tags (not a string)"),
+        ]
+        pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
+        for t, err in tsts:
+            if not err:
+                pkg.setTags(t)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    pkg.setTags(t)
+                self.assertEqual(err, str(context.exception))
+
     def test_parse(self):
         """Test parse()"""
         tsts = [

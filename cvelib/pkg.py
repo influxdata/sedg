@@ -42,6 +42,7 @@ class CvePkg(object):
         self.setStatus(status)
         self.setWhen(when)
         self.patches = []
+        self.tags = []
 
     def __str__(self):
         s = self.what()
@@ -129,6 +130,19 @@ class CvePkg(object):
             if not rePatterns["pkg-patch"].search(patch):
                 raise CveException("invalid patch '%s'" % patch)
             self.patches.append(patch)
+
+    def setTags(self, tag):
+        """Set tag"""
+        if not isinstance(tag, str):
+            raise CveException("invalid tags (not a string)")
+
+        self.tags = []
+        for t in tag.split():
+            t = t.strip()
+            if not rePatterns["pkg-tags"].search(t):
+                raise CveException("invalid tag '%s'" % t)
+            self.tags.append(t)
+        self.tags.sort()
 
 
 def parse(s, compatUbuntu=False):
