@@ -142,7 +142,6 @@ class CvePkg(object):
             if not rePatterns["pkg-tags"].search(t):
                 raise CveException("invalid tag '%s'" % t)
             self.tags.append(t)
-        self.tags.sort()
 
 
 def parse(s, compatUbuntu=False):
