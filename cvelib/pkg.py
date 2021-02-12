@@ -44,6 +44,18 @@ class CvePkg(object):
         self.patches = []
 
     def __str__(self):
+        s = self.what()
+        s += ": %s" % self.status
+        if self.when:
+            s += " (%s)" % (self.when)
+
+        return s
+
+    def __repr__(self):
+        return self.__str__()
+
+    def what(self):
+        """The product/where_software/modififer"""
         s = ""
         if self.product:
             s += self.product
@@ -54,14 +66,7 @@ class CvePkg(object):
         s += self.software
         if self.modifier:
             s += "/%s" % self.modifier
-        s += ": %s" % self.status
-        if self.when:
-            s += " (%s)" % (self.when)
-
         return s
-
-    def __repr__(self):
-        return self.__str__()
 
     def setProduct(self, product):
         """Set product"""
