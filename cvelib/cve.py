@@ -418,26 +418,31 @@ CVSS:%(cvss)s
 
     def _verifyReferences(self, key, val):
         """Verify CVE References"""
-        for line in self._verifyMultiline(key, val):
-            self._verifyUrl(key, line)
+        if val != "":  # empty is ok
+            for line in self._verifyMultiline(key, val):
+                self._verifyUrl(key, line)
 
     def _verifyDescription(self, key, val):
         """Verify CVE Description"""
-        self._verifyMultiline(key, val)
+        if val != "":  # empty is ok
+            self._verifyMultiline(key, val)
 
     def _verifyNotes(self, key, val):
         """Verify CVE Notes"""
-        self._verifyMultiline(key, val)
+        if val != "":  # empty is ok
+            self._verifyMultiline(key, val)
 
     def _verifyMitigation(self, key, val):
         """Verify CVE Mitigation"""
         # TODO: more here?
-        self._verifySingleline(key, val)
+        if val != "":  # empty is ok
+            self._verifySingleline(key, val)
 
     def _verifyBugs(self, key, val):
         """Verify CVE Bugs"""
-        for line in self._verifyMultiline(key, val):
-            self._verifyUrl(key, line)
+        if val != "":  # empty is ok
+            for line in self._verifyMultiline(key, val):
+                self._verifyUrl(key, line)
 
     def _verifyPriority(self, key, val, untriagedOk=False):
         """Verify CVE Priority"""
