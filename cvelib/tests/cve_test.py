@@ -583,11 +583,11 @@ git_pkg3: needed
         ]
         for (url, exp, exp_fail) in tsts:
             if exp is not None:
-                res = cvelib.cve.CVE().cveFromUrl(url)
+                res = cvelib.cve.cveFromUrl(url)
                 self.assertEqual(res, exp)
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
-                    cvelib.cve.CVE().cveFromUrl(url)
+                    cvelib.cve.cveFromUrl(url)
                 self.assertEqual(
                     exp_fail,
                     str(context.exception),
