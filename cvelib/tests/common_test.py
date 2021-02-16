@@ -3,9 +3,9 @@
 from email.message import EmailMessage
 import os
 from unittest import TestCase
-import tempfile
 
 import cvelib.common
+import cvelib.tests.util
 
 
 class TestCommon(TestCase):
@@ -29,27 +29,6 @@ class TestCommon(TestCase):
             cvelib.common.recursive_rm(self.tmpdir)
 
         cvelib.common.configCache = None
-
-    def _createTmpDir(self):
-        """Create a temporary directory"""
-        d = tempfile.mkdtemp(prefix="influx-security-tools-")
-        return d
-
-    def _newConfigFile(self, content):
-        """Create a new config file"""
-        self.tmpdir = self._createTmpDir()
-
-        if "XDG_CONFIG_HOME" in os.environ:
-            self.orig_xdg_config_home = os.environ["XDG_CONFIG_HOME"]
-
-        os.environ["XDG_CONFIG_HOME"] = os.path.join(self.tmpdir, ".config")
-        os.mkdir(os.environ["XDG_CONFIG_HOME"], 0o0700)
-        data = os.path.join(os.environ["XDG_CONFIG_HOME"], "data")
-        os.mkdir(data, 0o0700)
-        fn = os.path.expandvars("$XDG_CONFIG_HOME/influx-security-tools.conf")
-
-        with open(fn, "w") as fp:
-            fp.write("%s" % content)
 
     def test_msg(self):
         """Test msg()"""
@@ -101,7 +80,7 @@ class TestCommon(TestCase):
 
     def test_readConfig(self):
         """Test readConfig()"""
-        self.tmpdir = self._createTmpDir()
+        self.tmpdir = cvelib.tests.util._createTmpDir()
 
         if "XDG_CONFIG_HOME" in os.environ:
             self.orig_xdg_config_home = os.environ["XDG_CONFIG_HOME"]
@@ -123,7 +102,7 @@ class TestCommon(TestCase):
 
     def test_getConfigCveDataPath(self):
         """Test getConfigCveDataPath()"""
-        self.tmpdir = self._createTmpDir()
+        self.tmpdir = cvelib.tests.util._createTmpDir()
 
         if "XDG_CONFIG_HOME" in os.environ:
             self.orig_xdg_config_home = os.environ["XDG_CONFIG_HOME"]
@@ -163,7 +142,7 @@ cve-data = %s
         ]
         for val, exp in tsts:
             cvelib.common.configCache = None
-            self._newConfigFile(
+            self.orig_xdg_config_home, self.tmpdir = cvelib.tests.util._newConfigFile(
                 """[Behavior]
 compat-ubuntu = %s
 """
@@ -174,7 +153,7 @@ compat-ubuntu = %s
 
     def test_readCVE(self):
         """Test readCve()"""
-        self.tmpdir = self._createTmpDir()
+        self.tmpdir = cvelib.tests.util._createTmpDir()
 
         tsts = [
             # one stanza - single
