@@ -196,8 +196,14 @@ compat-ubuntu = %s
                 {"foo": "bar", "baz": "\n norf\n corge", "qux": "quux"},
             ),
             # duplicates
-            ("foo: bar\nbaz: norf\nfoo: bar\n", {"foo": "bar", "baz": "norf"}),
-            ("foo: bar\nbaz: norf\n\nfoo: bar\n", {"foo": "bar", "baz": "norf"}),
+            (
+                "dupe-test1: bar\nbaz: norf\ndupe-test1: bar\n",
+                {"dupe-test1": "bar", "baz": "norf"},
+            ),
+            (
+                "dupe-test2: bar\nbaz: norf\n\ndupe-test2: bar\n",
+                {"dupe-test2": "bar", "baz": "norf"},
+            ),
             # weird cases
             ("bad", {}),
             ("f\x00o: bar", {}),

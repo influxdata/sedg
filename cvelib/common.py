@@ -151,6 +151,13 @@ def readCve(fn):
     """Read raw CVE data from file"""
     # Read in the data, but let callers do any specific formatting
     d = {}
+
+    # Use a relative filename for warnings
+    rel_fn = os.path.basename(fn)
+    parent = os.path.basename(os.path.dirname(fn))
+    if parent in ["active", "retired", "ignored"]:
+        rel_fn = "%s/%s" % (parent, rel_fn)
+
     # Always encode to ascii (since we use strip() elsewhere), but don't lose
     # data and escape
     with open(fn, "r", encoding="ascii", errors="backslashreplace") as fp:
@@ -159,6 +166,8 @@ def readCve(fn):
         # Obtain the header content
         headers = Parser(policy=policy).parse(fp)
         for k in headers:
+            if k in d:
+                warn("duplicate key '%s' in %s" % (k, rel_fn))
             d[k] = headers[k]
 
         # Obtain the header content for any other stanzas (stanzas are
@@ -172,6 +181,8 @@ def readCve(fn):
             last = s
             headers = HeaderParser(policy=policy).parsestr(s)
             for k in headers:
+                if k in d:
+                    warn("duplicate key '%s' in %s" % (k, rel_fn))
                 d[k] = headers[k]
 
     return copy.deepcopy(d)
