@@ -5,3 +5,5 @@ In no particular order:
   references or bugs, then look for ' NNNN ' in description and notes). See
   https://docs.github.com/en/github/writing-on-github/autolinked-references-and-urls
 * do membership checks instead of rePatterns in common.py
+* use a cache always with mtime
+* simple report
