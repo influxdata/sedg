@@ -130,20 +130,25 @@ class TestCommon(TestCase):
 
         os.environ["XDG_CONFIG_HOME"] = os.path.join(self.tmpdir, ".config")
         os.mkdir(os.environ["XDG_CONFIG_HOME"], 0o0700)
-        data = os.path.join(os.environ["XDG_CONFIG_HOME"], "data")
-        os.mkdir(data, 0o0700)
-        fn = os.path.expandvars("$XDG_CONFIG_HOME/influx-security-tools.conf")
 
+        dataDir = os.path.join(os.environ["XDG_CONFIG_HOME"], "dataDir")
+        os.mkdir(dataDir, 0o0700)
+        exp = {}
+        for d in cvelib.common.cve_reldirs:
+            exp[d] = os.path.join(dataDir, d)
+            os.mkdir(exp[d], 0o0700)
+
+        fn = os.path.expandvars("$XDG_CONFIG_HOME/influx-security-tools.conf")
         with open(fn, "w") as fp:
             fp.write(
                 """[Locations]
 cve-data = %s
 """
-                % data
+                % dataDir
             )
 
-        exp_fn = cvelib.common.getConfigCveDataPath()
-        self.assertEqual(exp_fn, data)
+        res_dirs = cvelib.common.getConfigCveDataPaths()
+        self.assertTrue(res_dirs == exp)
 
     def test_getConfigCompatUbuntu(self):
         """Test getConfigCompatUbuntu()"""

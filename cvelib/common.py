@@ -86,6 +86,9 @@ rePatterns = {
     "attribution": re.compile(r"^[a-zA-Z0-9' .-]+( \(@?[a-zA-Z0-9._-]+\))?$"),
 }
 
+# Subdirectories of CVEs in config["Locations"]["cve-data"]
+cve_reldirs = ["active", "retired", "ignored"]
+
 
 #
 # Utility functions
@@ -155,7 +158,7 @@ def readCve(fn):
     # Use a relative filename for warnings
     rel_fn = os.path.basename(fn)
     parent = os.path.basename(os.path.dirname(fn))
-    if parent in ["active", "retired", "ignored"]:
+    if parent in cve_reldirs:
         rel_fn = "%s/%s" % (parent, rel_fn)
 
     # Always encode to ascii (since we use strip() elsewhere), but don't lose
@@ -239,8 +242,9 @@ def readConfig():
     return (config, configFilePath)
 
 
-def getConfigCveDataPath():
+def getConfigCveDataPaths():
     (config, configFilePath) = readConfig()
+    top = None
     if "Locations" in config and "cve-data" in config["Locations"]:
         path = config["Locations"]["cve-data"]
         if not os.path.isdir(path):
@@ -249,7 +253,18 @@ def getConfigCveDataPath():
                 "'[Locations]' to a valid path" % configFilePath
             )
 
-        return config["Locations"]["cve-data"]
+        top = config["Locations"]["cve-data"]
+    else:
+        error("Please configure %s to\nset 'cve-data' in '[Locations]'")
+
+    cveDirs = {}
+    for d in cve_reldirs:
+        tmp = os.path.join(top, d)
+        if not os.path.isdir(top):
+            error("Could not find '%s' in '%s'" % (d, top))
+        cveDirs[d] = tmp
+
+    return cveDirs
 
 
 def getConfigCompatUbuntu():
