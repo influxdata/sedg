@@ -21,6 +21,7 @@ class TestCve(TestCase):
         """Teardown functions common for all tests"""
         if self.orig_readCve is not None:
             cvelib.common.readCve = self.orig_readCve
+            self.orig_readCve = None
 
     def _mockHeaders(self, header_dict):
         """Mock headers for use with"""
@@ -34,7 +35,8 @@ class TestCve(TestCase):
     def _mock_readCve(self, header_dict):
         """Mock readCve() and return the expected value"""
         expected = self._mockHeaders(header_dict)
-        self.orig_readCve = cvelib.common.readCve
+        if self.orig_readCve is None:
+            self.orig_readCve = cvelib.common.readCve
         cvelib.common.readCve = MagicMock(return_value=expected)
 
         return expected
