@@ -1,6 +1,9 @@
 """util.py; utility functions for tests"""
 
+from contextlib import contextmanager
 import os
+from io import StringIO
+import sys
 import tempfile
 
 
@@ -27,3 +30,14 @@ def _newConfigFile(content, tmpdir=None):
         fp.write("%s" % content)
 
     return orig_xdg_config_home, tmpdir
+
+
+@contextmanager
+def capturedOutput():
+    newOut, newErr = StringIO(), StringIO()
+    oldOut, oldErr = sys.stdout, sys.stderr
+    try:
+        sys.stdout, sys.stderr = newOut, newErr
+        yield sys.stdout, sys.stderr
+    finally:
+        sys.stdout, sys.stderr = oldOut, oldErr

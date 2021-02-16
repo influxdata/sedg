@@ -32,15 +32,30 @@ class TestCommon(TestCase):
 
     def test_msg(self):
         """Test msg()"""
-        cvelib.common.msg("Test msg")
+        with cvelib.tests.util.capturedOutput() as (output, error):
+            cvelib.common.msg("Test msg")
+        out = output.getvalue().strip()
+        err = error.getvalue().strip()
+        self.assertEqual(out, "Test msg")
+        self.assertEqual(err, "")
 
     def test_warn(self):
         """Test warn()"""
-        cvelib.common.warn("Test warning")
+        with cvelib.tests.util.capturedOutput() as (output, error):
+            cvelib.common.warn("Test warning")
+        out = output.getvalue().strip()
+        err = error.getvalue().strip()
+        self.assertEqual(out, "")
+        self.assertEqual(err, "WARN: Test warning")
 
     def test_error(self):
         """Test error()"""
-        cvelib.common.error("Test error", do_exit=False)
+        with cvelib.tests.util.capturedOutput() as (output, error):
+            cvelib.common.error("Test error", do_exit=False)
+        out = output.getvalue().strip()
+        err = error.getvalue().strip()
+        self.assertEqual(out, "")
+        self.assertEqual(err, "ERROR: Test error")
 
     def test_setCveHeader(self):
         """Test setCveHeader()"""
@@ -89,16 +104,28 @@ class TestCommon(TestCase):
         fn = os.path.expandvars("$XDG_CONFIG_HOME/influx-security-tools.conf")
 
         # create
-        (exp_conf, exp_fn) = cvelib.common.readConfig()
+        with cvelib.tests.util.capturedOutput() as (output, error):
+            (exp_conf, exp_fn) = cvelib.common.readConfig()
         self.assertEqual(fn, exp_fn)
         self.assertTrue("Locations" in exp_conf)
 
+        out = output.getvalue().strip()
+        err = error.getvalue().strip()
+        self.assertTrue(out.startswith("Created default config in "))
+        self.assertEqual(err, "")
+
         # reuse
-        (exp_conf2, exp_fn2) = cvelib.common.readConfig()
+        with cvelib.tests.util.capturedOutput() as (output, error):
+            (exp_conf2, exp_fn2) = cvelib.common.readConfig()
         self.assertEqual(exp_conf, exp_conf2)  # same object
         self.assertEqual(exp_fn, exp_fn2)
         self.assertTrue("Locations" in exp_conf2)
         self.assertEqual(exp_conf["Locations"], exp_conf2["Locations"])
+
+        out = output.getvalue().strip()
+        err = error.getvalue().strip()
+        self.assertEqual(out, "")
+        self.assertEqual(err, "")
 
     def test_getConfigCveDataPath(self):
         """Test getConfigCveDataPath()"""
@@ -132,15 +159,20 @@ cve-data = %s
     def test_getConfigCompatUbuntu(self):
         """Test getConfigCompatUbuntu()"""
         tsts = [
-            ("yes", True),
-            ("Yes", True),
-            ("YES", True),
-            ("no", False),
-            ("No", False),
-            ("NO", False),
-            ("bad", False),
+            ("yes", True, "", ""),
+            ("Yes", True, "", ""),
+            ("YES", True, "", ""),
+            ("no", False, "", ""),
+            ("No", False, "", ""),
+            ("NO", False, "", ""),
+            (
+                "bad",
+                False,
+                "",
+                "WARN: 'compat-ubuntu' in '[Behavior]' should be 'yes' or 'no'",
+            ),
         ]
-        for val, exp in tsts:
+        for val, exp, expOut, expErr in tsts:
             cvelib.common.configCache = None
             self.orig_xdg_config_home, self.tmpdir = cvelib.tests.util._newConfigFile(
                 """[Behavior]
@@ -148,8 +180,15 @@ compat-ubuntu = %s
 """
                 % val
             )
-            res = cvelib.common.getConfigCompatUbuntu()
+
+            with cvelib.tests.util.capturedOutput() as (output, error):
+                res = cvelib.common.getConfigCompatUbuntu()
             self.assertEqual(res, exp)
+
+            out = output.getvalue().strip()
+            err = error.getvalue().strip()
+            self.assertEqual(out, expOut)
+            self.assertEqual(err, expErr)
 
     def test_readCVE(self):
         """Test readCve()"""
@@ -200,6 +239,16 @@ compat-ubuntu = %s
             with open(fn, "w") as f:
                 f.write(inp)
 
-            res = cvelib.common.readCve(fn)
-            self.assertTrue(res == exp)
+            with cvelib.tests.util.capturedOutput() as (output, error):
+                res = cvelib.common.readCve(fn)
             os.unlink(fn)
+            self.assertTrue(res == exp)
+
+            out = output.getvalue().strip()
+            err = error.getvalue().strip()
+            if inp.startswith("dupe"):
+                self.assertEqual(out, "")
+                self.assertTrue(err.startswith("WARN: duplicate key 'dupe"))
+            else:
+                self.assertEqual(out, "")
+                self.assertEqual(err, "")

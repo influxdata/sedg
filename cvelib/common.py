@@ -93,10 +93,10 @@ cve_reldirs = ["active", "retired", "ignored"]
 #
 # Utility functions
 #
-def msg(out, output=sys.stdout):
+def msg(out):
     """Print message"""
     try:
-        print("%s" % (out), file=output)
+        print("%s" % (out), file=sys.stdout)
     except IOError:  # pragma: nocover
         pass
 
