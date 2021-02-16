@@ -3,6 +3,8 @@
 import datetime
 import glob
 import os
+import shutil
+import tempfile
 
 from cvelib.common import CveException, rePatterns
 import cvelib.common
@@ -504,3 +506,104 @@ def cveFromUrl(url):
     year = datetime.datetime.now().year
     tmp = url.split("/")  # based on rePatterns, we know we have 7 elements
     return "CVE-%s-GH%s#%s" % (year, tmp[6], tmp[4])
+
+
+def pkgFromCandidate(cand):
+    """Find pkg name from url"""
+    pkg = None
+    if "-GH" in cand:
+        if cand.count("#") != 1:
+            raise CveException("invalid candidate: '%s'" % cand)
+
+        if cand.endswith("#"):
+            raise CveException("invalid candidate: '%s' (empty package)" % cand)
+        pkg = "git/github_%s" % cand.split("#")[1]
+
+    return pkg
+
+
+def createCve(active_dir, cve_path, cve, cand, args_pkgs, compatUbuntu, append=False):
+    """Create or append CVE"""
+    pkgs = []
+    if args_pkgs is not None:
+        for p in args_pkgs:
+            # mock up an entry
+            pkgs.append("%s: needed" % p)
+
+    # find boiler
+    boiler = os.path.join(active_dir, "00boilerplate")
+    if not os.path.isfile(boiler):
+        raise CveException("could not find '%s'" % boiler)
+
+    data = {}
+    if append:
+        data = cvelib.common.readCve(cve_path)
+    else:
+        data = cvelib.common.readCve(boiler)
+
+    # fill in the CVE
+    refs = []
+    bugs = []
+    if cve.startswith("http"):
+        refs.append(cve)
+        bugs.append(cve)
+        data["Bugs"] = "\n %s" % " ".join(bugs)
+    else:
+        refs.append("https://cve.mitre.org/cgi-bin/cvename.cgi?name=%s" % cve)
+
+    data["Candidate"] = cand
+    data["References"] = "\n %s" % " ".join(refs)
+
+    pkgObjs = []
+    for pkg in pkgs:
+        pkgObjs.append(cvelib.pkg.parse(pkg))
+
+    cveObj = cvelib.cve.CVE(compatUbuntu=compatUbuntu)
+    cveObj._setFromData(data, untriagedOk=True)
+    if pkgObjs:
+        cveObj.setPackages(pkgObjs, append=append)
+
+    # now write it out
+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+        f.write(cveObj.onDiskFormat())
+        f.flush()
+        shutil.copyfile(f.name, cve_path, follow_symlinks=False)
+        os.unlink(f.name)
+
+
+def addCve(cveDirs, compatUbuntu, cand, args):
+    """Add/modify CVE"""
+    # If we could determine a pkg from the candidate, then add it to the
+    # front of the list, removing it from the pkgs if it is there
+    pkgs = []
+    if args.pkgs:
+        pkgs = args.pkgs
+
+    p = cvelib.cve.pkgFromCandidate(cand)
+    if p:
+        if p in pkgs:
+            pkgs.remove(p)
+        pkgs.insert(0, p)
+
+    cve_fn = os.path.join(cveDirs["active"], cand)  # TODO: check retired, ...
+    if pkgs:
+        pkgBoiler = None
+        if "_" in pkgs[0]:
+            pkgBoiler = pkgs[0].split("_")[1].split("/")[0]
+        else:
+            pkgBoiler = pkgs[0].split("/")[0]
+        pkgBoiler = os.path.join(cveDirs["active"], "00boilerplate.%s" % pkgBoiler)
+
+        # if we have a per-package boiler but don't have the cve, the copy
+        # the boiler into place
+        if os.path.isfile(pkgBoiler) and not os.path.isfile(cve_fn):
+            shutil.copyfile(pkgBoiler, cve_fn, follow_symlinks=False)
+
+    if os.path.isfile(cve_fn):
+        createCve(
+            cveDirs["active"], cve_fn, args.cve, cand, pkgs, compatUbuntu, append=True
+        )
+    else:
+        createCve(
+            cveDirs["active"], cve_fn, args.cve, cand, pkgs, compatUbuntu, append=False
+        )

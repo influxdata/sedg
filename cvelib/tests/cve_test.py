@@ -752,3 +752,29 @@ cve-data = %s
         err = error.getvalue().strip()
         self.assertEqual(out, "")
         self.assertTrue(err.startswith("WARN: multiple entries for CVE-2020-1234: "))
+
+    def test_pkgFromCandidate(self):
+        """Test pkgFromCandidate()"""
+        tsts = [
+            # valid package
+            ("CVE-2021-GH1234#foo", "git/github_foo", None),
+            ("CVE-2021-GH1234#bar", "git/github_bar", None),
+            ("CVE-2020-GH9999#foobar", "git/github_foobar", None),
+            # no package
+            ("CVE-2021-1234", None, None),
+            ("CVE-2021-LP1234", None, None),
+            # invalid
+            ("CVE-2021-GH1234", "", "invalid candidate: 'CVE-2021-GH1234'"),
+            ("CVE-2021-GH1234#", "", "invalid candidate: 'CVE-2021-GH1234#' (empty package)"),
+        ]
+        for (cand, exp, exp_fail) in tsts:
+            if exp_fail is None:
+                res = cvelib.cve.pkgFromCandidate(cand)
+                self.assertEqual(res, exp)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    res = cvelib.cve.pkgFromCandidate(cand)
+                self.assertEqual(
+                    exp_fail,
+                    str(context.exception),
+                )
