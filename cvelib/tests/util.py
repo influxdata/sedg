@@ -41,3 +41,11 @@ def capturedOutput():
         yield sys.stdout, sys.stderr
     finally:
         sys.stdout, sys.stderr = oldOut, oldErr
+
+
+def cveContentFromDict(d):
+    """Return string suitable for writing out to dictionary"""
+    s = ""
+    for key in d:
+        s += "%s:%s\n" % (key, " %s" % d[key] if d[key] else "")
+    return s

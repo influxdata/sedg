@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import datetime
+import glob
+import os
 
 from cvelib.common import CveException, rePatterns
 import cvelib.common
@@ -465,3 +467,39 @@ CVSS:%(cvss)s
         if val != "":
             if not rePatterns["attribution"].search(val):
                 raise CveException("invalid %s: '%s'" % (key, val))
+
+
+# Utility functions that work on CVE files
+def checkSyntax(cveDirs, compatUbuntu):
+    """Perform syntax checks on CVEs"""
+    # TODO: make configurable
+    seen = {}
+    cves = (
+        glob.glob(cveDirs["active"] + "/CVE*")
+        + glob.glob(cveDirs["retired"] + "/CVE-*")
+        + glob.glob(cveDirs["ignored"] + "/CVE-*")
+    )
+    cves.sort()
+    for f in cves:
+        tmp = os.path.realpath(f).split("/")
+        rel = tmp[-2] + "/" + tmp[-1]
+        try:
+            cve = None
+            cve = cvelib.cve.CVE(fn=f, compatUbuntu=compatUbuntu)
+        except Exception as e:
+            cvelib.common.warn("%s: %s" % (rel, str(e)))
+            continue
+
+        # make sure the name of the file matches the candidate
+        bn = os.path.basename(f)
+        if bn != cve.candidate:
+            cvelib.common.warn("%s: non-matching candidate '%s'" % (rel, cve.candidate))
+
+        if cve.candidate not in seen:
+            seen[cve.candidate] = [rel]
+        else:
+            seen[cve.candidate].append(rel)
+            cvelib.common.warn(
+                "multiple entries for %s: %s"
+                % (cve.candidate, ", ".join(seen[cve.candidate]))
+            )

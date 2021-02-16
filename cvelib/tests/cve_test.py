@@ -4,9 +4,12 @@ from unittest import TestCase
 from unittest.mock import MagicMock
 import copy
 import datetime
+import os
+import tempfile
 
 import cvelib.cve
 import cvelib.common
+import cvelib.tests.util
 
 
 class TestCve(TestCase):
@@ -16,12 +19,16 @@ class TestCve(TestCase):
         """Setup functions common for all tests"""
         self.orig_readCve = None
         self.maxDiff = None
+        self.tmpdir = None
 
     def tearDown(self):
         """Teardown functions common for all tests"""
         if self.orig_readCve is not None:
             cvelib.common.readCve = self.orig_readCve
             self.orig_readCve = None
+
+        if self.tmpdir is not None:
+            cvelib.common.recursive_rm(self.tmpdir)
 
     def _mockHeaders(self, header_dict):
         """Mock headers for use with"""
@@ -656,3 +663,92 @@ git_pkg3: needed
         self.assertEqual(len(cve._pkgs_list), 3)
         for p in pkgs:
             self.assertTrue(p.what() in cve._pkgs_list)
+
+    def test_checkSyntax(self):
+        """Test checkSyntax"""
+        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        content = (
+            """[Location]
+cve-data = %s
+"""
+            % self.tmpdir
+        )
+        self.orig_xdg_config_home, self.tmpdir = cvelib.tests.util._newConfigFile(
+            content, self.tmpdir
+        )
+
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
+
+        tsts = [
+            # valid
+            ("active/CVE-2021-9999", None),
+            ("retired/CVE-2021-9999", None),
+            ("ignored/CVE-2021-9999", None),
+            # invalid
+            ("retired/CVE-bad", "WARN: retired/CVE-bad: invalid Candidate: 'CVE-bad'"),
+        ]
+
+        for fn, expErr in tsts:
+            tmpl = self._cve_template()
+            dir, cand = fn.split("/")
+            tmpl["Candidate"] = cand
+            content = cvelib.tests.util.cveContentFromDict(tmpl)
+
+            cve_fn = os.path.join(cveDirs[dir], cand)
+
+            with open(cve_fn, "w") as fp:
+                fp.write("%s" % content)
+
+            with cvelib.tests.util.capturedOutput() as (output, error):
+                cvelib.cve.checkSyntax(cveDirs, False)
+            os.unlink(cve_fn)
+
+            out = output.getvalue().strip()
+            err = error.getvalue().strip()
+            if expErr is None:
+                self.assertEqual(out, "")
+                self.assertEqual(err, "")
+            else:
+                self.assertEqual(out, "")
+                self.assertEqual(err, expErr)
+
+        # non-matching
+        tmpl = self._cve_template()
+        content = cvelib.tests.util.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with cvelib.tests.util.capturedOutput() as (output, error):
+            cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        out = output.getvalue().strip()
+        err = error.getvalue().strip()
+        self.assertEqual(out, "")
+        self.assertEqual(
+            err, "WARN: active/CVE-1234-5678: non-matching candidate 'CVE-2020-1234'"
+        )
+
+        # multiple
+        tmpl = self._cve_template()
+        content = cvelib.tests.util.cveContentFromDict(tmpl)
+        cve_active_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
+        with open(cve_active_fn, "w") as fp:
+            fp.write("%s" % content)
+        cve_retired_fn = os.path.join(cveDirs["retired"], tmpl["Candidate"])
+        with open(cve_retired_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with cvelib.tests.util.capturedOutput() as (output, error):
+            cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_active_fn)
+        os.unlink(cve_retired_fn)
+
+        out = output.getvalue().strip()
+        err = error.getvalue().strip()
+        self.assertEqual(out, "")
+        self.assertTrue(err.startswith("WARN: multiple entries for CVE-2020-1234: "))
