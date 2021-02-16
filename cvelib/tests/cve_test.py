@@ -765,7 +765,11 @@ cve-data = %s
             ("CVE-2021-LP1234", None, None),
             # invalid
             ("CVE-2021-GH1234", "", "invalid candidate: 'CVE-2021-GH1234'"),
-            ("CVE-2021-GH1234#", "", "invalid candidate: 'CVE-2021-GH1234#' (empty package)"),
+            (
+                "CVE-2021-GH1234#",
+                "",
+                "invalid candidate: 'CVE-2021-GH1234#' (empty package)",
+            ),
         ]
         for (cand, exp, exp_fail) in tsts:
             if exp_fail is None:
