@@ -255,7 +255,9 @@ def getConfigCveDataPaths():
 
         top = config["Locations"]["cve-data"]
     else:
-        error("Please configure %s to\nset 'cve-data' in '[Locations]'")
+        error(
+            "Please configure %s to\nset 'cve-data' in '[Locations]'" % configFilePath
+        )
 
     cveDirs = {}
     for d in cve_reldirs:
