@@ -34,28 +34,22 @@ class TestCommon(TestCase):
         """Test msg()"""
         with cvelib.tests.util.capturedOutput() as (output, error):
             cvelib.common.msg("Test msg")
-        out = output.getvalue().strip()
-        err = error.getvalue().strip()
-        self.assertEqual(out, "Test msg")
-        self.assertEqual(err, "")
+        self.assertEqual(output.getvalue().strip(), "Test msg")
+        self.assertEqual(error.getvalue().strip(), "")
 
     def test_warn(self):
         """Test warn()"""
         with cvelib.tests.util.capturedOutput() as (output, error):
             cvelib.common.warn("Test warning")
-        out = output.getvalue().strip()
-        err = error.getvalue().strip()
-        self.assertEqual(out, "")
-        self.assertEqual(err, "WARN: Test warning")
+        self.assertEqual(output.getvalue().strip(), "")
+        self.assertEqual(error.getvalue().strip(), "WARN: Test warning")
 
     def test_error(self):
         """Test error()"""
         with cvelib.tests.util.capturedOutput() as (output, error):
             cvelib.common.error("Test error", do_exit=False)
-        out = output.getvalue().strip()
-        err = error.getvalue().strip()
-        self.assertEqual(out, "")
-        self.assertEqual(err, "ERROR: Test error")
+        self.assertEqual(output.getvalue().strip(), "")
+        self.assertEqual(error.getvalue().strip(), "ERROR: Test error")
 
     def test_setCveHeader(self):
         """Test setCveHeader()"""
@@ -109,10 +103,10 @@ class TestCommon(TestCase):
         self.assertEqual(fn, exp_fn)
         self.assertTrue("Locations" in exp_conf)
 
-        out = output.getvalue().strip()
-        err = error.getvalue().strip()
-        self.assertTrue(out.startswith("Created default config in "))
-        self.assertEqual(err, "")
+        self.assertTrue(
+            output.getvalue().strip().startswith("Created default config in ")
+        )
+        self.assertEqual(error.getvalue().strip(), "")
 
         # reuse
         with cvelib.tests.util.capturedOutput() as (output, error):
@@ -122,10 +116,8 @@ class TestCommon(TestCase):
         self.assertTrue("Locations" in exp_conf2)
         self.assertEqual(exp_conf["Locations"], exp_conf2["Locations"])
 
-        out = output.getvalue().strip()
-        err = error.getvalue().strip()
-        self.assertEqual(out, "")
-        self.assertEqual(err, "")
+        self.assertEqual(output.getvalue().strip(), "")
+        self.assertEqual(error.getvalue().strip(), "")
 
     def test_getConfigCveDataPath(self):
         """Test getConfigCveDataPath()"""
@@ -185,10 +177,8 @@ compat-ubuntu = %s
                 res = cvelib.common.getConfigCompatUbuntu()
             self.assertEqual(res, exp)
 
-            out = output.getvalue().strip()
-            err = error.getvalue().strip()
-            self.assertEqual(out, expOut)
-            self.assertEqual(err, expErr)
+            self.assertEqual(output.getvalue().strip(), expOut)
+            self.assertEqual(error.getvalue().strip(), expErr)
 
     def test_readCVE(self):
         """Test readCve()"""
@@ -244,11 +234,11 @@ compat-ubuntu = %s
             os.unlink(fn)
             self.assertTrue(res == exp)
 
-            out = output.getvalue().strip()
-            err = error.getvalue().strip()
             if inp.startswith("dupe"):
-                self.assertEqual(out, "")
-                self.assertTrue(err.startswith("WARN: duplicate key 'dupe"))
+                self.assertEqual(output.getvalue().strip(), "")
+                self.assertTrue(
+                    error.getvalue().strip().startswith("WARN: duplicate key 'dupe")
+                )
             else:
-                self.assertEqual(out, "")
-                self.assertEqual(err, "")
+                self.assertEqual(output.getvalue().strip(), "")
+                self.assertEqual(error.getvalue().strip(), "")

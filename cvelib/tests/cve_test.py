@@ -794,14 +794,12 @@ cve-data = %s
                 cvelib.cve.checkSyntax(cveDirs, False)
             os.unlink(cve_fn)
 
-            out = output.getvalue().strip()
-            err = error.getvalue().strip()
             if expErr is None:
-                self.assertEqual(out, "")
-                self.assertEqual(err, "")
+                self.assertEqual(output.getvalue().strip(), "")
+                self.assertEqual(error.getvalue().strip(), "")
             else:
-                self.assertEqual(out, "")
-                self.assertEqual(err, expErr)
+                self.assertEqual(output.getvalue().strip(), "")
+                self.assertEqual(error.getvalue().strip(), expErr)
 
         # non-matching
         tmpl = self._cve_template()
@@ -814,11 +812,10 @@ cve-data = %s
             cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
-        out = output.getvalue().strip()
-        err = error.getvalue().strip()
-        self.assertEqual(out, "")
+        self.assertEqual(output.getvalue().strip(), "")
         self.assertEqual(
-            err, "WARN: active/CVE-1234-5678: non-matching candidate 'CVE-2020-1234'"
+            error.getvalue().strip(),
+            "WARN: active/CVE-1234-5678: non-matching candidate 'CVE-2020-1234'",
         )
 
         # multiple
@@ -836,10 +833,12 @@ cve-data = %s
         os.unlink(cve_active_fn)
         os.unlink(cve_retired_fn)
 
-        out = output.getvalue().strip()
-        err = error.getvalue().strip()
-        self.assertEqual(out, "")
-        self.assertTrue(err.startswith("WARN: multiple entries for CVE-2020-1234: "))
+        self.assertEqual(output.getvalue().strip(), "")
+        self.assertTrue(
+            error.getvalue()
+            .strip()
+            .startswith("WARN: multiple entries for CVE-2020-1234: ")
+        )
 
     def test_pkgFromCandidate(self):
         """Test pkgFromCandidate()"""
