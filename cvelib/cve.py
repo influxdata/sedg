@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
+import copy
 import datetime
 import glob
 import os
+import re
 import shutil
 import tempfile
 
@@ -522,46 +524,72 @@ def pkgFromCandidate(cand):
     return pkg
 
 
-def createCve(active_dir, cve_path, cve, cand, args_pkgs, compatUbuntu, append=False):
-    """Create or append CVE"""
-    pkgs = []
-    if args_pkgs is not None:
-        for p in args_pkgs:
-            # mock up an entry
-            pkgs.append("%s: needed" % p)
-
-    # find boiler
-    boiler = os.path.join(active_dir, "00boilerplate")
-    if not os.path.isfile(boiler):
-        raise CveException("could not find '%s'" % boiler)
-
-    data = {}
-    if append:
-        data = cvelib.common.readCve(cve_path)
-    else:
-        data = cvelib.common.readCve(boiler)
-
-    # fill in the CVE
+# Helpers for addCve()
+def _genReferencesAndBugs(cve):
+    """Generate references and bugs for _createCve()"""
     refs = []
     bugs = []
     if cve.startswith("http"):
         refs.append(cve)
         bugs.append(cve)
-        data["Bugs"] = "\n %s" % " ".join(bugs)
     else:
         refs.append("https://cve.mitre.org/cgi-bin/cvename.cgi?name=%s" % cve)
 
-    data["Candidate"] = cand
-    data["References"] = "\n %s" % " ".join(refs)
+    return refs, bugs
+
+
+def _createCve(cveDirs, cve_path, cve, args_pkgs, compatUbuntu):
+    """Create or append CVE"""
+    data = {}
+
+    append = False
+    if os.path.isfile(cve_path):
+        append = True
+        data = cvelib.common.readCve(cve_path)
+    else:
+        # find generic boiler
+        boiler = os.path.join(cveDirs["active"], "00boilerplate")
+        ubuntuBoiler = os.path.join(cveDirs["active"], "00boilerplate.ubuntu")
+        if compatUbuntu:
+            boiler = ubuntuBoiler
+        if not os.path.isfile(boiler):
+            raise CveException("could not find 'active/%s'" % os.path.basename(boiler))
+        data = cvelib.common.readCve(boiler)
+
+        if boiler == ubuntuBoiler:
+            # update args_pkgs using Ubuntu's boiler format
+            tmp = copy.deepcopy(args_pkgs)
+            pat = re.compile(r"^#(.*_)PKG$")
+            for k in data:
+                if not pat.search(k) or k == "#Patches_PKG":
+                    continue
+                for p in tmp:
+                    if "_" not in p:
+                        uPkg = pat.sub("\\1%s" % p, k)
+                        if uPkg not in args_pkgs:
+                            args_pkgs.append(uPkg)
+
+            # remove the original args_pkgs since we have the updated ones
+            for p in tmp:
+                args_pkgs.remove(p)
+
+        # References and bugs only need filling in with new CVEs
+        refs, bugs = _genReferencesAndBugs(cve)
+        data["References"] = "\n %s" % " ".join(refs)
+        data["Bugs"] = "\n %s" % " ".join(bugs) if bugs else ""
+
+    # fill in the CVE candidate (needed with new and per-package boiler, but
+    # re-setting it for existing is harmless and makes the logic simpler)
+    data["Candidate"] = os.path.basename(cve_path)
 
     pkgObjs = []
-    for pkg in pkgs:
-        pkgObjs.append(cvelib.pkg.parse(pkg))
+    for p in args_pkgs:
+        # mock up an entry
+        pkgObjs.append(cvelib.pkg.parse("%s: needs-triage" % p, compatUbuntu))
 
     cveObj = cvelib.cve.CVE(compatUbuntu=compatUbuntu)
     cveObj._setFromData(data, untriagedOk=True)
-    if pkgObjs:
-        cveObj.setPackages(pkgObjs, append=append)
+    cveObj.setPackages(pkgObjs, append=append)
 
     # now write it out
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
@@ -571,39 +599,44 @@ def createCve(active_dir, cve_path, cve, cand, args_pkgs, compatUbuntu, append=F
         os.unlink(f.name)
 
 
-def addCve(cveDirs, compatUbuntu, cand, args):
+def addCve(cveDirs, compatUbuntu, orig_cve, orig_pkgs):
     """Add/modify CVE"""
-    # If we could determine a pkg from the candidate, then add it to the
-    # front of the list, removing it from the pkgs if it is there
-    pkgs = []
-    if args.pkgs:
-        pkgs = args.pkgs
+    pkgs = copy.deepcopy(orig_pkgs)
 
+    # See if we can parse
+    cand = None
+    if orig_cve.startswith("http"):
+        cand = cvelib.cve.cveFromUrl(orig_cve)  # raises an error
+    else:
+        cand = orig_cve
+    cve_fn = os.path.join(cveDirs["active"], cand)  # TODO: check retired, ...
+
+    # If we can determine a pkg from the candidate, then add it to the
+    # front of the list, removing it from the pkgs if it is already there
     p = cvelib.cve.pkgFromCandidate(cand)
     if p:
         if p in pkgs:
             pkgs.remove(p)
         pkgs.insert(0, p)
+    if not pkgs:
+        raise CveException("could not find usable packages for '%s'" % orig_cve)
 
-    cve_fn = os.path.join(cveDirs["active"], cand)  # TODO: check retired, ...
-    if pkgs:
-        pkgBoiler = None
-        if "_" in pkgs[0]:
-            pkgBoiler = pkgs[0].split("_")[1].split("/")[0]
-        else:
-            pkgBoiler = pkgs[0].split("/")[0]
+    # Find boilerplate if we have one
+    pkgBoiler = None
+    if "_" in pkgs[0]:  # product/where_software/modifer
+        pkgBoiler = pkgs[0].split("_")[1].split("/")[0]
+    elif compatUbuntu:  # software/modifier
+        pkgBoiler = pkgs[0].split("/")[0]
+    if pkgBoiler is not None:
         pkgBoiler = os.path.join(cveDirs["active"], "00boilerplate.%s" % pkgBoiler)
 
-        # if we have a per-package boiler but don't have the cve, the copy
-        # the boiler into place
-        if os.path.isfile(pkgBoiler) and not os.path.isfile(cve_fn):
-            shutil.copyfile(pkgBoiler, cve_fn, follow_symlinks=False)
+    # if we have a per-package boiler but don't have the cve, then copy
+    # the boiler into place as the CVE
+    if (
+        pkgBoiler is not None
+        and os.path.isfile(pkgBoiler)
+        and not os.path.isfile(cve_fn)
+    ):
+        shutil.copyfile(pkgBoiler, cve_fn, follow_symlinks=False)
 
-    if os.path.isfile(cve_fn):
-        createCve(
-            cveDirs["active"], cve_fn, args.cve, cand, pkgs, compatUbuntu, append=True
-        )
-    else:
-        createCve(
-            cveDirs["active"], cve_fn, args.cve, cand, pkgs, compatUbuntu, append=False
-        )
+    _createCve(cveDirs, cve_fn, orig_cve, pkgs, compatUbuntu)

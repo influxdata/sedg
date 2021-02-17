@@ -782,3 +782,250 @@ cve-data = %s
                     exp_fail,
                     str(context.exception),
                 )
+
+    def test___genReferencesAndBugs(self):
+        """Test _genReferencesAndBugs()"""
+        tsts = [
+            (
+                "CVE-2020-1234",
+                ["https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-1234"],
+                [],
+            ),
+            (
+                "https://github.com/foo/bar/issues/1234",
+                ["https://github.com/foo/bar/issues/1234"],
+                ["https://github.com/foo/bar/issues/1234"],
+            ),
+            (
+                "https://launchpad.net/bugs/1234",
+                ["https://launchpad.net/bugs/1234"],
+                ["https://launchpad.net/bugs/1234"],
+            ),
+        ]
+
+        for cve, expRefs, expBugs in tsts:
+            refs, bugs = cvelib.cve._genReferencesAndBugs(cve)
+            self.assertEqual(refs, expRefs)
+            self.assertEqual(bugs, expBugs)
+
+    def test__createCve(self):
+        """Test _createCve()"""
+
+        def createAndVerify(cveDirs, cve_fn, cve, pkgs):
+            # add a new CVE
+            cvelib.cve._createCve(cveDirs, cve_fn, cve, pkgs, False)
+
+            # now read it off disk and verify it
+            res = cvelib.common.readCve(cve_fn)
+
+            fields = [
+                "Candidate",
+                "PublicDate",
+                "CRD",
+                "References",
+                "Description",
+                "Notes",
+                "Mitigation",
+                "Bugs",
+                "Priority",
+                "Discovered-by",
+                "Assigned-to",
+                "CVSS",
+            ]
+            for k in fields:
+                self.assertTrue(k in res)
+
+            for k in res:
+                if "_" in k:  # checked elsewhere
+                    continue
+                elif k == "Candidate":
+                    self.assertEqual(res[k], os.path.basename(cve_fn))
+                elif k == "References":
+                    self.assertEqual(
+                        res[k],
+                        "\n https://cve.mitre.org/cgi-bin/cvename.cgi?name=%s"
+                        % os.path.basename(cve_fn),
+                    )
+                elif k == "Priority":
+                    self.assertEqual(res[k], "untriaged")
+                else:
+                    self.assertEqual(res[k], "")
+            return res
+
+        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
+
+        cve_fn = os.path.join(cveDirs["active"], "CVE-2021-999999")
+        boiler_fn = os.path.join(cveDirs["active"], "00boilerplate")
+
+        # missing boiler
+        with self.assertRaises(cvelib.common.CveException) as context:
+            cvelib.cve._createCve(
+                cveDirs, cve_fn, os.path.basename(cve_fn), ["git/github_foo"], False
+            )
+        self.assertEqual(
+            "could not find 'active/00boilerplate'",
+            str(context.exception),
+        )
+
+        boiler_content = """Candidate:
+PublicDate:
+References:
+Description:
+Notes:
+Mitigation:
+Bugs:
+Priority: untriaged
+Discovered-by:
+Assigned-to:
+CVSS:
+
+#Patches_PKG:
+#upstream_PKG:
+"""
+        with open(boiler_fn, "w") as fp:
+            fp.write("%s" % boiler_content)
+
+        res = createAndVerify(
+            cveDirs, cve_fn, os.path.basename(cve_fn), ["git/github_foo"]
+        )
+        self.assertTrue("Patches_foo" in res)
+        self.assertTrue("git/github_foo" in res)
+        self.assertEqual(res["git/github_foo"], "needs-triage")
+        self.assertFalse("Patches_bar" in res)
+        self.assertFalse("git/github_bar" in res)
+
+        # add to existing
+        res2 = createAndVerify(
+            cveDirs, cve_fn, os.path.basename(cve_fn), ["git/github_bar"]
+        )
+        self.assertTrue("Patches_foo" in res2)
+        self.assertTrue("git/github_foo" in res2)
+        self.assertEqual(res2["git/github_foo"], "needs-triage")
+        self.assertTrue("Patches_bar" in res2)
+        self.assertTrue("git/github_bar" in res2)
+        self.assertEqual(res2["git/github_bar"], "needs-triage")
+
+    def test_addCve(self):
+        """Test _createCve()"""
+        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
+
+        boiler_fn = os.path.join(cveDirs["active"], "00boilerplate")
+        boiler_content = """Candidate:
+PublicDate:
+References:
+Description:
+Notes:
+Mitigation:
+Bugs:
+Priority: untriaged
+Discovered-by:
+Assigned-to:
+CVSS:
+
+#Patches_PKG:
+#upstream_PKG:
+"""
+        with open(boiler_fn, "w") as fp:
+            fp.write("%s" % boiler_content)
+
+        boiler_baz_fn = "%s.baz" % boiler_fn
+        with open(boiler_baz_fn, "w") as fp:
+            fp.write(
+                "%s" % boiler_content
+                + """
+Patches_baz:
+upstream_baz: needed
+"""
+            )
+
+        boiler_ubuntu_fn = "%s.ubuntu" % boiler_fn
+        with open(boiler_ubuntu_fn, "w") as fp:
+            fp.write(
+                "%s" % boiler_content
+                + """
+#precise/esm_PKG:
+#trusty_PKG:
+#trusty/esm_PKG:
+#xenial_PKG:
+#bionic_PKG:
+#focal_PKG:
+#groovy_PKG:
+#devel_PKG:
+"""
+            )
+
+        tsts = [
+            ("CVE-2021-999999", ["git/github_foo"], False, None),
+            ("https://github.com/foo/bar/issues/1234", [], False, None),
+            ("CVE-2022-999999", ["git/github_baz/mod"], False, None),
+            ("CVE-2023-999999", ["focal_baz"], True, None),
+            ("CVE-2024-999999", ["norf"], True, None),
+            # invalid
+            (
+                "CVE-2021-bad",
+                ["git/github_foo"],
+                False,
+                "invalid Candidate: 'CVE-2021-bad'",
+            ),
+            (
+                "https://github.com/foo",
+                [],
+                False,
+                "invalid url: 'https://github.com/foo' (only support github issues)",
+            ),
+            (
+                "CVE-2021-999999",
+                ["focal_baz"],
+                False,
+                "invalid package entry 'focal_baz: needs-triage'",
+            ),
+            (
+                "CVE-2021-999999",
+                [],
+                False,
+                "could not find usable packages for 'CVE-2021-999999'",
+            ),
+        ]
+
+        for cve, pkgs, compat, expFail in tsts:
+            if expFail is not None:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    cvelib.cve.addCve(cveDirs, compat, cve, pkgs)
+                self.assertEqual(expFail, str(context.exception))
+                continue
+
+            cvelib.cve.addCve(cveDirs, compat, cve, pkgs)
+
+            cve_fn = os.path.join(cveDirs["active"], cve)
+            if cve.startswith("http"):
+                cve_fn = os.path.join(cveDirs["active"], cvelib.cve.cveFromUrl(cve))
+            self.assertTrue(os.path.exists(cve_fn))
+
+            for p in pkgs:
+                res = cvelib.common.readCve(cve_fn)
+                if "_" in p:
+                    self.assertTrue(p in res)
+                    self.assertEqual(res[p], "needs-triage")
+                elif compat:
+                    for i in [
+                        "precise/esm",
+                        "trusty",
+                        "trusty/esm",
+                        "xenial",
+                        "bionic",
+                        "focal",
+                        "groovy",
+                        "devel",
+                    ]:
+                        uPkg = "%s_%s" % (i, p)
+                        self.assertTrue(uPkg in res)
+                        self.assertFalse(p in res)
+                        self.assertEqual(res[uPkg], "needs-triage")
