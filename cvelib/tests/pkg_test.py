@@ -118,7 +118,7 @@ class TestPkg(TestCase):
                 pkg = cvelib.pkg.CvePkg(
                     prod, sw, st, where=where, modifier=mod, when=when
                 )
-                self.assertEqual(pkg.__str__(), exp)
+                self.assertEqual(exp, pkg.__str__())
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
                     cvelib.pkg.CvePkg(
@@ -289,26 +289,26 @@ class TestPkg(TestCase):
 
         # multiple
         pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
-        self.assertEqual(len(pkg.patches), 0)
+        self.assertEqual(0, len(pkg.patches))
         pkg.setPatches(["upstream: foo", "debdiff: foo"])
-        self.assertEqual(len(pkg.patches), 2)
+        self.assertEqual(2, len(pkg.patches))
 
         # multiple with bad
         pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
-        self.assertEqual(len(pkg.patches), 0)
+        self.assertEqual(0, len(pkg.patches))
         with self.assertRaises(cvelib.common.CveException) as context:
             pkg.setPatches(["upstream: foo", "blah: foo"])
         self.assertEqual("invalid patch 'blah: foo'", str(context.exception))
 
         # bad input
         pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
-        self.assertEqual(len(pkg.patches), 0)
+        self.assertEqual(0, len(pkg.patches))
         with self.assertRaises(cvelib.common.CveException) as context:
             pkg.setPatches([False])
         self.assertEqual("invalid patch (not a string)", str(context.exception))
 
         pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
-        self.assertEqual(len(pkg.patches), 0)
+        self.assertEqual(0, len(pkg.patches))
         with self.assertRaises(cvelib.common.CveException) as context:
             pkg.setPatches(False)
         self.assertEqual("invalid patches (not a list)", str(context.exception))

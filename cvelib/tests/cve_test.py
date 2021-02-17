@@ -304,7 +304,7 @@ git/github_norf: needs-triage
         for key, val, num, err in tsts:
             if num is not None:
                 lines = cvelib.cve.CVE()._verifyMultiline(key, val)
-                self.assertEqual(len(lines), num)
+                self.assertEqual(num, len(lines))
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
                     cvelib.cve.CVE()._verifyMultiline(key, val)
@@ -672,7 +672,7 @@ git/github_norf: needs-triage
         for (url, exp, exp_fail) in tsts:
             if exp is not None:
                 res = cvelib.cve.cveFromUrl(url)
-                self.assertEqual(res, exp)
+                self.assertEqual(exp, res)
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
                     cvelib.cve.cveFromUrl(url)
@@ -685,7 +685,7 @@ git/github_norf: needs-triage
         """Test setPackages()"""
         self._mock_readCve(self._cve_template())
         cve = cvelib.cve.CVE(fn="fake")
-        self.assertEqual(len(cve.pkgs), 0)
+        self.assertEqual(0, len(cve.pkgs))
 
         pkgs = [
             cvelib.pkg.CvePkg("git", "pkg1", "needed"),
@@ -700,21 +700,21 @@ git/github_norf: needs-triage
             "pkg2": "apparmor",
         }
         cve.setPackages(pkgs, patches=patches, tags=tags)
-        self.assertEqual(len(cve.pkgs), 2)
-        self.assertEqual(len(cve.pkgs[0].patches), 2)
-        self.assertEqual(len(cve.pkgs[0].tags), 2)
-        self.assertEqual(len(cve.pkgs[1].patches), 2)
-        self.assertEqual(len(cve.pkgs[1].tags), 1)
+        self.assertEqual(2, len(cve.pkgs))
+        self.assertEqual(2, len(cve.pkgs[0].patches))
+        self.assertEqual(2, len(cve.pkgs[0].tags))
+        self.assertEqual(2, len(cve.pkgs[1].patches))
+        self.assertEqual(1, len(cve.pkgs[1].tags))
 
         # invalid
         cve = cvelib.cve.CVE(fn="fake")
-        self.assertEqual(len(cve.pkgs), 0)
+        self.assertEqual(0, len(cve.pkgs))
         with self.assertRaises(cvelib.common.CveException) as context:
             cve.setPackages(False)
         self.assertEqual("pkgs is not a list", str(context.exception))
 
         cve = cvelib.cve.CVE(fn="fake")
-        self.assertEqual(len(cve.pkgs), 0)
+        self.assertEqual(0, len(cve.pkgs))
         with self.assertRaises(cvelib.common.CveException) as context:
             cve.setPackages([False])
         self.assertEqual(
@@ -724,20 +724,20 @@ git/github_norf: needs-triage
         # append
         self._mock_readCve(self._cve_template())
         cve = cvelib.cve.CVE(fn="fake")
-        self.assertEqual(len(cve.pkgs), 0)
+        self.assertEqual(0, len(cve.pkgs))
 
         # append one
         pkgs = [cvelib.pkg.CvePkg("git", "pkg1", "needed")]
         cve.setPackages(pkgs)
-        self.assertEqual(len(cve.pkgs), 1)
-        self.assertEqual(len(cve._pkgs_list), 1)
+        self.assertEqual(1, len(cve.pkgs))
+        self.assertEqual(1, len(cve._pkgs_list))
         self.assertTrue(pkgs[0].what() in cve._pkgs_list)
 
         # append another
         pkgs = [cvelib.pkg.CvePkg("git", "pkg2", "needed")]
         cve.setPackages(pkgs, append=True)
-        self.assertEqual(len(cve.pkgs), 2)
-        self.assertEqual(len(cve._pkgs_list), 2)
+        self.assertEqual(2, len(cve.pkgs))
+        self.assertEqual(2, len(cve._pkgs_list))
         self.assertTrue(pkgs[0].what() in cve._pkgs_list)
 
         # append with duplicates
@@ -747,8 +747,8 @@ git/github_norf: needs-triage
             cvelib.pkg.CvePkg("git", "pkg3", "needed"),
         ]
         cve.setPackages(pkgs, append=True)
-        self.assertEqual(len(cve.pkgs), 3)
-        self.assertEqual(len(cve._pkgs_list), 3)
+        self.assertEqual(3, len(cve.pkgs))
+        self.assertEqual(3, len(cve._pkgs_list))
         for p in pkgs:
             self.assertTrue(p.what() in cve._pkgs_list)
 
@@ -795,11 +795,11 @@ cve-data = %s
             os.unlink(cve_fn)
 
             if expErr is None:
-                self.assertEqual(output.getvalue().strip(), "")
-                self.assertEqual(error.getvalue().strip(), "")
+                self.assertEqual("", output.getvalue().strip())
+                self.assertEqual("", error.getvalue().strip())
             else:
-                self.assertEqual(output.getvalue().strip(), "")
-                self.assertEqual(error.getvalue().strip(), expErr)
+                self.assertEqual("", output.getvalue().strip())
+                self.assertEqual(expErr, error.getvalue().strip())
 
         # non-matching
         tmpl = self._cve_template()
@@ -812,10 +812,10 @@ cve-data = %s
             cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
-        self.assertEqual(output.getvalue().strip(), "")
+        self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
-            error.getvalue().strip(),
             "WARN: active/CVE-1234-5678: non-matching candidate 'CVE-2020-1234'",
+            error.getvalue().strip(),
         )
 
         # multiple
@@ -833,7 +833,7 @@ cve-data = %s
         os.unlink(cve_active_fn)
         os.unlink(cve_retired_fn)
 
-        self.assertEqual(output.getvalue().strip(), "")
+        self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             error.getvalue()
             .strip()
@@ -861,7 +861,7 @@ cve-data = %s
         for (cand, exp, exp_fail) in tsts:
             if exp_fail is None:
                 res = cvelib.cve.pkgFromCandidate(cand)
-                self.assertEqual(res, exp)
+                self.assertEqual(exp, res)
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
                     res = cvelib.cve.pkgFromCandidate(cand)
@@ -892,8 +892,8 @@ cve-data = %s
 
         for cve, expRefs, expBugs in tsts:
             refs, bugs = cvelib.cve._genReferencesAndBugs(cve)
-            self.assertEqual(refs, expRefs)
-            self.assertEqual(bugs, expBugs)
+            self.assertEqual(expRefs, refs)
+            self.assertEqual(expBugs, bugs)
 
     def test__createCve(self):
         """Test _createCve()"""
@@ -926,17 +926,17 @@ cve-data = %s
                 if "_" in k:  # checked elsewhere
                     continue
                 elif k == "Candidate":
-                    self.assertEqual(res[k], os.path.basename(cve_fn))
+                    self.assertEqual(os.path.basename(cve_fn), res[k])
                 elif k == "References":
                     self.assertEqual(
-                        res[k],
                         "\n https://cve.mitre.org/cgi-bin/cvename.cgi?name=%s"
                         % os.path.basename(cve_fn),
+                        res[k],
                     )
                 elif k == "Priority":
-                    self.assertEqual(res[k], "untriaged")
+                    self.assertEqual("untriaged", res[k])
                 else:
-                    self.assertEqual(res[k], "")
+                    self.assertEqual("", res[k])
             return res
 
         self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
@@ -981,7 +981,7 @@ CVSS:
         )
         self.assertTrue("Patches_foo" in res)
         self.assertTrue("git/github_foo" in res)
-        self.assertEqual(res["git/github_foo"], "needs-triage")
+        self.assertEqual("needs-triage", res["git/github_foo"])
         self.assertFalse("Patches_bar" in res)
         self.assertFalse("git/github_bar" in res)
 
@@ -991,10 +991,10 @@ CVSS:
         )
         self.assertTrue("Patches_foo" in res2)
         self.assertTrue("git/github_foo" in res2)
-        self.assertEqual(res2["git/github_foo"], "needs-triage")
+        self.assertEqual("needs-triage", res2["git/github_foo"])
         self.assertTrue("Patches_bar" in res2)
         self.assertTrue("git/github_bar" in res2)
-        self.assertEqual(res2["git/github_bar"], "needs-triage")
+        self.assertEqual("needs-triage", res2["git/github_bar"])
 
     def test_addCve(self):
         """Test _createCve()"""
@@ -1119,7 +1119,7 @@ upstream_baz: needed
             for p in pkgs:
                 if "_" in p:
                     self.assertTrue(p in res)
-                    self.assertEqual(res[p], "needs-triage")
+                    self.assertEqual("needs-triage", res[p])
                 elif compat:
                     for i in [
                         "precise/esm",
@@ -1134,4 +1134,4 @@ upstream_baz: needed
                         uPkg = "%s_%s" % (i, p)
                         self.assertTrue(uPkg in res)
                         self.assertFalse(p in res)
-                        self.assertEqual(res[uPkg], "needs-triage")
+                        self.assertEqual("needs-triage", res[uPkg])
