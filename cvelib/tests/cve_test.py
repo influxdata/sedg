@@ -129,7 +129,7 @@ CVSS: ...
         # no patches for pkg1
         pkgs.append(cvelib.pkg.CvePkg("git", "pkg1", "needed"))
 
-        # patches for these
+        # (unsorted) patches for these
         pkg2a = cvelib.pkg.CvePkg("snap", "pkg2", "needed", "pub", "", "123-4")
         pkg2a.setPatches(["upstream: http://a", "other: http://b"])
         pkgs.append(pkg2a)
@@ -137,9 +137,13 @@ CVSS: ...
         pkg2b = cvelib.pkg.CvePkg("git", "pkg2", "released", "", "inky", "5678")
         pkgs.append(pkg2b)
 
-        pkg3 = cvelib.pkg.CvePkg("git", "pkg3", "needed")
-        pkg3.setTags("hardlink-restriction")
+        pkg3 = cvelib.pkg.CvePkg("snap", "pkg3", "needed")
+        pkg3.setTags("pie")
         pkgs.append(pkg3)
+
+        pkg4 = cvelib.pkg.CvePkg("git", "pkg3", "needed")
+        pkg4.setTags("hardlink-restriction")
+        pkgs.append(pkg4)
 
         cve.setPackages(pkgs)
 
@@ -152,16 +156,100 @@ git_pkg1: needed
 Patches_pkg2:
  upstream: http://a
  other: http://b
-snap/pub_pkg2: needed (123-4)
 git_pkg2/inky: released (5678)
+snap/pub_pkg2: needed (123-4)
 
 Patches_pkg3:
-Tags_pkg3: hardlink-restriction
+Tags_pkg3: hardlink-restriction pie
 git_pkg3: needed
+snap_pkg3: needed
 """
         )
         res = cve.onDiskFormat()
         self.assertEqual(exp2, res)
+
+    def test_onDiskFormatSorted(self):
+        """Test onDiskFormat() - sorted"""
+        self.maxDiff = 1024
+        self._mock_readCve(self._cve_template())
+        exp = """Candidate: CVE-2020-1234
+PublicDate: 2020-06-30
+CRD: 2020-06-30 01:02:03 -0700
+References:
+ http://example.com
+Description:
+ Some description
+ more desc
+Notes:
+ person> some notes
+  more notes
+ person2> blah
+Mitigation: Some mitigation
+Bugs:
+ http://example.com/bug
+Priority: medium
+Discovered-by: Jane Doe (jdoe)
+Assigned-to: John Doe (johnny)
+CVSS: ...
+
+Patches_bar:
+debian/buster_bar: needed
+debian/squeeze_bar: needed
+git/github_bar: needs-triage
+ubuntu/bionic_bar: needed
+ubuntu/focal_bar: needed
+upstream_bar: needed
+
+Patches_baz:
+git/github_baz: needs-triage
+
+Patches_corge:
+git/github_corge: needs-triage
+
+Patches_foo:
+upstream_foo: pending
+
+Patches_norf:
+git/github_norf: needs-triage
+"""
+        cve = cvelib.cve.CVE(fn="fake")
+
+        # Put these in random order and verify what we expect
+        pkgs = []
+        tsts = [
+            # product, software, status, where, modifier, when, compat
+            ("upstream", "foo", "pending", "", "", "", False),
+            ("git", "bar", "needs-triage", "github", "", "", False),
+            ("ubuntu", "bar", "needed", "focal", "", "", False),
+            ("ubuntu", "bar", "needed", "bionic", "", "", False),
+            ("upstream", "foo", "pending", "", "", "", False),
+            ("debian", "bar", "needed", "squeeze", "", "", False),
+            ("debian", "bar", "needed", "buster", "", "", False),
+            ("git", "baz", "needs-triage", "github", "", "", False),
+            ("git", "norf", "needs-triage", "github", "", "", False),
+            ("git", "corge", "needs-triage", "github", "", "", False),
+            ("upstream", "bar", "needed", "", "", "", False),
+        ]
+        for product, software, status, where, modifier, when, compat in tsts:
+            pkgs.append(
+                cvelib.pkg.CvePkg(
+                    product,
+                    software,
+                    status,
+                    where=where,
+                    modifier=modifier,
+                    when=when,
+                    compatUbuntu=compat,
+                )
+            )
+
+        cve.setPackages(pkgs)
+        with cvelib.tests.util.capturedOutput() as (output, error):
+            res = cve.onDiskFormat()
+
+        self.assertEqual(exp, res)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual("", error.getvalue().strip())
 
     def test__isPresent(self):
         """Test _isPresent()"""
@@ -963,11 +1051,18 @@ upstream_baz: needed
             )
 
         tsts = [
+            # valid strict
             ("CVE-2021-999999", ["git/github_foo"], False, None),
+            ("CVE-2022-999999", ["git/github_foo", "git/github_bar"], False, None),
             ("https://github.com/foo/bar/issues/1234", [], False, None),
-            ("CVE-2022-999999", ["git/github_baz/mod"], False, None),
-            ("CVE-2023-999999", ["focal_baz"], True, None),
-            ("CVE-2024-999999", ["norf"], True, None),
+            ("https://github.com/foo/bar/issues/1234", ["git/github_bar"], False, None),
+            ("CVE-2023-999999", ["git/github_baz/mod"], False, None),
+            ("CVE-2023-999999", ["ubuntu/focal_norf"], False, None),
+            ("CVE-2023-999999", ["debian/buster_norf"], False, None),
+            # valid compat
+            ("CVE-2024-999999", ["focal_baz"], True, None),
+            ("CVE-2025-999999", ["norf"], True, None),
+            ("CVE-2026-999999", ["norf", "corge"], True, None),
             # invalid
             (
                 "CVE-2021-bad",
@@ -996,21 +1091,33 @@ upstream_baz: needed
         ]
 
         for cve, pkgs, compat, expFail in tsts:
+
             if expFail is not None:
                 with self.assertRaises(cvelib.common.CveException) as context:
                     cvelib.cve.addCve(cveDirs, compat, cve, pkgs)
                 self.assertEqual(expFail, str(context.exception))
                 continue
 
-            cvelib.cve.addCve(cveDirs, compat, cve, pkgs)
-
             cve_fn = os.path.join(cveDirs["active"], cve)
             if cve.startswith("http"):
                 cve_fn = os.path.join(cveDirs["active"], cvelib.cve.cveFromUrl(cve))
+
+            with cvelib.tests.util.capturedOutput() as (output, error):
+                cvelib.cve.addCve(cveDirs, compat, cve, pkgs)
             self.assertTrue(os.path.exists(cve_fn))
 
-            for p in pkgs:
+            out = output.getvalue().strip()
+            err = error.getvalue().strip()
+            self.assertEqual("", out)
+            self.assertEqual("", err)
+
+            with cvelib.tests.util.capturedOutput() as (output, error):
                 res = cvelib.common.readCve(cve_fn)
+            os.unlink(cve_fn)
+            self.assertEqual("", output.getvalue().strip())
+            self.assertEqual("", error.getvalue().strip())
+
+            for p in pkgs:
                 if "_" in p:
                     self.assertTrue(p in res)
                     self.assertEqual(res[p], "needs-triage")

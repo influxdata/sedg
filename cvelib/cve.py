@@ -3,6 +3,7 @@
 import copy
 import datetime
 import glob
+from operator import attrgetter
 import os
 import re
 import shutil
@@ -243,18 +244,62 @@ CVSS:%(cvss)s
             }
         )
 
-        last_software = ""
+        # The package stanzas should be grouped and sorted by software, with
+        # patches unsorted (to maintain author's intent), tags sorted followed
+        # by list sorted by software, then product, then where (status,
+        # modifier and when not considered). Eg:
+        #   Patches_bar:
+        #    vendor: http://b
+        #    upstream: http://c
+        #    vendor: http://a
+        #   Tags_bar: <tag1> <tag2>
+        #   debian/buster_bar: needed
+        #   debian/squeeze_bar: needed
+        #   git/github_bar: needs-triage
+        #   ubuntu/bionic_bar: needed
+        #   ubuntu/focal_bar: needed
+        #   upstream_bar: needed
+        #
+        #   Patches_baz:
+        #   git/github_baz: needs-triage
+        #   ...
+
+        # Since patches can be per pkg object, but we want to list them in a
+        # shared Patches_<software> section, pre-create the patches snippets
+        patches = {}
         for pkg in self.pkgs:
+            if pkg.software not in patches:
+                patches[pkg.software] = []
+            for p in pkg.patches:
+                if p not in patches[pkg.software]:
+                    patches[pkg.software].append(p)
+
+        # Do the same with tags
+        tags = {}
+        for pkg in self.pkgs:
+            if pkg.software not in tags:
+                tags[pkg.software] = []
+            for p in pkg.tags:
+                if p not in tags[pkg.software]:
+                    tags[pkg.software].append(p)
+
+        last_software = ""
+        # Sort the list by software, then product, then where so everything
+        # looks pretty. XXX: Ubuntu likes to have 'upstream' first, should we
+        # consider that with compatUbuntu?
+        for pkg in sorted(self.pkgs, key=attrgetter("software", "product", "where")):
+            # since we are sorted, can add these once, unconditionally at the
+            # start of the software stanza
             if last_software != pkg.software:
-                # always add this
                 s += "\nPatches_%s:\n" % pkg.software
+                if pkg.software in patches and patches[pkg.software]:
+                    s += " " + "\n ".join(patches[pkg.software]) + "\n"
+                if pkg.software in tags and tags[pkg.software]:
+                    s += "Tags_%s: %s\n" % (
+                        pkg.software,
+                        " ".join(sorted(tags[pkg.software])),
+                    )
             last_software = pkg.software
-
-            if len(pkg.patches) > 0:
-                s += " " + "\n ".join(pkg.patches) + "\n"
-
-            if pkg.tags:
-                s += "Tags_%s: %s\n" % (pkg.software, " ".join(pkg.tags))
 
             s += "%s\n" % pkg
 
