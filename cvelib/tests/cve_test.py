@@ -1053,16 +1053,16 @@ upstream_baz: needed
         tsts = [
             # valid strict
             ("CVE-2021-999999", ["git/github_foo"], False, None),
-            ("CVE-2022-999999", ["git/github_foo", "git/github_bar"], False, None),
+            ("CVE-2021-999999", ["git/github_foo", "git/github_bar"], False, None),
             ("https://github.com/foo/bar/issues/1234", [], False, None),
             ("https://github.com/foo/bar/issues/1234", ["git/github_bar"], False, None),
-            ("CVE-2023-999999", ["git/github_baz/mod"], False, None),
-            ("CVE-2023-999999", ["ubuntu/focal_norf"], False, None),
-            ("CVE-2023-999999", ["debian/buster_norf"], False, None),
+            ("CVE-2021-999999", ["git/github_baz/mod"], False, None),
+            ("CVE-2021-999999", ["ubuntu/focal_norf"], False, None),
+            ("CVE-2021-999999", ["debian/buster_norf"], False, None),
             # valid compat
-            ("CVE-2024-999999", ["focal_baz"], True, None),
-            ("CVE-2025-999999", ["norf"], True, None),
-            ("CVE-2026-999999", ["norf", "corge"], True, None),
+            ("CVE-2021-999999", ["focal_baz"], True, None),
+            ("CVE-2021-999999", ["norf"], True, None),
+            ("CVE-2021-999999", ["norf", "corge"], True, None),
             # invalid
             (
                 "CVE-2021-bad",
