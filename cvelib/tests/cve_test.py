@@ -324,40 +324,40 @@ git/github_norf: needs-triage
         except Exception:  # pragma: nocover
             raise
 
-    def test__setFromData(self):
-        """Test _setFromData()"""
+    def test_setData(self):
+        """Test setData()"""
         # valid
         hdrs = self._mockHeaders(self._cve_template())
-        cvelib.cve.CVE()._setFromData(hdrs)
+        cvelib.cve.CVE().setData(hdrs)
 
         # optional missing is ok
         hdrs = self._mockHeaders(self._cve_template())
         del hdrs["CRD"]
-        cvelib.cve.CVE()._setFromData(hdrs)
+        cvelib.cve.CVE().setData(hdrs)
 
         # valid with packages
         t = self._cve_template()
         t["upstream_foo"] = "needed"
         hdrs = self._mockHeaders(t)
-        cvelib.cve.CVE()._setFromData(hdrs)
+        cvelib.cve.CVE().setData(hdrs)
 
         # comment ignored
         t = self._cve_template()
         t["#blah_foo"] = "needed"
         hdrs = self._mockHeaders(t)
-        cvelib.cve.CVE()._setFromData(hdrs)
+        cvelib.cve.CVE().setData(hdrs)
 
         # valide Patches_foo
         t = self._cve_template()
         t["Patches_foo"] = ""
         hdrs = self._mockHeaders(t)
-        cvelib.cve.CVE()._setFromData(hdrs)
+        cvelib.cve.CVE().setData(hdrs)
 
         # invalid
         hdrs = self._mockHeaders(self._cve_template())
         del hdrs["Candidate"]
         with self.assertRaises(cvelib.common.CveException) as context:
-            cvelib.cve.CVE()._setFromData(hdrs)
+            cvelib.cve.CVE().setData(hdrs)
         self.assertEqual("missing required field 'Candidate'", str(context.exception))
 
     def test__verifyCve(self):

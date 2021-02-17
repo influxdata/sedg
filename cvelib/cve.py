@@ -48,16 +48,17 @@ class CVE(object):
         self.pkgs = []
         self._pkgs_list = []  # what is in self.pkgs
         self.compatUbuntu = compatUbuntu
+        self.untriagedOk = untriagedOk
         if fn is None:
             return
 
         data = cvelib.common.readCve(fn)
-        self._setFromData(data, untriagedOk=untriagedOk)
+        self.setData(data)
 
     # set methods
-    def _setFromData(self, data, untriagedOk=False):
+    def setData(self, data):
         """Set members from data"""
-        self._verifyCve(data, untriagedOk=untriagedOk)
+        self._verifyCve(data, untriagedOk=self.untriagedOk)
         # members
         self.setCandidate(data["Candidate"])
         self.setPublicDate(data["PublicDate"])
@@ -632,8 +633,8 @@ def _createCve(cveDirs, cve_path, cve, args_pkgs, compatUbuntu):
         # mock up an entry
         pkgObjs.append(cvelib.pkg.parse("%s: needs-triage" % p, compatUbuntu))
 
-    cveObj = cvelib.cve.CVE(compatUbuntu=compatUbuntu)
-    cveObj._setFromData(data, untriagedOk=True)
+    cveObj = cvelib.cve.CVE(untriagedOk=True, compatUbuntu=compatUbuntu)
+    cveObj.setData(data)
     cveObj.setPackages(pkgObjs, append=append)
 
     # now write it out
