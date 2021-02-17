@@ -150,7 +150,7 @@ def parse(s, compatUbuntu=False):
         raise CveException("invalid package entry (not a string)")
     if compatUbuntu:
         if not rePatterns["pkg-full-ubuntu"].search(s):
-            raise CveException("invalid package entry '%s'" % s)
+            raise CveException("invalid package entry for Ubuntu '%s'" % s)
     elif not rePatterns["pkg-full"].search(s):
         raise CveException("invalid package entry '%s'" % s)
 

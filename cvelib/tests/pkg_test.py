@@ -365,9 +365,10 @@ class TestPkg(TestCase):
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
                     cvelib.pkg.parse(s, compatUbuntu=compat)
-                self.assertEqual(
-                    "invalid package entry '%s'" % s, str(context.exception)
-                )
+                errS = "invalid package entry '%s'" % s
+                if compat:
+                    errS = "invalid package entry for Ubuntu '%s'" % s
+                self.assertEqual(errS, str(context.exception))
 
         with self.assertRaises(cvelib.common.CveException) as context:
             cvelib.pkg.parse(False)
