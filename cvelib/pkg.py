@@ -161,7 +161,8 @@ def parse(s, compatUbuntu=False):
     modifier = ""
     when = ""
 
-    (product_software, status_when) = s.split(":")
+    # when may have ':', so only split on the first one
+    (product_software, status_when) = s.split(":", 1)
 
     product_where, software_mod = product_software.split("_")
     if "/" in product_where:
@@ -176,7 +177,7 @@ def parse(s, compatUbuntu=False):
 
     status = status_when.strip().split()[0]
     if "(" in status_when:
-        when = status_when.split("(")[1].rstrip(")").strip()
+        when = status_when.split("(", 1)[1].rstrip(")").strip()
 
     return CvePkg(
         product,

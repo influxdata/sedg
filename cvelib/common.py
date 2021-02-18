@@ -36,13 +36,13 @@ rePatterns = {
         r"^(needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)$"
     ),
     # free form text
-    "pkg-when": re.compile(r"^[a-z0-9 +.-]{1,40}$"),
+    "pkg-when": re.compile(r"^[a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,80}$"),
     # the string form
     "pkg-full": re.compile(
-        r"^(git|snap|oci|upstream|ubuntu|debian|suse)(/[a-z0-9+.-]{1,40})?_[a-z0-9+.-]{1,40}(/[a-z0-9+.-]{1,40})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-z0-9 +.-]{1,40}\))?$"
+        r"^(git|snap|oci|upstream|ubuntu|debian|suse)(/[a-z0-9+.-]{1,40})?_[a-z0-9+.-]{1,40}(/[a-z0-9+.-]{1,40})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,80}\))?$"
     ),
     "pkg-full-ubuntu": re.compile(
-        r"^[a-z0-9+.-]{1,40}(/[a-z0-9+.-]{1,40})?_[a-z0-9+.-]{1,40}(/[a-z0-9+.-]{1,40})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-z0-9 +.-]{1,40}\))?$"
+        r"^[a-z0-9+.-]{1,40}(/[a-z0-9+.-]{1,40})?_[a-z0-9+.-]{1,40}(/[a-z0-9+.-]{1,40})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,'\"/:~\[\]()<>#=|`_-]{1,80}\))?$"
     ),
     # CVE-YYYY-XXXX (1-12 X's)
     # CVE-YYYY-NNNX (1-11 N's)
@@ -75,7 +75,7 @@ rePatterns = {
     "pkg-patch": re.compile(r"^(upstream|debdiff|vendor|other): [a-z0-9+.-].*"),
     "pkg-patch-key": re.compile(r"^Patches_[a-z0-9+.-]{1,40}$"),
     "pkg-tags": re.compile(
-        r"^(apparmor|stack-protector|fortify-source|symlink-restriction|hardlink-restriction|heap-protector|pie)$"
+        r"^(apparmor|stack-protector|fortify-source|symlink-restriction|hardlink-restriction|heap-protector|pie|universe-binary)$"
     ),
     "pkg-tags-key": re.compile(r"^Patches_[a-z0-9+.-]{1,40}(_[a-z0-9+.-]{1,40})?$"),
     # urls
