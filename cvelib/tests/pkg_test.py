@@ -484,12 +484,15 @@ class TestPkg(TestCase):
                 True,
                 True,
             ),
+            ("devel_grub2-signed: released (1.157)", True, True),
             # invalid
             ("b@d", False, False),
             ("foo @", False, False),
             ("ubuntu/foc@l_foo: needed", False, False),
+            ("ubuntu/devel_grub2-signed: released (1.157)\n ", False, False),
             # invalid compatUbuntu
             ("foc@l_foo: needed", True, False),
+            ("devel_grub2-signed: released (1.157)\n ", True, False),
         ]
         for s, compat, valid in tsts:
             if valid:
@@ -500,6 +503,8 @@ class TestPkg(TestCase):
                 errS = "invalid package entry '%s'" % s
                 if compat:
                     errS = "invalid package entry for Ubuntu '%s'" % s
+                if "\n" in s:
+                    errS = "invalid package entry '%s' (expected single line)" % s
                 self.assertEqual(errS, str(context.exception))
 
         with self.assertRaises(cvelib.common.CveException) as context:

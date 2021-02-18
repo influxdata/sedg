@@ -148,6 +148,8 @@ def parse(s, compatUbuntu=False):
     """Parse a string and return a CvePkg"""
     if not isinstance(s, str):
         raise CveException("invalid package entry (not a string)")
+    if "\n" in s:
+        raise CveException("invalid package entry '%s' (expected single line)" % s)
     if compatUbuntu:
         if not rePatterns["pkg-full-ubuntu"].search(s):
             raise CveException("invalid package entry for Ubuntu '%s'" % s)
