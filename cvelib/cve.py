@@ -413,7 +413,7 @@ CVSS:%(cvss)s
 
     def _verifyDate(self, key, date):
         """Verify a date"""
-        err = "invalid %s: '%s' (use empty, YYYY-MM-DD [HH:MM:SS [TIMEZONE]]" % (
+        err = "invalid %s: '%s' (use empty or YYYY-MM-DD [HH:MM:SS [TIMEZONE]])" % (
             key,
             date,
         )
@@ -439,7 +439,12 @@ CVSS:%(cvss)s
                 raise CveException(err)
         if rePatterns["date-full-tz"].search(date):
             try:
-                datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S %Z")
+                # Unfortunately, %Z doesn't work reliably, so just strip it off
+                # https://bugs.python.org/issue22377
+                # datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S %Z")
+                datetime.datetime.strptime(
+                    " ".join(date.split()[:-1]), "%Y-%m-%d %H:%M:%S"
+                )
             except ValueError:
                 raise CveException(err)
 

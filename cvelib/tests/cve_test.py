@@ -458,6 +458,9 @@ git/github_norf: needs-triage
             ("2020-12-31 23:59:59", True),
             ("2020-12-01 12:34:56 UTC", True),
             ("2020-12-01 12:34:56 -0500", True),
+            ("2019-02-25 09:00:00 CEST", True),
+            # https://bugs.python.org/issue22377
+            ("2020-12-14 07:08:09 BADTZ", True),
             # invalid
             ("bad", False),
             ("2020-bad", False),
@@ -472,7 +475,6 @@ git/github_norf: needs-triage
             ("2020-12-14 07:08:09 -bad", False),
             ("2020-12-14 07:08:09 -03bad", False),
             ("2020-12-14 07:08:09 -0999999", False),
-            ("2020-12-14 07:08:09 BADTZ", False),
             ("2020-12-32", False),
             ("2021-02-29", False),
             ("2020-06-31", False),
@@ -484,39 +486,44 @@ git/github_norf: needs-triage
         ]
         for (date, valid) in tsts:
             if valid:
-                cvelib.cve.CVE()._verifyDate("PublicDate", date)
+                cvelib.cve.CVE()._verifyDate("TestKey", date)
             else:
-                suffix = "(use empty, YYYY-MM-DD [HH:MM:SS [TIMEZONE]]"
+                suffix = "(use empty or YYYY-MM-DD [HH:MM:SS [TIMEZONE]])"
                 with self.assertRaises(cvelib.common.CveException) as context:
-                    cvelib.cve.CVE()._verifyDate("PublicDate", date)
+                    cvelib.cve.CVE()._verifyDate("TestKey", date)
                 self.assertEqual(
-                    "invalid PublicDate: '%s' %s" % (date, suffix),
+                    "invalid TestKey: '%s' %s" % (date, suffix),
                     str(context.exception),
                 )
 
-    def test__verifyPublicDate(self):
-        """Test _verifyPublicDate()"""
-        # valid
-        cvelib.cve.CVE()._verifyPublicDate("PublicDate", "")
-        cvelib.cve.CVE()._verifyPublicDate("PublicDate", "2021-01-25")
-        # invalid
-        suffix = "(use empty, YYYY-MM-DD [HH:MM:SS [TIMEZONE]]"
-        with self.assertRaises(cvelib.common.CveException) as context:
-            cvelib.cve.CVE()._verifyPublicDate("PublicDate", "bad")
-        self.assertEqual(
-            "invalid PublicDate: 'bad' %s" % suffix, str(context.exception)
-        )
+    def test__verifyPublicDateAndCRD(self):
+        """Test _verifyPublicDate() and _verifyCRD()"""
+        tsts = [
+            # valid
+            ("", None),
+            ("2021-01-25", None),
+            ("2021-01-25 16:00:00", None),
+            # invalid
+            ("\n", "invalid %(key)s: '\n' (expected single line)"),
+            (
+                "bad",
+                "invalid %(key)s: 'bad' (use empty or YYYY-MM-DD [HH:MM:SS [TIMEZONE]])",
+            ),
+        ]
+        for tstType in ["PublicDate", "CRD"]:
+            fn = None
+            if tstType == "PublicDate":
+                fn = cvelib.cve.CVE()._verifyPublicDate
+            elif tstType == "CRD":
+                fn = cvelib.cve.CVE()._verifyCRD
 
-    def test__verifyCRD(self):
-        """Test _verifyCRD()"""
-        # valid
-        cvelib.cve.CVE()._verifyCRD("CRD", "")
-        cvelib.cve.CVE()._verifyCRD("CRD", "2021-01-25")
-        # invalid
-        suffix = "(use empty, YYYY-MM-DD [HH:MM:SS [TIMEZONE]]"
-        with self.assertRaises(cvelib.common.CveException) as context:
-            cvelib.cve.CVE()._verifyCRD("CRD", "bad")
-        self.assertEqual("invalid CRD: 'bad' %s" % suffix, str(context.exception))
+            for val, err in tsts:
+                if not err:
+                    fn(tstType, val)
+                else:
+                    with self.assertRaises(cvelib.common.CveException) as context:
+                        fn(tstType, val)
+                    self.assertEqual(err % {"key": tstType}, str(context.exception))
 
     def test__verifyUrl(self):
         """Test _verifyUrl()"""
