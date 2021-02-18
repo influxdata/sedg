@@ -74,7 +74,6 @@ rePatterns = {
     ),
     # upstream: something
     # vendor: something
-    # debdiff: something
     # other: something
     # break-fix: - -
     # break-fix: - hash
@@ -82,8 +81,13 @@ rePatterns = {
     # break-fix: hash hash|local-*
     # break-fix: local-*-break local-*-fix
     "pkg-patch": re.compile(
-        r"^((upstream|debdiff|vendor|other): [a-z0-9+.-].*|break-fix: +((-|[0-9a-f]+) +(-|[0-9a-f]+)|(-|[0-9a-f|]+|([0-9a-f|]+)?local[a-zA-X0-9|-]+)? +(-|[0-9a-f|]+|([0-9a-f|]+)?local[a-zA-X0-9|-]+))$)"
+        r"^((distro|other|upstream|vendor): I?[a-z0-9+.-].*|break-fix: +((-|I?[0-9a-f]+) +(-|I?[0-9a-f]+)|(-|I?[0-9a-f|]+|(I?[0-9a-f|]+)?local[a-zA-X0-9|-]+)? +(-|I?[0-9a-f|]+|(I?[0-9a-f|]+)?local[a-zA-X0-9|-]+))$)"
     ),
+    # The above, plus some Ubuntu-specific (eg, older releases)
+    "pkg-patch-ubuntu": re.compile(
+        r"^((distro|other|upstream|vendor|debdiff|diff|fork|merge|proposed|unknown|android|debian|fedora|opensuse|redhat|dapper|hardy|jaunty|karmic|lucid|maverick): I?[a-z0-9+.-].*|break-fix: +((-|I?[0-9a-f]+) +(-|I?[0-9a-f]+)|(-|I?[0-9a-f|]+|(I?[0-9a-f|]+)?local[a-zA-X0-9|-]+)? +(-|I?[0-9a-f|]+|(I?[0-9a-f|]+)?local[a-zA-X0-9|-]+))$)"
+    ),
+    # TODO: break out Ubuntu-specific tags
     "pkg-patch-key": re.compile(r"^Patches_[a-z0-9+.-]{1,40}$"),
     # TODO: break out Ubuntu-specific tags
     "pkg-tags": re.compile(

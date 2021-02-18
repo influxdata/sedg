@@ -268,103 +268,171 @@ class TestPkg(TestCase):
         # one patch
         tsts = [
             # valid
-            (["upstream: foo"], True),
-            (["debdiff: foo"], True),
-            (["vendor: foo"], True),
-            (["other: foo"], True),
-            (["break-fix: - c5a8ffcae4103a9d823ea3aa3a761f65779fbe2a"], True),
-            (["break-fix: b5a8ffcae4103a9d823ea3aa3a761f65779fbe2a -"], True),
+            (["upstream: foo"], False, True),
+            (["distro: foo"], False, True),
+            (["vendor: foo"], False, True),
+            (["other: foo"], False, True),
+            (["break-fix: - c5a8ffcae4103a9d823ea3aa3a761f65779fbe2a"], False, True),
+            (["break-fix: b5a8ffcae4103a9d823ea3aa3a761f65779fbe2a -"], False, True),
             (
                 [
                     "break-fix: b5a8ffcae4103a9d823ea3aa3a761f65779fbe2a c5a8ffcae4103a9d823ea3aa3a761f65779fbe2a"
                 ],
+                False,
                 True,
             ),
-            (["break-fix: - -"], True),
-            (["break-fix:  - -"], True),
-            (["break-fix: -  -"], True),
+            (["break-fix: - -"], False, True),
+            (["break-fix:  - -"], False, True),
+            (["break-fix: -  -"], False, True),
             (
                 [
                     "break-fix: - c0ca3d70e8d3cf81e2255a217f7ca402f5ed0862|local-2015-1328-fix"
                 ],
+                False,
                 True,
             ),
             (
                 [
                     "break-fix: - local-2015-1328-fix|c0ca3d70e8d3cf81e2255a217f7ca402f5ed0862"
                 ],
+                False,
                 True,
             ),
-            (["break-fix: - local-2015-1328-fix"], True),
-            (["break-fix: - local-2015-1328"], True),
-            (["break-fix: - local-2015-1328-f2"], True),
+            (["break-fix: - local-2015-1328-fix"], False, True),
+            (["break-fix: - local-2015-1328"], False, True),
+            (["break-fix: - local-2015-1328-f2"], False, True),
             (
                 [
                     "break-fix: local-2018-6559-break local-2015-1328-fix|local-2018-6559-fix"
                 ],
+                False,
                 True,
             ),
             (
                 [
                     "break-fix: 581738a681b6faae5725c2555439189ca81c0f1f f2d67fec0b43edce8c416101cdc52e71145b5fef|local-2020-8835-fix"
                 ],
+                False,
                 True,
             ),
             (
                 [
                     "break-fix: - c06cfb08b88dfbe13be44a69ae2fdc3a7c902d81|c53ee259ad3da891e191dee7af119af340f9c01b"
                 ],
+                False,
                 True,
             ),
             (
                 [
                     "break-fix: c06cfb08b88dfbe13be44a69ae2fdc3a7c902d81|c53ee259ad3da891e191dee7af119af340f9c01b -"
                 ],
+                False,
                 True,
             ),
+            (
+                [
+                    "break-fix: 96bb55d8ff4082dfead8bf9a8a85ef7a8e270981 I0f887bb8f1fa5a69a55e23dbb522b3bb694ad27f"
+                ],
+                False,
+                True,
+            ),
+            (
+                [
+                    "break-fix: Ic0dedbad74b970d7bd1a6624a845b5b1b9847443 Ic0dedbad257bf0a448d0bf67a14a3932b7925bfc"
+                ],
+                False,
+                True,
+            ),
+            (["upstream: I89089155d1083332d02ae9039898227cbab42d07"], False, True),
+            # valid ubuntu
+            (["upstream: foo"], True, True),
+            (["distro: foo"], True, True),
+            (["vendor: foo"], True, True),
+            (["other: foo"], True, True),
+            (["debdiff: foo"], True, True),
+            (["diff: foo"], True, True),
+            (["fork: foo"], True, True),
+            (["merge: foo"], True, True),
+            (["proposed: foo"], True, True),
+            (["unknown: foo"], True, True),
+            (["android: foo"], True, True),
+            (["debian: foo"], True, True),
+            (["fedora: foo"], True, True),
+            (["redhat: foo"], True, True),
+            (["opensuse: foo"], True, True),
+            (["dapper: foo"], True, True),
+            (["hardy: foo"], True, True),
+            (["jaunty: foo"], True, True),
+            (["karmic: foo"], True, True),
+            (["lucid: foo"], True, True),
+            (["maverick: foo"], True, True),
+            (
+                [
+                    "break-fix: 96bb55d8ff4082dfead8bf9a8a85ef7a8e270981 I0f887bb8f1fa5a69a55e23dbb522b3bb694ad27f"
+                ],
+                True,
+                True,
+            ),
+            (
+                [
+                    "break-fix: Ic0dedbad74b970d7bd1a6624a845b5b1b9847443 Ic0dedbad257bf0a448d0bf67a14a3932b7925bfc"
+                ],
+                True,
+                True,
+            ),
+            (["upstream: I89089155d1083332d02ae9039898227cbab42d07"], True, True),
             # invalid
-            (["bad: foo"], False),
-            (["upstream foo"], False),
-            (["upstream:foo"], False),
-            (["upstream:"], False),
-            (["break-fix: -"], False),
-            (["break-fix: b5a8ffcae4103a9d823ea3aa3a761f65779fbe2a"], False),
-            (["break-fix: b@d c5a8ffcae4103a9d823ea3aa3a761f65779fbe2a"], False),
-            (["break-fix: c5a8ffcae4103a9d823ea3aa3a761f65779fbe2a b@d"], False),
+            (["bad: foo"], False, False),
+            (["upstream foo"], False, False),
+            (["upstream:foo"], False, False),
+            (["upstream:"], False, False),
+            (["dapper: foo"], False, False),
+            (["break-fix: -"], False, False),
+            (["break-fix: b5a8ffcae4103a9d823ea3aa3a761f65779fbe2a"], False, False),
+            (["break-fix: b@d c5a8ffcae4103a9d823ea3aa3a761f65779fbe2a"], False, False),
+            (["break-fix: c5a8ffcae4103a9d823ea3aa3a761f65779fbe2a b@d"], False, False),
+            # invalid ubuntu
+            (["bad: foo"], True, False),
+            (["upstream foo"], True, False),
+            (["upstream:foo"], True, False),
+            (["upstream:"], True, False),
         ]
         pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
-        for t, valid in tsts:
+        for t, compat, valid in tsts:
             if valid:
-                pkg.setPatches(t)
+                pkg.setPatches(t, compatUbuntu=compat)
             else:
+                errS = "invalid patch '%s'" % t[0]
+                if compat:
+                    errS = "invalid patch for Ubuntu '%s'" % t[0]
                 with self.assertRaises(cvelib.common.CveException) as context:
-                    pkg.setPatches(t)
-                self.assertEqual("invalid patch '%s'" % t[0], str(context.exception))
+                    pkg.setPatches(t, compatUbuntu=compat)
+                self.assertEqual(errS, str(context.exception))
 
         # multiple
         pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
         self.assertEqual(0, len(pkg.patches))
-        pkg.setPatches(["upstream: foo", "debdiff: foo"])
+        pkg.setPatches(["upstream: foo", "distro: foo"], False)
         self.assertEqual(2, len(pkg.patches))
 
         # multiple with bad
         pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
         self.assertEqual(0, len(pkg.patches))
         with self.assertRaises(cvelib.common.CveException) as context:
-            pkg.setPatches(["upstream: foo", "blah: foo"])
+            pkg.setPatches(["upstream: foo", "blah: foo"], False)
         self.assertEqual("invalid patch 'blah: foo'", str(context.exception))
 
         # bad input
         pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
         self.assertEqual(0, len(pkg.patches))
         with self.assertRaises(cvelib.common.CveException) as context:
-            pkg.setPatches([False])
+            pkg.setPatches([False], False)
         self.assertEqual("invalid patch (not a string)", str(context.exception))
 
         pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
         self.assertEqual(0, len(pkg.patches))
         with self.assertRaises(cvelib.common.CveException) as context:
-            pkg.setPatches(False)
+            pkg.setPatches(False, False)
         self.assertEqual("invalid patches (not a list)", str(context.exception))
 
     def test_setTags(self):

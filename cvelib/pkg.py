@@ -117,7 +117,7 @@ class CvePkg(object):
             raise CveException("invalid when '%s'" % when)
         self.when = when
 
-    def setPatches(self, patches):
+    def setPatches(self, patches, compatUbuntu):
         """Set patches"""
         if not isinstance(patches, list):
             raise CveException("invalid patches (not a list)")
@@ -127,7 +127,10 @@ class CvePkg(object):
             if not isinstance(patch, str):
                 raise CveException("invalid patch (not a string)")
             patch = patch.strip()
-            if not rePatterns["pkg-patch"].search(patch):
+            if compatUbuntu:
+                if not rePatterns["pkg-patch-ubuntu"].search(patch):
+                    raise CveException("invalid patch for Ubuntu '%s'" % patch)
+            elif not rePatterns["pkg-patch"].search(patch):
                 raise CveException("invalid patch '%s'" % patch)
             self.patches.append(patch)
 

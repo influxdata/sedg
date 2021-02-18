@@ -207,7 +207,7 @@ class CVE(object):
                     patch = patch.strip()
                     if patch != "" and patch not in tmp:
                         tmp.append(patch)
-                p.setPatches(tmp)
+                p.setPatches(tmp, self.compatUbuntu)
             if p.software in tags:
                 # XXX: Tags_foo_trusty
                 p.setTags(tags[p.software])

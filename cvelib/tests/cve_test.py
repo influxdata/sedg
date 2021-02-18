@@ -133,7 +133,7 @@ CVSS: ...
 
         # (unsorted) patches for these
         pkg2a = cvelib.pkg.CvePkg("snap", "pkg2", "needed", "pub", "", "123-4")
-        pkg2a.setPatches(["upstream: http://a", "other: http://b"])
+        pkg2a.setPatches(["upstream: http://a", "other: http://b"], False)
         pkgs.append(pkg2a)
 
         pkg2b = cvelib.pkg.CvePkg("git", "pkg2", "released", "", "inky", "5678")
@@ -665,7 +665,7 @@ git/github_norf: needs-triage
             ("Madonna, Joe Schmoe (@jschmoe)", None),
             ("Madonna (madonna), Joe Schmoe (@jschmoe)", None),
             ("Madonna, Joe Schmoe and Alfred Foo-Bar", None),
-            ("Madonna, Joe \"Ralph\" Schmoe and Alfred Foo-Bar", None),
+            ('Madonna, Joe "Ralph" Schmoe and Alfred Foo-Bar', None),
             # invalid
             ("Joe\nSchmoe", "invalid %(key)s: 'Joe\nSchmoe' (expected single line)"),
             ("Joe (", "invalid %(key)s: 'Joe ('"),
@@ -745,7 +745,7 @@ git/github_norf: needs-triage
         ]
         patches = {
             "pkg1": " upstream: http://a\n other: http://b",
-            "pkg2": " vendor: http://c\n debdiff: https://d",
+            "pkg2": " vendor: http://c\n distro: https://d",
         }
         tags = {
             "pkg1": "pie hardlink-restriction",
