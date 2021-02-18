@@ -512,7 +512,7 @@ CVSS:%(cvss)s
 
 
 # Utility functions that work on CVE files
-def checkSyntax(cveDirs, compatUbuntu):
+def checkSyntax(cveDirs, compatUbuntu, untriagedOk=False):
     """Perform syntax checks on CVEs"""
     # TODO: make configurable
     seen = {}
@@ -527,7 +527,9 @@ def checkSyntax(cveDirs, compatUbuntu):
         rel = tmp[-2] + "/" + tmp[-1]
         try:
             cve = None
-            cve = cvelib.cve.CVE(fn=f, compatUbuntu=compatUbuntu)
+            cve = cvelib.cve.CVE(
+                fn=f, compatUbuntu=compatUbuntu, untriagedOk=untriagedOk
+            )
         except Exception as e:
             cvelib.common.warn("%s: %s" % (rel, str(e)))
             continue
