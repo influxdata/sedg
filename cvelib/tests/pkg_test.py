@@ -272,11 +272,65 @@ class TestPkg(TestCase):
             (["debdiff: foo"], True),
             (["vendor: foo"], True),
             (["other: foo"], True),
+            (["break-fix: - c5a8ffcae4103a9d823ea3aa3a761f65779fbe2a"], True),
+            (["break-fix: b5a8ffcae4103a9d823ea3aa3a761f65779fbe2a -"], True),
+            (
+                [
+                    "break-fix: b5a8ffcae4103a9d823ea3aa3a761f65779fbe2a c5a8ffcae4103a9d823ea3aa3a761f65779fbe2a"
+                ],
+                True,
+            ),
+            (["break-fix: - -"], True),
+            (["break-fix:  - -"], True),
+            (["break-fix: -  -"], True),
+            (
+                [
+                    "break-fix: - c0ca3d70e8d3cf81e2255a217f7ca402f5ed0862|local-2015-1328-fix"
+                ],
+                True,
+            ),
+            (
+                [
+                    "break-fix: - local-2015-1328-fix|c0ca3d70e8d3cf81e2255a217f7ca402f5ed0862"
+                ],
+                True,
+            ),
+            (["break-fix: - local-2015-1328-fix"], True),
+            (["break-fix: - local-2015-1328"], True),
+            (["break-fix: - local-2015-1328-f2"], True),
+            (
+                [
+                    "break-fix: local-2018-6559-break local-2015-1328-fix|local-2018-6559-fix"
+                ],
+                True,
+            ),
+            (
+                [
+                    "break-fix: 581738a681b6faae5725c2555439189ca81c0f1f f2d67fec0b43edce8c416101cdc52e71145b5fef|local-2020-8835-fix"
+                ],
+                True,
+            ),
+            (
+                [
+                    "break-fix: - c06cfb08b88dfbe13be44a69ae2fdc3a7c902d81|c53ee259ad3da891e191dee7af119af340f9c01b"
+                ],
+                True,
+            ),
+            (
+                [
+                    "break-fix: c06cfb08b88dfbe13be44a69ae2fdc3a7c902d81|c53ee259ad3da891e191dee7af119af340f9c01b -"
+                ],
+                True,
+            ),
             # invalid
             (["bad: foo"], False),
             (["upstream foo"], False),
             (["upstream:foo"], False),
             (["upstream:"], False),
+            (["break-fix: -"], False),
+            (["break-fix: b5a8ffcae4103a9d823ea3aa3a761f65779fbe2a"], False),
+            (["break-fix: b@d c5a8ffcae4103a9d823ea3aa3a761f65779fbe2a"], False),
+            (["break-fix: c5a8ffcae4103a9d823ea3aa3a761f65779fbe2a b@d"], False),
         ]
         pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
         for t, valid in tsts:

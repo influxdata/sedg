@@ -72,10 +72,22 @@ rePatterns = {
     "github-issue": re.compile(
         r"^https://github.com/[a-z0-9+.-]{1,40}/[a-z0-9+.-]{1,40}/issues/[0-9]{1,12}"
     ),
-    "pkg-patch": re.compile(r"^(upstream|debdiff|vendor|other): [a-z0-9+.-].*"),
+    # upstream: something
+    # vendor: something
+    # debdiff: something
+    # other: something
+    # break-fix: - -
+    # break-fix: - hash
+    # break-fix: hash -
+    # break-fix: hash hash|local-*
+    # break-fix: local-*-break local-*-fix
+    "pkg-patch": re.compile(
+        r"^((upstream|debdiff|vendor|other): [a-z0-9+.-].*|break-fix: +((-|[0-9a-f]+) +(-|[0-9a-f]+)|(-|[0-9a-f|]+|([0-9a-f|]+)?local[a-zA-X0-9|-]+)? +(-|[0-9a-f|]+|([0-9a-f|]+)?local[a-zA-X0-9|-]+))$)"
+    ),
     "pkg-patch-key": re.compile(r"^Patches_[a-z0-9+.-]{1,40}$"),
+    # TODO: break out Ubuntu-specific tags
     "pkg-tags": re.compile(
-        r"^(apparmor|stack-protector|fortify-source|symlink-restriction|hardlink-restriction|heap-protector|pie|universe-binary)$"
+        r"^(apparmor|stack-protector|fortify-source|symlink-restriction|hardlink-restriction|heap-protector|pie|universe-binary|not-ue)$"
     ),
     "pkg-tags-key": re.compile(r"^Patches_[a-z0-9+.-]{1,40}(_[a-z0-9+.-]{1,40})?$"),
     # urls
