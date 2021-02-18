@@ -352,6 +352,8 @@ class TestPkg(TestCase):
             ("ubuntu/focal_foo: needed", False, True),
             # valid compatUbuntu
             ("focal_foo: needed", True, True),
+            ("lucid_gcc-4.1: ignored (reached end-of-life)", True, True),
+            ("precise/esm_gcc-4.4: DNE (precise was needs-triage)", True, True),
             # invalid
             ("b@d", False, False),
             ("foo @", False, False),

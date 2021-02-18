@@ -176,7 +176,7 @@ def parse(s, compatUbuntu=False):
 
     status = status_when.strip().split()[0]
     if "(" in status_when:
-        when = status_when.split("(")[0].rstrip(")").strip()
+        when = status_when.split("(")[1].rstrip(")").strip()
 
     return CvePkg(
         product,
