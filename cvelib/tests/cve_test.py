@@ -58,7 +58,7 @@ class TestCve(TestCase):
                 "References": "\n http://example.com",
                 "Description": "\n Some description\n more desc",
                 "Notes": "\n person> some notes\n  more notes\n person2> blah",
-                "Mitigation": "Some mitigation",
+                "Mitigation": "\n Some mitigation\n more",
                 "Bugs": "\n http://example.com/bug",
                 "Priority": "medium",
                 "Discovered-by": "Jane Doe (jdoe)",
@@ -113,7 +113,9 @@ Notes:
  person> some notes
   more notes
  person2> blah
-Mitigation: Some mitigation
+Mitigation:
+ Some mitigation
+ more
 Bugs:
  http://example.com/bug
 Priority: medium
@@ -184,7 +186,9 @@ Notes:
  person> some notes
   more notes
  person2> blah
-Mitigation: Some mitigation
+Mitigation:
+ Some mitigation
+ more
 Bugs:
  http://example.com/bug
 Priority: medium
@@ -310,6 +314,15 @@ git/github_norf: needs-triage
                     cvelib.cve.CVE()._verifyMultiline(key, val)
                 self.assertEqual(err, str(context.exception))
 
+    def test__verifyRequired(self):
+        """Test _verifyRequired()"""
+        t = self._cve_template()
+        cvelib.cve.CVE()._verifyRequired(t)
+        del t["Candidate"]
+        with self.assertRaises(cvelib.common.CveException) as context:
+            cvelib.cve.CVE()._verifyRequired(t)
+        self.assertEqual("missing required field 'Candidate'", str(context.exception))
+
     def test___init__bad(self):
         """Test __init__()"""
         self._mock_readCve(
@@ -333,6 +346,7 @@ git/github_norf: needs-triage
         # optional missing is ok
         hdrs = self._mockHeaders(self._cve_template())
         del hdrs["CRD"]
+        del hdrs["Mitigation"]
         cvelib.cve.CVE().setData(hdrs)
 
         # valid with packages
@@ -374,6 +388,7 @@ git/github_norf: needs-triage
         # missing optional is ok
         hdrs = self._mockHeaders(self._cve_template())
         del hdrs["CRD"]
+        del hdrs["Mitigation"]
         cvelib.cve.CVE()._verifyCve(hdrs)
 
         # invalid
@@ -503,6 +518,34 @@ git/github_norf: needs-triage
             cvelib.cve.CVE()._verifyCRD("CRD", "bad")
         self.assertEqual("invalid CRD: 'bad' %s" % suffix, str(context.exception))
 
+    def test__verifyUrl(self):
+        """Test _verifyUrl()"""
+        tsts = [
+            # valid
+            ("cvs://1", None),
+            ("ftp://1", None),
+            ("git://1", None),
+            ("http://1", None),
+            ("https://1", None),
+            ("sftp://1", None),
+            ("shttp://1", None),
+            ("svn://1", None),
+            ("https://github.com/foo/bar/issues/1234", None),
+            ("https://launchpad.net/bugs/1234", None),
+            ("https://launchpad.net/ubuntu/+source/foo/+bug/1234", None),
+            # invalid
+            ("\n", "invalid url in %(key)s: '\n'"),
+            ("", "invalid url in %(key)s: ''"),
+            ("foo://", "invalid url in %(key)s: 'foo://'"),
+        ]
+        for val, err in tsts:
+            if not err:
+                cvelib.cve.CVE()._verifyUrl("TestKey", val)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    cvelib.cve.CVE()._verifyUrl("TestKey", val)
+                self.assertEqual(err % {"key": "TestKey"}, str(context.exception))
+
     def test__verifyPriority(self):
         """Test _verifyPriority()"""
         tsts = [
@@ -538,18 +581,10 @@ git/github_norf: needs-triage
     def test__verifyBugsAndReferences(self):
         """Test _verifyReferences() and _verifyBugs()"""
         tsts = [
-            # valid
-            ("\n cvs://1", None),
-            ("\n ftp://1", None),
+            # valid (others are verified separately)
             ("\n git://1", None),
             ("\n http://1", None),
             ("\n https://1", None),
-            ("\n sftp://1", None),
-            ("\n shttp://1", None),
-            ("\n svn://1", None),
-            ("\n https://github.com/foo/bar/issues/1234", None),
-            ("\n https://launchpad.net/bugs/1234", None),
-            ("\n https://launchpad.net/ubuntu/+source/foo/+bug/1234", None),
             ("\n https://1\n http://2\n http://3", None),
             ("\n https://1 (comment 1)\n http://2 (comment 2)\n http://3 blah", None),
             # invalid
@@ -573,8 +608,8 @@ git/github_norf: needs-triage
                         fn(tstType, val)
                     self.assertEqual(err % {"key": tstType}, str(context.exception))
 
-    def test__verifyDescriptionAndNotes(self):
-        """Test _verifyDescription() and _verifyNotes()"""
+    def test__verifyDescriptionAndNotesAndMitigation(self):
+        """Test _verifyDescription(), _verifyNotes() and _verifyMitigation()"""
         tsts = [
             # valid
             ("\n foo", None),
@@ -586,13 +621,16 @@ git/github_norf: needs-triage
             ("\n", "invalid %(key)s (empty)"),
             ("\nfoo", "invalid %(key)s: '\nfoo' (missing leading space)"),
             ("\n\n foo", "invalid %(key)s: '\n\n foo' (empty line)"),
+            ("single line", "invalid %(key)s: 'single line' (missing leading newline)"),
         ]
-        for tstType in ["Description", "Notes"]:
+        for tstType in ["Description", "Notes", "Mitigation"]:
             fn = None
             if tstType == "Description":
                 fn = cvelib.cve.CVE()._verifyDescription
             elif tstType == "Notes":
                 fn = cvelib.cve.CVE()._verifyNotes
+            elif tstType == "Mitigation":
+                fn = cvelib.cve.CVE()._verifyMitigation
 
             for val, err in tsts:
                 if not err:

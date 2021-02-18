@@ -21,7 +21,6 @@ class CVE(object):
         "References",
         "Description",
         "Notes",
-        "Mitigation",
         "Bugs",
         "Priority",
         "Discovered-by",
@@ -31,6 +30,7 @@ class CVE(object):
     # Tags_*, Patches_* and software are handled special
     cve_optional = [
         "CRD",
+        "Mitigation",
     ]
 
     def __str__(self):
@@ -65,7 +65,6 @@ class CVE(object):
         self.setReferences(data["References"])
         self.setDescription(data["Description"])
         self.setNotes(data["Notes"])
-        self.setMitigation(data["Mitigation"])
         self.setBugs(data["Bugs"])
         self.setPriority(data["Priority"])
         self.setDiscoveredBy(data["Discovered-by"])
@@ -76,6 +75,11 @@ class CVE(object):
             self.setCRD(data["CRD"])
         else:
             self.setCRD("")
+
+        if "Mitigation" in data:
+            self.setMitigation(data["Mitigation"])
+        else:
+            self.setMitigation("")
 
         # Any field with '_' is a package or patch. Since these could be out of
         # order, collect them separately, then call setPackages()
@@ -151,7 +155,8 @@ class CVE(object):
 
     def setMitigation(self, s):
         """Set Mitigation"""
-        self.mitigation = s
+        # strip newline off the front then strip whitespace from every line
+        self.mitigation = [item.strip() for item in s.lstrip().splitlines()]
         self.data["Mitigation"] = self.mitigation
 
     def setBugs(self, s):
@@ -236,7 +241,9 @@ CVSS:%(cvss)s
                 if self.description
                 else "",
                 "notes": "\n %s" % "\n ".join(self.notes) if self.notes else "",
-                "mitigation": " %s" % self.mitigation if self.mitigation else "",
+                "mitigation": "\n %s" % "\n ".join(self.mitigation)
+                if self.mitigation
+                else "",
                 "bugs": "\n %s" % "\n ".join(self.bugs) if self.bugs else "",
                 "priority": " %s" % self.priority if self.priority else "",
                 "discoveredBy": " %s" % self.discoveredBy if self.discoveredBy else "",
@@ -331,8 +338,6 @@ CVSS:%(cvss)s
                 self._verifyReferences(key, val)
             elif key == "Description":
                 self._verifyDescription(key, val)
-            elif key == "Mitigation":
-                self._verifyMitigation(key, val)
             elif key == "Notes":
                 self._verifyDescription(key, val)
             elif key == "Bugs":
@@ -474,9 +479,8 @@ CVSS:%(cvss)s
 
     def _verifyMitigation(self, key, val):
         """Verify CVE Mitigation"""
-        # TODO: more here?
         if val != "":  # empty is ok
-            self._verifySingleline(key, val)
+            self._verifyMultiline(key, val)
 
     def _verifyBugs(self, key, val):
         """Verify CVE Bugs"""
