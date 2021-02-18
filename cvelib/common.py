@@ -83,7 +83,11 @@ rePatterns = {
     # People. We aren't accepting utf-8 elsewhere so only ascii here
     # Some One
     # Some One (someone-handle)
-    "attribution": re.compile(r"^[a-zA-Z0-9' .-]+( \(@?[a-zA-Z0-9._-]+\))?$"),
+    # Some One (someone-handle), Some One Else
+    # Some "Nickname" One (someone-handle), Some One Else
+    "attribution": re.compile(
+        r"^[a-zA-Z0-9'\"_ .-]+( \(@?[a-zA-Z0-9._-]+\))?(, [a-zA-Z0-9'\"_ .-]+( \(@?[a-zA-Z0-9._-]+\))?)*$"
+    ),
 }
 
 # Subdirectories of CVEs in config["Locations"]["cve-data"]

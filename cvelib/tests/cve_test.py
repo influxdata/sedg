@@ -645,6 +645,7 @@ git/github_norf: needs-triage
         tsts = [
             # valid
             ("nick", None),
+            ("irc_nick", None),
             ("Madonna", None),
             ("Joe Schmoe", None),
             ("Joe Schmoe (jschmoe)", None),
@@ -652,6 +653,12 @@ git/github_norf: needs-triage
             ("Harry Potter Jr.", None),
             ("Alfred Foo-Bar", None),
             ("Angus O'Hare", None),
+            ("Angus O'Hare, Alfred Foo-Bar", None),
+            ("Joe Schmoe (jschmoe), Madonna", None),
+            ("Madonna, Joe Schmoe (@jschmoe)", None),
+            ("Madonna (madonna), Joe Schmoe (@jschmoe)", None),
+            ("Madonna, Joe Schmoe and Alfred Foo-Bar", None),
+            ("Madonna, Joe \"Ralph\" Schmoe and Alfred Foo-Bar", None),
             # invalid
             ("Joe\nSchmoe", "invalid %(key)s: 'Joe\nSchmoe' (expected single line)"),
             ("Joe (", "invalid %(key)s: 'Joe ('"),
