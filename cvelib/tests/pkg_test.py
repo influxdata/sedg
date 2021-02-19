@@ -523,6 +523,7 @@ class TestPkg(TestCase):
                 False,
                 True,
             ),
+            ("upstream_%s: needed" % ("a" * 50), False, True),
             # valid compatUbuntu
             ("focal_foo: needed", True, True),
             ("lucid_gcc-4.1: ignored (reached end-of-life)", True, True),
@@ -558,14 +559,17 @@ class TestPkg(TestCase):
                 True,
                 True,
             ),
+            ("focal_%s: needed" % ("a" * 50), True, True),
             # invalid
             ("b@d", False, False),
             ("foo @", False, False),
             ("ubuntu/foc@l_foo: needed", False, False),
             ("ubuntu/devel_grub2-signed: released (1.157)\n ", False, False),
+            ("upstream_%s: needed" % ("a" * 51), False, False),
             # invalid compatUbuntu
             ("foc@l_foo: needed", True, False),
             ("devel_grub2-signed: released (1.157)\n ", True, False),
+            ("focal_%s: needed" % ("a" * 51), True, False),
         ]
         for s, compat, valid in tsts:
             if valid:

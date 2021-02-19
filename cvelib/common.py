@@ -25,10 +25,19 @@ configCache = None
 # In addition, tooling could augment the dictionaries for things it's
 # interested in.
 #
+
+# Various configurable lengths used in the regexes
+_patLengths = {
+    "pkg-software": 50,
+}
+
 # Compile common regex on import
 rePatterns = {
     # foo, foo1, foo-bar, foo.bar, for-bar-1.0
-    "pkg-software": re.compile(r"^[a-z0-9+.-]{1,40}$"),
+    "pkg-software": re.compile(
+        r"^[a-z0-9+.-]{1,%(software_len)d}$"
+        % ({"software_len": _patLengths["pkg-software"]})
+    ),
     # we can do 'ubuntu', 'suse', 'debian', etc for this for other distros
     "pkg-product": re.compile(r"^(git|snap|oci|upstream|ubuntu|debian|suse)$"),
     "pkg-product-ubuntu": re.compile(r"^[a-z0-9+.-]{1,40}$"),
@@ -39,10 +48,12 @@ rePatterns = {
     "pkg-when": re.compile(r"^[a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,100}$"),
     # the string form
     "pkg-full": re.compile(
-        r"^(git|snap|oci|upstream|ubuntu|debian|suse)(/[a-z0-9+.-]{1,40})?_[a-z0-9+.-]{1,40}(/[a-z0-9+.-]{1,40})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,100}\))?$"
+        r"^(git|snap|oci|upstream|ubuntu|debian|suse)(/[a-z0-9+.-]{1,40})?_[a-z0-9+.-]{1,%(software_len)d}(/[a-z0-9+.-]{1,40})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,100}\))?$"
+        % ({"software_len": _patLengths["pkg-software"]})
     ),
     "pkg-full-ubuntu": re.compile(
-        r"^[a-z0-9+.-]{1,40}(/[a-z0-9+.-]{1,40})?_[a-z0-9+.-]{1,40}(/[a-z0-9+.-]{1,40})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,'\"/:~\[\]()<>#=|`_-]{1,100}\))?$"
+        r"^[a-z0-9+.-]{1,40}(/[a-z0-9+.-]{1,40})?_[a-z0-9+.-]{1,%(software_len)d}(/[a-z0-9+.-]{1,40})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,'\"/:~\[\]()<>#=|`_-]{1,100}\))?$"
+        % ({"software_len": _patLengths["pkg-software"]})
     ),
     # CVE-YYYY-XXXX (1-12 X's)
     # CVE-YYYY-NNNX (1-11 N's)
