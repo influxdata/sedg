@@ -553,6 +553,11 @@ class TestPkg(TestCase):
                 True,
             ),
             ("devel_grub2-signed: released (1.157)", True, True),
+            (
+                "precise/esm_linux-ti-omap4: DNE (precise was not-affected [v3.8 and older do not have sufficient conversion to be affected])",
+                True,
+                True,
+            ),
             # invalid
             ("b@d", False, False),
             ("foo @", False, False),
