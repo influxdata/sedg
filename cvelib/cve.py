@@ -86,6 +86,7 @@ class CVE(object):
         pkgs = []
         patches = {}
         tags = {}
+        priorities = {}
         for k in data:
             if k not in self.data:  # copy raw data for later
                 self.data[k] = data[k]
@@ -99,14 +100,20 @@ class CVE(object):
             elif k.startswith("Tags_"):
                 if not rePatterns["pkg-tags-key"].search(k):
                     raise CveException("invalid Tags_ key: '%s'" % (k))
-                # XXX: Tags_foo_trusty
-                pkg = k.split("_")[1]
+                # both Tags_foo and Tags_foo_bar
+                pkg = k.split("_", 1)[1]
                 tags[pkg] = data[k]
+            elif k.startswith("Priority_"):
+                if not rePatterns["pkg-priority-key"].search(k):
+                    raise CveException("invalid Priority_ key: '%s'" % (k))
+                # both Priority_foo and Priority_foo_bar
+                pkg = k.split("_", 1)[1]
+                priorities[pkg] = data[k]
             else:
                 s = "%s: %s" % (k, data[k])
                 pkgs.append(cvelib.pkg.parse(s, compatUbuntu=self.compatUbuntu))
 
-        self.setPackages(pkgs, patches=patches, tags=tags)
+        self.setPackages(pkgs, patches=patches, tags=tags, priorities=priorities)
 
     def setCandidate(self, s):
         """Set candidate"""
@@ -193,7 +200,7 @@ class CVE(object):
         self.cvss = s
         self.data["CVSS"] = self.cvss
 
-    def setPackages(self, pkgs, patches=[], tags=[], append=False):
+    def setPackages(self, pkgs, patches=[], tags=[], priorities=[], append=False):
         """Set pkgs"""
         if not isinstance(pkgs, list):
             raise CveException("pkgs is not a list")
@@ -205,6 +212,7 @@ class CVE(object):
             what = p.what()
             if what in self._pkgs_list:
                 continue
+
             if p.software in patches:
                 tmp = []
                 for patch in patches[p.software].splitlines():
@@ -212,15 +220,87 @@ class CVE(object):
                     if patch != "" and patch not in tmp:
                         tmp.append(patch)
                 p.setPatches(tmp, self.compatUbuntu)
-            if p.software in tags:
-                # XXX: Tags_foo_trusty
-                p.setTags(tags[p.software])
+
+            # Since we want store Tags_<pkg> and Tags_<pkg>_* under <pkg>, give
+            # setTags a list of tuples of form:
+            # [(<pkg>, <tag>), (<pkg_a>, <tag2>)]
+            pkgTags = [
+                (x, tags[x])
+                for x in tags
+                if (x == p.software or x.startswith("%s_" % p.software))
+            ]
+            if pkgTags:
+                p.setTags(pkgTags)
+
+            pkgPriorities = [
+                (x, priorities[x])
+                for x in priorities
+                if (x == p.software or x.startswith("%s_" % p.software))
+            ]
+            if pkgPriorities:
+                # XXX: Priority_foo_trusty
+                p.setPriorities(pkgPriorities)
+
             self.pkgs.append(p)
             self._pkgs_list.append(what)
 
     # various other methods
     def onDiskFormat(self):
         """Return format suitable for writing out to disk"""
+        # helpers
+
+        # Since patches can be per pkg object, but we want to list them in a
+        # shared Patches_<software> section, pre-create the patches snippets
+        def _collectPatches(pkgs):
+            patches = {}
+            for pkg in pkgs:
+                if pkg.software not in patches:
+                    patches[pkg.software] = []
+                for p in pkg.patches:
+                    if p not in patches[pkg.software]:
+                        patches[pkg.software].append(p)
+            return patches
+
+        # Do the same with tags. Tags may be of form Tags_foo or Tags_foo_bar
+        # so create this dict which will format within the pkg.software stanza:
+        #   tags = {
+        #     pkg.software: {
+        #       "Tags_foo": [tags],
+        #       "Tags_foo_bar": [tags],
+        #     },
+        #     ...
+        #   }
+        def _collectTags(pkgs):
+            tags = {}
+            for pkg in pkgs:
+                if pkg.software not in tags:
+                    tags[pkg.software] = {}
+                for pkgKey in pkg.tags:
+                    if pkgKey not in tags[pkg.software]:
+                        tags[pkg.software][pkgKey] = []
+                    for p in pkg.tags[pkgKey]:
+                        if p not in tags[pkg.software][pkgKey]:
+                            tags[pkg.software][pkgKey].append(p)
+            return tags
+
+        # Do the same with priorities, where the Priority is a string rather
+        # than a list, like with Tags. Eg:
+        #   priorities = {
+        #     pkg.software: {
+        #       "Priority_foo": <priority>,
+        #       "Priority_foo_bar": <priority>,
+        #     },
+        #     ...
+        #   }
+        def _collectPriorities(pkgs):
+            priorities = {}
+            for pkg in self.pkgs:
+                if pkg.software not in priorities:
+                    priorities[pkg.software] = {}
+                for pkgKey in pkg.priorities:
+                    priorities[pkg.software][pkgKey] = pkg.priorities[pkgKey]
+            return priorities
+
         s = """Candidate:%(candidate)s
 PublicDate:%(publicDate)s
 CRD:%(crd)s
@@ -265,6 +345,9 @@ CVSS:%(cvss)s
         #    upstream: http://c
         #    vendor: http://a
         #   Tags_bar: <tag1> <tag2>
+        #   Tags_bar_buster: <tag3> <tag4>
+        #   Priority_bar: medium
+        #   Priority_bar_buster: low
         #   debian/buster_bar: needed
         #   debian/squeeze_bar: needed
         #   git/github_bar: needs-triage
@@ -276,24 +359,9 @@ CVSS:%(cvss)s
         #   git/github_baz: needs-triage
         #   ...
 
-        # Since patches can be per pkg object, but we want to list them in a
-        # shared Patches_<software> section, pre-create the patches snippets
-        patches = {}
-        for pkg in self.pkgs:
-            if pkg.software not in patches:
-                patches[pkg.software] = []
-            for p in pkg.patches:
-                if p not in patches[pkg.software]:
-                    patches[pkg.software].append(p)
-
-        # Do the same with tags
-        tags = {}
-        for pkg in self.pkgs:
-            if pkg.software not in tags:
-                tags[pkg.software] = []
-            for p in pkg.tags:
-                if p not in tags[pkg.software]:
-                    tags[pkg.software].append(p)
+        patches = _collectPatches(self.pkgs)
+        tags = _collectTags(self.pkgs)
+        priorities = _collectPriorities(self.pkgs)
 
         last_software = ""
         # Sort the list by software, then product, then where so everything
@@ -307,10 +375,17 @@ CVSS:%(cvss)s
                 if pkg.software in patches and patches[pkg.software]:
                     s += " " + "\n ".join(patches[pkg.software]) + "\n"
                 if pkg.software in tags and tags[pkg.software]:
-                    s += "Tags_%s: %s\n" % (
-                        pkg.software,
-                        " ".join(sorted(tags[pkg.software])),
-                    )
+                    for pkgKey in sorted(tags[pkg.software]):
+                        s += "Tags_%s: %s\n" % (
+                            pkgKey,
+                            " ".join(sorted(tags[pkg.software][pkgKey])),
+                        )
+                if pkg.software in priorities and priorities[pkg.software]:
+                    for pkgKey in sorted(priorities[pkg.software]):
+                        s += "Priority_%s: %s\n" % (
+                            pkgKey,
+                            priorities[pkg.software][pkgKey],
+                        )
             last_software = pkg.software
 
             s += "%s\n" % pkg

@@ -140,12 +140,36 @@ CVSS: ...
         pkgs.append(pkg2b)
 
         pkg3 = cvelib.pkg.CvePkg("snap", "pkg3", "needed")
-        pkg3.setTags("pie")
+        pkg3.setTags([("pkg3", "pie")])
         pkgs.append(pkg3)
 
-        pkg4 = cvelib.pkg.CvePkg("git", "pkg3", "needed")
-        pkg4.setTags("hardlink-restriction")
+        pkg3b = cvelib.pkg.CvePkg("git", "pkg3", "needed")
+        pkg3b.setTags([("pkg3", "hardlink-restriction")])
+        pkg3b.setPriorities([("pkg3", "low")])
+        pkgs.append(pkg3b)
+
+        pkg4 = cvelib.pkg.CvePkg("debian", "pkg4", "needed", where="buster")
         pkgs.append(pkg4)
+
+        pkg4b = cvelib.pkg.CvePkg("debian", "pkg4", "needed", where="squeeze")
+        pkgs.append(pkg4b)
+
+        pkg4c = cvelib.pkg.CvePkg("debian", "pkg4", "needed", where="wheezy")
+        pkgs.append(pkg4c)
+
+        pkg4d = cvelib.pkg.CvePkg("debian", "pkg4", "needed", where="sid")
+        pkgs.append(pkg4d)
+
+        pkg4.setPriorities(
+            [("pkg4", "high"), ("pkg4_sid", "negligible"), ("pkg4_buster", "low")]
+        )
+        pkg4.setTags(
+            [
+                ("pkg4_sid", "pie apparmor"),
+                ("pkg4_buster", "pie"),
+                ("pkg4_wheezy", "fortify-source"),
+            ]
+        )
 
         cve.setPackages(pkgs)
 
@@ -163,8 +187,21 @@ snap/pub_pkg2: needed (123-4)
 
 Patches_pkg3:
 Tags_pkg3: hardlink-restriction pie
+Priority_pkg3: low
 git_pkg3: needed
 snap_pkg3: needed
+
+Patches_pkg4:
+Tags_pkg4_buster: pie
+Tags_pkg4_sid: apparmor pie
+Tags_pkg4_wheezy: fortify-source
+Priority_pkg4: high
+Priority_pkg4_buster: low
+Priority_pkg4_sid: negligible
+debian/buster_pkg4: needed
+debian/sid_pkg4: needed
+debian/squeeze_pkg4: needed
+debian/wheezy_pkg4: needed
 """
         )
         res = cve.onDiskFormat()
@@ -367,6 +404,30 @@ git/github_norf: needs-triage
         hdrs = self._mockHeaders(t)
         cvelib.cve.CVE().setData(hdrs)
 
+        # valid Tags_foo
+        t = self._cve_template()
+        t["Tags_foo"] = "apparmor"
+        hdrs = self._mockHeaders(t)
+        cvelib.cve.CVE().setData(hdrs)
+
+        # valid Tags_foo_bar
+        t = self._cve_template()
+        t["Tags_foo_bar"] = "apparmor pie"
+        hdrs = self._mockHeaders(t)
+        cvelib.cve.CVE().setData(hdrs)
+
+        # valid Priority_foo
+        t = self._cve_template()
+        t["Priority_foo"] = "medium"
+        hdrs = self._mockHeaders(t)
+        cvelib.cve.CVE().setData(hdrs)
+
+        # valid Priority_foo_bar
+        t = self._cve_template()
+        t["Priority_foo_bar"] = "medium"
+        hdrs = self._mockHeaders(t)
+        cvelib.cve.CVE().setData(hdrs)
+
         # invalid
         hdrs = self._mockHeaders(self._cve_template())
         del hdrs["Candidate"]
@@ -422,6 +483,33 @@ git/github_norf: needs-triage
                     cvelib.cve.CVE().setData(hdrs)
                 self.assertEqual(
                     "invalid Tags_ key: '%s'" % key, str(context.exception)
+                )
+
+    def test_setDataPriorityKeys(self):
+        """Test setData() - Priority_"""
+        tsts = [
+            # valid
+            ("Priority_foo", True),
+            ("Priority_%s" % ("a" * 50), True),
+            ("Priority_foo_%s" % ("a" * 50), True),
+            # invalid
+            ("Priority_", False),
+            ("Priority_b@d", False),
+            ("Priority_%s" % ("a" * 51), False),
+            ("Priority_foo_", False),
+            ("Priority_foo_b@d", False),
+            ("Priority_foo_%s" % ("a" * 51), False),
+        ]
+        for key, valid in tsts:
+            hdrs = self._mockHeaders(self._cve_template())
+            hdrs[key] = "medium"
+            if valid:
+                cvelib.cve.CVE().setData(hdrs)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    cvelib.cve.CVE().setData(hdrs)
+                self.assertEqual(
+                    "invalid Priority_ key: '%s'" % key, str(context.exception)
                 )
 
     def test__verifyCve(self):
@@ -638,11 +726,17 @@ git/github_norf: needs-triage
             ("Priority_foo", "critical", False, True),
             ("Priority", "untriaged", True, True),
             ("Priority_foo", "untriaged", True, True),
+            ("Priority_foo_bar", "medium", False, True),
+            ("Priority_foo_bar/baz", "medium", False, True),
+            ("Priority_foo_bar/baz", "untriaged", True, True),
             # invalid
             ("Priority", "untriaged", False, False),
             ("Priority_foo", "untriaged", False, False),
+            ("Priority_foo_bar", "untriaged", False, False),
+            ("Priority_foo_bar/baz", "untriaged", False, False),
             ("Priority", "bad", True, False),
-            ("Priority", "bad", False, False),
+            ("Priority", "needed", False, False),
+            ("Priority", "needs-triage", False, False),
         ]
         for (key, val, untriagedOk, valid) in tsts:
             if valid:
@@ -830,13 +924,30 @@ git/github_norf: needs-triage
         tags = {
             "pkg1": "pie hardlink-restriction",
             "pkg2": "apparmor",
+            "pkg2_a": "fortify-source heap-protector",
         }
-        cve.setPackages(pkgs, patches=patches, tags=tags)
+        priorities = {
+            "pkg1": "high",
+            "pkg2": "medium",
+            "pkg2_a": "low",
+        }
+
+        cve.setPackages(pkgs, patches=patches, tags=tags, priorities=priorities)
         self.assertEqual(2, len(cve.pkgs))
+
         self.assertEqual(2, len(cve.pkgs[0].patches))
-        self.assertEqual(2, len(cve.pkgs[0].tags))
+        self.assertEqual(1, len(cve.pkgs[0].tags))
+        self.assertEqual(2, len(cve.pkgs[0].tags["pkg1"]))
+        self.assertEqual(1, len(cve.pkgs[0].priorities))
+        self.assertEqual("high", cve.pkgs[0].priorities["pkg1"])
+
         self.assertEqual(2, len(cve.pkgs[1].patches))
-        self.assertEqual(1, len(cve.pkgs[1].tags))
+        self.assertEqual(2, len(cve.pkgs[1].tags))
+        self.assertEqual(1, len(cve.pkgs[1].tags["pkg2"]))
+        self.assertEqual(2, len(cve.pkgs[1].tags["pkg2_a"]))
+        self.assertEqual(2, len(cve.pkgs[1].priorities))
+        self.assertEqual("medium", cve.pkgs[1].priorities["pkg2"])
+        self.assertEqual("low", cve.pkgs[1].priorities["pkg2_a"])
 
         # invalid
         cve = cvelib.cve.CVE(fn="fake")
