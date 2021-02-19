@@ -550,24 +550,43 @@ git/github_norf: needs-triage
         """Test _verifyPublicDate() and _verifyCRD()"""
         tsts = [
             # valid
-            ("", None),
-            ("2021-01-25", None),
-            ("2021-01-25 16:00:00", None),
+            ("", False, None),
+            ("2021-01-25", False, None),
+            ("2021-01-25 16:00:00", False, None),
+            # valid Ubuntu
+            ("", True, None),
+            ("2021-01-25", True, None),
+            ("2021-01-25 16:00:00", True, None),
+            ("unknown", True, None),
             # invalid
-            ("\n", "invalid %(key)s: '\n' (expected single line)"),
+            ("\n", False, "invalid %(key)s: '\n' (expected single line)"),
             (
                 "bad",
+                False,
                 "invalid %(key)s: 'bad' (use empty or YYYY-MM-DD [HH:MM:SS [TIMEZONE]])",
+            ),
+            (
+                "unknown",
+                False,
+                "invalid %(key)s: 'unknown' (use empty or YYYY-MM-DD [HH:MM:SS [TIMEZONE]])",
+            ),
+            # invalid Ubuntu
+            ("\n", True, "invalid %(key)s: '\n' (expected single line)"),
+            (
+                "bad",
+                True,
+                "invalid %(key)s: 'bad' (use 'unknown' or YYYY-MM-DD [HH:MM:SS [TIMEZONE]])",
             ),
         ]
         for tstType in ["PublicDate", "CRD"]:
-            fn = None
-            if tstType == "PublicDate":
-                fn = cvelib.cve.CVE()._verifyPublicDate
-            elif tstType == "CRD":
-                fn = cvelib.cve.CVE()._verifyCRD
+            for val, compat, err in tsts:
+                fn = None
+                cve = cvelib.cve.CVE(compatUbuntu=compat)
+                if tstType == "PublicDate":
+                    fn = cve._verifyPublicDate
+                elif tstType == "CRD":
+                    fn = cve._verifyCRD
 
-            for val, err in tsts:
                 if not err:
                     fn(tstType, val)
                 else:
