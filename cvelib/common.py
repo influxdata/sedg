@@ -135,7 +135,7 @@ rePatterns = {
         r"^(apparmor|stack-protector|fortify-source|symlink-restriction|hardlink-restriction|heap-protector|pie|universe-binary|not-ue)$"
     ),
     "pkg-tags-key": re.compile(
-        r"^Patches_[a-z0-9+.-]{1,%(software_len)d}(_[a-z0-9+.-]{1,%(software_len)d})?$"
+        r"^Tags_[a-z0-9+.-]{1,%(software_len)d}(_[a-z0-9+.-]{1,%(software_len)d})?$"
         % ({"software_len": _patLengths["pkg-software"]})
     ),
     # urls

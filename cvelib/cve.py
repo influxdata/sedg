@@ -92,9 +92,13 @@ class CVE(object):
             if "_" not in k or k.startswith("#"):
                 continue
             if k.startswith("Patches_"):
+                if not rePatterns["pkg-patch-key"].search(k):
+                    raise CveException("invalid Patches_ key: '%s'" % (k))
                 pkg = k.split("_")[1]
                 patches[pkg] = data[k]
             elif k.startswith("Tags_"):
+                if not rePatterns["pkg-tags-key"].search(k):
+                    raise CveException("invalid Tags_ key: '%s'" % (k))
                 # XXX: Tags_foo_trusty
                 pkg = k.split("_")[1]
                 tags[pkg] = data[k]

@@ -361,7 +361,7 @@ git/github_norf: needs-triage
         hdrs = self._mockHeaders(t)
         cvelib.cve.CVE().setData(hdrs)
 
-        # valide Patches_foo
+        # valid Patches_foo
         t = self._cve_template()
         t["Patches_foo"] = ""
         hdrs = self._mockHeaders(t)
@@ -373,6 +373,56 @@ git/github_norf: needs-triage
         with self.assertRaises(cvelib.common.CveException) as context:
             cvelib.cve.CVE().setData(hdrs)
         self.assertEqual("missing required field 'Candidate'", str(context.exception))
+
+    def test_setDataPatchesKeys(self):
+        """Test setData() - Patches_"""
+        tsts = [
+            # valid
+            ("Patches_foo", True),
+            ("Patches_%s" % ("a" * 50), True),
+            # invalid
+            ("Patches_", False),
+            ("Patches_b@d", False),
+            ("Patches_%s" % ("a" * 51), False),
+        ]
+        for key, valid in tsts:
+            hdrs = self._mockHeaders(self._cve_template())
+            hdrs[key] = ""
+            if valid:
+                cvelib.cve.CVE().setData(hdrs)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    cvelib.cve.CVE().setData(hdrs)
+                self.assertEqual(
+                    "invalid Patches_ key: '%s'" % key, str(context.exception)
+                )
+
+    def test_setDataTagsKeys(self):
+        """Test setData() - Tags_"""
+        tsts = [
+            # valid
+            ("Tags_foo", True),
+            ("Tags_%s" % ("a" * 50), True),
+            ("Tags_foo_%s" % ("a" * 50), True),
+            # invalid
+            ("Tags_", False),
+            ("Tags_b@d", False),
+            ("Tags_%s" % ("a" * 51), False),
+            ("Tags_foo_", False),
+            ("Tags_foo_b@d", False),
+            ("Tags_foo_%s" % ("a" * 51), False),
+        ]
+        for key, valid in tsts:
+            hdrs = self._mockHeaders(self._cve_template())
+            hdrs[key] = ""
+            if valid:
+                cvelib.cve.CVE().setData(hdrs)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    cvelib.cve.CVE().setData(hdrs)
+                self.assertEqual(
+                    "invalid Tags_ key: '%s'" % key, str(context.exception)
+                )
 
     def test__verifyCve(self):
         """Test _verifyCve()"""
