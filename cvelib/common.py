@@ -119,11 +119,11 @@ rePatterns = {
     # break-fix: hash hash|local-*
     # break-fix: local-*-break local-*-fix
     "pkg-patch": re.compile(
-        r"^((distro|other|upstream|vendor): I?[a-z0-9+.-].*|break-fix: +((-|I?[0-9a-f]+) +(-|I?[0-9a-f]+)|(-|I?[0-9a-f|]+|(I?[0-9a-f|]+)?local[a-zA-X0-9|-]+)? +(-|I?[0-9a-f|]+|(I?[0-9a-f|]+)?local[a-zA-X0-9|-]+))$)"
+        r"^((distro|other|upstream|vendor): I?[a-z0-9+.-].*|break-fix: +((-|I?[0-9a-f]+) +(-|I?[0-9a-f]+)|(-|I?[0-9a-f|]+|(I?[0-9a-f|]+)?local[a-zA-X0-9|-]+)? +(-|I?[0-9a-f|]+|(I?[0-9a-f|]+)?local[a-zA-X0-9|-]+)|(-|(cvs|ftp|git|https?|sftp|shttp|svn)://[^ ]+) (-|(cvs|ftp|git|https?|sftp|shttp|svn)://[^ ]+))$)"
     ),
     # The above, plus some Ubuntu-specific (eg, older releases)
     "pkg-patch-ubuntu": re.compile(
-        r"^((distro|other|upstream|vendor|debdiff|diff|fork|merge|proposed|unknown|android|debian|fedora|opensuse|redhat|dapper|hardy|jaunty|karmic|lucid|maverick): I?[a-z0-9+.-].*|break-fix: +((-|I?[0-9a-f]+) +(-|I?[0-9a-f]+)|(-|I?[0-9a-f|]+|(I?[0-9a-f|]+)?local[a-zA-X0-9|-]+)? +(-|I?[0-9a-f|]+|(I?[0-9a-f|]+)?local[a-zA-X0-9|-]+))$)"
+        r"^((distro|other|upstream|vendor|debdiff|diff|fork|merge|proposed|unknown|android|debian|fedora|opensuse|redhat|dapper|hardy|jaunty|karmic|lucid|maverick): I?[a-z0-9+.-].*|break-fix: +((-|I?[0-9a-f]+) +(-|I?[0-9a-f]+)|(-|I?[0-9a-f|]+|(I?[0-9a-f|]+)?local[a-zA-X0-9|-]+)? +(-|I?[0-9a-f|]+|(I?[0-9a-f|]+)?local[a-zA-X0-9|-]+)|(-|(cvs|ftp|git|https?|sftp|shttp|svn)://[^ ]+) (-|(cvs|ftp|git|https?|sftp|shttp|svn)://[^ ]+))$)"
     ),
     # TODO: break out Ubuntu-specific tags
     "pkg-patch-key": re.compile(

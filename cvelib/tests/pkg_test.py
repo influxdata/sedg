@@ -272,6 +272,9 @@ class TestPkg(TestCase):
             (["distro: foo"], False, True),
             (["vendor: foo"], False, True),
             (["other: foo"], False, True),
+            (["break-fix: http://a -"], False, True),
+            (["break-fix: - http://b"], False, True),
+            (["break-fix: http://a http://b"], False, True),
             (["break-fix: - c5a8ffcae4103a9d823ea3aa3a761f65779fbe2a"], False, True),
             (["break-fix: b5a8ffcae4103a9d823ea3aa3a761f65779fbe2a -"], False, True),
             (
@@ -366,6 +369,9 @@ class TestPkg(TestCase):
             (["karmic: foo"], True, True),
             (["lucid: foo"], True, True),
             (["maverick: foo"], True, True),
+            (["break-fix: http://a -"], True, True),
+            (["break-fix: - http://b"], True, True),
+            (["break-fix: http://a http://b"], True, True),
             (
                 [
                     "break-fix: 96bb55d8ff4082dfead8bf9a8a85ef7a8e270981 I0f887bb8f1fa5a69a55e23dbb522b3bb694ad27f"
@@ -388,6 +394,21 @@ class TestPkg(TestCase):
             (["upstream:"], False, False),
             (["dapper: foo"], False, False),
             (["break-fix: -"], False, False),
+            (["break-fix: http:// -"], False, False),
+            (["break-fix: - http://"], False, False),
+            (["break-fix: http:// http://b"], False, False),
+            (["break-fix: http://a http://"], False, False),
+            (["break-fix: http:// http://"], False, False),
+            (
+                ["break-fix: http://a b5a8ffcae4103a9d823ea3aa3a761f65779fbe2a"],
+                False,
+                False,
+            ),
+            (
+                ["break-fix: b5a8ffcae4103a9d823ea3aa3a761f65779fbe2a http://b"],
+                False,
+                False,
+            ),
             (["break-fix: b5a8ffcae4103a9d823ea3aa3a761f65779fbe2a"], False, False),
             (["break-fix: b@d c5a8ffcae4103a9d823ea3aa3a761f65779fbe2a"], False, False),
             (["break-fix: c5a8ffcae4103a9d823ea3aa3a761f65779fbe2a b@d"], False, False),
@@ -396,6 +417,21 @@ class TestPkg(TestCase):
             (["upstream foo"], True, False),
             (["upstream:foo"], True, False),
             (["upstream:"], True, False),
+            (["break-fix: http:// -"], True, False),
+            (["break-fix: - http://"], True, False),
+            (["break-fix: http:// http://b"], True, False),
+            (["break-fix: http://a http://"], True, False),
+            (["break-fix: http:// http://"], False, False),
+            (
+                ["break-fix: http://a b5a8ffcae4103a9d823ea3aa3a761f65779fbe2a"],
+                True,
+                False,
+            ),
+            (
+                ["break-fix: b5a8ffcae4103a9d823ea3aa3a761f65779fbe2a http://b"],
+                True,
+                False,
+            ),
         ]
         pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
         for t, compat, valid in tsts:
