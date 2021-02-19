@@ -263,6 +263,46 @@ class TestPkg(TestCase):
                     pkg.setWhen(s)
                 self.assertEqual("invalid when '%s'" % s, str(context.exception))
 
+    def test_setPriorities(self):
+        """Test setPriorities()"""
+        tsts = [
+            # valid
+            ([("test-key", "negligible")], None),
+            ([("test-key", "low")], None),
+            ([("test-key", "medium")], None),
+            ([("test-key", "high")], None),
+            ([("test-key", "critical")], None),
+            ([("test-key", "critical"), ("test_key2", "high")], None),
+            ([("test-key", "critical"), ("test_key_3", "high")], None),
+            # invalid
+            ([("test-key", "b@d")], "invalid package priority 'b@d'"),
+            ([("test-key", "foo ")], "invalid package priority 'foo '"),
+            ([("test-key", " foo ")], "invalid package priority ' foo '"),
+            ([("test-key", "needed")], "invalid package priority 'needed'"),
+            ([("test-key", "needs-triage")], "invalid package priority 'needs-triage'"),
+            (
+                [("test-key", "untriaged")],
+                "invalid package priority 'untriaged' (please remove or set)",
+            ),
+            (
+                [("test-key", "critical"), ("test_key2", "untriaged")],
+                "invalid package priority 'untriaged' (please remove or set)",
+            ),
+            (
+                [("test-key", "critical"), ("test_key_3", "b@d")],
+                "invalid package priority 'b@d'",
+            ),
+            (None, "invalid priorities (not a list)"),
+        ]
+        pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
+        for t, err in tsts:
+            if err is None:
+                pkg.setPriorities(t)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    pkg.setPriorities(t)
+                self.assertEqual(err, str(context.exception))
+
     def test_setPatches(self):
         """Test setPatches()"""
         # one patch
@@ -476,19 +516,29 @@ class TestPkg(TestCase):
         # one patch
         tsts = [
             # valid
-            ("apparmor", None),
-            ("stack-protector", None),
-            ("fortify-source", None),
-            ("symlink-restriction", None),
-            ("hardlink-restriction", None),
-            ("heap-protector", None),
-            ("pie", None),
-            ("apparmor pie", None),
+            ([("test-key", "apparmor")], None),
+            ([("test-key", "stack-protector")], None),
+            ([("test-key", "fortify-source")], None),
+            ([("test-key", "symlink-restriction")], None),
+            ([("test-key", "hardlink-restriction")], None),
+            ([("test-key", "heap-protector")], None),
+            ([("test-key", "pie")], None),
+            ([("test-key", "apparmor"), ("test-key2", "pie stack-protector")], None),
+            ([("test-key", "apparmor"), ("test-key_3", "pie stack-protector")], None),
             # invalid
-            ("bad", "invalid tag 'bad'"),
-            ("apparmor bad", "invalid tag 'bad'"),
-            ("bad apparmor", "invalid tag 'bad'"),
-            ([], "invalid tags (not a string)"),
+            ([("test-key", "bad")], "invalid tag 'bad'"),
+            ([("test-key", "apparmor bad")], "invalid tag 'bad'"),
+            ([("test-key", "bad apparmor")], "invalid tag 'bad'"),
+            (
+                [("test-key", "apparmor"), ("test-key2", "bad stack-protector")],
+                "invalid tag 'bad'",
+            ),
+            (
+                [("test-key", "apparmor"), ("test-key_3", "pie bad")],
+                "invalid tag 'bad'",
+            ),
+            # ([("test-key", "")], "invalid tag 'bad'"),
+            ("", "invalid tags (not a list)"),
         ]
         pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
         for t, err in tsts:

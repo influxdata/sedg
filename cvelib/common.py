@@ -134,8 +134,13 @@ rePatterns = {
     "pkg-tags": re.compile(
         r"^(apparmor|stack-protector|fortify-source|symlink-restriction|hardlink-restriction|heap-protector|pie|universe-binary|not-ue)$"
     ),
+    # TODO: reuse product/where
     "pkg-tags-key": re.compile(
-        r"^Tags_[a-z0-9+.-]{1,%(software_len)d}(_[a-z0-9+.-]{1,%(software_len)d})?$"
+        r"^Tags_[a-z0-9+.-]{1,%(software_len)d}(_[a-z0-9+./-]{1,%(software_len)d})?$"
+        % ({"software_len": _patLengths["pkg-software"]})
+    ),
+    "pkg-priority-key": re.compile(
+        r"^Priority_[a-z0-9+.-]{1,%(software_len)d}(_[a-z0-9+./-]{1,%(software_len)d})?$"
         % ({"software_len": _patLengths["pkg-software"]})
     ),
     # urls

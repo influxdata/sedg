@@ -42,7 +42,8 @@ class CvePkg(object):
         self.setStatus(status)
         self.setWhen(when)
         self.patches = []
-        self.tags = []
+        self.tags = {}
+        self.priorities = {}
 
     def __str__(self):
         s = self.what()
@@ -134,17 +135,38 @@ class CvePkg(object):
                 raise CveException("invalid patch '%s'" % patch)
             self.patches.append(patch)
 
-    def setTags(self, tag):
+    def setTags(self, tagList):
         """Set tag"""
-        if not isinstance(tag, str):
-            raise CveException("invalid tags (not a string)")
+        if not isinstance(tagList, list):
+            raise CveException("invalid tags (not a list)")
 
-        self.tags = []
-        for t in tag.split():
-            t = t.strip()
-            if not rePatterns["pkg-tags"].search(t):
-                raise CveException("invalid tag '%s'" % t)
-            self.tags.append(t)
+        self.tags = {}
+        for tagKey, tagVal in tagList:
+            self.tags[tagKey] = []
+            for t in tagVal.split():
+                t = t.strip()
+                if not rePatterns["pkg-tags"].search(t):
+                    raise CveException("invalid tag '%s'" % t)
+                self.tags[tagKey].append(t)
+
+    def setPriorities(self, priorityList):
+        """Set package priorities"""
+        if not isinstance(priorityList, list):
+            raise CveException("invalid priorities (not a list)")
+
+        self.priorites = {}
+        for priKey, priVal in priorityList:
+            # NOTE: we don't special-case 'untriaged' because that makes no sense
+            # with package priority (ie, if you don't know, you should not set it)
+            if priVal == "untriaged":
+                raise CveException(
+                    "invalid package priority '%s' (please remove or set)" % priVal
+                )
+
+            if not rePatterns["priorities"].search(priVal):
+                raise CveException("invalid package priority '%s'" % priVal)
+
+            self.priorities[priKey] = priVal
 
 
 def parse(s, compatUbuntu=False):
