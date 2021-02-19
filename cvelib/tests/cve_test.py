@@ -412,7 +412,7 @@ git/github_norf: needs-triage
             ("CVE-2020-GH1#a", True),
             ("CVE-2020-GH1234#abcdefg-1.2beta", True),
             ("CVE-2020-GH123456789012#a", True),
-            ("CVE-2020-GH1#%s" % ("a" * 40), True),
+            ("CVE-2020-GH1#%s" % ("a" * 50), True),
             ("BAD", False),
             ("CVE-202O-1234", False),
             ("CV3-2020-1234", False),
@@ -435,7 +435,7 @@ git/github_norf: needs-triage
             ("CVE-2020-GH1234#@", False),
             ("CVE-2020-GH!234#foo", False),
             ("CVE-2020-GH1234#f@o", False),
-            ("CVE-2020-GH1#%s" % ("a" * 41), False),
+            ("CVE-2020-GH1#%s" % ("a" * 51), False),
         ]
         for (cand, valid) in tsts:
             if valid:
@@ -703,6 +703,11 @@ git/github_norf: needs-triage
                 None,
             ),
             ("https://github.com/foo/bar/issues/1", "CVE-%s-GH1#bar" % year, None),
+            (
+                "https://github.com/foo/%s/issues/1" % ("a" * 50),
+                "CVE-%s-GH1#%s" % (year, ("a" * 50)),
+                None,
+            ),
             # invalid
             ("bad", None, "unsupported url: 'bad' (only support github)"),
             (
@@ -719,6 +724,12 @@ git/github_norf: needs-triage
                 "https://github.com/influxdata/idpe/pull/6238",
                 None,
                 "invalid url: 'https://github.com/influxdata/idpe/pull/6238' (only support github issues)",
+            ),
+            (
+                "https://github.com/foo/%s/issues/1" % ("a" * 51),
+                None,
+                "invalid url: 'https://github.com/foo/%s/issues/1' (only support github issues)"
+                % ("a" * 51),
             ),
         ]
         for (url, exp, exp_fail) in tsts:

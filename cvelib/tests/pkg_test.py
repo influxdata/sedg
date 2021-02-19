@@ -524,6 +524,9 @@ class TestPkg(TestCase):
                 True,
             ),
             ("upstream_%s: needed" % ("a" * 50), False, True),
+            ("git/%s_foo: needed" % ("a" * 40), False, True),
+            ("upstream_foo/%s: needed" % ("a" * 40), False, True),
+            ("upstream_foo: needed (%s)" % ("a" * 100), True, True),
             # valid compatUbuntu
             ("focal_foo: needed", True, True),
             ("lucid_gcc-4.1: ignored (reached end-of-life)", True, True),
@@ -554,22 +557,28 @@ class TestPkg(TestCase):
                 True,
             ),
             ("devel_grub2-signed: released (1.157)", True, True),
-            (
-                "precise/esm_linux-ti-omap4: DNE (precise was not-affected [v3.8 and older do not have sufficient conversion to be affected])",
-                True,
-                True,
-            ),
             ("focal_%s: needed" % ("a" * 50), True, True),
+            ("%s_foo: needed" % ("a" * 40), True, True),
+            ("snap/%s_foo: needed" % ("a" * 40), True, True),
+            ("focal_foo/%s: needed" % ("a" * 40), True, True),
+            ("focal_foo: needed (%s)" % ("a" * 100), True, True),
             # invalid
             ("b@d", False, False),
             ("foo @", False, False),
             ("ubuntu/foc@l_foo: needed", False, False),
             ("ubuntu/devel_grub2-signed: released (1.157)\n ", False, False),
             ("upstream_%s: needed" % ("a" * 51), False, False),
+            ("git/%s_foo: needed" % ("a" * 41), False, False),
+            ("upstream_foo/%s: needed" % ("a" * 41), False, False),
+            ("upstream_foo: needed (%s)" % ("a" * 101), True, False),
             # invalid compatUbuntu
             ("foc@l_foo: needed", True, False),
             ("devel_grub2-signed: released (1.157)\n ", True, False),
             ("focal_%s: needed" % ("a" * 51), True, False),
+            ("%s_foo: needed" % ("a" * 41), True, False),
+            ("snap/%s_foo: needed" % ("a" * 41), True, False),
+            ("focal_foo/%s: needed" % ("a" * 40), False, False),
+            ("focal_foo: needed (%s)" % ("a" * 101), True, False),
         ]
         for s, compat, valid in tsts:
             if valid:

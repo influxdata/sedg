@@ -28,7 +28,11 @@ configCache = None
 
 # Various configurable lengths used in the regexes
 _patLengths = {
+    "pkg-product-ubuntu": 40,
+    "pkg-where": 40,
     "pkg-software": 50,
+    "pkg-modifier": 40,
+    "pkg-when": 100,
 }
 
 # Compile common regex on import
@@ -40,26 +44,48 @@ rePatterns = {
     ),
     # we can do 'ubuntu', 'suse', 'debian', etc for this for other distros
     "pkg-product": re.compile(r"^(git|snap|oci|upstream|ubuntu|debian|suse)$"),
-    "pkg-product-ubuntu": re.compile(r"^[a-z0-9+.-]{1,40}$"),
+    "pkg-product-ubuntu": re.compile(
+        r"^[a-z0-9+.-]{1,%(product_len)d}$"
+        % ({"product_len": _patLengths["pkg-product-ubuntu"]})
+    ),
     "pkg-status": re.compile(
         r"^(needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)$"
     ),
     # free form text
-    "pkg-when": re.compile(r"^[a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,100}$"),
+    "pkg-when": re.compile(
+        r"^[a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,%(when_len)d}$"
+        % ({"when_len": _patLengths["pkg-when"]})
+    ),
     # the string form
     "pkg-full": re.compile(
-        r"^(git|snap|oci|upstream|ubuntu|debian|suse)(/[a-z0-9+.-]{1,40})?_[a-z0-9+.-]{1,%(software_len)d}(/[a-z0-9+.-]{1,40})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,100}\))?$"
-        % ({"software_len": _patLengths["pkg-software"]})
+        r"^(git|snap|oci|upstream|ubuntu|debian|suse)(/[a-z0-9+.-]{1,%(where_len)d})?_[a-z0-9+.-]{1,%(software_len)d}(/[a-z0-9+.-]{1,%(modifier_len)d})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,%(when_len)d}\))?$"
+        % (
+            {
+                "where_len": _patLengths["pkg-where"],
+                "software_len": _patLengths["pkg-software"],
+                "when_len": _patLengths["pkg-when"],
+                "modifier_len": _patLengths["pkg-modifier"],
+            }
+        )
     ),
     "pkg-full-ubuntu": re.compile(
-        r"^[a-z0-9+.-]{1,40}(/[a-z0-9+.-]{1,40})?_[a-z0-9+.-]{1,%(software_len)d}(/[a-z0-9+.-]{1,40})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,'\"/:~\[\]()<>#=|`_-]{1,100}\))?$"
-        % ({"software_len": _patLengths["pkg-software"]})
+        r"^[a-z0-9+.-]{1,%(product_len)d}(/[a-z0-9+.-]{1,%(where_len)d})?_[a-z0-9+.-]{1,%(software_len)d}(/[a-z0-9+.-]{1,%(modifier_len)d})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,'\"/:~\[\]()<>#=|`_-]{1,%(when_len)d}\))?$"
+        % (
+            {
+                "software_len": _patLengths["pkg-software"],
+                "where_len": _patLengths["pkg-where"],
+                "when_len": _patLengths["pkg-when"],
+                "product_len": _patLengths["pkg-product-ubuntu"],
+                "modifier_len": _patLengths["pkg-modifier"],
+            }
+        )
     ),
     # CVE-YYYY-XXXX (1-12 X's)
     # CVE-YYYY-NNNX (1-11 N's)
     # CVE-YYYY-GHXXXX#AAAA (1-12 X's, 1-40 A's)
     "CVE": re.compile(
-        r"^CVE-[0-9]{4}-([0-9N]{3,11}[0-9]|GH[0-9]{1,12}#[a-z0-9+.-]{1,40})$"
+        r"^CVE-[0-9]{4}-([0-9N]{3,11}[0-9]|GH[0-9]{1,12}#[a-z0-9+.-]{1,%(software_len)d})$"
+        % ({"software_len": _patLengths["pkg-software"]})
     ),
     # CVE priorities
     "priorities": re.compile(r"^(negligible|low|medium|high|critical)$"),
@@ -81,7 +107,8 @@ rePatterns = {
     ),
     # https://github.com/<org>/<project>/issues/<num>
     "github-issue": re.compile(
-        r"^https://github.com/[a-z0-9+.-]{1,40}/[a-z0-9+.-]{1,40}/issues/[0-9]{1,12}"
+        r"^https://github.com/[a-z0-9+.-]{1,40}/[a-z0-9+.-]{1,%(software_len)d}/issues/[0-9]{1,12}"
+        % ({"software_len": _patLengths["pkg-software"]})
     ),
     # upstream: something
     # vendor: something
@@ -99,12 +126,18 @@ rePatterns = {
         r"^((distro|other|upstream|vendor|debdiff|diff|fork|merge|proposed|unknown|android|debian|fedora|opensuse|redhat|dapper|hardy|jaunty|karmic|lucid|maverick): I?[a-z0-9+.-].*|break-fix: +((-|I?[0-9a-f]+) +(-|I?[0-9a-f]+)|(-|I?[0-9a-f|]+|(I?[0-9a-f|]+)?local[a-zA-X0-9|-]+)? +(-|I?[0-9a-f|]+|(I?[0-9a-f|]+)?local[a-zA-X0-9|-]+))$)"
     ),
     # TODO: break out Ubuntu-specific tags
-    "pkg-patch-key": re.compile(r"^Patches_[a-z0-9+.-]{1,40}$"),
+    "pkg-patch-key": re.compile(
+        r"^Patches_[a-z0-9+.-]{1,%(software_len)d}$"
+        % ({"software_len": _patLengths["pkg-software"]})
+    ),
     # TODO: break out Ubuntu-specific tags
     "pkg-tags": re.compile(
         r"^(apparmor|stack-protector|fortify-source|symlink-restriction|hardlink-restriction|heap-protector|pie|universe-binary|not-ue)$"
     ),
-    "pkg-tags-key": re.compile(r"^Patches_[a-z0-9+.-]{1,40}(_[a-z0-9+.-]{1,40})?$"),
+    "pkg-tags-key": re.compile(
+        r"^Patches_[a-z0-9+.-]{1,%(software_len)d}(_[a-z0-9+.-]{1,%(software_len)d})?$"
+        % ({"software_len": _patLengths["pkg-software"]})
+    ),
     # urls
     "url-schemes": re.compile(r"^(cvs|ftp|git|https?|sftp|shttp|svn)://."),
     # People. We aren't accepting utf-8 elsewhere so only ascii here
