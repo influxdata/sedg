@@ -95,8 +95,8 @@ by the file format. The format could be moved to RFC6532 at a future date.
     [Tags_<software1>[_<extra>]: <tag1> <tag2>]
     [Priority_<software1>: negligible | low | medium | high | critical]
     [Priority_<software1>[_<extra>]: negligible | low | medium | high | critical]
-    <product1>[/<where>]_<software1>[/<modifier>: <status> [(<when>)]
-    <product2>[/<where>]_<software1>[/<modifier>: <status> [(<when>)]
+    <product1>[/<where>]_<software1>[/<modifier>]: <status> [(<when>)]
+    <product2>[/<where>]_<software1>[/<modifier>]: <status> [(<when>)]
 
     Patches_<software2>:
      upstream | vendor | debdiff | other: <url>
@@ -104,8 +104,8 @@ by the file format. The format could be moved to RFC6532 at a future date.
     [Tags_<software2>[_<extra>]: <tag1> <tag2>]
     [Priority_<software2>: negligible | low | medium | high | critical]
     [Priority_<software2>[_<extra>]: negligible | low | medium | high | critical]
-    <product1>[/<where>]_<software2>[/<modifier>: <status> [(<when>)]
-    <product2>[/<where>]_<software2>[/<modifier>: <status> [(<when>)]
+    <product1>[/<where>]_<software2>[/<modifier>]: <status> [(<when>)]
+    <product2>[/<where>]_<software2>[/<modifier>]: <status> [(<when>)]
 
     ... <additional software> ...
 ```
@@ -180,3 +180,7 @@ Typical software stanza examples:
     snap/pub1_qux: released (1234)
     snap/pub2_qux: not-affected (code not compiled)
 ```
+
+The format offers considerable flexibility. For example, to capture the
+organization with github, one might use `github/<org>_...` instead of
+`git/github_...`.
