@@ -745,7 +745,9 @@ def _createCve(cveDirs, cve_path, cve, args_pkgs, compatUbuntu):
 
 def addCve(cveDirs, compatUbuntu, orig_cve, orig_pkgs):
     """Add/modify CVE"""
-    pkgs = copy.deepcopy(orig_pkgs)
+    pkgs = []
+    if orig_pkgs is not None:
+        pkgs = copy.deepcopy(orig_pkgs)
 
     # See if we can parse
     cand = None
