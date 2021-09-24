@@ -1,8 +1,8 @@
 # Using
 
- 1. Clone this repo (https://github.com/jdstrand/influx-security-tools)
+ 1. Clone this repo (https://github.com/influxdata/influx-security-tools)
 
- 2. Clone CVE data (https://github.com/jdstrand/influx-security-tools-cve-data)
+ 2. Clone CVE data (https://github.com/influxdata/influx-security-tools-cve-data)
 
  3. Create ~/.config/influx-security-tools.conf to have:
 
