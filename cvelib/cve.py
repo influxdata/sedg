@@ -608,12 +608,7 @@ def checkSyntax(cveDirs, compatUbuntu, untriagedOk=False):
     """Perform syntax checks on CVEs"""
     # TODO: make configurable
     seen = {}
-    cves = (
-        glob.glob(cveDirs["active"] + "/CVE*")
-        + glob.glob(cveDirs["retired"] + "/CVE-*")
-        + glob.glob(cveDirs["ignored"] + "/CVE-*")
-    )
-    cves.sort()
+    cves = _getCVEPaths(cveDirs)
     for f in cves:
         tmp = os.path.realpath(f).split("/")
         rel = tmp[-2] + "/" + tmp[-1]
@@ -786,3 +781,15 @@ def addCve(cveDirs, compatUbuntu, orig_cve, orig_pkgs):
         shutil.copyfile(pkgBoiler, cve_fn, follow_symlinks=False)
 
     _createCve(cveDirs, cve_fn, orig_cve, pkgs, compatUbuntu)
+
+
+# misc helpers
+def _getCVEPaths(cveDirs):
+    """Return the list of sorted CVE paths"""
+    cves = (
+        glob.glob(cveDirs["active"] + "/CVE*")
+        + glob.glob(cveDirs["retired"] + "/CVE-*")
+        + glob.glob(cveDirs["ignored"] + "/CVE-*")
+    )
+    cves.sort()
+    return cves

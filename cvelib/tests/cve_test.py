@@ -1378,3 +1378,43 @@ upstream_baz: needed
                         self.assertTrue(uPkg in res)
                         self.assertFalse(p in res)
                         self.assertEqual("needs-triage", res[uPkg])
+
+    def test__getCVEPaths(self):
+        """Test _getCVEPaths"""
+        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        content = (
+            """[Location]
+cve-data = %s
+"""
+            % self.tmpdir
+        )
+        self.orig_xdg_config_home, self.tmpdir = cvelib.tests.util._newConfigFile(
+            content, self.tmpdir
+        )
+
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
+
+        testData = ["active/CVE-2021-9997",
+                    "retired/CVE-2021-9998",
+                    "ignored/CVE-2021-9999"]
+
+        # create some files
+        for fn in testData:
+            tmpl = self._cve_template()
+            dir, cand = fn.split("/")
+            tmpl["Candidate"] = cand
+            content = cvelib.tests.util.cveContentFromDict(tmpl)
+
+            cve_fn = os.path.join(cveDirs[dir], cand)
+
+            with open(cve_fn, "w") as fp:
+                fp.write("%s" % content)
+
+        res = cvelib.cve._getCVEPaths(cveDirs)
+        self.assertEqual(len(testData), len(res))
+        testData.sort()
+        for i in range(len(testData)):
+            self.assertTrue(testData[i] in res[i])
