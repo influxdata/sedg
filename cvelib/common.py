@@ -14,6 +14,18 @@ from email.policy import Compat32
 # cache of config
 configCache = None
 
+cve_priorities = ["critical", "high", "medium", "low", "negligible"]
+cve_statuses = [
+    "needs-triage",
+    "needed",
+    "pending",
+    "released",
+    "deferred",
+    "ignored",
+    "DNE",
+    "not-affected"
+]
+
 # TODO: pull these out into dictionaries and move to membership checks (where
 # the value of the dict could be a description of the thing (eg, for tags):
 # - pkg-product
@@ -48,9 +60,7 @@ rePatterns = {
         r"^[a-z0-9+.-]{1,%(product_len)d}$"
         % ({"product_len": _patLengths["pkg-product-ubuntu"]})
     ),
-    "pkg-status": re.compile(
-        r"^(needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)$"
-    ),
+    "pkg-status": re.compile(r"^(%s)$" % "|".join(cve_statuses)),
     # free form text
     "pkg-when": re.compile(
         r"^[a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,%(when_len)d}$"
@@ -88,7 +98,7 @@ rePatterns = {
         % ({"software_len": _patLengths["pkg-software"]})
     ),
     # CVE priorities
-    "priorities": re.compile(r"^(negligible|low|medium|high|critical)$"),
+    "priorities": re.compile(r"^(%s)$" % "|".join(cve_priorities)),
     # date only: YYYY-MM-DD
     # date and time: YYYY-MM-DD HH:MM:SS
     # date and time with timezone: YYYY-MM-DD HH:MM:SS TZ|+-N
