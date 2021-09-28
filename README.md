@@ -184,3 +184,75 @@ Typical software stanza examples:
 The format offers considerable flexibility. For example, to capture the
 organization with github, one might use `github/<org>_...` instead of
 `git/github_...`.
+
+
+# Monitoring
+
+## Total unique open issues
+```
+from(bucket: "sec-issues")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "cveLog" and r["_field"] == "id")
+  |> keep(columns: ["_time", "_value", "_field", "priority"])
+  |> window(every: 1d)
+  |> unique()
+  |> group(columns: ["priority"])
+  |> aggregateWindow(every: 1d, fn: count)
+```
+
+## Open issues in affected software
+
+Grouped by software:
+```
+import "strings"
+from(bucket: "sec-issues")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "cveLog" and (r["_field"] == "id" or r["_field"] == "software"))
+  |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+  |> map(fn: (r) => ({
+    r with
+    _value: strings.joinStr(arr: [r.software, r.id, r.priority], v: ":")
+  }))
+  |> drop(columns: ["id", "product", "status"])
+  |> group(columns: ["software"])
+  |> window(every: 1d)
+  |> unique()
+  |> aggregateWindow(every: 1d, fn: count)
+```
+
+Old (grouped by priority):
+```
+import "strings"
+from(bucket: "sec-issues")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "cveLog" and (r["_field"] == "id" or r["_field"] == "software"))
+  |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+  |> map(fn: (r) => ({
+    r with
+    _value: strings.joinStr(arr: [r.software, r.id, r.priority], v: ":")
+  }))
+  |> drop(columns: ["id", "product", "status", "software"])
+  |> group(columns: ["priority"])
+  |> window(every: 1d)
+  |> unique()
+  |> aggregateWindow(every: 1d, fn: count)
+```
+
+### Open issues by software/priority
+```
+import "strings"
+from(bucket: "sec-issues")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "cveLog" and (r["_field"] == "id" or r["_field"] == "software"))
+  |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+  |> map(fn: (r) => ({
+    r with
+    tuple: strings.joinStr(arr: [r.software, r.priority], v: ":"),
+    _value: strings.joinStr(arr: [r.software, r.priority, r.id], v: ":")
+  }))
+  |> drop(columns: ["id", "product", "status", "software"])
+  |> group(columns: ["tuple"])
+  |> window(every: 1d)
+  |> unique()
+  |> aggregateWindow(every: 1d, fn: count)
+```
