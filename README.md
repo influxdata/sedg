@@ -188,8 +188,31 @@ organization with github, one might use `github/<org>_...` instead of
 
 # Monitoring
 
+`bin/cve-report` can be used to generate human-readable output or line protocol
+suitable for sending to InfluxDB. Eg:
+
+```
+$ cve-report --output-influxdb
+cveLog,priority=medium,status=needed,product=git id="CVE-2020-1234",software="foo",modifier="" 1633040641675003246
+...
+```
+
+This line protocol can then be queried in various ways. Since CVE data is not
+expected to be updated on a daily basis, the following techniques of use two
+`aggregateWindow()` functions, the first with a `noop()`, allows for graphs to
+be filled in for any days that are missing (both in the middle and at the end).
+The start time must necessarily have at least one point to work. If sending
+data in daily, you can skip the `noop()` function and at the end use a single
+`aggregateWindow(every: 1d, count)` without a `fill()`.
+
 ## Total unique open issues
 ```
+// something to be given to aggregateWindow() that doesn't
+// have side-effects. See
+// https://community.influxdata.com/t/advice-how-to-carry-forward-data-from-the-previous-day/21895
+noop = (tables=<-, column="_value") =>
+  tables
+
 from(bucket: "sec-issues")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
   |> filter(fn: (r) => r["_measurement"] == "cveLog" and r["_field"] == "id")
@@ -197,7 +220,13 @@ from(bucket: "sec-issues")
   |> window(every: 1d)
   |> unique()
   |> group(columns: ["priority"])
-  |> aggregateWindow(every: 1d, fn: count)
+  // get all the counts, but don't create any empty data since count() has the
+  // side-effect of turning nulls to 0s
+  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)
+  // create the empty data with nulls intact
+  |> aggregateWindow(every: 1d, fn: noop)
+  // convert nulls in "_value" to the previous row
+  |> fill(usePrevious: true)
 ```
 
 ## Open issues in affected software
@@ -205,6 +234,13 @@ from(bucket: "sec-issues")
 Grouped by software:
 ```
 import "strings"
+
+// something to be given to aggregateWindow() that doesn't
+// have side-effects. See
+// https://community.influxdata.com/t/advice-how-to-carry-forward-data-from-the-previous-day/21895
+noop = (tables=<-, column="_value") =>
+  tables
+
 from(bucket: "sec-issues")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
   |> filter(fn: (r) => r["_measurement"] == "cveLog" and (r["_field"] == "id" or r["_field"] == "software"))
@@ -217,7 +253,13 @@ from(bucket: "sec-issues")
   |> group(columns: ["software"])
   |> window(every: 1d)
   |> unique()
-  |> aggregateWindow(every: 1d, fn: count)
+  // get all the counts, but don't create any empty data since count() has the
+  // side-effect of turning nulls to 0s
+  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)
+  // create the empty data with nulls intact
+  |> aggregateWindow(every: 1d, fn: noop)
+  // convert nulls in "_value" to the previous row
+  |> fill(usePrevious: true)
 ```
 
 Old (grouped by priority):
@@ -241,6 +283,13 @@ from(bucket: "sec-issues")
 ### Open issues by software/priority
 ```
 import "strings"
+
+// something to be given to aggregateWindow() that doesn't
+// have side-effects. See 
+// https://community.influxdata.com/t/advice-how-to-carry-forward-data-from-the-previous-day/21895
+noop = (tables=<-, column="_value") =>
+  tables
+
 from(bucket: "sec-issues")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
   |> filter(fn: (r) => r["_measurement"] == "cveLog" and (r["_field"] == "id" or r["_field"] == "software"))
@@ -254,5 +303,11 @@ from(bucket: "sec-issues")
   |> group(columns: ["tuple"])
   |> window(every: 1d)
   |> unique()
-  |> aggregateWindow(every: 1d, fn: count)
+  // get all the counts, but don't create any empty data since count() has the 
+  // side-effect of turning nulls to 0s
+  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)
+  // create the empty data with nulls intact
+  |> aggregateWindow(every: 1d, fn: noop)
+  // convert nulls in "_value" to the previous row
+  |> fill(usePrevious: true)
 ```
