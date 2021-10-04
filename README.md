@@ -16,6 +16,13 @@
     ```
     $ export PYTHONPATH=/path/to/influx-security-tools
     $ export PATH=$PATH:/path/to/influx-security-tools/bin
+
+    # create a placeholder CVE using this year
+    $ cve-add --cve <url to github issue>
+
+    # create a CVE against a particular package
+    $ cve-add --cve CVE-2020-1234 -p git/github_flux
+
     $ <work on CVEs in .../influx-security-tools-cve-data>
     $ cve-check-syntax
     ```
@@ -197,6 +204,10 @@ cveLog,priority=medium,status=needed,product=git id="CVE-2020-1234",software="fo
 ...
 ```
 
+For now, paste this into 'Add Data/Line Protocol' whenever you make relevant
+changes to the CVE data. A tool will eventually be provided to make this
+easier.
+
 This line protocol can then be queried in various ways. Since CVE data is not
 expected to be updated on a daily basis, the following techniques of using two
 `aggregateWindow()` functions, the first with `createEmpty: false` and the
@@ -225,6 +236,8 @@ from(bucket: "sec-issues")
   |> fill(usePrevious: true)
 ```
 
+Best viewed as stacked graph with static legend.
+
 ## Open issues in affected software
 
 Grouped by software:
@@ -247,6 +260,8 @@ from(bucket: "sec-issues")
   |> aggregateWindow(every: 1d, fn: (tables=<-, column="_value") => tables)
   |> fill(usePrevious: true)
 ```
+
+Best viewed as stacked graph with static legend.
 
 Old (grouped by priority):
 ```
@@ -286,4 +301,56 @@ from(bucket: "sec-issues")
   |> aggregateWindow(every: 1d, createEmpty: false, fn: count)
   |> aggregateWindow(every: 1d, fn: (tables=<-, column="_value") => tables)
   |> fill(usePrevious: true)
+```
+
+Best viewed as stacked graph with static legend.
+
+
+### Alert on open issues
+```
+import "slack"
+
+endpoint = slack.endpoint(url: "https://hooks.slack.com/services/X/Y/Z")
+
+mapFnCrit = (r) => ({
+  text: if r._value == 1 then "${r._value} open critical issue" else "${r._value} open critical issues",
+  color: "danger",
+  channel: "",
+})
+toSlackCrit = endpoint(mapFn: mapFnCrit)
+
+mapFnHigh = (r) => ({
+  text: if r._value == 1 then "${r._value} open high issue" else "${r._value} open high issues",
+  color: "danger",
+  channel: "",
+})
+toSlackHigh = endpoint(mapFn: mapFnHigh)
+
+critlvl = 0
+highlvl = 0
+
+checkStatus = (tables=<-, priority, threshold) =>
+  tables
+    |> range(start: -30d, stop: now())
+    |> filter(fn: (r) => r["_measurement"] == "cveLog")
+    |> filter(fn: (r) => r["_field"] == "id")
+    |> filter(fn: (r) => r["priority"] == priority)
+    |> window(every: 1d)
+    |> unique()
+    |> group()
+    |> aggregateWindow(every: 1d, createEmpty: true, fn: count)
+    |> sort(columns: ["_time"])
+    |> last()
+    |> limit(n:1)
+    |> filter(fn: (r) => r["_value"] > threshold)
+
+crit = from(bucket: "jdstrand-sec-stats")
+  |> checkStatus(priority: "critical", threshold: critlvl)
+  |> toSlackCrit()
+  |> yield(name: "critical")
+
+high = from(bucket: "jdstrand-sec-stats")
+  |> checkStatus(priority: "high", threshold: highlvl)
+  |> toSlackHigh()
+  |> yield(name: "high")
 ```
