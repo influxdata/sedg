@@ -23,6 +23,9 @@
     # create a CVE against a particular package
     $ cve-add --cve CVE-2020-1234 -p git/github_flux
 
+    # create a placeholder CVE with a particular id and package boilerplate
+    $ cve-add -c CVE-2020-GH1234#foo -p git/github_foo --package-boiler=bar
+
     $ <work on CVEs in .../influx-security-tools-cve-data>
     $ cve-check-syntax
     ```

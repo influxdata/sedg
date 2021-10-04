@@ -1294,49 +1294,54 @@ upstream_baz: needed
 
         tsts = [
             # valid strict
-            ("CVE-2021-999999", ["git/github_foo"], False, None),
-            ("CVE-2021-999999", ["git/github_foo", "git/github_bar"], False, None),
-            ("https://github.com/foo/bar/issues/1234", [], False, None),
-            ("https://github.com/foo/bar/issues/1234", ["git/github_bar"], False, None),
-            ("CVE-2021-999999", ["git/github_baz/mod"], False, None),
-            ("CVE-2021-999999", ["ubuntu/focal_norf"], False, None),
-            ("CVE-2021-999999", ["debian/buster_norf"], False, None),
+            ("CVE-2021-999999", ["git/github_foo"], False, None, None),
+            ("CVE-2021-999999", ["git/github_foo", "git/github_bar"], False, None, None),
+            ("https://github.com/foo/bar/issues/1234", [], False, None, None),
+            ("https://github.com/foo/bar/issues/1234", ["git/github_bar"], False, None, None),
+            ("https://github.com/foo/bar/issues/1234", ["git/github_bar"], False, "baz", None),
+            ("CVE-2021-999999", ["git/github_baz/mod"], False, None, None),
+            ("CVE-2021-999999", ["ubuntu/focal_norf"], False, None, None),
+            ("CVE-2021-999999", ["debian/buster_norf"], False, None, None),
             # valid compat
-            ("CVE-2021-999999", ["focal_baz"], True, None),
-            ("CVE-2021-999999", ["norf"], True, None),
-            ("CVE-2021-999999", ["norf", "corge"], True, None),
+            ("CVE-2021-999999", ["focal_baz"], True, None, None),
+            ("CVE-2021-999999", ["norf"], True, None, None),
+            ("CVE-2021-999999", ["norf", "corge"], True, None, None),
             # invalid
             (
                 "CVE-2021-bad",
                 ["git/github_foo"],
                 False,
+                None,
                 "invalid Candidate: 'CVE-2021-bad'",
             ),
             (
                 "https://github.com/foo",
                 [],
                 False,
+                None,
                 "invalid url: 'https://github.com/foo' (only support github issues)",
             ),
             (
                 "CVE-2021-999999",
                 ["focal_baz"],
                 False,
+                None,
                 "invalid package entry 'focal_baz: needs-triage'",
             ),
             (
                 "CVE-2021-999999",
                 [],
                 False,
+                None,
                 "could not find usable packages for 'CVE-2021-999999'",
             ),
         ]
 
-        for cve, pkgs, compat, expFail in tsts:
+        for cve, pkgs, compat, boiler, expFail in tsts:
 
             if expFail is not None:
                 with self.assertRaises(cvelib.common.CveException) as context:
-                    cvelib.cve.addCve(cveDirs, compat, cve, pkgs)
+                    cvelib.cve.addCve(cveDirs, compat, cve, pkgs, boiler)
                 self.assertEqual(expFail, str(context.exception))
                 continue
 
@@ -1345,7 +1350,7 @@ upstream_baz: needed
                 cve_fn = os.path.join(cveDirs["active"], cvelib.cve.cveFromUrl(cve))
 
             with cvelib.tests.util.capturedOutput() as (output, error):
-                cvelib.cve.addCve(cveDirs, compat, cve, pkgs)
+                cvelib.cve.addCve(cveDirs, compat, cve, pkgs, boiler)
             self.assertTrue(os.path.exists(cve_fn))
 
             out = output.getvalue().strip()
@@ -1378,6 +1383,10 @@ upstream_baz: needed
                         self.assertTrue(uPkg in res)
                         self.assertFalse(p in res)
                         self.assertEqual("needs-triage", res[uPkg])
+
+            if boiler is not None:
+                self.assertTrue("upstream_baz" in res)
+                self.assertEqual("needed", res["upstream_baz"])
 
     def test__getCVEPaths(self):
         """Test _getCVEPaths"""

@@ -738,7 +738,7 @@ def _createCve(cveDirs, cve_path, cve, args_pkgs, compatUbuntu):
         os.unlink(f.name)
 
 
-def addCve(cveDirs, compatUbuntu, orig_cve, orig_pkgs):
+def addCve(cveDirs, compatUbuntu, orig_cve, orig_pkgs, boiler=None):
     """Add/modify CVE"""
     pkgs = []
     if orig_pkgs is not None:
@@ -764,10 +764,13 @@ def addCve(cveDirs, compatUbuntu, orig_cve, orig_pkgs):
 
     # Find boilerplate if we have one
     pkgBoiler = None
-    if "_" in pkgs[0]:  # product/where_software/modifer
+    if boiler is not None:
+        pkgBoiler = boiler
+    elif "_" in pkgs[0]:  # product/where_software/modifer
         pkgBoiler = pkgs[0].split("_")[1].split("/")[0]
     elif compatUbuntu:  # software/modifier
         pkgBoiler = pkgs[0].split("/")[0]
+
     if pkgBoiler is not None:
         pkgBoiler = os.path.join(cveDirs["active"], "00boilerplate.%s" % pkgBoiler)
 
