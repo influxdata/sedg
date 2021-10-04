@@ -677,7 +677,8 @@ def _genReferencesAndBugs(cve):
     return refs, bugs
 
 
-def _createCve(cveDirs, cve_path, cve, args_pkgs, compatUbuntu):
+def _createCve(cveDirs, cve_path, cve, args_pkgs, compatUbuntu,
+               withReferences=False):
     """Create or append CVE"""
     data = {}
 
@@ -712,6 +713,10 @@ def _createCve(cveDirs, cve_path, cve, args_pkgs, compatUbuntu):
             for p in tmp:
                 args_pkgs.remove(p)
 
+        # unconditionally add references when generating from boiler
+        withReferences = True
+
+    if withReferences:
         # References and bugs only need filling in with new CVEs
         refs, bugs = _genReferencesAndBugs(cve)
         data["References"] = "\n %s" % " ".join(refs)
@@ -776,14 +781,16 @@ def addCve(cveDirs, compatUbuntu, orig_cve, orig_pkgs, boiler=None):
 
     # if we have a per-package boiler but don't have the cve, then copy
     # the boiler into place as the CVE
+    fromPkgBoiler = False
     if (
         pkgBoiler is not None
         and os.path.isfile(pkgBoiler)
         and not os.path.isfile(cve_fn)
     ):
         shutil.copyfile(pkgBoiler, cve_fn, follow_symlinks=False)
+        fromPkgBoiler = True
 
-    _createCve(cveDirs, cve_fn, orig_cve, pkgs, compatUbuntu)
+    _createCve(cveDirs, cve_fn, orig_cve, pkgs, compatUbuntu, fromPkgBoiler)
 
 
 # misc helpers
