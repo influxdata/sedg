@@ -317,9 +317,12 @@ Best viewed as stacked graph with static legend.
 
 ### Alert on open issues
 ```
+import "influxdata/influxdb/secrets"
 import "slack"
 
-endpoint = slack.endpoint(url: "https://hooks.slack.com/services/X/Y/Z")
+// secret is https://hooks.slack.com/services/X/Y/Z
+webhook_url = secrets.get(key: "my-webhook-url")
+endpoint = slack.endpoint(url: webhook_url)
 
 mapFnCrit = (r) => ({
   text: if r._value == 1 then "${r._value} open critical issue" else "${r._value} open critical issues",
