@@ -220,6 +220,12 @@ end). The start time must necessarily have at least one point to work. If
 sending data in daily, you can skip the `noop()` function and at the end use a
 single `aggregateWindow(every: 1d, count)` without a `fill()`.
 
+It is possible to backfill by checking out a commit and running `cve-report`
+with `--output-influxdb-starttime`. Eg:
+```
+$ cve-report --output-influxdb --output-influxdb-starttime $(date --date "8 days ago" "+%s")
+```
+
 ## Total unique open issues
 ```
 from(bucket: "sec-issues")
