@@ -341,19 +341,20 @@ toSlackHigh = endpoint(mapFn: mapFnHigh)
 critlvl = 0
 highlvl = 0
 
-checkStatus = (tables=<-, priority, threshold) =>
-  tables
+checkStatus = (tables=<-, priority, threshold) => tables
     |> range(start: -30d, stop: now())
     |> filter(fn: (r) => r["_measurement"] == "cveLog")
     |> filter(fn: (r) => r["_field"] == "id")
     |> filter(fn: (r) => r["priority"] == priority)
     |> window(every: 1d)
     |> unique()
-    |> group()
-    |> aggregateWindow(every: 1d, createEmpty: true, fn: count)
-    |> sort(columns: ["_time"])
+    |> group(columns: ["priority"])
+    // https://community.influxdata.com/t/advice-how-to-carry-forward-data-from-the-previous-day/21895
+    |> aggregateWindow(every: 1d, createEmpty: false, fn: count)
+    |> aggregateWindow(every: 1d, createEmpty: true, fn: (tables=<-, column="_value") => tables)
+    |> fill(usePrevious: true)
     |> last()
-    |> limit(n:1)
+    |> limit(n: 1)
     |> filter(fn: (r) => r["_value"] > threshold)
 
 crit = from(bucket: "jdstrand-sec-stats")
