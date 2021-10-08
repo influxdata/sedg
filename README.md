@@ -226,6 +226,8 @@ with `--output-influxdb-starttime`. Eg:
 $ cve-report --output-influxdb --output-influxdb-starttime $(date --date "8 days ago" "+%s")
 ```
 
+TODO: there is also a telegraf/github plugin that could be investigated.
+
 ## Total unique open issues
 ```
 from(bucket: "sec-issues")
