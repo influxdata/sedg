@@ -28,6 +28,14 @@
 
     $ <work on CVEs in .../influx-security-tools-cve-data>
     $ cve-check-syntax
+
+    # various reports for humans
+    $ cve-report      				# summary
+    $ cve-report --output-todolist		# todo list
+    $ cve-report --output-sw [SOFTWARE]		# software info
+
+    # various machine reports
+    $ cve-report --output-influxdb		# InfluxDB line protocol
     ```
 
  5. (Optional) If vim user, symlink cvelib/cve.vim in ~/.vim/syntax
