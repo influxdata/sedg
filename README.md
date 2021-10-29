@@ -377,3 +377,35 @@ high = from(bucket: "jdstrand-sec-stats")
   |> toSlackHigh()
   |> yield(name: "high")
 ```
+
+# GitHub and CVE data
+GitHub does not provide easy mechanisms to subscribe to labels in repos or
+across the org and also doesn't provide issue label information in their email
+headers for bug comments. Combined, we must poll GitHub for information to
+detect new issues or issues that have received updates. The
+`cve-report-updated-bugs` tool aims to address this gap. Example usage:
+```
+    # Show issues that are referenced in open CVE data that have been
+    # updated since last week
+    $ cve-report-updated-bugs --show-updated \
+        --gh-org foo --since $(date --date "7 days ago" "+%s")
+    Updated issues:
+     https://github.com/foo/bar/issues/123
+     https://github.com/foo/baz/issues/234
+
+    # Show list of issues for specific repos in an org with different
+    # labels
+    $ cve-report-updated-bugs --show-missing \
+        --gh-org foo \
+        --gh-labels="bar:baz" \
+        --gh-repos=norf,corge,qux
+    Fetching list of repos: ...... done!
+    Fetching list of issues for:
+     foo/corge: .. done!
+     foo/norf: .. done!
+     foo/qux: . done!
+     ...
+    Issues missing from CVE data:
+     https://github.com/foo/corge/issues/345
+     https://github.com/foo/quz/issues/456
+```
