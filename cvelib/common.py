@@ -117,7 +117,7 @@ rePatterns = {
     ),
     # https://github.com/<org>/<project>/issues/<num>
     "github-issue": re.compile(
-        r"^https://github.com/[a-z0-9+.-]{1,40}/[a-z0-9+.-]{1,%(software_len)d}/issues/[0-9]{1,12}"
+        r"^https://github.com/[a-z0-9+.-]{1,40}/[a-zA-Z0-9+.-]{1,%(software_len)d}/issues/[0-9]{1,12}"
         % ({"software_len": _patLengths["pkg-software"]})
     ),
     # upstream: something
