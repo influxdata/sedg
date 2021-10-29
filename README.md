@@ -385,6 +385,9 @@ headers for bug comments. Combined, we must poll GitHub for information to
 detect new issues or issues that have received updates. The
 `cve-report-updated-bugs` tool aims to address this gap. Example usage:
 ```
+    # first export a GitHub Personal Access Token that can read issues:
+    $  export GHTOKEN=...
+
     # Show issues that are referenced in open CVE data that have been
     # updated since last week
     $ cve-report-updated-bugs --show-updated \
