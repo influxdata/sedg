@@ -23,7 +23,7 @@ cve_statuses = [
     "deferred",
     "ignored",
     "DNE",
-    "not-affected"
+    "not-affected",
 ]
 
 # TODO: pull these out into dictionaries and move to membership checks (where

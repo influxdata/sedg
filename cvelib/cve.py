@@ -677,8 +677,7 @@ def _genReferencesAndBugs(cve):
     return refs, bugs
 
 
-def _createCve(cveDirs, cve_path, cve, args_pkgs, compatUbuntu,
-               withReferences=False):
+def _createCve(cveDirs, cve_path, cve, args_pkgs, compatUbuntu, withReferences=False):
     """Create or append CVE"""
     data = {}
 

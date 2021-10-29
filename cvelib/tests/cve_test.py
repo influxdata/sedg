@@ -1295,10 +1295,28 @@ upstream_baz: needed
         tsts = [
             # valid strict
             ("CVE-2021-999999", ["git/github_foo"], False, None, None),
-            ("CVE-2021-999999", ["git/github_foo", "git/github_bar"], False, None, None),
+            (
+                "CVE-2021-999999",
+                ["git/github_foo", "git/github_bar"],
+                False,
+                None,
+                None,
+            ),
             ("https://github.com/foo/bar/issues/1234", [], False, None, None),
-            ("https://github.com/foo/bar/issues/1234", ["git/github_bar"], False, None, None),
-            ("https://github.com/foo/bar/issues/1234", ["git/github_bar"], False, "baz", None),
+            (
+                "https://github.com/foo/bar/issues/1234",
+                ["git/github_bar"],
+                False,
+                None,
+                None,
+            ),
+            (
+                "https://github.com/foo/bar/issues/1234",
+                ["git/github_bar"],
+                False,
+                "baz",
+                None,
+            ),
             ("CVE-2021-999999", ["git/github_baz/mod"], False, None, None),
             ("CVE-2021-999999", ["ubuntu/focal_norf"], False, None, None),
             ("CVE-2021-999999", ["debian/buster_norf"], False, None, None),
@@ -1406,9 +1424,11 @@ cve-data = %s
             cveDirs[d] = os.path.join(self.tmpdir, d)
             os.mkdir(cveDirs[d], 0o0700)
 
-        testData = ["active/CVE-2021-9997",
-                    "retired/CVE-2021-9998",
-                    "ignored/CVE-2021-9999"]
+        testData = [
+            "active/CVE-2021-9997",
+            "retired/CVE-2021-9998",
+            "ignored/CVE-2021-9999",
+        ]
 
         # create some files
         for fn in testData:

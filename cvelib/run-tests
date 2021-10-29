@@ -3,8 +3,11 @@
 import sys
 import unittest
 
-suite = unittest.TestLoader().discover('./cvelib/tests/', '*_test.py')
+suite = unittest.TestLoader().discover("./cvelib/tests/", "*_test.py")
 test_result = unittest.TextTestRunner(verbosity=2).run(suite)
-if len(test_result.errors) > 0 or len(test_result.failures) > 0 or \
-        len(test_result.unexpectedSuccesses) > 0:
+if (
+    len(test_result.errors) > 0
+    or len(test_result.failures) > 0
+    or len(test_result.unexpectedSuccesses) > 0
+):
     sys.exit(1)
