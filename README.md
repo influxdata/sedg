@@ -141,6 +141,12 @@ For each field in the software section:
  * `<software>` is the name of the software as dictated by the product (eg, the
    name of the github project, the name of the OCI image, the deb source
    package, the name of the snap, etc)
+ * `<extra>` with `Tags` and `Priority` (eg, `Tags_<software2_<extra>`) is used
+   in Ubuntu to signify the tag or priority applies to a particular release of
+   Ubuntu (ie, `<where>`). Since `_` is used as the delimiter, this means that
+   `_` cannot be reliably used if `_` is allowed in `<software>` (Debian
+   software may not have `_` in the name, but upstream projects might allow it
+   (eg, GitHub repos).
  * `<modifier>` is an optional key for grouping collections of packages (eg,
    'v1' for the project's `v1` branch, `v2`, etc)
  * `<status>` indicates the status of fixing the issue for this software (eg,
