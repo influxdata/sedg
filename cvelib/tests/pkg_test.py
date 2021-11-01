@@ -429,6 +429,7 @@ class TestPkg(TestCase):
             (["upstream: I89089155d1083332d02ae9039898227cbab42d07"], True, True),
             # invalid
             (["bad: foo"], False, False),
+            (["debdiff: foo"], False, False),
             (["upstream foo"], False, False),
             (["upstream:foo"], False, False),
             (["upstream:"], False, False),
