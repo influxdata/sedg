@@ -412,3 +412,17 @@ detect new issues or issues that have received updates. The
      https://github.com/foo/corge/issues/345
      https://github.com/foo/quz/issues/456
 ```
+
+`cve-report-updated-bugs --show-updated` also supports `--since-stamp` as a
+convenience and will set the since time to the `mtime` of the specified file.
+Eg, to bootstrap and then just use the stamp file, use:
+```
+    # first time only
+    $ cve-report-updated-bugs --show-updated \
+        --gh-org foo --since $(date --date "7 days ago" "+%s")
+
+    # hereafter
+    $ cve-report-updated-bugs --show-updated \
+        --gh-org foo \
+        --since-stamp /path/to/stamp
+```
