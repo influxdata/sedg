@@ -30,7 +30,7 @@
     $ cve-check-syntax
 
     # various reports for humans
-    $ cve-report      				# summary
+    $ cve-report				# summary
     $ cve-report --output-todolist		# todo list
     $ cve-report --output-sw [SOFTWARE]		# software info
 
@@ -108,20 +108,20 @@ by the file format. The format could be moved to RFC6532 at a future date.
      <who>: <CVSS string; use https://cvssjs.github.io/ to calculate>
 
     Patches_<software1>:
-     upstream | vendor | debdiff | other: <url>
+     upstream | vendor | distro | other: <url>
     [Tags_<software1>: <tag1> <tag2>]
-    [Tags_<software1>[_<extra>]: <tag1> <tag2>]
+    [Tags_<software1>[/<modifier>]: <tag1> <tag2>]
     [Priority_<software1>: negligible | low | medium | high | critical]
-    [Priority_<software1>[_<extra>]: negligible | low | medium | high | critical]
+    [Priority_<software1>[/modifier]: negligible | low | medium | high | critical]
     <product1>[/<where>]_<software1>[/<modifier>]: <status> [(<when>)]
     <product2>[/<where>]_<software1>[/<modifier>]: <status> [(<when>)]
 
     Patches_<software2>:
-     upstream | vendor | debdiff | other: <url>
+     upstream | vendor | distro | other: <url>
     [Tags_<software2>: <tag1> <tag2>]
-    [Tags_<software2>[_<extra>]: <tag1> <tag2>]
+    [Tags_<software2>[/modifier]: <tag1> <tag2>]
     [Priority_<software2>: negligible | low | medium | high | critical]
-    [Priority_<software2>[_<extra>]: negligible | low | medium | high | critical]
+    [Priority_<software2>[/<modifier>]: negligible | low | medium | high | critical]
     <product1>[/<where>]_<software2>[/<modifier>]: <status> [(<when>)]
     <product2>[/<where>]_<software2>[/<modifier>]: <status> [(<when>)]
 
@@ -137,16 +137,12 @@ For each field in the software section:
  * `<where>` indicates where the software lives or in the case of snaps or
    other technologies with a concept of publishers, who the publisher is. For
    OS (eg, `ubuntu`, `debian`, `suse`, etc), `<where>` indicates the release of
-   the distribution (eg, `ubuntu/focal` indicates 20.04 for Ubuntu).
+   the distribution (eg, `ubuntu/focal` indicates 20.04 for Ubuntu where
+   `ubuntu` is the `<product>` (distro) and `focal` is the `<where>` (distro
+   release)).
  * `<software>` is the name of the software as dictated by the product (eg, the
    name of the github project, the name of the OCI image, the deb source
    package, the name of the snap, etc)
- * `<extra>` with `Tags` and `Priority` (eg, `Tags_<software2_<extra>`) is used
-   in Ubuntu to signify the tag or priority applies to a particular release of
-   Ubuntu (ie, `<where>`). Since `_` is used as the delimiter, this means that
-   `_` cannot be reliably used if `_` is allowed in `<software>` (Debian
-   software may not have `_` in the name, but upstream projects might allow it
-   (eg, GitHub repos).
  * `<modifier>` is an optional key for grouping collections of packages (eg,
    'v1' for the project's `v1` branch, `v2`, etc)
  * `<status>` indicates the status of fixing the issue for this software (eg,
@@ -209,6 +205,39 @@ The format offers considerable flexibility. For example, to capture the
 organization with github, one might use `github/<org>_...` instead of
 `git/github_...`.
 
+
+## Ubuntu compatibility
+The file format was initially defined in Ubuntu and the syntax above is largely
+compatible with the Ubuntu CVE tracker (UCT) and a longer term goal of this
+project is to push this tooling to UCT. The above format is more generalized,
+strict and applicable to other projects. If using this tooling with UCT data,
+then adjust `~/.config/influx-security-tools_ubuntu.conf` to contain:
+
+```
+    [Behavior] compat-ubuntu = yes
+```
+
+When specifying compat mode:
+* `<product>` may specify Ubuntu releases as a shorthand (eg, `focal` instead
+  of `ubuntu/focal`)
+* patches can specify various other types (eg, in addition to 'distro',
+  'other', 'upstream' and 'vendor', allow 'debdiff', 'diff', 'fork', 'merge',
+  etc)
+* For `Tags...` and `Priority...`, disallow `_` in `<software>`, allow `/` in
+  `<modifier>` and allow `_` as the delimiter for their use of
+  `_<release>[/<modifier>]` (eg, `Tags_foo_precise/esm`)
+
+Package stanzas then become:
+```
+    Patches_<software>:
+     upstream | vendor | debdiff | other | debdiff | diff | ...: <url>
+    [Tags_<software>: <tag1> <tag2>]
+    [Tags_<software>[_<ubuntu release>[/<modifier>]]: <tag1> <tag2>]
+    [Priority_<software>: negligible | low | medium | high | critical]
+    [Priority_<software>[_<ubuntu release>[/<modifier>]]: negligible | low | medium | high | critical]
+    <ubuntu release>_<software>[/<modifier>]: <status> [(<when>)]
+    <product>[/<where>]_<software>[/<modifier>]: <status> [(<when>)]
+```
 
 # Monitoring
 

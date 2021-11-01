@@ -184,20 +184,41 @@ class TestPkg(TestCase):
         """Test setSoftware()"""
         tsts = [
             # valid
-            ("foo", True),
+            ("foo", False, True),
+            ("foo1", False, True),
+            ("foo-bar", False, True),
+            ("foo.bar", False, True),
+            ("foo-bar-1.0", False, True),
+            ("foo_bar", False, True),
             # invalid
-            ("b@d", False),
-            ("foo ", False),
-            (" foo ", False),
+            ("b@d", False, False),
+            ("foo ", False, False),
+            (" foo ", False, False),
+            # valid Ubuntu
+            ("foo", True, True),
+            ("foo1", True, True),
+            ("foo-bar", True, True),
+            ("foo.bar", True, True),
+            ("foo-bar-1.0", True, True),
+            # invalid Ubuntu
+            ("foo_bar", True, False),
+            ("b@d", True, False),
+            ("foo ", True, False),
+            (" foo ", True, False),
         ]
-        pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
-        for s, valid in tsts:
+        for s, compat, valid in tsts:
+            pkg = cvelib.pkg.CvePkg("git", "foo", "needed", compatUbuntu=compat)
             if valid:
                 pkg.setSoftware(s)
             else:
+                ustr = ""
+                if compat:
+                    ustr = "Ubuntu "
                 with self.assertRaises(cvelib.common.CveException) as context:
                     pkg.setSoftware(s)
-                self.assertEqual("invalid software '%s'" % s, str(context.exception))
+                self.assertEqual(
+                    "invalid %ssoftware '%s'" % (ustr, s), str(context.exception)
+                )
 
     def test_setModifier(self):
         """Test setModifier()"""
@@ -556,6 +577,11 @@ class TestPkg(TestCase):
             # valid
             ("upstream_foo: needed", False, True),
             ("upstream_foo: needed (123-4)", False, True),
+            ("upstream_foo1: needed (123-4)", False, True),
+            ("upstream_foo-bar: needed (123-4)", False, True),
+            ("upstream_foo.bar: needed (123-4)", False, True),
+            ("upstream_foo-bar-1.0: needed (123-4)", False, True),
+            ("upstream_foo_bar: needed (123-4)", False, True),
             ("debian/buster_foo: needed (123-4)", False, True),
             ("debian/buster_foo/bar: needed (123-4)", False, True),
             ("ubuntu/focal_foo: needed", False, True),
@@ -649,6 +675,10 @@ class TestPkg(TestCase):
             ("snap/%s_foo: needed" % ("a" * 40), True, True),
             ("focal_foo/%s: needed" % ("a" * 40), True, True),
             ("focal_foo: needed (%s)" % ("a" * 100), True, True),
+            ("upstream_foo1: needed (123-4)", True, True),
+            ("upstream_foo-bar: needed (123-4)", True, True),
+            ("upstream_foo.bar: needed (123-4)", True, True),
+            ("upstream_foo-bar-1.0: needed (123-4)", True, True),
             # invalid
             ("b@d", False, False),
             ("foo @", False, False),
@@ -666,6 +696,7 @@ class TestPkg(TestCase):
             ("snap/%s_foo: needed" % ("a" * 41), True, False),
             ("focal_foo/%s: needed" % ("a" * 40), False, False),
             ("focal_foo: needed (%s)" % ("a" * 101), True, False),
+            ("upstream_foo_bar: needed (123-4)", True, False),
         ]
         for s, compat, valid in tsts:
             if valid:

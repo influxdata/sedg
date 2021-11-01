@@ -84,13 +84,19 @@ class CvePkg(object):
         if where == "":
             self.where = ""
             return
-        if not rePatterns["pkg-software"].search(where):
+        if self.compatUbuntu:
+            if not rePatterns["pkg-software-ubuntu"].search(where):
+                raise CveException("invalid where '%s'" % where)
+        elif not rePatterns["pkg-software"].search(where):
             raise CveException("invalid where '%s'" % where)
         self.where = where
 
     def setSoftware(self, software):
         """Set software"""
-        if not rePatterns["pkg-software"].search(software):
+        if self.compatUbuntu:
+            if not rePatterns["pkg-software-ubuntu"].search(software):
+                raise CveException("invalid Ubuntu software '%s'" % software)
+        elif not rePatterns["pkg-software"].search(software):
             raise CveException("invalid software '%s'" % software)
         self.software = software
 
@@ -99,7 +105,10 @@ class CvePkg(object):
         if modifier == "":
             self.modifier = ""
             return
-        if not rePatterns["pkg-software"].search(modifier):
+        if self.compatUbuntu:
+            if not rePatterns["pkg-software-ubuntu"].search(modifier):
+                raise CveException("invalid Ubuntu modifier '%s'" % modifier)
+        elif not rePatterns["pkg-software"].search(modifier):
             raise CveException("invalid modifier '%s'" % modifier)
         self.modifier = modifier
 
@@ -191,12 +200,15 @@ def parse(s, compatUbuntu=False):
     # when may have ':', so only split on the first one
     (product_software, status_when) = s.split(":", 1)
 
-    product_where, software_mod = product_software.split("_")
+    # Ubuntu disallows "_" in <software>, but otherwise we allow it
+    product_where, software_mod = product_software.split("_", maxsplit=1)
+
     if "/" in product_where:
         product, where = product_where.split("/")
     else:
         product = product_where
 
+    # compatUbuntu allows foo_bar/baz, otherwise allow foo/bar/baz
     if "/" in software_mod:
         software, modifier = software_mod.split("/")
     else:

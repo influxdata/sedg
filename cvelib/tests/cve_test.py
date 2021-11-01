@@ -161,13 +161,13 @@ CVSS: ...
         pkgs.append(pkg4d)
 
         pkg4.setPriorities(
-            [("pkg4", "high"), ("pkg4_sid", "negligible"), ("pkg4_buster", "low")]
+            [("pkg4", "high"), ("pkg4/sid", "negligible"), ("pkg4/buster", "low")]
         )
         pkg4.setTags(
             [
-                ("pkg4_sid", "pie apparmor"),
-                ("pkg4_buster", "pie"),
-                ("pkg4_wheezy", "fortify-source"),
+                ("pkg4/sid", "pie apparmor"),
+                ("pkg4/buster", "pie"),
+                ("pkg4/wheezy", "fortify-source"),
             ]
         )
 
@@ -192,12 +192,12 @@ git_pkg3: needed
 snap_pkg3: needed
 
 Patches_pkg4:
-Tags_pkg4_buster: pie
-Tags_pkg4_sid: apparmor pie
-Tags_pkg4_wheezy: fortify-source
+Tags_pkg4/buster: pie
+Tags_pkg4/sid: apparmor pie
+Tags_pkg4/wheezy: fortify-source
 Priority_pkg4: high
-Priority_pkg4_buster: low
-Priority_pkg4_sid: negligible
+Priority_pkg4/buster: low
+Priority_pkg4/sid: negligible
 debian/buster_pkg4: needed
 debian/sid_pkg4: needed
 debian/squeeze_pkg4: needed
@@ -410,9 +410,21 @@ git/github_norf: needs-triage
         hdrs = self._mockHeaders(t)
         cvelib.cve.CVE().setData(hdrs)
 
-        # valid Tags_foo_bar
+        # valid Tags_foo/bar
+        t = self._cve_template()
+        t["Tags_foo/bar"] = "apparmor"
+        hdrs = self._mockHeaders(t)
+        cvelib.cve.CVE().setData(hdrs)
+
+        # valid Tags_foo_bar ('_' in name)
         t = self._cve_template()
         t["Tags_foo_bar"] = "apparmor pie"
+        hdrs = self._mockHeaders(t)
+        cvelib.cve.CVE().setData(hdrs)
+
+        # valid Tags_foo_bar/baz ('_' in name)
+        t = self._cve_template()
+        t["Tags_foo_bar/baz"] = "apparmor pie"
         hdrs = self._mockHeaders(t)
         cvelib.cve.CVE().setData(hdrs)
 
@@ -422,9 +434,21 @@ git/github_norf: needs-triage
         hdrs = self._mockHeaders(t)
         cvelib.cve.CVE().setData(hdrs)
 
-        # valid Priority_foo_bar
+        # valid Priority_foo/bar
+        t = self._cve_template()
+        t["Priority_foo/bar"] = "medium"
+        hdrs = self._mockHeaders(t)
+        cvelib.cve.CVE().setData(hdrs)
+
+        # valid Priority_foo_bar ('_' in name)
         t = self._cve_template()
         t["Priority_foo_bar"] = "medium"
+        hdrs = self._mockHeaders(t)
+        cvelib.cve.CVE().setData(hdrs)
+
+        # valid Priority_foo_bar/baz ('_' in name)
+        t = self._cve_template()
+        t["Priority_foo_bar/baz"] = "medium"
         hdrs = self._mockHeaders(t)
         cvelib.cve.CVE().setData(hdrs)
 
@@ -462,54 +486,99 @@ git/github_norf: needs-triage
         """Test setData() - Tags_"""
         tsts = [
             # valid
-            ("Tags_foo", True),
-            ("Tags_%s" % ("a" * 50), True),
-            ("Tags_foo_%s" % ("a" * 50), True),
+            ("Tags_foo", False, True),
+            ("Tags_%s" % ("a" * 50), False, True),
+            ("Tags_foo_bar", False, True),  # non-compat allows '_' in software
+            ("Tags_foo_bar/baz", False, True),
+            ("Tags_%s/foo" % ("a" * 50), False, True),
+            ("Tags_foo/%s" % ("a" * 50), False, True),
             # invalid
-            ("Tags_", False),
-            ("Tags_b@d", False),
-            ("Tags_%s" % ("a" * 51), False),
-            ("Tags_foo_", False),
-            ("Tags_foo_b@d", False),
-            ("Tags_foo_%s" % ("a" * 51), False),
+            ("Tags_", False, False),
+            ("Tags_b@d", False, False),
+            ("Tags_%s" % ("a" * 51), False, False),
+            ("Tags_foo/", False, False),
+            ("Tags_foo/b@d", False, False),
+            ("Tags_foo/%s" % ("a" * 51), False, False),
+            ("Tags_foo/bar/bad", False, False),
+            # valid ubuntu
+            ("Tags_foo", True, True),
+            ("Tags_%s" % ("a" * 50), True, True),
+            ("Tags_foo_%s" % ("a" * 50), True, True),
+            ("Tags_foo_precise/esm", True, True),
+            # invalid ubuntu
+            ("Tags_", True, False),
+            ("Tags_b@d", True, False),
+            ("Tags_%s" % ("a" * 51), True, False),
+            ("Tags_foo_", True, False),
+            ("Tags_foo_b@d", True, False),
+            ("Tags_foo_%s" % ("a" * 51), True, False),
+            ("Tags_foo/bar", True, False),
+            ("Tags_foo_bar_baz", True, False),
         ]
-        for key, valid in tsts:
+        for key, compat, valid in tsts:
+            cve = cvelib.cve.CVE(compatUbuntu=compat)
             hdrs = self._mockHeaders(self._cve_template())
             hdrs[key] = ""
             if valid:
-                cvelib.cve.CVE().setData(hdrs)
+                cve.setData(hdrs)
             else:
+                ustr = ""
+                if compat:
+                    ustr = "Ubuntu "
                 with self.assertRaises(cvelib.common.CveException) as context:
-                    cvelib.cve.CVE().setData(hdrs)
+                    cve.setData(hdrs)
                 self.assertEqual(
-                    "invalid Tags_ key: '%s'" % key, str(context.exception)
+                    "invalid %sTags_ key: '%s'" % (ustr, key), str(context.exception)
                 )
 
     def test_setDataPriorityKeys(self):
         """Test setData() - Priority_"""
         tsts = [
             # valid
-            ("Priority_foo", True),
-            ("Priority_%s" % ("a" * 50), True),
-            ("Priority_foo_%s" % ("a" * 50), True),
+            ("Priority_foo", False, True),
+            ("Priority_%s" % ("a" * 50), False, True),
+            ("Priority_foo_bar", False, True),  # non-compat allows '_' in software
+            ("Priority_foo_bar/baz", False, True),
+            ("Priority_%s/foo" % ("a" * 50), False, True),
+            ("Priority_foo/%s" % ("a" * 50), False, True),
             # invalid
-            ("Priority_", False),
-            ("Priority_b@d", False),
-            ("Priority_%s" % ("a" * 51), False),
-            ("Priority_foo_", False),
-            ("Priority_foo_b@d", False),
-            ("Priority_foo_%s" % ("a" * 51), False),
+            ("Priority_", False, False),
+            ("Priority_b@d", False, False),
+            ("Priority_%s" % ("a" * 51), False, False),
+            ("Priority_foo/", False, False),
+            ("Priority_foo/b@d", False, False),
+            ("Priority_foo/%s" % ("a" * 51), False, False),
+            ("Priority_foo/bar/bad", False, False),
+            # valid ubuntu
+            ("Priority_foo", True, True),
+            ("Priority_%s" % ("a" * 50), True, True),
+            ("Priority_foo_%s" % ("a" * 50), True, True),
+            ("Priority_foo_precise/esm", True, True),
+            # invalid ubuntu
+            ("Priority_", True, False),
+            ("Priority_b@d", True, False),
+            ("Priority_%s" % ("a" * 51), True, False),
+            ("Priority_foo_", True, False),
+            ("Priority_foo_b@d", True, False),
+            ("Priority_foo_%s" % ("a" * 51), True, False),
+            ("Priority_foo/bar", True, False),
+            ("Priority_foo_bar_baz", True, False),
         ]
-        for key, valid in tsts:
+        for key, compat, valid in tsts:
+            cve = cvelib.cve.CVE(compatUbuntu=compat)
             hdrs = self._mockHeaders(self._cve_template())
             hdrs[key] = "medium"
             if valid:
-                cvelib.cve.CVE().setData(hdrs)
+                cve.setData(hdrs)
             else:
+                ustr = ""
+                if compat:
+                    ustr = "Ubuntu "
                 with self.assertRaises(cvelib.common.CveException) as context:
-                    cvelib.cve.CVE().setData(hdrs)
+                    cve.setData(hdrs)
                 self.assertEqual(
-                    "invalid Priority_ key: '%s'" % key, str(context.exception)
+                    "invalid %sPriority_ key: '%s'" % (ustr, key),
+                    str(context.exception),
                 )
 
     def test__verifyCve(self):

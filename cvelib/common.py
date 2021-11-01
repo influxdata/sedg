@@ -49,8 +49,13 @@ _patLengths = {
 
 # Compile common regex on import
 rePatterns = {
-    # foo, foo1, foo-bar, foo.bar, for-bar-1.0
+    # foo, foo1, foo-bar, foo.bar, for-bar-1.0, foo_bar
     "pkg-software": re.compile(
+        r"^[a-z0-9+._-]{1,%(software_len)d}$"
+        % ({"software_len": _patLengths["pkg-software"]})
+    ),
+    # foo, foo1, foo-bar, foo.bar, for-bar-1.0
+    "pkg-software-ubuntu": re.compile(
         r"^[a-z0-9+.-]{1,%(software_len)d}$"
         % ({"software_len": _patLengths["pkg-software"]})
     ),
@@ -68,7 +73,7 @@ rePatterns = {
     ),
     # the string form
     "pkg-full": re.compile(
-        r"^(git|snap|oci|upstream|ubuntu|debian|suse)(/[a-z0-9+.-]{1,%(where_len)d})?_[a-z0-9+.-]{1,%(software_len)d}(/[a-z0-9+.-]{1,%(modifier_len)d})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,%(when_len)d}\))?$"
+        r"^(git|snap|oci|upstream|ubuntu|debian|suse)(/[a-z0-9+.-]{1,%(where_len)d})?_[a-z0-9+._-]{1,%(software_len)d}(/[a-z0-9+.-]{1,%(modifier_len)d})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,%(when_len)d}\))?$"
         % (
             {
                 "where_len": _patLengths["pkg-where"],
@@ -146,10 +151,28 @@ rePatterns = {
     ),
     # TODO: reuse product/where
     "pkg-tags-key": re.compile(
+        r"^Tags_[a-z0-9+.-][a-z0-9+._-]{1,%(software_len1)d}[a-z0-9+.-](/[a-z0-9+.-]{1,%(software_len2)d})?$"
+        % (
+            {
+                "software_len1": _patLengths["pkg-software"] - 2,
+                "software_len2": _patLengths["pkg-software"],
+            }
+        )
+    ),
+    "pkg-tags-key-ubuntu": re.compile(
         r"^Tags_[a-z0-9+.-]{1,%(software_len)d}(_[a-z0-9+./-]{1,%(software_len)d})?$"
         % ({"software_len": _patLengths["pkg-software"]})
     ),
     "pkg-priority-key": re.compile(
+        r"^Priority_[a-z0-9+.-][a-z0-9+._-]{1,%(software_len1)d}[a-z0-9+.-](/[a-z0-9+.-]{1,%(software_len2)d})?$"
+        % (
+            {
+                "software_len1": _patLengths["pkg-software"] - 2,
+                "software_len2": _patLengths["pkg-software"],
+            }
+        )
+    ),
+    "pkg-priority-key-ubuntu": re.compile(
         r"^Priority_[a-z0-9+.-]{1,%(software_len)d}(_[a-z0-9+./-]{1,%(software_len)d})?$"
         % ({"software_len": _patLengths["pkg-software"]})
     ),
