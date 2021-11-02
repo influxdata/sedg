@@ -95,7 +95,7 @@ class CvePkg(object):
         """Set software"""
         if self.compatUbuntu:
             if not rePatterns["pkg-software-ubuntu"].search(software):
-                raise CveException("invalid Ubuntu software '%s'" % software)
+                raise CveException("invalid compat software '%s'" % software)
         elif not rePatterns["pkg-software"].search(software):
             raise CveException("invalid software '%s'" % software)
         self.software = software
@@ -107,7 +107,7 @@ class CvePkg(object):
             return
         if self.compatUbuntu:
             if not rePatterns["pkg-software-ubuntu"].search(modifier):
-                raise CveException("invalid Ubuntu modifier '%s'" % modifier)
+                raise CveException("invalid compat modifier '%s'" % modifier)
         elif not rePatterns["pkg-software"].search(modifier):
             raise CveException("invalid modifier '%s'" % modifier)
         self.modifier = modifier
@@ -139,7 +139,7 @@ class CvePkg(object):
             patch = patch.strip()
             if compatUbuntu:
                 if not rePatterns["pkg-patch-ubuntu"].search(patch):
-                    raise CveException("invalid patch for Ubuntu '%s'" % patch)
+                    raise CveException("invalid patch for compat '%s'" % patch)
             elif not rePatterns["pkg-patch"].search(patch):
                 raise CveException("invalid patch '%s'" % patch)
             self.patches.append(patch)
@@ -186,7 +186,7 @@ def parse(s, compatUbuntu=False):
         raise CveException("invalid package entry '%s' (expected single line)" % s)
     if compatUbuntu:
         if not rePatterns["pkg-full-ubuntu"].search(s):
-            raise CveException("invalid package entry for Ubuntu '%s'" % s)
+            raise CveException("invalid package entry for compat '%s'" % s)
     elif not rePatterns["pkg-full"].search(s):
         raise CveException("invalid package entry '%s'" % s)
 

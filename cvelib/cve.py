@@ -93,14 +93,17 @@ class CVE(object):
             if "_" not in k or k.startswith("#"):
                 continue
             if k.startswith("Patches_"):
-                if not rePatterns["pkg-patch-key"].search(k):
+                if self.compatUbuntu:
+                    if not rePatterns["pkg-patch-key-ubuntu"].search(k):
+                        raise CveException("invalid compat Patches_ key: '%s'" % (k))
+                elif not rePatterns["pkg-patch-key"].search(k):
                     raise CveException("invalid Patches_ key: '%s'" % (k))
                 pkg = k.split("_")[1]
                 patches[pkg] = data[k]
             elif k.startswith("Tags_"):
                 if self.compatUbuntu:
                     if not rePatterns["pkg-tags-key-ubuntu"].search(k):
-                        raise CveException("invalid Ubuntu Tags_ key: '%s'" % (k))
+                        raise CveException("invalid compat Tags_ key: '%s'" % (k))
                 elif not rePatterns["pkg-tags-key"].search(k):
                     raise CveException("invalid Tags_ key: '%s'" % (k))
                 # both Tags_foo and Tags_foo_bar
@@ -109,7 +112,7 @@ class CVE(object):
             elif k.startswith("Priority_"):
                 if self.compatUbuntu:
                     if not rePatterns["pkg-priority-key-ubuntu"].search(k):
-                        raise CveException("invalid Ubuntu Priority_ key: '%s'" % (k))
+                        raise CveException("invalid compat Priority_ key: '%s'" % (k))
                 elif not rePatterns["pkg-priority-key"].search(k):
                     raise CveException("invalid Priority_ key: '%s'" % (k))
                 # both Priority_foo and Priority_foo_bar

@@ -142,6 +142,10 @@ rePatterns = {
     ),
     # TODO: break out Ubuntu-specific tags
     "pkg-patch-key": re.compile(
+        r"^Patches_[a-z0-9+.-][a-z0-9+._-]{0,%(software_len)d}[a-z0-9+.-]$"
+        % ({"software_len": _patLengths["pkg-software"] - 2})
+    ),
+    "pkg-patch-key-ubuntu": re.compile(
         r"^Patches_[a-z0-9+.-]{1,%(software_len)d}$"
         % ({"software_len": _patLengths["pkg-software"]})
     ),
@@ -151,7 +155,7 @@ rePatterns = {
     ),
     # TODO: reuse product/where
     "pkg-tags-key": re.compile(
-        r"^Tags_[a-z0-9+.-][a-z0-9+._-]{1,%(software_len1)d}[a-z0-9+.-](/[a-z0-9+.-]{1,%(software_len2)d})?$"
+        r"^Tags_[a-z0-9+.-][a-z0-9+._-]{0,%(software_len1)d}[a-z0-9+.-](/[a-z0-9+.-]{1,%(software_len2)d})?$"
         % (
             {
                 "software_len1": _patLengths["pkg-software"] - 2,
@@ -164,7 +168,7 @@ rePatterns = {
         % ({"software_len": _patLengths["pkg-software"]})
     ),
     "pkg-priority-key": re.compile(
-        r"^Priority_[a-z0-9+.-][a-z0-9+._-]{1,%(software_len1)d}[a-z0-9+.-](/[a-z0-9+.-]{1,%(software_len2)d})?$"
+        r"^Priority_[a-z0-9+.-][a-z0-9+._-]{0,%(software_len1)d}[a-z0-9+.-](/[a-z0-9+.-]{1,%(software_len2)d})?$"
         % (
             {
                 "software_len1": _patLengths["pkg-software"] - 2,

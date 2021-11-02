@@ -404,9 +404,21 @@ git/github_norf: needs-triage
         hdrs = self._mockHeaders(t)
         cvelib.cve.CVE().setData(hdrs)
 
+        # valid Patches_aa (short)
+        t = self._cve_template()
+        t["Patches_aa"] = ""
+        hdrs = self._mockHeaders(t)
+        cvelib.cve.CVE().setData(hdrs)
+
         # valid Tags_foo
         t = self._cve_template()
         t["Tags_foo"] = "apparmor"
+        hdrs = self._mockHeaders(t)
+        cvelib.cve.CVE().setData(hdrs)
+
+        # valid Tags_aa (short)
+        t = self._cve_template()
+        t["Tags_aa"] = "apparmor"
         hdrs = self._mockHeaders(t)
         cvelib.cve.CVE().setData(hdrs)
 
@@ -431,6 +443,12 @@ git/github_norf: needs-triage
         # valid Priority_foo
         t = self._cve_template()
         t["Priority_foo"] = "medium"
+        hdrs = self._mockHeaders(t)
+        cvelib.cve.CVE().setData(hdrs)
+
+        # valid Priority_aa (short)
+        t = self._cve_template()
+        t["Priority_aa"] = "medium"
         hdrs = self._mockHeaders(t)
         cvelib.cve.CVE().setData(hdrs)
 
@@ -463,23 +481,39 @@ git/github_norf: needs-triage
         """Test setData() - Patches_"""
         tsts = [
             # valid
-            ("Patches_foo", True),
-            ("Patches_%s" % ("a" * 50), True),
+            ("Patches_foo", False, True),
+            ("Patches_%s" % ("a" * 50), False, True),
+            ("Patches_foo_bar", False, True),  # non-compat allows '_' in software
             # invalid
-            ("Patches_", False),
-            ("Patches_b@d", False),
-            ("Patches_%s" % ("a" * 51), False),
+            ("Patches_", False, False),
+            ("Patches_b@d", False, False),
+            ("Patches_%s" % ("a" * 51), False, False),
+            ("Patches_foo_bar/baz", False, False),
+            ("Patches_foo_", False, False),
+            # valid compat
+            ("Patches_foo", True, True),
+            ("Patches_%s" % ("a" * 50), True, True),
+            # invalid compat
+            ("Patches_", True, False),
+            ("Patches_b@d", True, False),
+            ("Patches_%s" % ("a" * 51), True, False),
+            ("Patches_foo_bar/baz", True, False),
+            ("Patches_foo_bar", True, False),  # compat disallows '_' in software
         ]
-        for key, valid in tsts:
+        for key, compat, valid in tsts:
+            cve = cvelib.cve.CVE(compatUbuntu=compat)
             hdrs = self._mockHeaders(self._cve_template())
             hdrs[key] = ""
             if valid:
-                cvelib.cve.CVE().setData(hdrs)
+                cve.setData(hdrs)
             else:
+                cstr = ""
+                if compat:
+                    cstr = "compat "
                 with self.assertRaises(cvelib.common.CveException) as context:
-                    cvelib.cve.CVE().setData(hdrs)
+                    cve.setData(hdrs)
                 self.assertEqual(
-                    "invalid Patches_ key: '%s'" % key, str(context.exception)
+                    "invalid %sPatches_ key: '%s'" % (cstr, key), str(context.exception)
                 )
 
     def test_setDataTagsKeys(self):
@@ -505,7 +539,7 @@ git/github_norf: needs-triage
             ("Tags_%s" % ("a" * 50), True, True),
             ("Tags_foo_%s" % ("a" * 50), True, True),
             ("Tags_foo_precise/esm", True, True),
-            # invalid ubuntu
+            # invalid compat
             ("Tags_", True, False),
             ("Tags_b@d", True, False),
             ("Tags_%s" % ("a" * 51), True, False),
@@ -522,13 +556,13 @@ git/github_norf: needs-triage
             if valid:
                 cve.setData(hdrs)
             else:
-                ustr = ""
+                cstr = ""
                 if compat:
-                    ustr = "Ubuntu "
+                    cstr = "compat "
                 with self.assertRaises(cvelib.common.CveException) as context:
                     cve.setData(hdrs)
                 self.assertEqual(
-                    "invalid %sTags_ key: '%s'" % (ustr, key), str(context.exception)
+                    "invalid %sTags_ key: '%s'" % (cstr, key), str(context.exception)
                 )
 
     def test_setDataPriorityKeys(self):
@@ -554,7 +588,7 @@ git/github_norf: needs-triage
             ("Priority_%s" % ("a" * 50), True, True),
             ("Priority_foo_%s" % ("a" * 50), True, True),
             ("Priority_foo_precise/esm", True, True),
-            # invalid ubuntu
+            # invalid compat
             ("Priority_", True, False),
             ("Priority_b@d", True, False),
             ("Priority_%s" % ("a" * 51), True, False),
@@ -571,13 +605,13 @@ git/github_norf: needs-triage
             if valid:
                 cve.setData(hdrs)
             else:
-                ustr = ""
+                cstr = ""
                 if compat:
-                    ustr = "Ubuntu "
+                    cstr = "compat "
                 with self.assertRaises(cvelib.common.CveException) as context:
                     cve.setData(hdrs)
                 self.assertEqual(
-                    "invalid %sPriority_ key: '%s'" % (ustr, key),
+                    "invalid %sPriority_ key: '%s'" % (cstr, key),
                     str(context.exception),
                 )
 
@@ -727,7 +761,7 @@ git/github_norf: needs-triage
                 False,
                 "invalid %(key)s: 'unknown' (use empty or YYYY-MM-DD [HH:MM:SS [TIMEZONE]])",
             ),
-            # invalid Ubuntu
+            # invalid compat
             ("\n", True, "invalid %(key)s: '\n' (expected single line)"),
             (
                 "bad",

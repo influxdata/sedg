@@ -213,7 +213,7 @@ class TestPkg(TestCase):
             else:
                 ustr = ""
                 if compat:
-                    ustr = "Ubuntu "
+                    ustr = "compat "
                 with self.assertRaises(cvelib.common.CveException) as context:
                     pkg.setSoftware(s)
                 self.assertEqual(
@@ -502,7 +502,7 @@ class TestPkg(TestCase):
             else:
                 errS = "invalid patch '%s'" % t[0]
                 if compat:
-                    errS = "invalid patch for Ubuntu '%s'" % t[0]
+                    errS = "invalid patch for compat '%s'" % t[0]
                 with self.assertRaises(cvelib.common.CveException) as context:
                     pkg.setPatches(t, compatUbuntu=compat)
                 self.assertEqual(errS, str(context.exception))
@@ -706,7 +706,7 @@ class TestPkg(TestCase):
                     cvelib.pkg.parse(s, compatUbuntu=compat)
                 errS = "invalid package entry '%s'" % s
                 if compat:
-                    errS = "invalid package entry for Ubuntu '%s'" % s
+                    errS = "invalid package entry for compat '%s'" % s
                 if "\n" in s:
                     errS = "invalid package entry '%s' (expected single line)" % s
                 self.assertEqual(errS, str(context.exception))
