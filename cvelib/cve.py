@@ -681,7 +681,7 @@ def _genReferencesAndBugs(cve):
         refs.append(cve)
         bugs.append(cve)
     else:
-        refs.append("https://cve.mitre.org/cgi-bin/cvename.cgi?name=%s" % cve)
+        refs.append("https://www.cve.org/CVERecord?id=%s" % cve)
 
     return refs, bugs
 

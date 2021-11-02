@@ -1221,7 +1221,7 @@ cve-data = %s
         tsts = [
             (
                 "CVE-2020-1234",
-                ["https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-1234"],
+                ["https://www.cve.org/CVERecord?id=CVE-2020-1234"],
                 [],
             ),
             (
@@ -1275,7 +1275,7 @@ cve-data = %s
                     self.assertEqual(os.path.basename(cve_fn), res[k])
                 elif k == "References":
                     self.assertEqual(
-                        "\n https://cve.mitre.org/cgi-bin/cvename.cgi?name=%s"
+                        "\n https://www.cve.org/CVERecord?id=%s"
                         % os.path.basename(cve_fn),
                         res[k],
                     )
