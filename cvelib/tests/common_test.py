@@ -51,6 +51,29 @@ class TestCommon(TestCase):
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual("ERROR: Test error", error.getvalue().strip())
 
+    def test_updateProgress(self):
+        """Test updateProgress()"""
+        tsts = [
+            # (progress, barLength, prefix, expOut, expErr)
+            (0, 10, "", "[----------] 0%", ""),
+            (0.5, 10, "", "[#####-----] 50%", ""),
+            (0.5, 10, "test prefix: ", "test prefix: [#####-----] 50%", ""),
+            (0.0, 10, "", "[----------] 0%", ""),
+            (-1, 10, "", "[----------] 0%", ""),
+            (1, 0, "", "#] 100%", ""),
+            # invalid
+            (None, 0, "", "", "ERROR: 'progress' must be int or float"),
+            (0.5, 0, "a" * 100000, "", "ERROR: 'prefix' too long for window size"),
+        ]
+        for pro, bar, pre, expOut, expErr in tsts:
+            with cvelib.tests.util.capturedOutput() as (output, error):
+                cvelib.common.updateProgress(pro, barLength=bar, prefix=pre)
+            if bar == 0:
+                self.assertTrue(output.getvalue().strip().endswith(expOut))
+            else:
+                self.assertEqual(expOut, output.getvalue().strip())
+            self.assertEqual(expErr, error.getvalue().strip())
+
     def test_setCveHeader(self):
         """Test setCveHeader()"""
         m = EmailMessage()

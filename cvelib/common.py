@@ -256,6 +256,50 @@ def recursive_rm(dirPath, contents_only=False, top=True):
         os.rmdir(dirPath)
 
 
+# Simple progress bar with no external dependencies besides sys. Based on:
+# https://stackoverflow.com/a/15860757
+def updateProgress(progress, barLength=0, prefix=""):
+    """Display/update console progress bar
+    - progress: float between 0 and 1 (ints converted to float). < 0
+      or > 0 stops progress (for descending or acsending)
+    - barLength: 0 for auto or > 0 specific bar length
+    - prefix: what to display before the bar. With barLength=0 (auto)
+      the barLength is calculated (roughly) as 'termwidth - len(prefix)
+    """
+    status = ""
+    if not isinstance(progress, int) and not isinstance(progress, float):
+        error("'progress' must be int or float", do_exit=False)
+        return
+
+    if isinstance(progress, int):
+        progress = float(progress)
+
+    if progress < 0:  # descending done
+        progress = 0
+        status = "\n"
+    elif progress >= 1:  # ascending done
+        progress = 1
+        status = "\n"
+
+    if barLength == 0:
+        max = 75
+        cur = shutil.get_terminal_size((max, 20))[0]  # define fallback
+        tw = max if cur > max else cur
+        # make sure prefix isn't too big for the window size (use 'pad * 2'
+        # as a convenience for leaving room for the bar and status)
+        pad = 10
+        if len(prefix) > tw - pad * 2:
+            error("'prefix' too long for window size", do_exit=False)
+            return
+        barLength = tw - len(prefix) - pad
+
+    block = int(round(barLength * progress))
+    bar = "[{0}] {1}% {2}".format(
+        "#" * block + "-" * (barLength - block), int(progress * 100), status
+    )
+    print("%s%s\r" % (prefix, bar), end="")
+
+
 def readCve(fn):
     """Read raw CVE data from file"""
     # Read in the data, but let callers do any specific formatting
