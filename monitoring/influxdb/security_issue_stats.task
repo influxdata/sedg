@@ -1,0 +1,39 @@
+import "influxdata/influxdb/secrets"
+import "slack"
+
+option task = {name: "YOURTASKNAME", every: 1d}
+
+webhook_url = secrets.get(key: "YOURSECRETKEYNAME")
+endpoint = slack.endpoint(url: webhook_url)
+
+mapFnCrit = (r) => ({text: if r._value == 1 then "${r._value} open critical security issue" else "${r._value} open critical security issues", color: "danger", channel: ""})
+toSlackCrit = endpoint(mapFn: mapFnCrit)
+
+mapFnHigh = (r) => ({text: if r._value == 1 then "${r._value} open high security issue" else "${r._value} open high security issues", color: "danger", channel: ""})
+toSlackHigh = endpoint(mapFn: mapFnHigh)
+
+critlvl = 0
+highlvl = 0
+
+checkStatus = (tables=<-, priority, threshold) => tables
+    |> range(start: -30d, stop: now())
+    |> filter(fn: (r) => r["_measurement"] == "cveLog")
+    |> filter(fn: (r) => r["_field"] == "id")
+    |> filter(fn: (r) => r["priority"] == priority)
+    |> group(columns: ["priority"])
+    |> window(every: 1d)
+    |> unique()
+    |> aggregateWindow(every: 1d, createEmpty: false, fn: count)
+    |> last()
+    |> limit(n: 1)
+    |> filter(fn: (r) => r["_value"] > threshold)
+
+crit = from(bucket: "jdstrand-sec-stats")
+    |> checkStatus(priority: "critical", threshold: critlvl)
+    |> toSlackCrit()
+    |> yield(name: "critical")
+
+high = from(bucket: "jdstrand-sec-stats")
+    |> checkStatus(priority: "high", threshold: highlvl)
+    |> toSlackHigh()
+    |> yield(name: "high")
