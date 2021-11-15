@@ -1,0 +1,26 @@
+{
+  "meta": {
+    "version": "1",
+    "type": "task",
+    "name": "sec-stats-Template",
+    "description": "template created from task: sec-stats"
+  },
+  "content": {
+    "data": {
+      "type": "task",
+      "attributes": {
+        "status": "active",
+        "name": "sec-stats",
+        "flux": "import \"influxdata/influxdb/secrets\"\nimport \"slack\"\n\noption task = {name: \"sec-stats\", every: 1d}\n\nwebhook_url = secrets.get(key: \"SECRETKEYNAME\")\nendpoint = slack.endpoint(url: webhook_url)\n\nmapFnCrit = (r) => ({text: if r._value == 1 then \"${r._value} open critical security issue\" else \"${r._value} open critical security issues\", color: \"danger\", channel: \"\"})\ntoSlackCrit = endpoint(mapFn: mapFnCrit)\n\nmapFnHigh = (r) => ({text: if r._value == 1 then \"${r._value} open high security issue\" else \"${r._value} open high security issues\", color: \"danger\", channel: \"\"})\ntoSlackHigh = endpoint(mapFn: mapFnHigh)\n\ncritlvl = 0\nhighlvl = 0\n\ncheckStatus = (tables=<-, priority, threshold) => tables\n    |> range(start: -30d, stop: now())\n    |> filter(fn: (r) => r[\"_measurement\"] == \"cveLog\")\n    |> filter(fn: (r) => r[\"_field\"] == \"id\")\n    |> filter(fn: (r) => r[\"priority\"] == priority)\n    |> group(columns: [\"priority\"])\n    |> window(every: 1d)\n    |> unique()\n    // https://community.influxdata.com/t/advice-how-to-carry-forward-data-from-the-previous-day/21895\n    //|> aggregateWindow(every: 1d, createEmpty: false, fn: count)\n    //|> aggregateWindow(every: 1d, createEmpty: true, fn: (tables=<-, column=\"_value\") => tables)\n    //|> fill(usePrevious: true)\n    |> aggregateWindow(every: 1d, createEmpty: false, fn: count)\n    |> last()\n    |> limit(n: 1)\n    |> filter(fn: (r) => r[\"_value\"] > threshold)\n\ncrit = from(bucket: \"sec-stats\")\n    |> checkStatus(priority: \"critical\", threshold: critlvl)\n    |> toSlackCrit()\n    |> yield(name: \"critical\")\n\nhigh = from(bucket: \"stats\")\n    |> checkStatus(priority: \"high\", threshold: highlvl)\n    |> toSlackHigh()\n    |> yield(name: \"high\")",
+        "every": "1d"
+      },
+      "relationships": {
+        "label": {
+          "data": []
+        }
+      }
+    },
+    "included": []
+  },
+  "labels": []
+}
