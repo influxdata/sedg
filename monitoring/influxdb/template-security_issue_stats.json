@@ -9,7 +9,7 @@
     "data": {
       "type": "dashboard",
       "attributes": {
-        "name": "",
+        "name": "Security Issue Stats",
         "description": ""
       },
       "relationships": {
@@ -20,15 +20,15 @@
           "data": [
             {
               "type": "cell",
-              "id": "083ae3d75c98c000"
+              "id": "08756a3d9cddc000"
             },
             {
               "type": "cell",
-              "id": "083ae46876cb3000"
+              "id": "08757670f8eeb000"
             },
             {
               "type": "cell",
-              "id": "083ae4c3a98d2000"
+              "id": "087578adb7506000"
             }
           ]
         },
@@ -39,69 +39,69 @@
     },
     "included": [
       {
-        "id": "083ae3d75c98c000",
+        "id": "08756a3d9cddc000",
         "type": "cell",
         "attributes": {
           "x": 0,
           "y": 0,
           "w": 4,
-          "h": 6
+          "h": 4
         },
         "relationships": {
           "view": {
             "data": {
               "type": "view",
-              "id": "083ae3d75c98c000"
+              "id": "08756a3d9cddc000"
             }
           }
         }
       },
       {
-        "id": "083ae46876cb3000",
-        "type": "cell",
-        "attributes": {
-          "x": 8,
-          "y": 0,
-          "w": 4,
-          "h": 6
-        },
-        "relationships": {
-          "view": {
-            "data": {
-              "type": "view",
-              "id": "083ae46876cb3000"
-            }
-          }
-        }
-      },
-      {
-        "id": "083ae4c3a98d2000",
+        "id": "08757670f8eeb000",
         "type": "cell",
         "attributes": {
           "x": 4,
           "y": 0,
           "w": 4,
-          "h": 6
+          "h": 4
         },
         "relationships": {
           "view": {
             "data": {
               "type": "view",
-              "id": "083ae4c3a98d2000"
+              "id": "08757670f8eeb000"
+            }
+          }
+        }
+      },
+      {
+        "id": "087578adb7506000",
+        "type": "cell",
+        "attributes": {
+          "x": 8,
+          "y": 0,
+          "w": 4,
+          "h": 4
+        },
+        "relationships": {
+          "view": {
+            "data": {
+              "type": "view",
+              "id": "087578adb7506000"
             }
           }
         }
       },
       {
         "type": "view",
-        "id": "083ae3d75c98c000",
+        "id": "08756a3d9cddc000",
         "attributes": {
           "name": "Total unique open issues",
           "properties": {
             "shape": "chronograf-v2",
             "queries": [
               {
-                "text": "from(bucket: \"sec-stats\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cveLog\" and r[\"_field\"] == \"id\")\n  |> keep(columns: [\"_time\", \"_value\", \"_field\", \"priority\"])\n  |> window(every: 1d)\n  |> unique()\n  |> group(columns: [\"priority\"])\n  // https://community.influxdata.com/t/advice-how-to-carry-forward-data-from-the-previous-day/21895\n  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)\n  |> aggregateWindow(every: 1d, fn: (tables=<-, column=\"_value\") => tables)\n  |> fill(usePrevious: true)",
+                "text": "from(bucket: \"sec-stats\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cveLog\" and r[\"_field\"] == \"id\")\n  |> group(columns: [\"priority\"])\n  |> window(every: 1d)\n  |> unique()\n  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)",
                 "editMode": "advanced",
                 "name": "",
                 "builderConfig": {
@@ -152,8 +152,7 @@
             "type": "xy",
             "staticLegend": {
               "colorizeRows": true,
-              "heightRatio": 0.3503289473684211,
-              "show": true,
+              "heightRatio": 0.21,
               "opacity": 1,
               "orientationThreshold": 100000000,
               "widthRatio": 1
@@ -161,21 +160,21 @@
             "geom": "line",
             "colors": [
               {
-                "id": "b59ca5f3-d967-455e-940a-4fc447fa82d6",
+                "id": "98475679-ef1b-43d4-a1d4-301d0908455f",
                 "type": "scale",
                 "hex": "#31C0F6",
                 "name": "Nineteen Eighty Four",
                 "value": 0
               },
               {
-                "id": "3e40e51d-a26c-4130-bff4-a425989c22d8",
+                "id": "d8c559cf-49e0-47c0-8d14-f35cc118c878",
                 "type": "scale",
                 "hex": "#A500A5",
                 "name": "Nineteen Eighty Four",
                 "value": 0
               },
               {
-                "id": "23900fd1-dcfc-4474-a67b-6482a5721e3d",
+                "id": "060b6636-d591-4c5d-80f3-099ccc1ed0a3",
                 "type": "scale",
                 "hex": "#FF7E27",
                 "name": "Nineteen Eighty Four",
@@ -207,127 +206,14 @@
       },
       {
         "type": "view",
-        "id": "083ae46876cb3000",
-        "attributes": {
-          "name": "Open issues by software",
-          "properties": {
-            "shape": "chronograf-v2",
-            "queries": [
-              {
-                "text": "import \"strings\"\nfrom(bucket: \"sec-stats\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cveLog\" and (r[\"_field\"] == \"id\" or r[\"_field\"] == \"software\"))\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({\n    r with\n    _value: strings.joinStr(arr: [r.software, r.id, r.priority], v: \":\")\n  }))\n  |> drop(columns: [\"id\", \"product\", \"status\"])\n  |> group(columns: [\"software\"])\n  |> window(every: 1d)\n  |> unique()\n  // https://community.influxdata.com/t/advice-how-to-carry-forward-data-from-the-previous-day/21895\n  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)\n  |> aggregateWindow(every: 1d, fn: (tables=<-, column=\"_value\") => tables)\n  |> fill(usePrevious: true)",
-                "editMode": "advanced",
-                "name": "",
-                "builderConfig": {
-                  "buckets": [],
-                  "tags": [
-                    {
-                      "key": "_measurement",
-                      "values": [],
-                      "aggregateFunctionType": "filter"
-                    }
-                  ],
-                  "functions": [
-                    {
-                      "name": "mean"
-                    }
-                  ],
-                  "aggregateWindow": {
-                    "period": "auto",
-                    "fillValues": false
-                  }
-                }
-              }
-            ],
-            "axes": {
-              "x": {
-                "bounds": [
-                  "",
-                  ""
-                ],
-                "label": "",
-                "prefix": "",
-                "suffix": "",
-                "base": "10",
-                "scale": "linear"
-              },
-              "y": {
-                "bounds": [
-                  "",
-                  ""
-                ],
-                "label": "",
-                "prefix": "",
-                "suffix": "",
-                "base": "10",
-                "scale": "linear"
-              }
-            },
-            "type": "xy",
-            "staticLegend": {
-              "colorizeRows": true,
-              "heightRatio": 0.4308510638297872,
-              "show": true,
-              "opacity": 1,
-              "orientationThreshold": 100000000,
-              "widthRatio": 1
-            },
-            "geom": "line",
-            "colors": [
-              {
-                "id": "4715e23d-740f-4718-9eee-58deb2e58466",
-                "type": "scale",
-                "hex": "#31C0F6",
-                "name": "Nineteen Eighty Four",
-                "value": 0
-              },
-              {
-                "id": "1dda0ae4-b4a1-4464-8b62-51c445715eec",
-                "type": "scale",
-                "hex": "#A500A5",
-                "name": "Nineteen Eighty Four",
-                "value": 0
-              },
-              {
-                "id": "204ba086-2232-4df9-b364-3c01b0fc2007",
-                "type": "scale",
-                "hex": "#FF7E27",
-                "name": "Nineteen Eighty Four",
-                "value": 0
-              }
-            ],
-            "note": "",
-            "showNoteWhenEmpty": false,
-            "xColumn": "_time",
-            "generateXAxisTicks": [],
-            "xTotalTicks": 0,
-            "xTickStart": 0,
-            "xTickStep": 0,
-            "yColumn": "_value",
-            "generateYAxisTicks": [],
-            "yTotalTicks": 0,
-            "yTickStart": 0,
-            "yTickStep": 0,
-            "shadeBelow": false,
-            "position": "overlaid",
-            "timeFormat": "",
-            "hoverDimension": "auto",
-            "legendColorizeRows": true,
-            "legendHide": false,
-            "legendOpacity": 1,
-            "legendOrientationThreshold": 100000000
-          }
-        }
-      },
-      {
-        "type": "view",
-        "id": "083ae4c3a98d2000",
+        "id": "08757670f8eeb000",
         "attributes": {
           "name": "Open issues by sofware/priority",
           "properties": {
             "shape": "chronograf-v2",
             "queries": [
               {
-                "text": "import \"strings\"\nfrom(bucket: \"sec-stats\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cveLog\" and (r[\"_field\"] == \"id\" or r[\"_field\"] == \"software\"))\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({\n    r with\n    tuple: strings.joinStr(arr: [r.software, r.priority], v: \":\"),\n    _value: strings.joinStr(arr: [r.software, r.priority, r.id], v: \":\")\n  }))\n  |> drop(columns: [\"id\", \"product\", \"status\", \"software\"])\n  |> group(columns: [\"tuple\"])\n  |> window(every: 1d)\n  |> unique()\n  // https://community.influxdata.com/t/advice-how-to-carry-forward-data-from-the-previous-day/21895\n  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)\n  |> aggregateWindow(every: 1d, fn: (tables=<-, column=\"_value\") => tables)\n  |> fill(usePrevious: true)\n",
+                "text": "import \"strings\"\nfrom(bucket: \"sec-stats\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cveLog\" and (r[\"_field\"] == \"id\" or r[\"_field\"] == \"software\"))\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({\n    r with\n    tuple: strings.joinStr(arr: [r.software, r.priority], v: \":\"),\n    _value: strings.joinStr(arr: [r.software, r.priority, r.id], v: \":\")\n  }))\n  |> drop(columns: [\"id\", \"product\", \"status\", \"software\"])\n  |> group(columns: [\"tuple\"])\n  |> window(every: 1d)\n  |> unique()\n  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)\n  // https://community.influxdata.com/t/advice-how-to-carry-forward-data-from-the-previous-day/21895\n//  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)\n//  |> aggregateWindow(every: 1d, fn: (tables=<-, column=\"_value\") => tables)\n//  |> fill(usePrevious: true)\n",
                 "editMode": "advanced",
                 "name": "",
                 "builderConfig": {
@@ -379,7 +265,118 @@
             "staticLegend": {
               "colorizeRows": true,
               "heightRatio": 0.75,
-              "show": true,
+              "opacity": 1,
+              "orientationThreshold": 100000000,
+              "widthRatio": 1
+            },
+            "geom": "line",
+            "colors": [
+              {
+                "id": "33eec333-47ad-4a42-b4ff-5f53dacb8ad7",
+                "type": "scale",
+                "hex": "#31C0F6",
+                "name": "Nineteen Eighty Four",
+                "value": 0
+              },
+              {
+                "id": "64b31b15-1dbe-4203-b0c2-0ff2be26f8f4",
+                "type": "scale",
+                "hex": "#A500A5",
+                "name": "Nineteen Eighty Four",
+                "value": 0
+              },
+              {
+                "id": "d53e9d46-b17d-47a5-9be8-29a209df931c",
+                "type": "scale",
+                "hex": "#FF7E27",
+                "name": "Nineteen Eighty Four",
+                "value": 0
+              }
+            ],
+            "note": "",
+            "showNoteWhenEmpty": false,
+            "xColumn": "_time",
+            "generateXAxisTicks": [],
+            "xTotalTicks": 0,
+            "xTickStart": 0,
+            "xTickStep": 0,
+            "yColumn": "_value",
+            "generateYAxisTicks": [],
+            "yTotalTicks": 0,
+            "yTickStart": 0,
+            "yTickStep": 0,
+            "shadeBelow": false,
+            "position": "overlaid",
+            "timeFormat": "YYYY-MM-DD HH:mm:ss",
+            "hoverDimension": "auto",
+            "legendColorizeRows": true,
+            "legendHide": false,
+            "legendOpacity": 1,
+            "legendOrientationThreshold": 100000000
+          }
+        }
+      },
+      {
+        "type": "view",
+        "id": "087578adb7506000",
+        "attributes": {
+          "name": "Open issues by software",
+          "properties": {
+            "shape": "chronograf-v2",
+            "queries": [
+              {
+                "text": "import \"strings\"\nfrom(bucket: \"sec-stats\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cveLog\" and (r[\"_field\"] == \"id\" or r[\"_field\"] == \"software\"))\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({\n    r with\n    _value: strings.joinStr(arr: [r.software, r.id, r.priority], v: \":\")\n  }))\n  |> drop(columns: [\"id\", \"product\", \"status\"])\n  |> group(columns: [\"software\"])\n  |> window(every: 1d)\n  |> unique()\n  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)\n  // https://community.influxdata.com/t/advice-how-to-carry-forward-data-from-the-previous-day/21895\n//  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)\n//  |> aggregateWindow(every: 1d, fn: (tables=<-, column=\"_value\") => tables)\n//  |> fill(usePrevious: true)",
+                "editMode": "advanced",
+                "name": "",
+                "builderConfig": {
+                  "buckets": [],
+                  "tags": [
+                    {
+                      "key": "_measurement",
+                      "values": [],
+                      "aggregateFunctionType": "filter"
+                    }
+                  ],
+                  "functions": [
+                    {
+                      "name": "mean"
+                    }
+                  ],
+                  "aggregateWindow": {
+                    "period": "auto",
+                    "fillValues": false
+                  }
+                }
+              }
+            ],
+            "axes": {
+              "x": {
+                "bounds": [
+                  "",
+                  ""
+                ],
+                "label": "",
+                "prefix": "",
+                "suffix": "",
+                "base": "10",
+                "scale": "linear"
+              },
+              "y": {
+                "bounds": [
+                  "",
+                  ""
+                ],
+                "label": "",
+                "prefix": "",
+                "suffix": "",
+                "base": "10",
+                "scale": "linear"
+              }
+            },
+            "type": "xy",
+            "staticLegend": {
+              "colorizeRows": true,
+              "heightRatio": 0.4308510638297872,
               "opacity": 1,
               "orientationThreshold": 100000000,
               "widthRatio": 1
@@ -421,7 +418,7 @@
             "yTickStart": 0,
             "yTickStep": 0,
             "shadeBelow": false,
-            "position": "stacked",
+            "position": "overlaid",
             "timeFormat": "",
             "hoverDimension": "auto",
             "legendColorizeRows": true,
