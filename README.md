@@ -446,6 +446,20 @@ detect new issues or issues that have received updates. The
     Issues missing from CVE data:
      https://github.com/foo/corge/issues/345
      https://github.com/foo/quz/issues/456
+
+    # Show dependabot alerts since last stamp file update
+    $ cve-report-updated-bugs --gh-show-alerts \
+        --gh-org foo \
+        --since-stamp /path/to/stamp
+    Collecting repo status: [#########################################] 100%
+    Collecting alerts: [##############################################] 100%
+    Updated vulnerability alerts:
+     bar (https://github.com/foo/bar/security/dependabot):
+      lodash
+      - severity: high
+      - yarn.lock
+      - https://github.com/advisories/GHSA-35jh-r3h4-6jhm
+
 ```
 
 `cve-report-updated-bugs --show-updated` also supports `--since-stamp` as a
