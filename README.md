@@ -447,7 +447,8 @@ detect new issues or issues that have received updates. The
      https://github.com/foo/corge/issues/345
      https://github.com/foo/quz/issues/456
 
-    # Show dependabot alerts since last stamp file update
+    # Show dependabot alerts since last stamp file update (does not filter on
+    # 'active' status)
     $ cve-report-updated-bugs --gh-show-alerts \
         --gh-org foo \
         --since-stamp /path/to/stamp
@@ -459,7 +460,6 @@ detect new issues or issues that have received updates. The
       - severity: high
       - yarn.lock
       - https://github.com/advisories/GHSA-35jh-r3h4-6jhm
-
 ```
 
 `cve-report-updated-bugs --show-updated` also supports `--since-stamp` as a
