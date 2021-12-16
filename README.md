@@ -33,6 +33,7 @@
     $ cve-report				# summary
     $ cve-report --output-todolist		# todo list
     $ cve-report --output-sw [SOFTWARE]		# software info
+    $ cve-report --output-summary [PATH]	# summary info
 
     # various machine reports
     $ cve-report --output-influxdb		# InfluxDB line protocol
