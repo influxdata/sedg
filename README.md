@@ -371,14 +371,14 @@ webhook_url = secrets.get(key: "my-webhook-url")
 endpoint = slack.endpoint(url: webhook_url)
 
 mapFnCrit = (r) => ({
-  text: if r._value == 1 then "${r._value} open critical issue" else "${r._value} open critical issues",
+  text: if r._value == 1 then "${r._value} open critical security issue" else "${r._value} open critical security issues",
   color: "danger",
   channel: "",
 })
 toSlackCrit = endpoint(mapFn: mapFnCrit)
 
 mapFnHigh = (r) => ({
-  text: if r._value == 1 then "${r._value} open high issue" else "${r._value} open high issues",
+  text: if r._value == 1 then "${r._value} open high security issue" else "${r._value} open high security issues",
   color: "danger",
   channel: "",
 })
@@ -387,28 +387,46 @@ toSlackHigh = endpoint(mapFn: mapFnHigh)
 critlvl = 0
 highlvl = 0
 
-checkStatus = (tables=<-, priority, threshold) => tables
-    |> range(start: -30d, stop: now())
-    |> filter(fn: (r) => r["_measurement"] == "cveLog")
-    |> filter(fn: (r) => r["_field"] == "id")
+// grab everything from the last 30 days and filter down once so we don't
+// have to keep doing it. We'll filter down more as we go.
+data = from(bucket: "jdstrand-sec-stats")
+  |> range(start: -30d, stop: now())
+  |> filter(fn: (r) => r["_measurement"] == "cveLog" and r["_field"] == "id")
+
+getLatest = (tables=<-) => {
+  row = tables
+    |> group(columns: ["_time"])
+    |> aggregateWindow(every: 1d, createEmpty: false, fn: count)
+    |> group(columns: ["_time"], mode: "except")
+    |> last()
+    |> limit(n: 1)
+    // we only have 1 row at this point, but fn must be specified
+    |> findRecord(fn: (key) => true, idx: 0)
+  return row._time
+}
+
+latest = data
+  |> getLatest()
+
+// check for statuses for the 24 hour period before time of the latest entry
+checkStatus = (tables=<-, priority, threshold) =>
+  tables
+    |> range(start: -24h, stop: latest)
     |> filter(fn: (r) => r["priority"] == priority)
+    |> group(columns: ["priority"])
     |> window(every: 1d)
     |> unique()
-    |> group(columns: ["priority"])
-    // https://community.influxdata.com/t/advice-how-to-carry-forward-data-from-the-previous-day/21895
     |> aggregateWindow(every: 1d, createEmpty: false, fn: count)
-    |> aggregateWindow(every: 1d, createEmpty: true, fn: (tables=<-, column="_value") => tables)
-    |> fill(usePrevious: true)
     |> last()
     |> limit(n: 1)
     |> filter(fn: (r) => r["_value"] > threshold)
 
-crit = from(bucket: "jdstrand-sec-stats")
+crit = data
   |> checkStatus(priority: "critical", threshold: critlvl)
   |> toSlackCrit()
   |> yield(name: "critical")
 
-high = from(bucket: "jdstrand-sec-stats")
+high = data
   |> checkStatus(priority: "high", threshold: highlvl)
   |> toSlackHigh()
   |> yield(name: "high")
