@@ -36,7 +36,7 @@
     $ cve-report --output-summary [PATH]	# summary info
 
     # various machine reports
-    $ cve-report --output-influxdb		# InfluxDB line protocol
+    $ cve-report --output-influxdb [PATH]	# InfluxDB line protocol
     ```
 
  5. (Optional) If vim user, symlink cvelib/cve.vim in ~/.vim/syntax
