@@ -451,10 +451,11 @@ detect new issues or issues that have received updates. The
      https://github.com/foo/baz/issues/234
 
     # Show list of issues for specific repos in an org with different
-    # labels
+    # labels, but without label 'skipme'
     $ cve-report-updated-bugs --show-missing \
         --gh-org foo \
         --gh-labels="bar:baz" \
+        --gh-skip-labels="skipme" \
         --gh-repos=norf,corge,qux
     Fetching list of repos: ...... done!
     Fetching list of issues for:
