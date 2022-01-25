@@ -51,7 +51,7 @@ _patLengths = {
 rePatterns = {
     # foo, foo1, foo-bar, foo.bar, for-bar-1.0, foo_bar
     "pkg-software": re.compile(
-        r"^[a-z0-9+._-]{1,%(software_len)d}$"
+        r"^[a-zA-Z0-9+._-]{1,%(software_len)d}$"
         % ({"software_len": _patLengths["pkg-software"]})
     ),
     # foo, foo1, foo-bar, foo.bar, for-bar-1.0
@@ -73,7 +73,7 @@ rePatterns = {
     ),
     # the string form
     "pkg-full": re.compile(
-        r"^(git|snap|oci|upstream|ubuntu|debian|suse)(/[a-z0-9+.-]{1,%(where_len)d})?_[a-z0-9+._-]{1,%(software_len)d}(/[a-z0-9+.-]{1,%(modifier_len)d})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,%(when_len)d}\))?$"
+        r"^(git|snap|oci|upstream|ubuntu|debian|suse)(/[a-z0-9+.-]{1,%(where_len)d})?_[a-zA-Z0-9+._-]{1,%(software_len)d}(/[a-z0-9+.-]{1,%(modifier_len)d})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,%(when_len)d}\))?$"
         % (
             {
                 "where_len": _patLengths["pkg-where"],
@@ -99,7 +99,7 @@ rePatterns = {
     # CVE-YYYY-NNNX (1-11 N's)
     # CVE-YYYY-GHXXXX#AAAA (1-12 X's, 1-40 A's)
     "CVE": re.compile(
-        r"^CVE-[0-9]{4}-([0-9N]{3,11}[0-9]|GH[0-9]{1,12}#[a-z0-9+.-]{1,%(software_len)d})$"
+        r"^CVE-[0-9]{4}-([0-9N]{3,11}[0-9]|GH[0-9]{1,12}#[a-zA-Z0-9+.-]{1,%(software_len)d})$"
         % ({"software_len": _patLengths["pkg-software"]})
     ),
     # CVE priorities

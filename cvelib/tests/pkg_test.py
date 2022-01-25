@@ -190,10 +190,12 @@ class TestPkg(TestCase):
             ("foo.bar", False, True),
             ("foo-bar-1.0", False, True),
             ("foo_bar", False, True),
+            ("FOO", False, True),
             # invalid
             ("b@d", False, False),
             ("foo ", False, False),
             (" foo ", False, False),
+            ("F@O", False, False),
             # valid Ubuntu
             ("foo", True, True),
             ("foo1", True, True),
@@ -205,6 +207,7 @@ class TestPkg(TestCase):
             ("b@d", True, False),
             ("foo ", True, False),
             (" foo ", True, False),
+            ("FOO", True, False),
         ]
         for s, compat, valid in tsts:
             pkg = cvelib.pkg.CvePkg("git", "foo", "needed", compatUbuntu=compat)
@@ -639,7 +642,9 @@ class TestPkg(TestCase):
             ("upstream_%s: needed" % ("a" * 50), False, True),
             ("git/%s_foo: needed" % ("a" * 40), False, True),
             ("upstream_foo/%s: needed" % ("a" * 40), False, True),
-            ("upstream_foo: needed (%s)" % ("a" * 100), True, True),
+            ("upstream_foo: needed (%s)" % ("a" * 100), False, True),
+            ("upstream_FOO: needed", False, True),
+            ("upstream_foo-BAR: needed", False, True),
             # valid compatUbuntu
             ("focal_foo: needed", True, True),
             ("lucid_gcc-4.1: ignored (reached end-of-life)", True, True),
@@ -687,7 +692,8 @@ class TestPkg(TestCase):
             ("upstream_%s: needed" % ("a" * 51), False, False),
             ("git/%s_foo: needed" % ("a" * 41), False, False),
             ("upstream_foo/%s: needed" % ("a" * 41), False, False),
-            ("upstream_foo: needed (%s)" % ("a" * 101), True, False),
+            ("upstream_foo: needed (%s)" % ("a" * 101), False, False),
+            ("upstream_F@O: needed", False, False),
             # invalid compatUbuntu
             ("foc@l_foo: needed", True, False),
             ("devel_grub2-signed: released (1.157)\n ", True, False),
@@ -697,6 +703,8 @@ class TestPkg(TestCase):
             ("focal_foo/%s: needed" % ("a" * 40), False, False),
             ("focal_foo: needed (%s)" % ("a" * 101), True, False),
             ("upstream_foo_bar: needed (123-4)", True, False),
+            ("upstream_FOO: needed", True, False),
+            ("upstream_foo-BAR: needed", True, False),
         ]
         for s, compat, valid in tsts:
             if valid:

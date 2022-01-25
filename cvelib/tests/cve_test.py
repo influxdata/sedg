@@ -654,6 +654,7 @@ git/github_norf: needs-triage
             ("CVE-2020-GH1234#abcdefg-1.2beta", True),
             ("CVE-2020-GH123456789012#a", True),
             ("CVE-2020-GH1#%s" % ("a" * 50), True),
+            ("CVE-2020-GH123456789012#A", True),
             ("BAD", False),
             ("CVE-202O-1234", False),
             ("CV3-2020-1234", False),
