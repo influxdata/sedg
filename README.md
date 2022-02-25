@@ -156,7 +156,11 @@ For each field in the software section:
    revision number or a date (eg, for an OCI image).
    * As a special case for `not-affected` and `deferred` the `<when>`
      parenthetical might give a hint as to why (eg `code not present` with
-     `not-affected`).
+     `not-affected`). Typical hints for 'not-affected':
+     * code not present: project does not contain the vulnerable code path
+     * code not compiled: project does not compile the vulnerable code path
+     * code not imported: project does not import the vulnerable code path
+     * code not used: project contains/imports/etc the code but does use it
    * `not-affected` and `released` are similar but convey different things. Eg
      `not-affected (1.2.3)` vs `released (1.2.1+patch1)` is saying that `1.2.3`
      wasn't ever affected (ie, didn't require anything to be done) but
