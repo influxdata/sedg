@@ -484,6 +484,7 @@ git/github_norf: needs-triage
             ("Patches_foo", False, True),
             ("Patches_%s" % ("a" * 50), False, True),
             ("Patches_foo_bar", False, True),  # non-compat allows '_' in software
+            ("Patches_FOO", False, True),  # non-compat allows 'A-Z' in software
             # invalid
             ("Patches_", False, False),
             ("Patches_b@d", False, False),
@@ -499,6 +500,7 @@ git/github_norf: needs-triage
             ("Patches_%s" % ("a" * 51), True, False),
             ("Patches_foo_bar/baz", True, False),
             ("Patches_foo_bar", True, False),  # compat disallows '_' in software
+            ("Patches_FOO", True, False),  # compat disallows 'A-Z' in software
         ]
         for key, compat, valid in tsts:
             cve = cvelib.cve.CVE(compatUbuntu=compat)
@@ -526,6 +528,7 @@ git/github_norf: needs-triage
             ("Tags_foo_bar/baz", False, True),
             ("Tags_%s/foo" % ("a" * 50), False, True),
             ("Tags_foo/%s" % ("a" * 50), False, True),
+            ("Tags_FOO", False, True),
             # invalid
             ("Tags_", False, False),
             ("Tags_b@d", False, False),
@@ -548,6 +551,7 @@ git/github_norf: needs-triage
             ("Tags_foo_%s" % ("a" * 51), True, False),
             ("Tags_foo/bar", True, False),
             ("Tags_foo_bar_baz", True, False),
+            ("Tags_FOO", True, False),
         ]
         for key, compat, valid in tsts:
             cve = cvelib.cve.CVE(compatUbuntu=compat)
@@ -575,6 +579,7 @@ git/github_norf: needs-triage
             ("Priority_foo_bar/baz", False, True),
             ("Priority_%s/foo" % ("a" * 50), False, True),
             ("Priority_foo/%s" % ("a" * 50), False, True),
+            ("Priority_FOO", False, True),
             # invalid
             ("Priority_", False, False),
             ("Priority_b@d", False, False),
@@ -597,6 +602,7 @@ git/github_norf: needs-triage
             ("Priority_foo_%s" % ("a" * 51), True, False),
             ("Priority_foo/bar", True, False),
             ("Priority_foo_bar_baz", True, False),
+            ("Priority_FOO", True, False),
         ]
         for key, compat, valid in tsts:
             cve = cvelib.cve.CVE(compatUbuntu=compat)
