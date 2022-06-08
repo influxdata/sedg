@@ -1404,20 +1404,24 @@ upstream_baz: needed
 
         tsts = [
             # valid strict
-            ("CVE-2021-999999", ["git/github_foo"], False, None, None),
+            ("CVE-2021-999999", ["git/github_foo"], False, None, False, None),
+            ("CVE-2021-999999", ["git/github_foo"], False, None, True, None),
             (
                 "CVE-2021-999999",
                 ["git/github_foo", "git/github_bar"],
                 False,
                 None,
+                False,
                 None,
             ),
-            ("https://github.com/foo/bar/issues/1234", [], False, None, None),
+            ("https://github.com/foo/bar/issues/1234", [], False, None, False, None),
+            ("https://github.com/foo/bar/issues/1234", [], False, None, True, None),
             (
                 "https://github.com/foo/bar/issues/1234",
                 ["git/github_bar"],
                 False,
                 None,
+                False,
                 None,
             ),
             (
@@ -1425,21 +1429,23 @@ upstream_baz: needed
                 ["git/github_bar"],
                 False,
                 "baz",
+                False,
                 None,
             ),
-            ("CVE-2021-999999", ["git/github_baz/mod"], False, None, None),
-            ("CVE-2021-999999", ["ubuntu/focal_norf"], False, None, None),
-            ("CVE-2021-999999", ["debian/buster_norf"], False, None, None),
+            ("CVE-2021-999999", ["git/github_baz/mod"], False, None, False, None),
+            ("CVE-2021-999999", ["ubuntu/focal_norf"], False, None, False, None),
+            ("CVE-2021-999999", ["debian/buster_norf"], False, None, False, None),
             # valid compat
-            ("CVE-2021-999999", ["focal_baz"], True, None, None),
-            ("CVE-2021-999999", ["norf"], True, None, None),
-            ("CVE-2021-999999", ["norf", "corge"], True, None, None),
+            ("CVE-2021-999999", ["focal_baz"], True, None, False, None),
+            ("CVE-2021-999999", ["norf"], True, None, False, None),
+            ("CVE-2021-999999", ["norf", "corge"], True, None, False, None),
             # invalid
             (
                 "CVE-2021-bad",
                 ["git/github_foo"],
                 False,
                 None,
+                False,
                 "invalid Candidate: 'CVE-2021-bad'",
             ),
             (
@@ -1447,6 +1453,7 @@ upstream_baz: needed
                 [],
                 False,
                 None,
+                False,
                 "invalid url: 'https://github.com/foo' (only support github issues)",
             ),
             (
@@ -1454,6 +1461,7 @@ upstream_baz: needed
                 ["focal_baz"],
                 False,
                 None,
+                False,
                 "invalid package entry 'focal_baz: needs-triage'",
             ),
             (
@@ -1461,24 +1469,29 @@ upstream_baz: needed
                 [],
                 False,
                 None,
+                False,
                 "could not find usable packages for 'CVE-2021-999999'",
             ),
         ]
 
-        for cve, pkgs, compat, boiler, expFail in tsts:
+        for cve, pkgs, compat, boiler, retired, expFail in tsts:
 
             if expFail is not None:
                 with self.assertRaises(cvelib.common.CveException) as context:
-                    cvelib.cve.addCve(cveDirs, compat, cve, pkgs, boiler)
+                    cvelib.cve.addCve(cveDirs, compat, cve, pkgs,
+                                      boiler=boiler, retired=retired)
                 self.assertEqual(expFail, str(context.exception))
                 continue
 
-            cve_fn = os.path.join(cveDirs["active"], cve)
+            dir = "active"
+            if retired:
+                dir = "retired"
+            cve_fn = os.path.join(cveDirs[dir], cve)
             if cve.startswith("http"):
-                cve_fn = os.path.join(cveDirs["active"], cvelib.cve.cveFromUrl(cve))
+                cve_fn = os.path.join(cveDirs[dir], cvelib.cve.cveFromUrl(cve))
 
             with cvelib.tests.util.capturedOutput() as (output, error):
-                cvelib.cve.addCve(cveDirs, compat, cve, pkgs, boiler)
+                cvelib.cve.addCve(cveDirs, compat, cve, pkgs, boiler=boiler, retired=retired)
             self.assertTrue(os.path.exists(cve_fn))
 
             out = output.getvalue().strip()

@@ -751,7 +751,7 @@ def _createCve(cveDirs, cve_path, cve, args_pkgs, compatUbuntu, withReferences=F
         os.unlink(f.name)
 
 
-def addCve(cveDirs, compatUbuntu, orig_cve, orig_pkgs, boiler=None):
+def addCve(cveDirs, compatUbuntu, orig_cve, orig_pkgs, boiler=None, retired=False):
     """Add/modify CVE"""
     pkgs = []
     if orig_pkgs is not None:
@@ -763,7 +763,12 @@ def addCve(cveDirs, compatUbuntu, orig_cve, orig_pkgs, boiler=None):
         cand = cvelib.cve.cveFromUrl(orig_cve)  # raises an error
     else:
         cand = orig_cve
-    cve_fn = os.path.join(cveDirs["active"], cand)  # TODO: check retired, ...
+
+    # TODO: check retired, ...
+    if retired:
+        cve_fn = os.path.join(cveDirs["retired"], cand)
+    else:
+        cve_fn = os.path.join(cveDirs["active"], cand)
 
     # If we can determine a pkg from the candidate, then add it to the
     # front of the list, removing it from the pkgs if it is already there
