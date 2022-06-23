@@ -11,7 +11,7 @@ import tempfile
 
 from cvelib.common import CveException, rePatterns
 import cvelib.common
-from cvelib.pkg import CvePkg
+from cvelib.pkg import CvePkg, parse
 
 
 class CVE(object):
@@ -120,7 +120,7 @@ class CVE(object):
                 priorities[pkg] = data[k]
             else:
                 s = "%s: %s" % (k, data[k])
-                pkgs.append(cvelib.pkg.parse(s, compatUbuntu=self.compatUbuntu))
+                pkgs.append(parse(s, compatUbuntu=self.compatUbuntu))
 
         self.setPackages(pkgs, patches=patches, tags=tags, priorities=priorities)
 
@@ -303,7 +303,7 @@ class CVE(object):
         #   }
         def _collectPriorities(pkgs):
             priorities = {}
-            for pkg in self.pkgs:
+            for pkg in pkgs:
                 if pkg.software not in priorities:
                     priorities[pkg.software] = {}
                 for pkgKey in pkg.priorities:
@@ -401,7 +401,7 @@ CVSS:%(cvss)s
 
         return s
 
-    def _isPresent(self, data, key, canBeEmpty=False):
+    def _isPresent(self, data, key):
         """Ensure data has key"""
         if not isinstance(data, dict):
             raise CveException("data not of type dict")
@@ -623,9 +623,7 @@ def checkSyntax(cveDirs, compatUbuntu, untriagedOk=False):
         rel = tmp[-2] + "/" + tmp[-1]
         try:
             cve = None
-            cve = cvelib.cve.CVE(
-                fn=f, compatUbuntu=compatUbuntu, untriagedOk=untriagedOk
-            )
+            cve = CVE(fn=f, compatUbuntu=compatUbuntu, untriagedOk=untriagedOk)
         except Exception as e:
             cvelib.common.warn("%s: %s" % (rel, str(e)))
             continue
@@ -746,9 +744,9 @@ def _createCve(
     pkgObjs = []
     for p in args_pkgs:
         # mock up an entry
-        pkgObjs.append(cvelib.pkg.parse("%s: needs-triage" % p, compatUbuntu))
+        pkgObjs.append(parse("%s: needs-triage" % p, compatUbuntu))
 
-    cveObj = cvelib.cve.CVE(untriagedOk=True, compatUbuntu=compatUbuntu)
+    cveObj = CVE(untriagedOk=True, compatUbuntu=compatUbuntu)
     cveObj.setData(data)
     cveObj.setPackages(pkgObjs, append=append)
 
@@ -784,7 +782,7 @@ def addCve(
     # See if we can parse
     cand = None
     if orig_cve.startswith("http"):
-        cand = cvelib.cve.cveFromUrl(orig_cve)  # raises an error
+        cand = cveFromUrl(orig_cve)  # raises an error
     else:
         cand = orig_cve
 
@@ -796,7 +794,7 @@ def addCve(
 
     # If we can determine a pkg from the candidate, then add it to the
     # front of the list, removing it from the pkgs if it is already there
-    p = cvelib.cve.pkgFromCandidate(cand)
+    p = pkgFromCandidate(cand)
     if p:
         if p in pkgs:
             pkgs.remove(p)
