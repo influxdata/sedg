@@ -1478,8 +1478,9 @@ upstream_baz: needed
 
             if expFail is not None:
                 with self.assertRaises(cvelib.common.CveException) as context:
-                    cvelib.cve.addCve(cveDirs, compat, cve, pkgs,
-                                      boiler=boiler, retired=retired)
+                    cvelib.cve.addCve(
+                        cveDirs, compat, cve, pkgs, boiler=boiler, retired=retired
+                    )
                 self.assertEqual(expFail, str(context.exception))
                 continue
 
@@ -1491,7 +1492,9 @@ upstream_baz: needed
                 cve_fn = os.path.join(cveDirs[dir], cvelib.cve.cveFromUrl(cve))
 
             with cvelib.tests.util.capturedOutput() as (output, error):
-                cvelib.cve.addCve(cveDirs, compat, cve, pkgs, boiler=boiler, retired=retired)
+                cvelib.cve.addCve(
+                    cveDirs, compat, cve, pkgs, boiler=boiler, retired=retired
+                )
             self.assertTrue(os.path.exists(cve_fn))
 
             out = output.getvalue().strip()
