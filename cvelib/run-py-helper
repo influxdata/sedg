@@ -27,6 +27,11 @@ echo "= $exe ="
 for i in ./cvelib/*py \
          ./cvelib/tests/*py \
          ./bin/cve-* ; do
+    # this is a bash script
+    if [ "$i" = "./bin/cve-edit" ]; then
+        continue
+    fi
+
     echo "Checking $i"
     #shellcheck disable=2086
     "$exe" $args "$i"
