@@ -408,6 +408,7 @@ def getConfigCveDataPaths():
         error(
             "Please configure %s to\nset 'cve-data' in '[Locations]'" % configFilePath
         )
+        return  # needed by pyright since it doesn't know error() exits
 
     cveDirs = {}
     for d in cve_reldirs:
@@ -420,7 +421,7 @@ def getConfigCveDataPaths():
 
 
 def getConfigCompatUbuntu():
-    (config, configFilePath) = readConfig()
+    (config, _) = readConfig()
     if "Behavior" in config and "compat-ubuntu" in config["Behavior"]:
         if config["Behavior"]["compat-ubuntu"].lower() == "yes":
             return True
