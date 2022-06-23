@@ -1349,6 +1349,30 @@ CVSS:
         self.assertTrue("git/github_bar" in res2)
         self.assertEqual("needs-triage", res2["git/github_bar"])
 
+        # discovered-by
+        cvelib.cve._createCve(
+            cveDirs,
+            cve_fn,
+            os.path.basename(cve_fn),
+            ["git/github_foo"],
+            False,
+            discovered_by="foo",
+        )
+        res3 = cvelib.common.readCve(cve_fn)
+        self.assertEqual("foo", res3["Discovered-by"])
+
+        # assigned-to
+        cvelib.cve._createCve(
+            cveDirs,
+            cve_fn,
+            os.path.basename(cve_fn),
+            ["git/github_foo"],
+            False,
+            assigned_to="foo",
+        )
+        res4 = cvelib.common.readCve(cve_fn)
+        self.assertEqual("foo", res4["Discovered-by"])
+
     def test_addCve(self):
         """Test _createCve()"""
         self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")

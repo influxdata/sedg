@@ -686,7 +686,16 @@ def _genReferencesAndBugs(cve):
     return refs, bugs
 
 
-def _createCve(cveDirs, cve_path, cve, args_pkgs, compatUbuntu, withReferences=False):
+def _createCve(
+    cveDirs,
+    cve_path,
+    cve,
+    args_pkgs,
+    compatUbuntu,
+    withReferences=False,
+    discovered_by=None,
+    assigned_to=None,
+):
     """Create or append CVE"""
     data = {}
 
@@ -743,6 +752,12 @@ def _createCve(cveDirs, cve_path, cve, args_pkgs, compatUbuntu, withReferences=F
     cveObj.setData(data)
     cveObj.setPackages(pkgObjs, append=append)
 
+    if discovered_by is not None:
+        cveObj.setDiscoveredBy(discovered_by)
+
+    if assigned_to is not None:
+        cveObj.setAssignedTo(assigned_to)
+
     # now write it out
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
         f.write(cveObj.onDiskFormat())
@@ -751,7 +766,16 @@ def _createCve(cveDirs, cve_path, cve, args_pkgs, compatUbuntu, withReferences=F
         os.unlink(f.name)
 
 
-def addCve(cveDirs, compatUbuntu, orig_cve, orig_pkgs, boiler=None, retired=False):
+def addCve(
+    cveDirs,
+    compatUbuntu,
+    orig_cve,
+    orig_pkgs,
+    boiler=None,
+    retired=False,
+    discovered_by=None,
+    assigned_to=None,
+):
     """Add/modify CVE"""
     pkgs = []
     if orig_pkgs is not None:
@@ -803,7 +827,16 @@ def addCve(cveDirs, compatUbuntu, orig_cve, orig_pkgs, boiler=None, retired=Fals
         shutil.copyfile(pkgBoiler, cve_fn, follow_symlinks=False)
         fromPkgBoiler = True
 
-    _createCve(cveDirs, cve_fn, orig_cve, pkgs, compatUbuntu, fromPkgBoiler)
+    _createCve(
+        cveDirs,
+        cve_fn,
+        orig_cve,
+        pkgs,
+        compatUbuntu,
+        fromPkgBoiler,
+        discovered_by,
+        assigned_to,
+    )
 
 
 # misc helpers
