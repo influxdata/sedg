@@ -9,6 +9,7 @@ import tempfile
 
 import cvelib.cve
 import cvelib.common
+from cvelib.pkg import CvePkg
 import cvelib.tests.util
 
 
@@ -129,35 +130,35 @@ CVSS: ...
 
         pkgs = []
         # no patches for pkg1
-        pkgs.append(cvelib.pkg.CvePkg("git", "pkg1", "needed"))
+        pkgs.append(CvePkg("git", "pkg1", "needed"))
 
         # (unsorted) patches for these
-        pkg2a = cvelib.pkg.CvePkg("snap", "pkg2", "needed", "pub", "", "123-4")
+        pkg2a = CvePkg("snap", "pkg2", "needed", "pub", "", "123-4")
         pkg2a.setPatches(["upstream: http://a", "other: http://b"], False)
         pkgs.append(pkg2a)
 
-        pkg2b = cvelib.pkg.CvePkg("git", "pkg2", "released", "", "inky", "5678")
+        pkg2b = CvePkg("git", "pkg2", "released", "", "inky", "5678")
         pkgs.append(pkg2b)
 
-        pkg3 = cvelib.pkg.CvePkg("snap", "pkg3", "needed")
+        pkg3 = CvePkg("snap", "pkg3", "needed")
         pkg3.setTags([("pkg3", "pie")])
         pkgs.append(pkg3)
 
-        pkg3b = cvelib.pkg.CvePkg("git", "pkg3", "needed")
+        pkg3b = CvePkg("git", "pkg3", "needed")
         pkg3b.setTags([("pkg3", "hardlink-restriction")])
         pkg3b.setPriorities([("pkg3", "low")])
         pkgs.append(pkg3b)
 
-        pkg4 = cvelib.pkg.CvePkg("debian", "pkg4", "needed", where="buster")
+        pkg4 = CvePkg("debian", "pkg4", "needed", where="buster")
         pkgs.append(pkg4)
 
-        pkg4b = cvelib.pkg.CvePkg("debian", "pkg4", "needed", where="squeeze")
+        pkg4b = CvePkg("debian", "pkg4", "needed", where="squeeze")
         pkgs.append(pkg4b)
 
-        pkg4c = cvelib.pkg.CvePkg("debian", "pkg4", "needed", where="wheezy")
+        pkg4c = CvePkg("debian", "pkg4", "needed", where="wheezy")
         pkgs.append(pkg4c)
 
-        pkg4d = cvelib.pkg.CvePkg("debian", "pkg4", "needed", where="sid")
+        pkg4d = CvePkg("debian", "pkg4", "needed", where="sid")
         pkgs.append(pkg4d)
 
         pkg4.setPriorities(
@@ -273,7 +274,7 @@ git/github_norf: needs-triage
         ]
         for product, software, status, where, modifier, when, compat in tsts:
             pkgs.append(
-                cvelib.pkg.CvePkg(
+                CvePkg(
                     product,
                     software,
                     status,
@@ -784,6 +785,8 @@ git/github_norf: needs-triage
                     fn = cve._verifyPublicDate
                 elif tstType == "CRD":
                     fn = cve._verifyCRD
+                else:
+                    continue  # needed by pyright
 
                 if not err:
                     fn(tstType, val)
@@ -879,6 +882,8 @@ git/github_norf: needs-triage
                 fn = cvelib.cve.CVE()._verifyBugs
             elif tstType == "References":
                 fn = cvelib.cve.CVE()._verifyReferences
+            else:
+                continue  # needed by pyright
 
             for val, err in tsts:
                 if not err:
@@ -911,6 +916,8 @@ git/github_norf: needs-triage
                 fn = cvelib.cve.CVE()._verifyNotes
             elif tstType == "Mitigation":
                 fn = cvelib.cve.CVE()._verifyMitigation
+            else:
+                continue  # needed by pyright
 
             for val, err in tsts:
                 if not err:
@@ -954,6 +961,8 @@ git/github_norf: needs-triage
                 fn = cvelib.cve.CVE()._verifyDiscoveredBy
             elif tstType == "Assigned-to":
                 fn = cvelib.cve.CVE()._verifyAssignedTo
+            else:
+                continue  # needed by pyright
 
             for val, err in tsts:
                 if not err:
@@ -1024,8 +1033,8 @@ git/github_norf: needs-triage
         self.assertEqual(0, len(cve.pkgs))
 
         pkgs = [
-            cvelib.pkg.CvePkg("git", "pkg1", "needed"),
-            cvelib.pkg.CvePkg("git", "pkg2", "needed"),
+            CvePkg("git", "pkg1", "needed"),
+            CvePkg("git", "pkg2", "needed"),
         ]
         patches = {
             "pkg1": " upstream: http://a\n other: http://b",
@@ -1080,14 +1089,14 @@ git/github_norf: needs-triage
         self.assertEqual(0, len(cve.pkgs))
 
         # append one
-        pkgs = [cvelib.pkg.CvePkg("git", "pkg1", "needed")]
+        pkgs = [CvePkg("git", "pkg1", "needed")]
         cve.setPackages(pkgs)
         self.assertEqual(1, len(cve.pkgs))
         self.assertEqual(1, len(cve._pkgs_list))
         self.assertTrue(pkgs[0].what() in cve._pkgs_list)
 
         # append another
-        pkgs = [cvelib.pkg.CvePkg("git", "pkg2", "needed")]
+        pkgs = [CvePkg("git", "pkg2", "needed")]
         cve.setPackages(pkgs, append=True)
         self.assertEqual(2, len(cve.pkgs))
         self.assertEqual(2, len(cve._pkgs_list))
@@ -1095,9 +1104,9 @@ git/github_norf: needs-triage
 
         # append with duplicates
         pkgs = [
-            cvelib.pkg.CvePkg("git", "pkg1", "needed"),
-            cvelib.pkg.CvePkg("git", "pkg2", "needed"),
-            cvelib.pkg.CvePkg("git", "pkg3", "needed"),
+            CvePkg("git", "pkg1", "needed"),
+            CvePkg("git", "pkg2", "needed"),
+            CvePkg("git", "pkg3", "needed"),
         ]
         cve.setPackages(pkgs, append=True)
         self.assertEqual(3, len(cve.pkgs))
