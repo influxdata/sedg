@@ -28,7 +28,7 @@ for i in ./cvelib/*py \
          ./cvelib/tests/*py \
          ./bin/cve-* ; do
     # this is a bash script
-    if [ "$i" = "./bin/cve-edit" ]; then
+    if [ "$i" = "./bin/cve-edit" ] || [ "$i" = "./bin/cve-nfu" ]; then
         continue
     fi
 
