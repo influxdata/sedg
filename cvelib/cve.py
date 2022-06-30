@@ -613,6 +613,23 @@ CVSS:%(cvss)s
 
 
 # Utility functions that work on CVE files
+def checkSyntaxFile(f, rel, compatUbuntu, untriagedOk=False):
+    """Perform syntax check on one CVE"""
+    cve = None
+    try:
+        cve = CVE(fn=f, compatUbuntu=compatUbuntu, untriagedOk=untriagedOk)
+    except Exception as e:
+        cvelib.common.warn("%s: %s" % (rel, str(e)))
+        return cve
+
+    # make sure the name of the file matches the candidate
+    bn = os.path.basename(f)
+    if bn != cve.candidate:
+        cvelib.common.warn("%s: non-matching candidate '%s'" % (rel, cve.candidate))
+
+    return cve
+
+
 def checkSyntax(cveDirs, compatUbuntu, untriagedOk=False):
     """Perform syntax checks on CVEs"""
     # TODO: make configurable
@@ -621,17 +638,9 @@ def checkSyntax(cveDirs, compatUbuntu, untriagedOk=False):
     for f in cves:
         tmp = os.path.realpath(f).split("/")
         rel = tmp[-2] + "/" + tmp[-1]
-        try:
-            cve = None
-            cve = CVE(fn=f, compatUbuntu=compatUbuntu, untriagedOk=untriagedOk)
-        except Exception as e:
-            cvelib.common.warn("%s: %s" % (rel, str(e)))
+        cve = checkSyntaxFile(f, rel, compatUbuntu, untriagedOk)
+        if cve is None:
             continue
-
-        # make sure the name of the file matches the candidate
-        bn = os.path.basename(f)
-        if bn != cve.candidate:
-            cvelib.common.warn("%s: non-matching candidate '%s'" % (rel, cve.candidate))
 
         if cve.candidate not in seen:
             seen[cve.candidate] = [rel]
