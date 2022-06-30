@@ -12,6 +12,7 @@ import tempfile
 from cvelib.common import CveException, rePatterns
 import cvelib.common
 from cvelib.pkg import CvePkg, parse
+import cvelib.github
 
 
 class CVE(object):
@@ -31,6 +32,7 @@ class CVE(object):
     cve_optional = [
         "CRD",
         "Mitigation",
+        "X-GitHub-Advanced-Security",
     ]
 
     def __str__(self):
@@ -46,6 +48,7 @@ class CVE(object):
         # XXX
         self.data = {}
         self.pkgs = []
+        self.ghas = []
         self._pkgs_list = []  # what is in self.pkgs
         self.compatUbuntu = compatUbuntu
         self.untriagedOk = untriagedOk
@@ -80,6 +83,9 @@ class CVE(object):
             self.setMitigation(data["Mitigation"])
         else:
             self.setMitigation("")
+
+        if "X-GitHub-Advanced-Security" in data:
+            self.setGHAS(data["X-GitHub-Advanced-Security"])
 
         # Any field with '_' is a package or patch. Since these could be out of
         # order, collect them separately, then call setPackages()
@@ -172,6 +178,10 @@ class CVE(object):
             self.notes.append(line)
 
         self.data["Notes"] = self.notes
+
+    def setGHAS(self, s):
+        """Set GitHub-Advanced-Security"""
+        self.ghas = cvelib.github.parse(s)
 
     def setMitigation(self, s):
         """Set Mitigation"""
@@ -310,12 +320,18 @@ class CVE(object):
                     priorities[pkg.software][pkgKey] = pkg.priorities[pkgKey]
             return priorities
 
+        def _collectGHAS(ghas):
+            s = []
+            for g in ghas:
+                s.append("%s" % g)
+            return s
+
         s = """Candidate:%(candidate)s
 PublicDate:%(publicDate)s
 CRD:%(crd)s
 References:%(references)s
 Description:%(description)s
-Notes:%(notes)s
+%(ghas)sNotes:%(notes)s
 Mitigation:%(mitigation)s
 Bugs:%(bugs)s
 Priority:%(priority)s
@@ -332,6 +348,10 @@ CVSS:%(cvss)s
                 else "",
                 "description": "\n %s" % "\n ".join(self.description)
                 if self.description
+                else "",
+                "ghas": "X-GitHub-Advanced-Security:\n%s\n"
+                % "\n".join(_collectGHAS(self.ghas))
+                if len(self.ghas) > 0
                 else "",
                 "notes": "\n %s" % "\n ".join(self.notes) if self.notes else "",
                 "mitigation": "\n %s" % "\n ".join(self.mitigation)
@@ -626,6 +646,24 @@ def checkSyntaxFile(f, rel, compatUbuntu, untriagedOk=False):
     bn = os.path.basename(f)
     if bn != cve.candidate:
         cvelib.common.warn("%s: non-matching candidate '%s'" % (rel, cve.candidate))
+
+    # make sure Discovered-by is populated if specified X-GitHub-Advanced-Security
+    seen = []
+    for item in cve.ghas:
+        needle = ""
+        if isinstance(item, cvelib.github.GHDependabot):
+            needle = "gh-dependabot"
+        elif isinstance(item, cvelib.github.GHSecret):
+            needle = "gh-secret"
+
+        if needle not in seen:
+            if not cve.discoveredBy.startswith(
+                needle
+            ) and not cve.discoveredBy.endswith(", %s" % needle):
+                seen.append(needle)
+                cvelib.common.warn(
+                    "%s: '%s' missing from Discovered-by" % (rel, needle)
+                )
 
     return cve
 
