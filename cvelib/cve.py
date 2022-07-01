@@ -33,7 +33,7 @@ class CVE(object):
     cve_optional = [
         "CRD",
         "Mitigation",
-        "X-GitHub-Advanced-Security",
+        "GitHub-Advanced-Security",
     ]
 
     def __str__(self):
@@ -90,8 +90,8 @@ class CVE(object):
         else:
             self.setOpenDate("")
 
-        if "X-GitHub-Advanced-Security" in data:
-            self.setGHAS(data["X-GitHub-Advanced-Security"])
+        if "GitHub-Advanced-Security" in data:
+            self.setGHAS(data["GitHub-Advanced-Security"])
 
         # Any field with '_' is a package or patch. Since these could be out of
         # order, collect them separately, then call setPackages()
@@ -363,7 +363,7 @@ CVSS:%(cvss)s
                 "description": "\n %s" % "\n ".join(self.description)
                 if self.description
                 else "",
-                "ghas": "X-GitHub-Advanced-Security:\n%s\n"
+                "ghas": "GitHub-Advanced-Security:\n%s\n"
                 % "\n".join(_collectGHAS(self.ghas))
                 if len(self.ghas) > 0
                 else "",
@@ -670,7 +670,7 @@ def checkSyntaxFile(f, rel, compatUbuntu, untriagedOk=False):
     if bn != cve.candidate:
         cvelib.common.warn("%s: non-matching candidate '%s'" % (rel, cve.candidate))
 
-    # make sure Discovered-by is populated if specified X-GitHub-Advanced-Security
+    # make sure Discovered-by is populated if specified GitHub-Advanced-Security
     seen = []
     for item in cve.ghas:
         needle = ""
