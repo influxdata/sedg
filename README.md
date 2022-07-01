@@ -80,6 +80,7 @@ by the file format. The format could be moved to RFC6532 at a future date.
 
 ```
     Candidate: CVE-<year>-<number> | CVE-<year>-GH<issue/pull>#<project>
+    OpenDate: YYYY-MM-DD [ HH:MM:SS [ TZ|+-N ] ]
     PublicDate: YYYY-MM-DD [ HH:MM:SS [ TZ|+-N ] ]
     CRD: YYYY-MM-DD [ HH:MM:SS [ TZ|+-N ] ]
     References:

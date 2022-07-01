@@ -18,6 +18,7 @@ import cvelib.github
 class CVE(object):
     cve_required = [
         "Candidate",
+        "OpenDate",
         "PublicDate",
         "References",
         "Description",
@@ -84,6 +85,11 @@ class CVE(object):
         else:
             self.setMitigation("")
 
+        if "OpenDate" in data:
+            self.setOpenDate(data["OpenDate"])
+        else:
+            self.setOpenDate("")
+
         if "X-GitHub-Advanced-Security" in data:
             self.setGHAS(data["X-GitHub-Advanced-Security"])
 
@@ -147,6 +153,12 @@ class CVE(object):
         self._verifyCRD("CRD", s)
         self.crd = s
         self.data["CRD"] = self.crd
+
+    def setOpenDate(self, s):
+        """Set OpenDate"""
+        self._verifyOpenDate("OpenDate", s)
+        self.openDate = s
+        self.data["OpenDate"] = self.openDate
 
     def setReferences(self, s):
         """Set References"""
@@ -327,6 +339,7 @@ class CVE(object):
             return s
 
         s = """Candidate:%(candidate)s
+OpenDate:%(openDate)s
 PublicDate:%(publicDate)s
 CRD:%(crd)s
 References:%(references)s
@@ -341,6 +354,7 @@ CVSS:%(cvss)s
 """ % (
             {
                 "candidate": " %s" % self.candidate if self.candidate else "",
+                "openDate": " %s" % self.openDate if self.openDate else "",
                 "publicDate": " %s" % self.publicDate if self.publicDate else "",
                 "crd": " %s" % self.crd if self.crd else "",
                 "references": "\n %s" % "\n ".join(self.references)
@@ -524,6 +538,7 @@ CVSS:%(cvss)s
         unspecified = "empty"
         if self.compatUbuntu:
             unspecified = "'unknown'"
+
         err = "invalid %s: '%s' (use %s or YYYY-MM-DD [HH:MM:SS [TIMEZONE]])" % (
             key,
             date,
@@ -570,6 +585,14 @@ CVSS:%(cvss)s
 
     def _verifyCRD(self, key, val):
         """Verify CVE CRD"""
+        self._verifySingleline(key, val)
+        # empty is ok unless self.compatUbuntu is set (then use 'unknown')
+        if val != "":
+            if not self.compatUbuntu or val != "unknown":
+                self._verifyDate(key, val)
+
+    def _verifyOpenDate(self, key, val):
+        """Verify CVE OpenDate"""
         self._verifySingleline(key, val)
         # empty is ok unless self.compatUbuntu is set (then use 'unknown')
         if val != "":
@@ -787,6 +810,9 @@ def _createCve(
     # fill in the CVE candidate (needed with new and per-package boiler, but
     # re-setting it for existing is harmless and makes the logic simpler)
     data["Candidate"] = os.path.basename(cve_path)
+
+    now = datetime.datetime.now()
+    data["OpenDate"] = "%d-%0.2d-%0.2d" % (now.year, now.month, now.day)
 
     pkgObjs = []
     for p in args_pkgs:

@@ -54,6 +54,7 @@ class TestCve(TestCase):
         return copy.deepcopy(
             {
                 "Candidate": "CVE-2020-1234",
+                "OpenDate": "2020-06-29",
                 "PublicDate": "2020-06-30",
                 "CRD": "2020-06-30 01:02:03 -0700",
                 "References": "\n http://example.com",
@@ -103,6 +104,7 @@ class TestCve(TestCase):
         self.maxDiff = 1024
         self._mock_readCve(self._cve_template())
         exp = """Candidate: CVE-2020-1234
+OpenDate: 2020-06-29
 PublicDate: 2020-06-30
 CRD: 2020-06-30 01:02:03 -0700
 References:
@@ -213,6 +215,7 @@ debian/wheezy_pkg4: needed
         self.maxDiff = 1024
         self._mock_readCve(self._cve_template())
         exp = """Candidate: CVE-2020-1234
+OpenDate: 2020-06-29
 PublicDate: 2020-06-30
 CRD: 2020-06-30 01:02:03 -0700
 References:
@@ -745,8 +748,8 @@ git/github_norf: needs-triage
                     str(context.exception),
                 )
 
-    def test__verifyPublicDateAndCRD(self):
-        """Test _verifyPublicDate() and _verifyCRD()"""
+    def test__verifyPublicDateAndCRDAndOpenDate(self):
+        """Test _verifyPublicDate(), _verifyCRD() and _verifyOpenDate()"""
         tsts = [
             # valid
             ("", False, None),
@@ -777,7 +780,7 @@ git/github_norf: needs-triage
                 "invalid %(key)s: 'bad' (use 'unknown' or YYYY-MM-DD [HH:MM:SS [TIMEZONE]])",
             ),
         ]
-        for tstType in ["PublicDate", "CRD"]:
+        for tstType in ["PublicDate", "CRD", "OpenDate"]:
             for val, compat, err in tsts:
                 fn = None
                 cve = cvelib.cve.CVE(compatUbuntu=compat)
@@ -785,6 +788,8 @@ git/github_norf: needs-triage
                     fn = cve._verifyPublicDate
                 elif tstType == "CRD":
                     fn = cve._verifyCRD
+                elif tstType == "OpenDate":
+                    fn = cve._verifyOpenDate
                 else:
                     continue  # needed by pyright
 
@@ -1269,6 +1274,7 @@ cve-data = %s
 
             fields = [
                 "Candidate",
+                "OpenDate",
                 "PublicDate",
                 "CRD",
                 "References",
@@ -1297,6 +1303,10 @@ cve-data = %s
                     )
                 elif k == "Priority":
                     self.assertEqual("untriaged", res[k])
+                elif k == "OpenDate":
+                    now = datetime.datetime.now()
+                    t = "%d-%0.2d-%0.2d" % (now.year, now.month, now.day)
+                    self.assertEqual(t, res[k])
                 else:
                     self.assertEqual("", res[k])
             return res
