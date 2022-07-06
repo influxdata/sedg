@@ -102,7 +102,21 @@ class TestCve(TestCase):
     def test_onDiskFormat(self):
         """Test onDiskFormat()"""
         self.maxDiff = 1024
-        self._mock_readCve(self._cve_template())
+        tmpl = self._cve_template()
+        tmpl[
+            "GitHub-Advanced-Security"
+        ] = """ - type: dependabot
+   dependency: foo
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
+   severity: moderate
+   status: dismissed (inaccurate; who)
+ - type: secret
+   secret: Slack Incoming Webhook URL
+   detectedIn: /path/to/file
+   status: dismissed (revoked; who)
+"""
+        self._mock_readCve(tmpl)
         exp = """Candidate: CVE-2020-1234
 OpenDate: 2020-06-29
 PublicDate: 2020-06-30
@@ -112,6 +126,17 @@ References:
 Description:
  Some description
  more desc
+GitHub-Advanced-Security:
+ - type: dependabot
+   dependency: foo
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
+   severity: moderate
+   status: dismissed (inaccurate; who)
+ - type: secret
+   secret: Slack Incoming Webhook URL
+   detectedIn: /path/to/file
+   status: dismissed (revoked; who)
 Notes:
  person> some notes
   more notes
