@@ -65,6 +65,7 @@ class CVE(object):
         self._verifyCve(data, untriagedOk=self.untriagedOk)
         # members
         self.setCandidate(data["Candidate"])
+        self.setOpenDate(data["OpenDate"])
         self.setPublicDate(data["PublicDate"])
         self.setReferences(data["References"])
         self.setDescription(data["Description"])
@@ -84,11 +85,6 @@ class CVE(object):
             self.setMitigation(data["Mitigation"])
         else:
             self.setMitigation("")
-
-        if "OpenDate" in data:
-            self.setOpenDate(data["OpenDate"])
-        else:
-            self.setOpenDate("")
 
         if "GitHub-Advanced-Security" in data:
             self.setGHAS(data["GitHub-Advanced-Security"])
