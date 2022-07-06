@@ -533,13 +533,15 @@ CVSS:%(cvss)s
         if not rePatterns["CVE"].search(val):
             raise CveException("invalid %s: '%s'" % (key, val))
 
-    def _verifyDate(self, key, date):
+    def _verifyDate(self, key, date, required=False):
         """Verify a date"""
-        unspecified = "empty"
-        if self.compatUbuntu:
-            unspecified = "'unknown'"
+        unspecified = ""
+        if not required:
+            unspecified = "empty or "
+            if self.compatUbuntu:
+                unspecified = "'unknown' or "
 
-        err = "invalid %s: '%s' (use %s or YYYY-MM-DD [HH:MM:SS [TIMEZONE]])" % (
+        err = "invalid %s: '%s' (use %sYYYY-MM-DD [HH:MM:SS [TIMEZONE]])" % (
             key,
             date,
             unspecified,
@@ -594,10 +596,8 @@ CVSS:%(cvss)s
     def _verifyOpenDate(self, key, val):
         """Verify CVE OpenDate"""
         self._verifySingleline(key, val)
-        # empty is ok unless self.compatUbuntu is set (then use 'unknown')
-        if val != "":
-            if not self.compatUbuntu or val != "unknown":
-                self._verifyDate(key, val)
+        if not self.compatUbuntu or val != "unknown":
+            self._verifyDate(key, val, required=True)
 
     def _verifyUrl(self, key, url):
         """Verify url"""

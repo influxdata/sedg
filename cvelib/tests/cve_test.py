@@ -748,8 +748,8 @@ git/github_norf: needs-triage
                     str(context.exception),
                 )
 
-    def test__verifyPublicDateAndCRDAndOpenDate(self):
-        """Test _verifyPublicDate(), _verifyCRD() and _verifyOpenDate()"""
+    def test__verifyPublicDateAndCRD(self):
+        """Test _verifyPublicDate() and _verifyCRD()"""
         tsts = [
             # valid
             ("", False, None),
@@ -780,7 +780,7 @@ git/github_norf: needs-triage
                 "invalid %(key)s: 'bad' (use 'unknown' or YYYY-MM-DD [HH:MM:SS [TIMEZONE]])",
             ),
         ]
-        for tstType in ["PublicDate", "CRD", "OpenDate"]:
+        for tstType in ["PublicDate", "CRD"]:
             for val, compat, err in tsts:
                 fn = None
                 cve = cvelib.cve.CVE(compatUbuntu=compat)
@@ -788,8 +788,6 @@ git/github_norf: needs-triage
                     fn = cve._verifyPublicDate
                 elif tstType == "CRD":
                     fn = cve._verifyCRD
-                elif tstType == "OpenDate":
-                    fn = cve._verifyOpenDate
                 else:
                     continue  # needed by pyright
 
@@ -799,6 +797,49 @@ git/github_norf: needs-triage
                     with self.assertRaises(cvelib.common.CveException) as context:
                         fn(tstType, val)
                     self.assertEqual(err % {"key": tstType}, str(context.exception))
+
+    def test__verifyOpenDate(self):
+        """Test _verifyOpenDate()"""
+        tsts = [
+            # valid
+            ("2021-01-25", False, None),
+            ("2021-01-25 16:00:00", False, None),
+            # valid Ubuntu
+            ("2021-01-25", True, None),
+            ("2021-01-25 16:00:00", True, None),
+            ("unknown", True, None),
+            # invalid
+            ("", False, "invalid %(key)s: '' (use YYYY-MM-DD [HH:MM:SS [TIMEZONE]])"),
+            ("\n", False, "invalid %(key)s: '\n' (expected single line)"),
+            (
+                "bad",
+                False,
+                "invalid %(key)s: 'bad' (use YYYY-MM-DD [HH:MM:SS [TIMEZONE]])",
+            ),
+            (
+                "unknown",
+                False,
+                "invalid %(key)s: 'unknown' (use YYYY-MM-DD [HH:MM:SS [TIMEZONE]])",
+            ),
+            # invalid compat
+            ("", True, "invalid %(key)s: '' (use YYYY-MM-DD [HH:MM:SS [TIMEZONE]])"),
+            ("\n", True, "invalid %(key)s: '\n' (expected single line)"),
+            (
+                "bad",
+                True,
+                "invalid %(key)s: 'bad' (use YYYY-MM-DD [HH:MM:SS [TIMEZONE]])",
+            ),
+        ]
+        for val, compat, err in tsts:
+            cve = cvelib.cve.CVE(compatUbuntu=compat)
+            fn = cve._verifyOpenDate
+
+            if not err:
+                fn("OpenDate", val)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    fn("OpenDate", val)
+                self.assertEqual(err % {"key": "OpenDate"}, str(context.exception))
 
     def test__verifyUrl(self):
         """Test _verifyUrl()"""
