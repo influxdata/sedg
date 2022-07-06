@@ -676,9 +676,12 @@ def checkSyntaxFile(f, rel, compatUbuntu, untriagedOk=False):
             needle = "gh-secret"
 
         if needle not in seen:
-            if not cve.discoveredBy.startswith(
-                needle
-            ) and not cve.discoveredBy.endswith(", %s" % needle):
+            if (
+                not cve.discoveredBy == needle
+                and not cve.discoveredBy.startswith("%s," % needle)
+                and not ", %s," % needle in cve.discoveredBy
+                and not cve.discoveredBy.endswith(", %s" % needle)
+            ):
                 seen.append(needle)
                 cvelib.common.warn(
                     "%s: '%s' missing from Discovered-by" % (rel, needle)

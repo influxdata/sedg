@@ -1273,6 +1273,74 @@ cve-data = %s
             .startswith("WARN: multiple entries for CVE-2020-1234: ")
         )
 
+        # ghas
+        ghasTsts = [
+            # valid
+            ("gh-dependabot, gh-secret", None),
+            ("gh-secret, gh-dependabot", None),
+            ("foo, gh-dependabot, gh-secret", None),
+            ("gh-dependabot, foo, gh-secret", None),
+            ("gh-dependabot, gh-secret, foo", None),
+            # invalid
+            (
+                "g-dependabot, gh-secret",
+                "WARN: active/CVE-2020-1234: 'gh-dependabot' missing from Discovered-by",
+            ),
+            (
+                "gh-dependaboT, gh-secret",
+                "WARN: active/CVE-2020-1234: 'gh-dependabot' missing from Discovered-by",
+            ),
+            (
+                "gh-dependabotX, gh-secret",
+                "WARN: active/CVE-2020-1234: 'gh-dependabot' missing from Discovered-by",
+            ),
+            (
+                "gh-dependabot, secret",
+                "WARN: active/CVE-2020-1234: 'gh-secret' missing from Discovered-by",
+            ),
+            (
+                "gh-dependabot",
+                "WARN: active/CVE-2020-1234: 'gh-secret' missing from Discovered-by",
+            ),
+            (
+                "gh-secret",
+                "WARN: active/CVE-2020-1234: 'gh-dependabot' missing from Discovered-by",
+            ),
+        ]
+
+        for dsc, expErr in ghasTsts:
+            tmpl = self._cve_template()
+            tmpl[
+                "GitHub-Advanced-Security"
+            ] = """
+ - type: dependabot
+   dependency: foo
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
+   severity: moderate
+   status: dismissed (inaccurate; who)
+ - type: secret
+   secret: Slack Incoming Webhook URL
+   detectedIn: /path/to/file
+   status: dismissed (revoked; who)
+"""
+            tmpl["Discovered-by"] = dsc
+            content = cvelib.tests.util.cveContentFromDict(tmpl)
+            cve_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
+            with open(cve_fn, "w") as fp:
+                fp.write("%s" % content)
+
+            with cvelib.tests.util.capturedOutput() as (output, error):
+                cvelib.cve.checkSyntax(cveDirs, False)
+            os.unlink(cve_fn)
+
+            if expErr is None:
+                self.assertEqual("", output.getvalue().strip())
+                self.assertEqual("", error.getvalue().strip())
+            else:
+                self.assertEqual("", output.getvalue().strip())
+                self.assertEqual(expErr, error.getvalue().strip())
+
     def test_pkgFromCandidate(self):
         """Test pkgFromCandidate()"""
         tsts = [
