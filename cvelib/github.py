@@ -5,11 +5,11 @@ import yaml
 
 from cvelib.common import CveException, rePatterns
 
-from typing import List, Union
+from typing import Dict, List, Literal, Union
 
 
 class GHDependabot(object):
-    required = [
+    required: List[str] = [
         "dependency",
         "detectedIn",
         "advisory",
@@ -17,12 +17,12 @@ class GHDependabot(object):
         "status",
     ]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
 
-    def __str__(self):
+    def __str__(self) -> str:
         # the prefixed spacing is currently important for onDiskFormat()
-        s = " - type: dependabot\n"
+        s: str = " - type: dependabot\n"
         s += "   dependency: %s\n" % self.dependency
         s += "   detectedIn: %s\n" % self.detectedIn
         s += "   advisory: %s\n" % self.advisory
@@ -30,7 +30,13 @@ class GHDependabot(object):
         s += "   status: %s" % self.status
         return s
 
-    def __init__(self, data):
+    def __init__(self, data: Dict[str, str]) -> None:
+        self.dependency: str = ""
+        self.detectedIn: str = ""
+        self.advisory: str = ""
+        self.severity: str = ""
+        self.status: str = ""
+
         self._verifyRequired(data)
 
         self.setDependency(data["dependency"])
@@ -40,7 +46,7 @@ class GHDependabot(object):
         self.setStatus(data["status"])
 
     # verify methods
-    def _verifyRequired(self, data):
+    def _verifyRequired(self, data: Dict[str, str]) -> None:
         """Verify have all required fields"""
         for field in self.required:
             if field not in data:
@@ -51,29 +57,29 @@ class GHDependabot(object):
                 raise CveException("field '%s' should be single line" % field)
 
     # set methods
-    def setDependency(self, s):
+    def setDependency(self, s: str) -> None:
         """Set dependency"""
         if re.search(r"\s", s):
             raise CveException("invalid dependabot dependency: %s" % s)
         self.dependency = s
 
-    def setDetectedIn(self, s):
+    def setDetectedIn(self, s: str) -> None:
         """Set detectedIn"""
         self.detectedIn = s
 
-    def setAdvisory(self, s):
+    def setAdvisory(self, s: str) -> None:
         """Set advisory"""
         if not rePatterns["github-advisory"].search(s):
             raise CveException("invalid dependabot advisory: %s" % s)
         self.advisory = s
 
-    def setSeverity(self, s):
+    def setSeverity(self, s: str) -> None:
         """Set severity"""
         if not rePatterns["github-dependabot-severity"].search(s):
             raise CveException("invalid dependabot severity: %s" % s)
         self.severity = s
 
-    def setStatus(self, s):
+    def setStatus(self, s: str) -> None:
         """Set status"""
         if not rePatterns["github-dependabot-status"].search(s):
             if "dismissed" in s:
@@ -89,24 +95,28 @@ class GHDependabot(object):
 
 
 class GHSecret(object):
-    required = [
+    required: List[str] = [
         "secret",
         "detectedIn",
         "status",
     ]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
 
-    def __str__(self):
+    def __str__(self) -> str:
         # the prefixed spacing is currently important for onDiskFormat()
-        s = " - type: secret\n"
+        s: str = " - type: secret\n"
         s += "   secret: %s\n" % self.secret
         s += "   detectedIn: %s\n" % self.detectedIn
         s += "   status: %s" % self.status
         return s
 
-    def __init__(self, data):
+    def __init__(self, data: Dict[str, str]) -> None:
+        self.secret: str = ""
+        self.detectedIn: str = ""
+        self.status: str = ""
+
         self._verifyRequired(data)
 
         self.setSecret(data["secret"])
@@ -114,7 +124,7 @@ class GHSecret(object):
         self.setStatus(data["status"])
 
     # verify methods
-    def _verifyRequired(self, data):
+    def _verifyRequired(self, data: Dict[str, str]) -> None:
         """Verify have all required fields"""
         for field in self.required:
             if field not in data:
@@ -125,13 +135,13 @@ class GHSecret(object):
                 raise CveException("field '%s' should be single line" % field)
 
     # set methods
-    def setSecret(self, s):
+    def setSecret(self, s: str) -> None:
         self.secret = s
 
-    def setDetectedIn(self, s):
+    def setDetectedIn(self, s: str) -> None:
         self.detectedIn = s
 
-    def setStatus(self, s):
+    def setStatus(self, s: str) -> None:
         if not rePatterns["github-secret-status"].search(s):
             if "dismissed" in s:
                 raise CveException(
@@ -145,32 +155,20 @@ class GHSecret(object):
         self.status = s
 
 
-def _isNonEmptyStr(s):
-    if not isinstance(s, str):
-        raise CveException("not a str")
-    if s == "":
-        return False
-    return True
+def _isNonEmptyStr(s: str) -> bool:
+    return s != ""
 
 
-def parse(s):
+def parse(s: str) -> List[Union[GHDependabot, GHSecret]]:
     """Parse a string and return a GHDependabot"""
-    if not isinstance(s, str):
-        raise CveException("invalid GHAS document: not a str")
-
+    yml: List[Dict[str, str]]
     try:
         yml = yaml.safe_load(s)
     except Exception:
         raise CveException("invalid yaml:\n'%s'" % s)
 
-    if not isinstance(yml, list):
-        raise CveException("invalid GHAS document: not a list")
-
     ghas: List[Union[GHDependabot, GHSecret]] = []
     for item in yml:
-        if not isinstance(item, dict):
-            raise CveException("invalid GHAS document: not a dict")
-
         if "type" not in item:
             raise CveException("invalid GHAS document: 'type' missing for item")
 
