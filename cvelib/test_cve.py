@@ -808,7 +808,7 @@ git/github_norf: needs-triage
                     fn = cve._verifyPublicDate
                 elif tstType == "CRD":
                     fn = cve._verifyCRD
-                else:
+                else:  # pragma: nocover
                     continue  # needed by pyright
 
                 if not err:
@@ -948,7 +948,7 @@ git/github_norf: needs-triage
                 fn = cvelib.cve.CVE()._verifyBugs
             elif tstType == "References":
                 fn = cvelib.cve.CVE()._verifyReferences
-            else:
+            else:  # pragma: nocover
                 continue  # needed by pyright
 
             for val, err in tsts:
@@ -982,7 +982,7 @@ git/github_norf: needs-triage
                 fn = cvelib.cve.CVE()._verifyNotes
             elif tstType == "Mitigation":
                 fn = cvelib.cve.CVE()._verifyMitigation
-            else:
+            else:  # pragma: nocover
                 continue  # needed by pyright
 
             for val, err in tsts:
@@ -1027,7 +1027,7 @@ git/github_norf: needs-triage
                 fn = cvelib.cve.CVE()._verifyDiscoveredBy
             elif tstType == "Assigned-to":
                 fn = cvelib.cve.CVE()._verifyAssignedTo
-            else:
+            else:  # pragma: nocover
                 continue  # needed by pyright
 
             for val, err in tsts:
