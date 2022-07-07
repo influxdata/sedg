@@ -2,7 +2,7 @@
 
 from cvelib.common import CveException, rePatterns
 
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 # <product>[/<where or who>]_SOFTWARE[/<modifier>]: <status> [(<when>)]
 #
@@ -27,39 +27,46 @@ from typing import List, Tuple
 class CvePkg(object):
     def __init__(
         self,
-        product,
-        software,
-        status,
-        where="",
-        modifier="",
-        when="",
-        compatUbuntu=False,
-    ):
-        self.compatUbuntu = compatUbuntu
+        product: str,
+        software: str,
+        status: str,
+        where: str = "",
+        modifier: str = "",
+        when: str = "",
+        compatUbuntu: bool = False,
+    ) -> None:
+        self.product: str = ""
+        self.software: str = ""
+        self.status: str = ""
+        self.where: str = ""
+        self.modifer: str = ""
+        self.when: str = ""
+        self.compatUbuntu: bool = compatUbuntu
+        self.patches: List[str] = []
+        self.tags: Dict[str, List[str]] = {}
+        self.priorities: Dict[str, str] = {}
+
         self.setProduct(product)
         self.setWhere(where)
         self.setSoftware(software)
         self.setModifier(modifier)
         self.setStatus(status)
         self.setWhen(when)
-        self.patches = []
-        self.tags = {}
-        self.priorities = {}
 
-    def __str__(self):
-        s = self.what()
+    def __str__(self) -> str:
+        s: str = self.what()
         s += ": %s" % self.status
         if self.when:
             s += " (%s)" % (self.when)
 
         return s
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
 
     def what(self) -> str:
         """The product/where_software/modififer"""
-        s = ""
+        s: str = ""
         if self.product:
             s += self.product
             if self.where:
@@ -71,7 +78,7 @@ class CvePkg(object):
             s += "/%s" % self.modifier
         return s
 
-    def setProduct(self, product):
+    def setProduct(self, product: str) -> None:
         """Set product"""
         if self.compatUbuntu:
             if not rePatterns["pkg-product-ubuntu"].search(product):
@@ -80,7 +87,7 @@ class CvePkg(object):
             raise CveException("invalid product '%s'" % product)
         self.product = product
 
-    def setWhere(self, where):
+    def setWhere(self, where: str) -> None:
         """Set where"""
         if where == "":
             self.where = ""
@@ -92,7 +99,7 @@ class CvePkg(object):
             raise CveException("invalid where '%s'" % where)
         self.where = where
 
-    def setSoftware(self, software):
+    def setSoftware(self, software: str) -> None:
         """Set software"""
         if self.compatUbuntu:
             if not rePatterns["pkg-software-ubuntu"].search(software):
@@ -101,7 +108,7 @@ class CvePkg(object):
             raise CveException("invalid software '%s'" % software)
         self.software = software
 
-    def setModifier(self, modifier):
+    def setModifier(self, modifier: str) -> None:
         """Set modifier"""
         if modifier == "":
             self.modifier = ""
@@ -113,13 +120,13 @@ class CvePkg(object):
             raise CveException("invalid modifier '%s'" % modifier)
         self.modifier = modifier
 
-    def setStatus(self, status):
+    def setStatus(self, status: str) -> None:
         """Set status"""
         if not rePatterns["pkg-status"].search(status):
             raise CveException("invalid status '%s'" % status)
         self.status = status
 
-    def setWhen(self, when):
+    def setWhen(self, when: str) -> None:
         """Set when"""
         if when == "":
             self.when = ""
