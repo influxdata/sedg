@@ -23,6 +23,7 @@ class TestGitHubDependabot(TestCase):
             "advisory": "https://github.com/advisories/GHSA-a",
             "severity": "moderate",
             "status": "needed",
+            "url": "https://github.com/bar/baz/security/dependabot/1",
         }
 
     def test___init__valid(self):
@@ -38,7 +39,8 @@ class TestGitHubDependabot(TestCase):
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-a
    severity: moderate
-   status: needed"""
+   status: needed
+   url: https://github.com/bar/baz/security/dependabot/1"""
 
         ghd = github.GHDependabot(data)
         self.assertEqual(exp, ghd.__repr__())
@@ -51,7 +53,8 @@ class TestGitHubDependabot(TestCase):
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-a
    severity: moderate
-   status: needed"""
+   status: needed
+   url: https://github.com/bar/baz/security/dependabot/1"""
 
         ghd = github.GHDependabot(data)
         self.assertEqual(exp, ghd.__str__())
@@ -69,6 +72,7 @@ class TestGitHubDependabot(TestCase):
                     "advisory": "https://github.com/advisories/GHSA-a",
                     "severity": "moderate",
                     "status": "needed",
+                    "url": "https://github.com/bar/baz/security/dependabot/1",
                 },
                 "missing required field 'dependency'",
             ),
@@ -79,6 +83,7 @@ class TestGitHubDependabot(TestCase):
                     "advisory": "https://github.com/advisories/GHSA-a",
                     "severity": "moderate",
                     "status": "needed",
+                    "url": "https://github.com/bar/baz/security/dependabot/1",
                 },
                 "empty required field 'dependency'",
             ),
@@ -89,6 +94,7 @@ class TestGitHubDependabot(TestCase):
                     "advisory": "https://github.com/advisories/GHSA-a",
                     "severity": "moderate",
                     "status": "needed",
+                    "url": "https://github.com/bar/baz/security/dependabot/1",
                 },
                 "field 'dependency' should be single line",
             ),
@@ -98,6 +104,7 @@ class TestGitHubDependabot(TestCase):
                     "advisory": "https://github.com/advisories/GHSA-a",
                     "severity": "moderate",
                     "status": "needed",
+                    "url": "https://github.com/bar/baz/security/dependabot/1",
                 },
                 "missing required field 'dependency'",
             ),
@@ -107,6 +114,7 @@ class TestGitHubDependabot(TestCase):
                     "advisory": "https://github.com/advisories/GHSA-a",
                     "severity": "moderate",
                     "status": "needed",
+                    "url": "https://github.com/bar/baz/security/dependabot/1",
                 },
                 "missing required field 'detectedIn'",
             ),
@@ -116,6 +124,7 @@ class TestGitHubDependabot(TestCase):
                     "detectedIn": "go.sum",
                     "severity": "moderate",
                     "status": "needed",
+                    "url": "https://github.com/bar/baz/security/dependabot/1",
                 },
                 "missing required field 'advisory'",
             ),
@@ -125,6 +134,7 @@ class TestGitHubDependabot(TestCase):
                     "detectedIn": "go.sum",
                     "advisory": "https://github.com/advisories/GHSA-a",
                     "status": "needed",
+                    "url": "https://github.com/bar/baz/security/dependabot/1",
                 },
                 "missing required field 'severity'",
             ),
@@ -134,8 +144,19 @@ class TestGitHubDependabot(TestCase):
                     "detectedIn": "go.sum",
                     "advisory": "https://github.com/advisories/GHSA-a",
                     "severity": "moderate",
+                    "url": "https://github.com/bar/baz/security/dependabot/1",
                 },
                 "missing required field 'status'",
+            ),
+            (
+                {
+                    "dependency": "foo",
+                    "detectedIn": "go.sum",
+                    "advisory": "https://github.com/advisories/GHSA-a",
+                    "severity": "moderate",
+                    "status": "needed",
+                },
+                "missing required field 'url'",
             ),
         ]
 
@@ -259,6 +280,28 @@ class TestGitHubDependabot(TestCase):
                     ghd.setStatus(s)
                 self.assertEqual(expErr, str(context.exception))
 
+    def test_setUrl(self):
+        """Test setUrl()"""
+        tsts = [
+            # valid
+            ("https://github.com/bar/baz/security/dependabot/1", None),
+            # invalid
+            ("foo", "invalid dependabot alert url: foo"),
+            (
+                "https://github.com/bar/baz/security/secret-scanning/1",
+                "invalid dependabot alert url: https://github.com/bar/baz/security/secret-scanning/1",
+            ),
+        ]
+
+        for s, expErr in tsts:
+            ghd = github.GHDependabot(self._getValid())
+            if expErr is None:
+                ghd.setUrl(s)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    ghd.setUrl(s)
+                self.assertEqual(expErr, str(context.exception))
+
 
 class TestGitHubSecret(TestCase):
     """Tests for the GitHub secret data and functions"""
@@ -275,6 +318,7 @@ class TestGitHubSecret(TestCase):
             "secret": "foo",
             "detectedIn": "path/to/file",
             "status": "needed",
+            "url": "https://github.com/bar/baz/security/secret-scanning/1",
         }
 
     def test___init__valid(self):
@@ -288,7 +332,8 @@ class TestGitHubSecret(TestCase):
         exp = """ - type: secret
    secret: foo
    detectedIn: path/to/file
-   status: needed"""
+   status: needed
+   url: https://github.com/bar/baz/security/secret-scanning/1"""
 
         ghs = github.GHSecret(data)
         self.assertEqual(exp, ghs.__repr__())
@@ -299,7 +344,8 @@ class TestGitHubSecret(TestCase):
         exp = """ - type: secret
    secret: foo
    detectedIn: path/to/file
-   status: needed"""
+   status: needed
+   url: https://github.com/bar/baz/security/secret-scanning/1"""
 
         ghs = github.GHSecret(data)
         self.assertEqual(exp, ghs.__str__())
@@ -315,6 +361,7 @@ class TestGitHubSecret(TestCase):
                     "scret": "foo",
                     "detectedIn": "/path/to/file",
                     "status": "needed",
+                    "url": "https://github.com/bar/baz/security/secret-scanning/1",
                 },
                 "missing required field 'secret'",
             ),
@@ -323,6 +370,7 @@ class TestGitHubSecret(TestCase):
                     "secret": "",
                     "detectedIn": "/path/to/file",
                     "status": "needed",
+                    "url": "https://github.com/bar/baz/security/secret-scanning/1",
                 },
                 "empty required field 'secret'",
             ),
@@ -331,6 +379,7 @@ class TestGitHubSecret(TestCase):
                     "secret": "foo\nbar",
                     "detectedIn": "/path/to/file",
                     "status": "needed",
+                    "url": "https://github.com/bar/baz/security/secret-scanning/1",
                 },
                 "field 'secret' should be single line",
             ),
@@ -338,6 +387,7 @@ class TestGitHubSecret(TestCase):
                 {
                     "detectedIn": "/path/to/file",
                     "status": "needed",
+                    "url": "https://github.com/bar/baz/security/secret-scanning/1",
                 },
                 "missing required field 'secret'",
             ),
@@ -345,6 +395,7 @@ class TestGitHubSecret(TestCase):
                 {
                     "secret": "foo",
                     "status": "needed",
+                    "url": "https://github.com/bar/baz/security/secret-scanning/1",
                 },
                 "missing required field 'detectedIn'",
             ),
@@ -354,6 +405,14 @@ class TestGitHubSecret(TestCase):
                     "detectedIn": "/path/to/file",
                 },
                 "missing required field 'status'",
+            ),
+            (
+                {
+                    "secret": "foo",
+                    "detectedIn": "/path/to/file",
+                    "status": "needed",
+                },
+                "missing required field 'url'",
             ),
         ]
 
@@ -429,6 +488,28 @@ class TestGitHubSecret(TestCase):
                     ghs.setStatus(s)
                 self.assertEqual(expErr, str(context.exception))
 
+    def test_setUrl(self):
+        """Test setUrl()"""
+        tsts = [
+            # valid
+            ("https://github.com/bar/baz/security/secret-scanning/1", None),
+            # invalid
+            ("foo", "invalid secret alert url: foo"),
+            (
+                "https://github.com/bar/baz/security/dependabot/1",
+                "invalid secret alert url: https://github.com/bar/baz/security/dependabot/1",
+            ),
+        ]
+
+        for s, expErr in tsts:
+            ghs = github.GHSecret(self._getValid())
+            if expErr is None:
+                ghs.setUrl(s)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    ghs.setUrl(s)
+                self.assertEqual(expErr, str(context.exception))
+
 
 class TestGitHubCommon(TestCase):
     """Tests for the GitHub common functions"""
@@ -447,10 +528,12 @@ class TestGitHubCommon(TestCase):
    advisory: https://github.com/advisories/GHSA-a
    severity: moderate
    status: needed
+   url: https://github.com/bar/baz/security/dependabot/1
  - type: secret
    secret: bar
    detectedIn: path/to/files
-   status: needed"""
+   status: needed
+   url: https://github.com/bar/baz/security/secret-scanning/1"""
 
     def test_parse(self):
         """Test parse()"""

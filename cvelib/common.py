@@ -137,6 +137,14 @@ rePatterns: Dict[str, Pattern[str]] = {
     "github-dependabot-status": re.compile(
         r"^(needs-triage|needed|released|dismissed \((started|no-bandwidth|tolerable|inaccurate|code-not-used); [a-zA-Z0-9\-]+\))$",
     ),
+    "github-dependabot-alert": re.compile(
+        r"^https://github.com/[a-z0-9+.-]{1,40}/[a-zA-Z0-9+.-]{1,%(software_len)d}/security/dependabot/[0-9]{1,12}"
+        % ({"software_len": _patLengths["pkg-software"]})
+    ),
+    "github-secret-alert": re.compile(
+        r"^https://github.com/[a-z0-9+.-]{1,40}/[a-zA-Z0-9+.-]{1,%(software_len)d}/security/secret-scanning/[0-9]{1,12}"
+        % ({"software_len": _patLengths["pkg-software"]})
+    ),
     # dismissed requires a reason and github username
     "github-secret-status": re.compile(
         r"^(needs-triage|needed|released|dismissed \((revoked|false-positive|used-in-tests|wont-fix); [a-zA-Z0-9\-]+\))$",

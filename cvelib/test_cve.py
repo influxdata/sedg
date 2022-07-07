@@ -111,10 +111,12 @@ class TestCve(TestCase):
    advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
    severity: moderate
    status: dismissed (inaccurate; who)
+   url: https://github.com/bar/baz/security/dependabot/1
  - type: secret
    secret: Slack Incoming Webhook URL
    detectedIn: /path/to/file
    status: dismissed (revoked; who)
+   url: https://github.com/bar/baz/security/secret-scanning/1
 """
         self._mock_readCve(tmpl)
         exp = """Candidate: CVE-2020-1234
@@ -133,10 +135,12 @@ GitHub-Advanced-Security:
    advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
    severity: moderate
    status: dismissed (inaccurate; who)
+   url: https://github.com/bar/baz/security/dependabot/1
  - type: secret
    secret: Slack Incoming Webhook URL
    detectedIn: /path/to/file
    status: dismissed (revoked; who)
+   url: https://github.com/bar/baz/security/secret-scanning/1
 Notes:
  person> some notes
   more notes
@@ -1299,10 +1303,12 @@ cve-data = %s
    advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
    severity: moderate
    status: dismissed (inaccurate; who)
+   url: https://github.com/bar/baz/security/dependabot/1
  - type: secret
    secret: Slack Incoming Webhook URL
    detectedIn: /path/to/file
    status: dismissed (revoked; who)
+   url: https://github.com/bar/baz/security/secret-scanning/1
 """
             tmpl["Discovered-by"] = dsc
             content = cvelib.testutil.cveContentFromDict(tmpl)

@@ -14,6 +14,7 @@ class GHDependabot(object):
         "advisory",
         "severity",
         "status",
+        "url",
     ]
 
     def __repr__(self) -> str:
@@ -26,7 +27,8 @@ class GHDependabot(object):
         s += "   detectedIn: %s\n" % self.detectedIn
         s += "   advisory: %s\n" % self.advisory
         s += "   severity: %s\n" % self.severity
-        s += "   status: %s" % self.status
+        s += "   status: %s\n" % self.status
+        s += "   url: %s" % self.url
         return s
 
     def __init__(self, data: Dict[str, str]) -> None:
@@ -35,6 +37,7 @@ class GHDependabot(object):
         self.advisory: str = ""
         self.severity: str = ""
         self.status: str = ""
+        self.url: str = ""
 
         self._verifyRequired(data)
 
@@ -43,6 +46,7 @@ class GHDependabot(object):
         self.setAdvisory(data["advisory"])
         self.setSeverity(data["severity"])
         self.setStatus(data["status"])
+        self.setUrl(data["url"])
 
     # verify methods
     def _verifyRequired(self, data: Dict[str, str]) -> None:
@@ -92,12 +96,19 @@ class GHDependabot(object):
             )
         self.status = s
 
+    def setUrl(self, s: str) -> None:
+        """Set url"""
+        if not rePatterns["github-dependabot-alert"].search(s):
+            raise CveException("invalid dependabot alert url: %s" % s)
+        self.url = s
+
 
 class GHSecret(object):
     required: List[str] = [
         "secret",
         "detectedIn",
         "status",
+        "url",
     ]
 
     def __repr__(self) -> str:
@@ -108,19 +119,22 @@ class GHSecret(object):
         s: str = " - type: secret\n"
         s += "   secret: %s\n" % self.secret
         s += "   detectedIn: %s\n" % self.detectedIn
-        s += "   status: %s" % self.status
+        s += "   status: %s\n" % self.status
+        s += "   url: %s" % self.url
         return s
 
     def __init__(self, data: Dict[str, str]) -> None:
         self.secret: str = ""
         self.detectedIn: str = ""
         self.status: str = ""
+        self.url: str = ""
 
         self._verifyRequired(data)
 
         self.setSecret(data["secret"])
         self.setDetectedIn(data["detectedIn"])
         self.setStatus(data["status"])
+        self.setUrl(data["url"])
 
     # verify methods
     def _verifyRequired(self, data: Dict[str, str]) -> None:
@@ -152,6 +166,12 @@ class GHSecret(object):
                 % s
             )
         self.status = s
+
+    def setUrl(self, s: str) -> None:
+        """Set url"""
+        if not rePatterns["github-secret-alert"].search(s):
+            raise CveException("invalid secret alert url: %s" % s)
+        self.url = s
 
 
 def _isNonEmptyStr(s: str) -> bool:
