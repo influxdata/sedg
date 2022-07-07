@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 
 import re
+from typing import Dict, List, Union
 import yaml
 
 from cvelib.common import CveException, rePatterns
-
-from typing import Dict, List, Literal, Union
 
 
 class GHDependabot(object):

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
+from typing import Dict, List, Tuple
+
 from cvelib.common import CveException, rePatterns, _patLengths
 
-from typing import Dict, List, Tuple
 
 # <product>[/<where or who>]_SOFTWARE[/<modifier>]: <status> [(<when>)]
 #

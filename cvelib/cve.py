@@ -8,13 +8,12 @@ import os
 import re
 import shutil
 import tempfile
+from typing import Any, Dict, List, Optional, Pattern, Tuple, Union
 
 from cvelib.common import CveException, rePatterns
 import cvelib.common
 from cvelib.pkg import CvePkg, parse
 import cvelib.github
-
-from typing import Any, Dict, List, Optional, Pattern, Tuple, Union
 
 
 class CVE(object):

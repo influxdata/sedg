@@ -7,12 +7,12 @@ import re
 import shutil
 import sys
 import tempfile
+from typing import Dict, List, Optional, Pattern, Tuple, Union
 
 from email.message import Message
 from email.parser import HeaderParser, Parser
 from email.policy import Compat32
 
-from typing import Dict, List, Optional, Pattern, Tuple, Union
 
 # cache of config
 configCache: Optional[configparser.ConfigParser] = None
