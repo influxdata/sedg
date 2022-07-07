@@ -113,7 +113,7 @@ class TestCommon(TestCase):
         """Test readConfig()"""
         self.tmpdir = cvelib.testutil._createTmpDir()
 
-        if "XDG_CONFIG_HOME" in os.environ:
+        if "XDG_CONFIG_HOME" in os.environ:  # pragma: nocover
             self.orig_xdg_config_home = os.environ["XDG_CONFIG_HOME"]
 
         os.environ["XDG_CONFIG_HOME"] = os.path.join(self.tmpdir, ".config")
