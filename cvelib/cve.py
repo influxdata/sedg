@@ -14,9 +14,11 @@ import cvelib.common
 from cvelib.pkg import CvePkg, parse
 import cvelib.github
 
+from typing import Any, Dict, List, Optional, Pattern, Tuple, Union
+
 
 class CVE(object):
-    cve_required = [
+    cve_required: List[str] = [
         "Candidate",
         "OpenDate",
         "PublicDate",
@@ -30,37 +32,58 @@ class CVE(object):
         "CVSS",
     ]
     # Tags_*, Patches_* and software are handled special
-    cve_optional = [
+    cve_optional: List[str] = [
         "CRD",
         "Mitigation",
         "GitHub-Advanced-Security",
     ]
 
-    def __str__(self):
-        s = []
+    def __str__(self) -> str:
+        s: List[str] = []
         for key in self.data:
             s.append("%s=%s" % (key, self.data[key]))
         return "# %s\n%s\n" % (self.candidate, "\n".join(s))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
 
-    def __init__(self, fn=None, untriagedOk=False, compatUbuntu=False):
-        # XXX
-        self.data = {}
-        self.pkgs = []
-        self.ghas = []
-        self._pkgs_list = []  # what is in self.pkgs
-        self.compatUbuntu = compatUbuntu
-        self.untriagedOk = untriagedOk
+    def __init__(
+        self,
+        fn: Optional[str] = None,
+        untriagedOk: bool = False,
+        compatUbuntu: bool = False,
+    ) -> None:
+        # types and defaults
+        self.candidate: str = ""
+        self.openDate: str = ""
+        self.publicDate: str = ""
+        self.crd: str = ""
+        self.references: List[str] = []
+        self.description: List[str] = []
+        self.notes: List[str] = []
+        self.ghas: List[Union[cvelib.github.GHDependabot, cvelib.github.GHSecret]] = []
+        self.mitigation: List[str] = []
+        self.bugs: List[str] = []
+        self.priority: str = ""
+        self.discoveredBy: str = ""
+        self.assignedTo: str = ""
+        self.cvss: str = ""
+        self.pkgs: List[CvePkg] = []
+
+        self.data: Dict[str, Union[str, List[str]]] = {}
+        self._pkgs_list: List[str] = []  # what is in self.pkgs
+
+        # set things
+        self.compatUbuntu: bool = compatUbuntu
+        self.untriagedOk: bool = untriagedOk
         if fn is None:
             return
 
-        data = cvelib.common.readCve(fn)
+        data: Dict[str, str] = cvelib.common.readCve(fn)
         self.setData(data)
 
     # set methods
-    def setData(self, data):
+    def setData(self, data: Dict[str, str]) -> None:
         """Set members from data"""
         self._verifyCve(data, untriagedOk=self.untriagedOk)
         # members
@@ -91,10 +114,10 @@ class CVE(object):
 
         # Any field with '_' is a package or patch. Since these could be out of
         # order, collect them separately, then call setPackages()
-        pkgs = []
-        patches = {}
-        tags = {}
-        priorities = {}
+        pkgs: List[CvePkg] = []
+        patches: Dict[str, str] = {}
+        tags: Dict[str, str] = {}
+        priorities: Dict[str, str] = {}
         for k in data:
             if k not in self.data:  # copy raw data for later
                 self.data[k] = data[k]
@@ -127,36 +150,36 @@ class CVE(object):
                 pkg = k.split("_", 1)[1]
                 priorities[pkg] = data[k]
             else:
-                s = "%s: %s" % (k, data[k])
+                s: str = "%s: %s" % (k, data[k])
                 pkgs.append(parse(s, compatUbuntu=self.compatUbuntu))
 
         self.setPackages(pkgs, patches=patches, tags=tags, priorities=priorities)
 
-    def setCandidate(self, s):
+    def setCandidate(self, s: str) -> None:
         """Set candidate"""
         self._verifyCandidate("Candidate", s)
         self.candidate = s
         self.data["Candidate"] = self.candidate
 
-    def setPublicDate(self, s):
+    def setPublicDate(self, s: str) -> None:
         """Set PublicDate"""
         self._verifyPublicDate("PublicDate", s)
         self.publicDate = s
         self.data["PublicDate"] = self.publicDate
 
-    def setCRD(self, s):
+    def setCRD(self, s: str) -> None:
         """Set CRD"""
         self._verifyCRD("CRD", s)
         self.crd = s
         self.data["CRD"] = self.crd
 
-    def setOpenDate(self, s):
+    def setOpenDate(self, s: str) -> None:
         """Set OpenDate"""
         self._verifyOpenDate("OpenDate", s)
         self.openDate = s
         self.data["OpenDate"] = self.openDate
 
-    def setReferences(self, s):
+    def setReferences(self, s: str) -> None:
         """Set References"""
         self.references = []
         for r in s.splitlines():
@@ -165,13 +188,13 @@ class CVE(object):
                 self.references.append(r)
         self.data["References"] = self.references
 
-    def setDescription(self, s):
+    def setDescription(self, s: str) -> None:
         """Set Description"""
         # strip newline off the front then strip whitespace from every line
         self.description = [item.strip() for item in s.lstrip().splitlines()]
         self.data["Description"] = self.description
 
-    def setNotes(self, s):
+    def setNotes(self, s: str) -> None:
         """Set Notes"""
         # strip newline off the front, strip whitespace off end and then strip
         # one space from the beginning of the line in order to preserve
@@ -187,17 +210,17 @@ class CVE(object):
 
         self.data["Notes"] = self.notes
 
-    def setGHAS(self, s):
+    def setGHAS(self, s: str) -> None:
         """Set GitHub-Advanced-Security"""
         self.ghas = cvelib.github.parse(s)
 
-    def setMitigation(self, s):
+    def setMitigation(self, s: str) -> None:
         """Set Mitigation"""
         # strip newline off the front then strip whitespace from every line
         self.mitigation = [item.strip() for item in s.lstrip().splitlines()]
         self.data["Mitigation"] = self.mitigation
 
-    def setBugs(self, s):
+    def setBugs(self, s: str) -> None:
         """Set Bugs"""
         self.bugs = []
         for b in s.splitlines():
@@ -206,44 +229,48 @@ class CVE(object):
                 self.bugs.append(b)
         self.data["Bugs"] = self.bugs
 
-    def setPriority(self, s):
+    def setPriority(self, s: str) -> None:
         """Set Priority"""
         self._verifyPriority("Priority", s, untriagedOk=True)
         self.priority = s
         self.data["Priority"] = self.priority
 
-    def setDiscoveredBy(self, s):
+    def setDiscoveredBy(self, s: str) -> None:
         """Set Discovered-by"""
         self.discoveredBy = s
         self.data["Discovered-by"] = self.discoveredBy
 
-    def setAssignedTo(self, s):
+    def setAssignedTo(self, s: str) -> None:
         """Set Assigned-to"""
         self.assignedTo = s
         self.data["Assigned-to"] = self.assignedTo
 
-    def setCVSS(self, s):
+    def setCVSS(self, s: str) -> None:
         """Set CVSS"""
         self.cvss = s
         self.data["CVSS"] = self.cvss
 
-    def setPackages(self, pkgs, patches=[], tags=[], priorities=[], append=False):
+    def setPackages(
+        self,
+        pkgs: List[CvePkg],
+        patches: Dict[str, str] = {},
+        tags: Dict[str, str] = {},
+        priorities: Dict[str, str] = {},
+        append: bool = False,
+    ):
         """Set pkgs"""
-        if not isinstance(pkgs, list):
-            raise CveException("pkgs is not a list")
         if not append:
             self.pkgs = []
+
         for p in pkgs:
-            if not isinstance(p, CvePkg):
-                raise CveException("package is not of type cvelib.pkg.CvePkg")
-            what = p.what()
+            what: str = p.what()
             if what in self._pkgs_list:
                 continue
 
             if p.software in patches:
-                tmp = []
+                tmp: List[str] = []
                 for patch in patches[p.software].splitlines():
-                    patch = patch.strip()
+                    patch: str = patch.strip()
                     if patch != "" and patch not in tmp:
                         tmp.append(patch)
                 p.setPatches(tmp, self.compatUbuntu)
@@ -251,7 +278,7 @@ class CVE(object):
             # Since we want store Tags_<pkg> and Tags_<pkg>_* under <pkg>, give
             # setTags a list of tuples of form:
             # [(<pkg>, <tag>), (<pkg_a>, <tag2>)]
-            pkgTags = [
+            pkgTags: List[Tuple[str, str]] = [
                 (x, tags[x])
                 for x in tags
                 if (x == p.software or x.startswith("%s_" % p.software))
@@ -259,7 +286,7 @@ class CVE(object):
             if pkgTags:
                 p.setTags(pkgTags)
 
-            pkgPriorities = [
+            pkgPriorities: List[Tuple[str, str]] = [
                 (x, priorities[x])
                 for x in priorities
                 if (x == p.software or x.startswith("%s_" % p.software))
@@ -272,14 +299,14 @@ class CVE(object):
             self._pkgs_list.append(what)
 
     # various other methods
-    def onDiskFormat(self):
+    def onDiskFormat(self) -> str:
         """Return format suitable for writing out to disk"""
         # helpers
 
         # Since patches can be per pkg object, but we want to list them in a
         # shared Patches_<software> section, pre-create the patches snippets
-        def _collectPatches(pkgs):
-            patches = {}
+        def _collectPatches(pkgs: List[CvePkg]) -> Dict[str, List[str]]:
+            patches: Dict[str, List[str]] = {}
             for pkg in pkgs:
                 if pkg.software not in patches:
                     patches[pkg.software] = []
@@ -297,8 +324,8 @@ class CVE(object):
         #     },
         #     ...
         #   }
-        def _collectTags(pkgs):
-            tags = {}
+        def _collectTags(pkgs: List[CvePkg]) -> Dict[str, Dict[str, List[str]]]:
+            tags: Dict[str, Dict[str, List[str]]] = {}
             for pkg in pkgs:
                 if pkg.software not in tags:
                     tags[pkg.software] = {}
@@ -319,8 +346,8 @@ class CVE(object):
         #     },
         #     ...
         #   }
-        def _collectPriorities(pkgs):
-            priorities = {}
+        def _collectPriorities(pkgs) -> Dict[str, Dict[str, List[str]]]:
+            priorities: Dict[str, Dict[str, List[str]]] = {}
             for pkg in pkgs:
                 if pkg.software not in priorities:
                     priorities[pkg.software] = {}
@@ -328,13 +355,13 @@ class CVE(object):
                     priorities[pkg.software][pkgKey] = pkg.priorities[pkgKey]
             return priorities
 
-        def _collectGHAS(ghas):
+        def _collectGHAS(ghas) -> List[str]:
             s = []
             for g in ghas:
                 s.append("%s" % g)
             return s
 
-        s = """Candidate:%(candidate)s
+        s: str = """Candidate:%(candidate)s
 OpenDate:%(openDate)s
 PublicDate:%(publicDate)s
 CRD:%(crd)s
@@ -402,7 +429,7 @@ CVSS:%(cvss)s
         tags = _collectTags(self.pkgs)
         priorities = _collectPriorities(self.pkgs)
 
-        last_software = ""
+        last_software: str = ""
         # Sort the list by software, then product, then where so everything
         # looks pretty. XXX: Ubuntu likes to have 'upstream' first, should we
         # consider that with compatUbuntu?
@@ -431,23 +458,21 @@ CVSS:%(cvss)s
 
         return s
 
-    def _isPresent(self, data, key):
+    def _isPresent(self, data: Dict[str, Any], key: str) -> None:
         """Ensure data has key"""
-        if not isinstance(data, dict):
-            raise CveException("data not of type dict")
         if key not in data:
             raise CveException("missing field '%s'" % key)
 
     # Verifiers
     # XXX: is there a sensible way to do this via schemas (since we aren't
     # json)?
-    def _verifyCve(self, data, untriagedOk=False):
+    def _verifyCve(self, data: Dict[str, str], untriagedOk: bool = False) -> None:
         """Verify the CVE"""
         self._verifyRequired(data)
 
         for key in self.cve_required:
             self._isPresent(data, key)
-            val = data[key]
+            val: Union[str, List[str]] = data[key]
             if key == "Candidate":
                 self._verifyCandidate(key, val)
             elif key == "PublicDate":
@@ -481,7 +506,7 @@ CVSS:%(cvss)s
             if key.startswith("Priority_"):
                 self._verifyPriority(key, val)
 
-    def _verifySingleline(self, key, val):
+    def _verifySingleline(self, key: str, val: str) -> None:
         """Verify multiline value"""
         if val != "":
             if "\n" in val:
@@ -489,10 +514,10 @@ CVSS:%(cvss)s
                     "invalid %s: '%s' (expected single line)" % (key, val)
                 )
 
-    def _verifyMultiline(self, key, val):
+    def _verifyMultiline(self, key: str, val: str) -> List[str]:
         """Verify multiline value"""
-        strippedList = []
-        lines = val.splitlines()
+        strippedList: List[str] = []
+        lines: List[str] = val.splitlines()
         if not lines:
             # empty is ok
             return strippedList
@@ -517,27 +542,27 @@ CVSS:%(cvss)s
 
         return strippedList
 
-    def _verifyRequired(self, data):
+    def _verifyRequired(self, data: Dict[str, Any]) -> None:
         """Verify have all required fields"""
         for field in self.cve_required:
             if field not in data:
                 raise CveException("missing required field '%s'" % field)
 
-    def _verifyCandidate(self, key, val):
+    def _verifyCandidate(self, key: str, val: str) -> None:
         """Verify CVE candidate number"""
         self._verifySingleline(key, val)
         if not rePatterns["CVE"].search(val):
             raise CveException("invalid %s: '%s'" % (key, val))
 
-    def _verifyDate(self, key, date, required=False):
+    def _verifyDate(self, key: str, date: str, required: bool = False) -> None:
         """Verify a date"""
-        unspecified = ""
+        unspecified: str = ""
         if not required:
             unspecified = "empty or "
             if self.compatUbuntu:
                 unspecified = "'unknown' or "
 
-        err = "invalid %s: '%s' (use %sYYYY-MM-DD [HH:MM:SS [TIMEZONE]])" % (
+        err: str = "invalid %s: '%s' (use %sYYYY-MM-DD [HH:MM:SS [TIMEZONE]])" % (
             key,
             date,
             unspecified,
@@ -573,7 +598,7 @@ CVSS:%(cvss)s
             except ValueError:
                 raise CveException(err)
 
-    def _verifyPublicDate(self, key, val):
+    def _verifyPublicDate(self, key: str, val: str) -> None:
         """Verify CVE public date"""
         self._verifySingleline(key, val)
         # empty is ok unless self.compatUbuntu is set (then use 'unknown')
@@ -581,7 +606,7 @@ CVSS:%(cvss)s
             if not self.compatUbuntu or val != "unknown":
                 self._verifyDate(key, val)
 
-    def _verifyCRD(self, key, val):
+    def _verifyCRD(self, key: str, val: str) -> None:
         """Verify CVE CRD"""
         self._verifySingleline(key, val)
         # empty is ok unless self.compatUbuntu is set (then use 'unknown')
@@ -589,46 +614,46 @@ CVSS:%(cvss)s
             if not self.compatUbuntu or val != "unknown":
                 self._verifyDate(key, val)
 
-    def _verifyOpenDate(self, key, val):
+    def _verifyOpenDate(self, key: str, val: str) -> None:
         """Verify CVE OpenDate"""
         self._verifySingleline(key, val)
         if not self.compatUbuntu or val != "unknown":
             self._verifyDate(key, val, required=True)
 
-    def _verifyUrl(self, key, url):
+    def _verifyUrl(self, key: str, url: str) -> None:
         """Verify url"""
         # This is intentionally dumb to avoid external dependencies
         if not rePatterns["url-schemes"].search(url):
             raise CveException("invalid url in %s: '%s'" % (key, url))
 
-    def _verifyReferences(self, key, val):
+    def _verifyReferences(self, key: str, val: str) -> None:
         """Verify CVE References"""
         if val != "":  # empty is ok
             for line in self._verifyMultiline(key, val):
                 self._verifyUrl(key, line)
 
-    def _verifyDescription(self, key, val):
+    def _verifyDescription(self, key: str, val: str) -> None:
         """Verify CVE Description"""
         if val != "":  # empty is ok
             self._verifyMultiline(key, val)
 
-    def _verifyNotes(self, key, val):
+    def _verifyNotes(self, key: str, val: str) -> None:
         """Verify CVE Notes"""
         if val != "":  # empty is ok
             self._verifyMultiline(key, val)
 
-    def _verifyMitigation(self, key, val):
+    def _verifyMitigation(self, key: str, val: str) -> None:
         """Verify CVE Mitigation"""
         if val != "":  # empty is ok
             self._verifyMultiline(key, val)
 
-    def _verifyBugs(self, key, val):
+    def _verifyBugs(self, key: str, val: str) -> None:
         """Verify CVE Bugs"""
         if val != "":  # empty is ok
             for line in self._verifyMultiline(key, val):
                 self._verifyUrl(key, line)
 
-    def _verifyPriority(self, key, val, untriagedOk=False):
+    def _verifyPriority(self, key: str, val: str, untriagedOk: bool = False) -> None:
         """Verify CVE Priority"""
         self._verifySingleline(key, val)
         if untriagedOk and val == "untriaged":
@@ -636,14 +661,14 @@ CVSS:%(cvss)s
         if not rePatterns["priorities"].search(val):
             raise CveException("invalid %s: '%s'" % (key, val))
 
-    def _verifyDiscoveredBy(self, key, val):
+    def _verifyDiscoveredBy(self, key: str, val: str) -> None:
         """Verify CVE Discovered-by"""
         self._verifySingleline(key, val)
         if val != "":
             if not rePatterns["attribution"].search(val):
                 raise CveException("invalid %s: '%s'" % (key, val))
 
-    def _verifyAssignedTo(self, key, val):
+    def _verifyAssignedTo(self, key: str, val: str) -> None:
         self._verifySingleline(key, val)
         """Verify CVE Assigned-to"""
         if val != "":
@@ -652,9 +677,11 @@ CVSS:%(cvss)s
 
 
 # Utility functions that work on CVE files
-def checkSyntaxFile(f, rel, compatUbuntu, untriagedOk=False):
+def checkSyntaxFile(
+    f: str, rel: str, compatUbuntu: bool, untriagedOk: bool = False
+) -> Optional[CVE]:
     """Perform syntax check on one CVE"""
-    cve = None
+    cve: Optional[CVE] = None
     try:
         cve = CVE(fn=f, compatUbuntu=compatUbuntu, untriagedOk=untriagedOk)
     except Exception as e:
@@ -662,14 +689,14 @@ def checkSyntaxFile(f, rel, compatUbuntu, untriagedOk=False):
         return cve
 
     # make sure the name of the file matches the candidate
-    bn = os.path.basename(f)
+    bn: str = os.path.basename(f)
     if bn != cve.candidate:
         cvelib.common.warn("%s: non-matching candidate '%s'" % (rel, cve.candidate))
 
     # make sure Discovered-by is populated if specified GitHub-Advanced-Security
-    seen = []
+    seen: List[str] = []
     for item in cve.ghas:
-        needle = ""
+        needle: str = ""
         if isinstance(item, cvelib.github.GHDependabot):
             needle = "gh-dependabot"
         elif isinstance(item, cvelib.github.GHSecret):
@@ -690,15 +717,17 @@ def checkSyntaxFile(f, rel, compatUbuntu, untriagedOk=False):
     return cve
 
 
-def checkSyntax(cveDirs, compatUbuntu, untriagedOk=False):
+def checkSyntax(
+    cveDirs: Dict[str, str], compatUbuntu: bool, untriagedOk: bool = False
+) -> None:
     """Perform syntax checks on CVEs"""
     # TODO: make configurable
-    seen = {}
-    cves = _getCVEPaths(cveDirs)
+    seen: Dict[str, List[str]] = {}
+    cves: List[str] = _getCVEPaths(cveDirs)
     for f in cves:
-        tmp = os.path.realpath(f).split("/")
-        rel = tmp[-2] + "/" + tmp[-1]
-        cve = checkSyntaxFile(f, rel, compatUbuntu, untriagedOk)
+        tmp: List[str] = os.path.realpath(f).split("/")
+        rel: str = tmp[-2] + "/" + tmp[-1]
+        cve: Optional[CVE] = checkSyntaxFile(f, rel, compatUbuntu, untriagedOk)
         if cve is None:
             continue
 
@@ -712,7 +741,7 @@ def checkSyntax(cveDirs, compatUbuntu, untriagedOk=False):
             )
 
 
-def cveFromUrl(url):
+def cveFromUrl(url: str) -> str:
     """Return a CVE based on the url"""
     if not url.startswith("https://github.com/"):
         raise CveException("unsupported url: '%s' (only support github)" % url)
@@ -720,14 +749,14 @@ def cveFromUrl(url):
     if not rePatterns["github-issue"].match(url):
         raise CveException("invalid url: '%s' (only support github issues)" % url)
 
-    year = datetime.datetime.now().year
-    tmp = url.split("/")  # based on rePatterns, we know we have 7 elements
-    return "CVE-%s-GH%s#%s" % (year, tmp[6], tmp[4])
+    year: int = datetime.datetime.now().year
+    tmp: List[str] = url.split("/")  # based on rePatterns, we know we have 7 elements
+    return "CVE-%d-GH%s#%s" % (year, tmp[6], tmp[4])
 
 
-def pkgFromCandidate(cand):
+def pkgFromCandidate(cand: str) -> Optional[str]:
     """Find pkg name from url"""
-    pkg = None
+    pkg: Optional[str] = None
     if "-GH" in cand:
         if cand.count("#") != 1:
             raise CveException("invalid candidate: '%s'" % cand)
@@ -740,10 +769,10 @@ def pkgFromCandidate(cand):
 
 
 # Helpers for addCve()
-def _genReferencesAndBugs(cve):
+def _genReferencesAndBugs(cve: str) -> Tuple[List[str], List[str]]:
     """Generate references and bugs for _createCve()"""
-    refs = []
-    bugs = []
+    refs: List[str] = []
+    bugs: List[str] = []
     if cve.startswith("http"):
         refs.append(cve)
         bugs.append(cve)
@@ -754,26 +783,26 @@ def _genReferencesAndBugs(cve):
 
 
 def _createCve(
-    cveDirs,
-    cve_path,
-    cve,
-    args_pkgs,
-    compatUbuntu,
-    withReferences=False,
-    discovered_by=None,
-    assigned_to=None,
-):
+    cveDirs: Dict[str, str],
+    cve_path: str,
+    cve: str,
+    args_pkgs: List[str],
+    compatUbuntu: bool,
+    withReferences: bool = False,
+    discovered_by: Optional[str] = None,
+    assigned_to: Optional[str] = None,
+) -> None:
     """Create or append CVE"""
-    data = {}
+    data: Dict[str, str] = {}
 
-    append = False
+    append: bool = False
     if os.path.isfile(cve_path):
         append = True
         data = cvelib.common.readCve(cve_path)
     else:
         # find generic boiler
-        boiler = os.path.join(cveDirs["active"], "00boilerplate")
-        ubuntuBoiler = os.path.join(cveDirs["active"], "00boilerplate.ubuntu")
+        boiler: str = os.path.join(cveDirs["active"], "00boilerplate")
+        ubuntuBoiler: str = os.path.join(cveDirs["active"], "00boilerplate.ubuntu")
         if compatUbuntu:
             boiler = ubuntuBoiler
         if not os.path.isfile(boiler):
@@ -782,14 +811,14 @@ def _createCve(
 
         if boiler == ubuntuBoiler:
             # update args_pkgs using Ubuntu's boiler format
-            tmp = copy.deepcopy(args_pkgs)
-            pat = re.compile(r"^#(.*_)PKG$")
+            tmp: List[str] = copy.deepcopy(args_pkgs)
+            pat: Pattern = re.compile(r"^#(.*_)PKG$")
             for k in data:
                 if not pat.search(k) or k == "#Patches_PKG":
                     continue
                 for p in tmp:
                     if "_" not in p:
-                        uPkg = pat.sub("\\1%s" % p, k)
+                        uPkg: str = pat.sub("\\1%s" % p, k)
                         if uPkg not in args_pkgs:
                             args_pkgs.append(uPkg)
 
@@ -802,6 +831,8 @@ def _createCve(
 
     if withReferences:
         # References and bugs only need filling in with new CVEs
+        refs: List[str]
+        bugs: List[str]
         refs, bugs = _genReferencesAndBugs(cve)
         data["References"] = "\n %s" % " ".join(refs)
         data["Bugs"] = "\n %s" % " ".join(bugs) if bugs else ""
@@ -810,15 +841,15 @@ def _createCve(
     # re-setting it for existing is harmless and makes the logic simpler)
     data["Candidate"] = os.path.basename(cve_path)
 
-    now = datetime.datetime.now()
+    now: datetime.datetime = datetime.datetime.now()
     data["OpenDate"] = "%d-%0.2d-%0.2d" % (now.year, now.month, now.day)
 
-    pkgObjs = []
+    pkgObjs: List[CvePkg] = []
     for p in args_pkgs:
         # mock up an entry
         pkgObjs.append(parse("%s: needs-triage" % p, compatUbuntu))
 
-    cveObj = CVE(untriagedOk=True, compatUbuntu=compatUbuntu)
+    cveObj: CVE = CVE(untriagedOk=True, compatUbuntu=compatUbuntu)
     cveObj.setData(data)
     cveObj.setPackages(pkgObjs, append=append)
 
@@ -837,28 +868,29 @@ def _createCve(
 
 
 def addCve(
-    cveDirs,
-    compatUbuntu,
-    orig_cve,
-    orig_pkgs,
-    boiler=None,
-    retired=False,
-    discovered_by=None,
-    assigned_to=None,
-):
+    cveDirs: Dict[str, str],
+    compatUbuntu: bool,
+    orig_cve: str,
+    orig_pkgs: List[str],
+    boiler: Optional[str] = None,
+    retired: bool = False,
+    discovered_by: Optional[str] = None,
+    assigned_to: Optional[str] = None,
+) -> None:
     """Add/modify CVE"""
-    pkgs = []
+    pkgs: List[str] = []
     if orig_pkgs is not None:
         pkgs = copy.deepcopy(orig_pkgs)
 
     # See if we can parse
-    cand = None
+    cand: Optional[str] = None
     if orig_cve.startswith("http"):
         cand = cveFromUrl(orig_cve)  # raises an error
     else:
         cand = orig_cve
 
     # TODO: check retired, ...
+    cve_fn: str
     if retired:
         cve_fn = os.path.join(cveDirs["retired"], cand)
     else:
@@ -866,7 +898,7 @@ def addCve(
 
     # If we can determine a pkg from the candidate, then add it to the
     # front of the list, removing it from the pkgs if it is already there
-    p = pkgFromCandidate(cand)
+    p: Optional[str] = pkgFromCandidate(cand)
     if p:
         if p in pkgs:
             pkgs.remove(p)
@@ -875,7 +907,7 @@ def addCve(
         raise CveException("could not find usable packages for '%s'" % orig_cve)
 
     # Find boilerplate if we have one
-    pkgBoiler = None
+    pkgBoiler: Optional[str] = None
     if boiler is not None:
         pkgBoiler = boiler
     elif "_" in pkgs[0]:  # product/where_software/modifer
@@ -888,7 +920,7 @@ def addCve(
 
     # if we have a per-package boiler but don't have the cve, then copy
     # the boiler into place as the CVE
-    fromPkgBoiler = False
+    fromPkgBoiler: bool = False
     if (
         pkgBoiler is not None
         and os.path.isfile(pkgBoiler)
@@ -910,9 +942,9 @@ def addCve(
 
 
 # misc helpers
-def _getCVEPaths(cveDirs):
+def _getCVEPaths(cveDirs: Dict[str, str]) -> List[str]:
     """Return the list of sorted CVE paths"""
-    cves = (
+    cves: List[str] = (
         glob.glob(cveDirs["active"] + "/CVE*")
         + glob.glob(cveDirs["retired"] + "/CVE-*")
         + glob.glob(cveDirs["ignored"] + "/CVE-*")

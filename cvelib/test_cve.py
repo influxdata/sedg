@@ -331,11 +331,6 @@ git/github_norf: needs-triage
             cvelib.cve.CVE()._isPresent(hdrs, "Bar")
         self.assertEqual("missing field 'Bar'", str(context.exception))
 
-        hdrs = ["foo"]
-        with self.assertRaises(cvelib.common.CveException) as context:
-            cvelib.cve.CVE()._isPresent(hdrs, "Foo")
-        self.assertEqual("data not of type dict", str(context.exception))
-
     def test__verifySingleline(self):
         """Test _isSingleline()"""
         cvelib.cve.CVE()._verifySingleline("Empty", "")
@@ -1138,21 +1133,6 @@ git/github_norf: needs-triage
         self.assertEqual(2, len(cve.pkgs[1].priorities))
         self.assertEqual("medium", cve.pkgs[1].priorities["pkg2"])
         self.assertEqual("low", cve.pkgs[1].priorities["pkg2_a"])
-
-        # invalid
-        cve = cvelib.cve.CVE(fn="fake")
-        self.assertEqual(0, len(cve.pkgs))
-        with self.assertRaises(cvelib.common.CveException) as context:
-            cve.setPackages(False)
-        self.assertEqual("pkgs is not a list", str(context.exception))
-
-        cve = cvelib.cve.CVE(fn="fake")
-        self.assertEqual(0, len(cve.pkgs))
-        with self.assertRaises(cvelib.common.CveException) as context:
-            cve.setPackages([False])
-        self.assertEqual(
-            "package is not of type cvelib.pkg.CvePkg", str(context.exception)
-        )
 
         # append
         self._mock_readCve(self._cve_template())

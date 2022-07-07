@@ -316,7 +316,6 @@ class TestPkg(TestCase):
                 [("test-key", "critical"), ("test_key_3", "b@d")],
                 "invalid package priority 'b@d'",
             ),
-            (None, "invalid priorities (not a list)"),
         ]
         pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
         for t, err in tsts:
@@ -523,19 +522,6 @@ class TestPkg(TestCase):
             pkg.setPatches(["upstream: foo", "blah: foo"], False)
         self.assertEqual("invalid patch 'blah: foo'", str(context.exception))
 
-        # bad input
-        pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
-        self.assertEqual(0, len(pkg.patches))
-        with self.assertRaises(cvelib.common.CveException) as context:
-            pkg.setPatches([False], False)
-        self.assertEqual("invalid patch (not a string)", str(context.exception))
-
-        pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
-        self.assertEqual(0, len(pkg.patches))
-        with self.assertRaises(cvelib.common.CveException) as context:
-            pkg.setPatches(False, False)
-        self.assertEqual("invalid patches (not a list)", str(context.exception))
-
     def test_setTags(self):
         """Test setTags()"""
         # one patch
@@ -563,7 +549,6 @@ class TestPkg(TestCase):
                 "invalid tag 'bad'",
             ),
             # ([("test-key", "")], "invalid tag 'bad'"),
-            ("", "invalid tags (not a list)"),
         ]
         pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
         for t, err in tsts:
@@ -718,7 +703,3 @@ class TestPkg(TestCase):
                 if "\n" in s:
                     errS = "invalid package entry '%s' (expected single line)" % s
                 self.assertEqual(errS, str(context.exception))
-
-        with self.assertRaises(cvelib.common.CveException) as context:
-            cvelib.pkg.parse(False)
-        self.assertEqual("invalid package entry (not a string)", str(context.exception))

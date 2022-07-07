@@ -2,6 +2,7 @@
 
 from cvelib.common import CveException, rePatterns
 
+from typing import List, Tuple
 
 # <product>[/<where or who>]_SOFTWARE[/<modifier>]: <status> [(<when>)]
 #
@@ -56,7 +57,7 @@ class CvePkg(object):
     def __repr__(self):
         return self.__str__()
 
-    def what(self):
+    def what(self) -> str:
         """The product/where_software/modififer"""
         s = ""
         if self.product:
@@ -127,15 +128,10 @@ class CvePkg(object):
             raise CveException("invalid when '%s'" % when)
         self.when = when
 
-    def setPatches(self, patches, compatUbuntu):
+    def setPatches(self, patches: List[str], compatUbuntu: bool) -> None:
         """Set patches"""
-        if not isinstance(patches, list):
-            raise CveException("invalid patches (not a list)")
-
         self.patches = []
         for patch in patches:
-            if not isinstance(patch, str):
-                raise CveException("invalid patch (not a string)")
             patch = patch.strip()
             if compatUbuntu:
                 if not rePatterns["pkg-patch-ubuntu"].search(patch):
@@ -144,11 +140,8 @@ class CvePkg(object):
                 raise CveException("invalid patch '%s'" % patch)
             self.patches.append(patch)
 
-    def setTags(self, tagList):
+    def setTags(self, tagList: List[Tuple[str, str]]) -> None:
         """Set tag"""
-        if not isinstance(tagList, list):
-            raise CveException("invalid tags (not a list)")
-
         self.tags = {}
         for tagKey, tagVal in tagList:
             self.tags[tagKey] = []
@@ -158,11 +151,8 @@ class CvePkg(object):
                     raise CveException("invalid tag '%s'" % t)
                 self.tags[tagKey].append(t)
 
-    def setPriorities(self, priorityList):
+    def setPriorities(self, priorityList: List[Tuple[str, str]]) -> None:
         """Set package priorities"""
-        if not isinstance(priorityList, list):
-            raise CveException("invalid priorities (not a list)")
-
         self.priorites = {}
         for priKey, priVal in priorityList:
             # NOTE: we don't special-case 'untriaged' because that makes no sense
@@ -178,10 +168,8 @@ class CvePkg(object):
             self.priorities[priKey] = priVal
 
 
-def parse(s, compatUbuntu=False):
+def parse(s: str, compatUbuntu: bool = False) -> CvePkg:
     """Parse a string and return a CvePkg"""
-    if not isinstance(s, str):
-        raise CveException("invalid package entry (not a string)")
     if "\n" in s:
         raise CveException("invalid package entry '%s' (expected single line)" % s)
     if compatUbuntu:
@@ -190,12 +178,12 @@ def parse(s, compatUbuntu=False):
     elif not rePatterns["pkg-full"].search(s):
         raise CveException("invalid package entry '%s'" % s)
 
-    product = ""
-    software = ""
-    status = ""
-    where = ""
-    modifier = ""
-    when = ""
+    product: str = ""
+    software: str = ""
+    status: str = ""
+    where: str = ""
+    modifier: str = ""
+    when: str = ""
 
     # when may have ':', so only split on the first one
     (product_software, status_when) = s.split(":", 1)

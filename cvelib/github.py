@@ -5,6 +5,8 @@ import yaml
 
 from cvelib.common import CveException, rePatterns
 
+from typing import List, Union
+
 
 class GHDependabot(object):
     required = [
@@ -164,7 +166,7 @@ def parse(s):
     if not isinstance(yml, list):
         raise CveException("invalid GHAS document: not a list")
 
-    ghas = []
+    ghas: List[Union[GHDependabot, GHSecret]] = []
     for item in yml:
         if not isinstance(item, dict):
             raise CveException("invalid GHAS document: not a dict")
