@@ -165,20 +165,35 @@ class TestPkg(TestCase):
         """Test setWhere()"""
         tsts = [
             # valid
-            ("foo", True),
+            ("bar", True, False),
+            ("a" * 40, True, False),
+            # valid compat
+            ("bar", True, True),
             # invalid
-            ("b@d", False),
-            ("foo ", False),
-            (" foo ", False),
+            ("b@d", False, False),
+            ("bar ", False, False),
+            (" bar ", False, False),
+            ("a" * 41, False, False),
+            # invalid compat
+            ("b@d", False, True),
+            ("bar ", False, True),
+            (" bar ", False, True),
+            ("bar_bar", False, True),
+            ("BAR", False, True),
         ]
-        pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
-        for s, valid in tsts:
+        for s, valid, compat in tsts:
+            pkg = cvelib.pkg.CvePkg("git", "foo", "needed", compatUbuntu=compat)
             if valid:
                 pkg.setWhere(s)
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
                     pkg.setWhere(s)
-                self.assertEqual("invalid where '%s'" % s, str(context.exception))
+                compatS = ""
+                if compat:
+                    compatS = "compat "
+                self.assertEqual(
+                    "invalid %swhere '%s'" % (compatS, s), str(context.exception)
+                )
 
     def test_setSoftware(self):
         """Test setSoftware()"""
@@ -227,20 +242,37 @@ class TestPkg(TestCase):
         """Test setModifier()"""
         tsts = [
             # valid
-            ("foo", True),
+            ("foo", True, False),
+            ("foo_bar", True, False),
+            ("a" * 40, True, False),
+            # valid compat
+            ("foo", True, True),
+            ("a" * 40, True, True),
             # invalid
-            ("b@d", False),
-            ("foo ", False),
-            (" foo ", False),
+            ("b@d", False, False),
+            ("foo ", False, False),
+            (" foo ", False, False),
+            ("a" * 41, False, False),
+            # invalid compat
+            ("b@d", False, True),
+            ("foo ", False, True),
+            (" foo ", False, True),
+            ("foo_bar", False, True),
+            ("FOO", False, True),
         ]
-        pkg = cvelib.pkg.CvePkg("git", "foo", "needed")
-        for s, valid in tsts:
+        for s, valid, compat in tsts:
+            pkg = cvelib.pkg.CvePkg("git", "foo", "needed", compatUbuntu=compat)
             if valid:
                 pkg.setModifier(s)
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
                     pkg.setModifier(s)
-                self.assertEqual("invalid modifier '%s'" % s, str(context.exception))
+                compatS = ""
+                if compat:
+                    compatS = "compat "
+                self.assertEqual(
+                    "invalid %smodifier '%s'" % (compatS, s), str(context.exception)
+                )
 
     def test_setStatus(self):
         """Test setStatus()"""

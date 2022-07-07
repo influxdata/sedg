@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from cvelib.common import CveException, rePatterns
+from cvelib.common import CveException, rePatterns, _patLengths
 
 from typing import Dict, List, Tuple
 
@@ -92,9 +92,12 @@ class CvePkg(object):
         if where == "":
             self.where = ""
             return
-        if self.compatUbuntu:
+        # honor the common length but reuse the software regex for 'where'
+        if len(where) > _patLengths["pkg-where"]:
+            raise CveException("invalid where '%s'" % where)
+        elif self.compatUbuntu:
             if not rePatterns["pkg-software-ubuntu"].search(where):
-                raise CveException("invalid where '%s'" % where)
+                raise CveException("invalid compat where '%s'" % where)
         elif not rePatterns["pkg-software"].search(where):
             raise CveException("invalid where '%s'" % where)
         self.where = where
@@ -113,6 +116,9 @@ class CvePkg(object):
         if modifier == "":
             self.modifier = ""
             return
+        # honor the common length but reuse the software regex for 'where'
+        if len(modifier) > _patLengths["pkg-modifier"]:
+            raise CveException("invalid modifier '%s'" % modifier)
         if self.compatUbuntu:
             if not rePatterns["pkg-software-ubuntu"].search(modifier):
                 raise CveException("invalid compat modifier '%s'" % modifier)
