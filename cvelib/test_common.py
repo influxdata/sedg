@@ -62,7 +62,6 @@ class TestCommon(TestCase):
             (-1, 10, "", "[----------] 0%", ""),
             (1, 0, "", "#] 100%", ""),
             # invalid
-            (None, 0, "", "", "ERROR: 'progress' must be int or float"),
             (0.5, 0, "a" * 100000, "", "ERROR: 'prefix' too long for window size"),
         ]
         for pro, bar, pre, expOut, expErr in tsts:

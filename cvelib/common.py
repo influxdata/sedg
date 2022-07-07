@@ -8,14 +8,17 @@ import shutil
 import sys
 import tempfile
 
+from email.message import Message
 from email.parser import HeaderParser, Parser
 from email.policy import Compat32
 
-# cache of config
-configCache = None
+from typing import Dict, List, Optional, Pattern, Tuple, Union
 
-cve_priorities = ["critical", "high", "medium", "low", "negligible"]
-cve_statuses = [
+# cache of config
+configCache: Optional[configparser.ConfigParser] = None
+
+cve_priorities: List[str] = ["critical", "high", "medium", "low", "negligible"]
+cve_statuses: List[str] = [
     "needs-triage",
     "needed",
     "pending",
@@ -39,7 +42,7 @@ cve_statuses = [
 #
 
 # Various configurable lengths used in the regexes
-_patLengths = {
+_patLengths: Dict[str, int] = {
     "pkg-product-ubuntu": 40,
     "pkg-where": 40,
     "pkg-software": 50,
@@ -48,7 +51,7 @@ _patLengths = {
 }
 
 # Compile common regex on import
-rePatterns = {
+rePatterns: Dict[str, Pattern[str]] = {
     # foo, foo1, foo-bar, foo.bar, for-bar-1.0, foo_bar, FOO
     "pkg-software": re.compile(
         r"^[a-zA-Z0-9+._-]{1,%(software_len)d}$"
@@ -206,13 +209,13 @@ rePatterns = {
 }
 
 # Subdirectories of CVEs in config["Locations"]["cve-data"]
-cve_reldirs = ["active", "retired", "ignored"]
+cve_reldirs: List[str] = ["active", "retired", "ignored"]
 
 
 #
 # Utility functions
 #
-def msg(out):
+def msg(out: str) -> None:
     """Print message"""
     try:
         print("%s" % (out), file=sys.stdout)
@@ -220,7 +223,7 @@ def msg(out):
         pass
 
 
-def warn(out):
+def warn(out: str) -> None:
     """Print warning message"""
     try:
         print("WARN: %s" % (out), file=sys.stderr)
@@ -228,7 +231,7 @@ def warn(out):
         pass
 
 
-def error(out, exitCode=1, do_exit=True):
+def error(out: str, exitCode: int = 1, do_exit: bool = True) -> None:
     """Print error message"""
     try:
         print("ERROR: %s" % (out), file=sys.stderr)
@@ -239,13 +242,13 @@ def error(out, exitCode=1, do_exit=True):
         sys.exit(exitCode)
 
 
-def recursive_rm(dirPath, contents_only=False, top=True):
+def recursive_rm(dirPath: str, contents_only: bool = False, top: bool = True) -> None:
     """recursively remove directory"""
     if top:
         os.chmod(dirPath, 0o0755)  # ensure the top dir is always removable
 
     try:
-        names = os.listdir(dirPath)
+        names: List[str] = os.listdir(dirPath)
     except PermissionError:
         # If directory has weird permissions (eg, 000), just try to remove the
         # directory if we can. If it is non-empty, we'll legitimately fail
@@ -255,7 +258,7 @@ def recursive_rm(dirPath, contents_only=False, top=True):
         return
 
     for name in names:
-        path = os.path.join(dirPath, name)
+        path: str = os.path.join(dirPath, name)
         if os.path.islink(path) or not os.path.isdir(path):
             os.unlink(path)
         else:
@@ -271,7 +274,9 @@ def recursive_rm(dirPath, contents_only=False, top=True):
 
 # Simple progress bar with no external dependencies besides sys. Based on:
 # https://stackoverflow.com/a/15860757
-def updateProgress(progress, barLength=0, prefix=""):
+def updateProgress(
+    progress: Union[float, int], barLength: int = 0, prefix: str = ""
+) -> None:
     """Display/update console progress bar
     - progress: float between 0 and 1 (ints converted to float). < 0
       or > 0 stops progress (for descending or acsending)
@@ -279,11 +284,7 @@ def updateProgress(progress, barLength=0, prefix=""):
     - prefix: what to display before the bar. With barLength=0 (auto)
       the barLength is calculated (roughly) as 'termwidth - len(prefix)
     """
-    status = ""
-    if not isinstance(progress, int) and not isinstance(progress, float):
-        error("'progress' must be int or float", do_exit=False)
-        return
-
+    status: str = ""
     if isinstance(progress, int):
         progress = float(progress)
 
@@ -295,42 +296,42 @@ def updateProgress(progress, barLength=0, prefix=""):
         status = "\n"
 
     if barLength == 0:
-        max = 75
-        cur = shutil.get_terminal_size((max, 20))[0]  # define fallback
-        tw = max if cur > max else cur
+        max: int = 75
+        cur: int = shutil.get_terminal_size((max, 20))[0]  # define fallback
+        tw: int = max if cur > max else cur
         # make sure prefix isn't too big for the window size (use 'pad * 2'
         # as a convenience for leaving room for the bar and status)
-        pad = 10
+        pad: int = 10
         if len(prefix) > tw - pad * 2:
             error("'prefix' too long for window size", do_exit=False)
             return
         barLength = tw - len(prefix) - pad
 
-    block = int(round(barLength * progress))
-    bar = "[{0}] {1}% {2}".format(
+    block: int = int(round(barLength * progress))
+    bar: str = "[{0}] {1}% {2}".format(
         "#" * block + "-" * (barLength - block), int(progress * 100), status
     )
     print("%s%s\r" % (prefix, bar), end="")
 
 
-def readCve(fn):
+def readCve(fn: str) -> Dict[str, str]:
     """Read raw CVE data from file"""
     # Read in the data, but let callers do any specific formatting
-    d = {}
+    d: Dict[str, str] = {}
 
     # Use a relative filename for warnings
-    rel_fn = os.path.basename(fn)
-    parent = os.path.basename(os.path.dirname(fn))
+    rel_fn: str = os.path.basename(fn)
+    parent: str = os.path.basename(os.path.dirname(fn))
     if parent in cve_reldirs:
         rel_fn = "%s/%s" % (parent, rel_fn)
 
     # Always encode to ascii (since we use strip() elsewhere), but don't lose
     # data and escape
     with open(fn, "r", encoding="ascii", errors="backslashreplace") as fp:
-        policy = Compat32()
+        policy: Compat32 = Compat32()
 
         # Obtain the header content
-        headers = Parser(policy=policy).parse(fp)
+        headers: Message = Parser(policy=policy).parse(fp)
         for k in headers:
             if k in d:
                 warn("duplicate key '%s' in %s" % (k, rel_fn))
@@ -339,13 +340,13 @@ def readCve(fn):
         # Obtain the header content for any other stanzas (stanzas are
         # separated by newlines so we need to grab the stanza'a headers from
         # the payload in a loop.
-        last = None
+        last: Optional[str] = None
         while True:
-            s = headers.get_payload()
+            s: str = headers.get_payload()
             if s == last:
                 break
             last = s
-            headers = HeaderParser(policy=policy).parsestr(s)
+            headers: Message = HeaderParser(policy=policy).parsestr(s)
             for k in headers:
                 if k in d:
                     warn("duplicate key '%s' in %s" % (k, rel_fn))
@@ -354,7 +355,7 @@ def readCve(fn):
     return copy.deepcopy(d)
 
 
-def setCveHeader(headers, key, val):
+def setCveHeader(headers: Message, key: str, val: Optional[str]) -> None:
     """Set header for CVE"""
     if val is None:
         headers.__delitem__(key)  # no exception if missing
@@ -364,17 +365,19 @@ def setCveHeader(headers, key, val):
         headers.add_header(key, val)
 
 
-def getConfigFilePath():
+def getConfigFilePath() -> str:
     """Return the path to influx-security-tools.conf"""
     if "XDG_CONFIG_HOME" in os.environ:
         return os.path.expandvars("$XDG_CONFIG_HOME/influx-security-tools.conf")
     return os.path.expandvars("$HOME/.config/influx-security-tools.conf")
 
 
-def readConfig():
+def readConfig() -> Tuple[configparser.ConfigParser, str]:
     """Read configuration for the tools"""
     global configCache
-    configFilePath = getConfigFilePath()
+    configFilePath: str = getConfigFilePath()
+    config: configparser.ConfigParser
+
     if configCache is not None:
         config = configCache
     else:
@@ -382,7 +385,7 @@ def readConfig():
         if os.path.exists(configFilePath):
             config.read(configFilePath)
         else:
-            parent = os.path.dirname(configFilePath)
+            parent: str = os.path.dirname(configFilePath)
             if not os.path.isdir(parent):
                 os.mkdir(parent, 0o0700)
             config["Locations"] = {
@@ -391,7 +394,7 @@ def readConfig():
             config["Behavior"] = {
                 "compat-ubuntu": "no",
             }
-            orig = os.umask(0o027)
+            orig: int = os.umask(0o027)
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
                 config.write(f)
                 f.flush()
@@ -405,11 +408,14 @@ def readConfig():
     return (config, configFilePath)
 
 
-def getConfigCveDataPaths():
+def getConfigCveDataPaths() -> Dict[str, str]:
+    config: configparser.ConfigParser
+    configFilePath: str
+    top: Optional[str] = None
+
     (config, configFilePath) = readConfig()
-    top = None
     if "Locations" in config and "cve-data" in config["Locations"]:
-        path = config["Locations"]["cve-data"]
+        path: str = config["Locations"]["cve-data"]
         if not os.path.isdir(path):
             error(
                 "Please configure %s to\nset 'cve-data' in "
@@ -421,11 +427,11 @@ def getConfigCveDataPaths():
         error(
             "Please configure %s to\nset 'cve-data' in '[Locations]'" % configFilePath
         )
-        return  # needed by pyright since it doesn't know error() exits
+        return {}  # needed by pyright since it doesn't know error() exits
 
-    cveDirs = {}
+    cveDirs: Dict[str, str] = {}
     for d in cve_reldirs:
-        tmp = os.path.join(top, d)
+        tmp: str = os.path.join(top, d)
         if not os.path.isdir(top):
             error("Could not find '%s' in '%s'" % (d, top))
         cveDirs[d] = tmp
@@ -433,7 +439,8 @@ def getConfigCveDataPaths():
     return cveDirs
 
 
-def getConfigCompatUbuntu():
+def getConfigCompatUbuntu() -> bool:
+    config: configparser.ConfigParser
     (config, _) = readConfig()
     if "Behavior" in config and "compat-ubuntu" in config["Behavior"]:
         if config["Behavior"]["compat-ubuntu"].lower() == "yes":
@@ -450,8 +457,8 @@ def getConfigCompatUbuntu():
 class CveException(Exception):
     """This class represents CVE exceptions"""
 
-    def __init__(self, value):
+    def __init__(self, value: str) -> None:
         self.value = value
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
