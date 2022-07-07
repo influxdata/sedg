@@ -29,5 +29,5 @@ coverage-report:
 	python3 -m coverage report --show-missing --omit="*/dist-packages/*"
 
 clean:
-	rm -rf ./bin/__pycache__ ./cvelib/__pycache__ ./cvelib/tests/__pycache__
+	rm -rf ./bin/__pycache__ ./cvelib/__pycache__
 	rm -rf .coverage

@@ -1,4 +1,4 @@
-"""pkg_test.py: tests for pkg.py module"""
+"""test_pkg.py: tests for pkg.py module"""
 
 from unittest import TestCase
 
