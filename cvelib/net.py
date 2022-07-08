@@ -27,7 +27,7 @@ def requestGet(
 ):
     """Wrapper around requests.get() for json"""
     r: requests.Response = requestGetRaw(url, headers, params)
-    if r.status_code >= 400:
+    if r.status_code >= 400:  # pragma: nocover
         error("Problem fetching %s:\n%d - %s" % (url, r.status_code, r.json()))
 
     return r.json()
@@ -83,7 +83,7 @@ def queryGraphQL(query: str, headers: Dict[str, str] = {}):
     # TODO: handle rate limits:
     # https://docs.github.com/en/graphql/overview/resource-limitations
     r: requests.Response = requests.post(url, json={"query": query}, headers=hdrs)
-    if r.status_code != 200:
+    if r.status_code != 200:  # pragma: nocover
         error("Problem querying %s. %d - %s" % (url, r.status_code, query))
 
     return r.json()
