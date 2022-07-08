@@ -1,18 +1,25 @@
 #!/usr/bin/env python3
 
 import copy
+import os
 import requests
 import time
-from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, TypedDict, Union
 
 from cvelib.cve import CVE
 from cvelib.common import (
+    cve_priorities,
     error,
     rePatterns,
     updateProgress,
     warn,
 )
 from cvelib.net import requestGetRaw, requestGet, queryGraphQL
+
+
+#
+# cve-report-updated-bugs
+#
 
 # TODO: pass these around
 repos_all: List[str] = []  # list of repos
@@ -535,3 +542,370 @@ def getGHAlertsUpdatedReport(
         for repo in sorted(dismissed.keys()):
             print("")
             _printGHAlertsDismissedSummary(org, repo, dismissed[repo])
+
+
+#
+# cve-report
+#
+class _statsUniqueCVEsPriorityCounts(TypedDict):
+    """Type hinting for _readStatsUniqueCVEs()"""
+
+    num: int
+    cves: List[str]
+
+
+class _statsUniqueCVEsPkgSoftware(TypedDict):
+    """Type hinting for _readStatsUniqueCVEs()"""
+
+    deps: List[str]
+    secrets: List[str]
+    negligible: _statsUniqueCVEsPriorityCounts
+    low: _statsUniqueCVEsPriorityCounts
+    medium: _statsUniqueCVEsPriorityCounts
+    high: _statsUniqueCVEsPriorityCounts
+    critical: _statsUniqueCVEsPriorityCounts
+
+
+def _readStatsUniqueCVEs(
+    cves: List[CVE], filter_status: List[str] = ["needs-triage", "needed", "pending"]
+) -> Dict[str, _statsUniqueCVEsPkgSoftware]:
+    """Read in stats by unique CVE, discovering dependabot and secrets"""
+    # stats = {
+    #   pkg.software: {          // _statsUniqueCVEsPkgSoftware
+    #     "deps": [<candidate>]
+    #     "<priority>": {        // _statsUniqueCVEsPriorityCounts
+    #       "num": int,
+    #       "cves": [<candidate>]
+    #     },
+    #   }
+    stats: Dict[str, _statsUniqueCVEsPkgSoftware] = {}
+    for cve in cves:
+        last_software: str = ""
+        for pkg in cve.pkgs:
+            if pkg.status not in filter_status:
+                continue
+
+            # only count an open CVE once per software/priority
+            if last_software == pkg.software:
+                continue
+            last_software = pkg.software
+
+            priority: str = cve.priority
+            if pkg.software in pkg.priorities:
+                priority = pkg.priorities[pkg.software]
+
+            if pkg.software not in stats:
+                stats[pkg.software] = _statsUniqueCVEsPkgSoftware(
+                    deps=[],
+                    secrets=[],
+                    negligible=_statsUniqueCVEsPriorityCounts(num=0, cves=[]),
+                    low=_statsUniqueCVEsPriorityCounts(num=0, cves=[]),
+                    medium=_statsUniqueCVEsPriorityCounts(num=0, cves=[]),
+                    high=_statsUniqueCVEsPriorityCounts(num=0, cves=[]),
+                    critical=_statsUniqueCVEsPriorityCounts(num=0, cves=[]),
+                )
+
+            stats[pkg.software][priority]["num"] += 1
+            if "cves" not in stats[pkg.software][priority]:
+                stats[pkg.software][priority]["cves"] = []
+            stats[pkg.software][priority]["cves"].append(cve.candidate)
+
+            if (
+                "gh-dependabot" in cve.discoveredBy.lower()
+                and cve.candidate not in stats[pkg.software]["deps"]
+            ):
+                stats[pkg.software]["deps"].append(cve.candidate)
+
+            if (
+                "gh-secret" in cve.discoveredBy.lower()
+                and cve.candidate not in stats[pkg.software]["secrets"]
+            ):
+                stats[pkg.software]["secrets"].append(cve.candidate)
+
+    return stats
+
+
+def getHumanReportOpenByPkgPriority(
+    stats: Dict[str, _statsUniqueCVEsPkgSoftware]
+) -> None:
+    maxlen: int = 30
+    headerStr: str = (
+        "{pkg:%d} {critical:>10s} {high:>10s} {medium:>10s} {low:>10s} {negligible:>10s}"
+        % maxlen
+    )
+    print(
+        headerStr.format(
+            pkg="Package",
+            critical="Critical",
+            high="High",
+            medium="Medium",
+            low="Low",
+            negligible="Negligible",
+        )
+    )
+
+    tableStr: str = (
+        "{pkg:%ds} {critical:>10d} {high:>10d} {medium:>10d} {low:>10d} {negligible:>10d}"
+        % maxlen
+    )
+    table_f: object = tableStr.format
+    totals: Dict[str, int] = {}
+    for pri in cve_priorities:
+        totals[pri] = 0
+
+    for p in sorted(stats):
+        print(
+            table_f(
+                pkg=(p[: maxlen - 3] + "...") if len(p) > maxlen else p,
+                critical=stats[p]["critical"]["num"],
+                high=stats[p]["high"]["num"],
+                medium=stats[p]["medium"]["num"],
+                low=stats[p]["low"]["num"],
+                negligible=stats[p]["negligible"]["num"],
+            )
+        )
+        for pri in cve_priorities:
+            totals[pri] += stats[p][pri]["num"]
+
+    print(
+        table_f(
+            pkg="Total:",
+            critical=totals["critical"],
+            high=totals["high"],
+            medium=totals["medium"],
+            low=totals["low"],
+            negligible=totals["negligible"],
+        )
+    )
+
+
+def getHumanReport(cves: List[CVE]) -> None:
+    stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(cves)
+    print("# Unique open issues by software")
+    getHumanReportOpenByPkgPriority(stats_open)
+
+    print("\n# Unique closed issues by software")
+    stats_closed: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
+        cves, filter_status=["released"]
+    )
+    getHumanReportOpenByPkgPriority(stats_closed)
+
+
+class _humanTodoScores(TypedDict):
+    """Type hinting for getHumanTodo()"""
+
+    score: int
+    msg: str
+
+
+def getHumanTodo(cves: List[CVE]) -> None:
+    stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(cves)
+    points: Dict[str, int] = {
+        "critical": 200,
+        "high": 100,
+        "medium": 50,
+        "low": 10,
+        "negligible": 0,
+    }
+
+    scores: Dict[str, _humanTodoScores] = {}
+    sw: str
+    for sw in stats_open.keys():
+        score: int = 0
+
+        s: str = ""
+        p: str
+        for p in cve_priorities:
+            score += stats_open[sw][p]["num"] * points[p]
+            if stats_open[sw][p]["num"] > 0:
+                s += "%d %s, " % (stats_open[sw][p]["num"], p)
+        scores[sw] = _humanTodoScores(score=score, msg="%s: %s" % (sw, s[:-2]))
+
+    # descending sorted by score then ascending by key ('sw')
+    v: _humanTodoScores
+    for (_, v) in sorted(scores.items(), key=lambda k: (-k[1]["score"], k)):
+        print("%-8d %s" % (v["score"], v["msg"]))
+
+
+def getHumanSoftwareInfo(cves: List[CVE], pkg: str = "") -> None:
+    stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(cves)
+
+    sw: str
+    for sw in sorted(stats_open.keys()):
+        if pkg != "" and sw != pkg:
+            continue
+        print("%s:" % sw)
+        p: str
+        for p in cve_priorities:
+            if stats_open[sw][p]["num"] > 0:
+                print("  %s:" % p)
+                for cve in sorted(stats_open[sw][p]["cves"]):
+                    print("    %s" % cve)
+
+
+def _readPackagesFile(pkg_fn: str) -> Optional[Set[str]]:
+    pkgs = None
+    if pkg_fn:
+        if not os.path.isfile(pkg_fn):
+            error("'%s' is not a regular file" % pkg_fn)
+        with open(pkg_fn, "r") as fh:
+            pkgs = set(fh.read().splitlines())
+
+    return pkgs
+
+
+def getHumanSummary(cves: List[CVE], pkg_fn: str = "", closed: bool = False) -> None:
+    def _output(
+        stats: Dict[str, _statsUniqueCVEsPkgSoftware],
+        state: str,
+        pkgs: Optional[Set[str]],
+    ):
+        maxlen: int = 30
+        tableStr: str = "{pri:10s} {repo:%ds} {cve:25s} {extra:s}" % maxlen
+        table_f: object = tableStr.format
+
+        lines_open: Dict[str, Dict[str, List[str]]] = {}
+        totals: Dict[str, Dict[str, int]] = {
+            "critical": {"num": 0, "num_repos": 0},
+            "high": {"num": 0, "num_repos": 0},
+            "medium": {"num": 0, "num_repos": 0},
+            "low": {"num": 0, "num_repos": 0},
+            "negligible": {"num": 0, "num_repos": 0},
+        }
+        repo: str
+        for repo in sorted(stats):
+            # skip repos not in the list we want to report on
+            if pkgs is not None and repo not in pkgs:
+                continue
+
+            priority: str
+            for priority in stats[repo]:
+                if priority == "deps" or priority == "secrets":
+                    continue
+
+                if stats[repo][priority]["num"] > 0:
+                    if priority not in lines_open:
+                        lines_open[priority] = {}
+                    lines_open[priority][repo] = stats[repo][priority]["cves"]
+
+                    if priority not in totals:
+                        totals[priority] = {"num": 0, "num_repos": 0}
+                    totals[priority]["num"] += len(stats[repo][priority]["cves"])
+                    totals[priority]["num_repos"] += 1
+
+        print("# %s\n" % state.capitalize())
+        print(table_f(pri="Priority", repo="Repository", cve="Issue", extra=""))
+        print(table_f(pri="--------", repo="----------", cve="-----", extra=""))
+        for priority in ["critical", "high", "medium", "low", "negligible"]:
+            if priority not in lines_open:
+                continue
+            for repo in sorted(lines_open[priority]):
+                for cve in sorted(lines_open[priority][repo]):
+                    # print("%s\t%s\t%s" % (priority, repo, cve))
+                    extra: str = ""
+                    if cve in stats[repo]["deps"] and cve in stats[repo]["secrets"]:
+                        extra = "(dependabot, secret)"
+                    elif cve in stats[repo]["deps"]:
+                        extra = "(dependabot)"
+                    elif cve in stats[repo]["secrets"]:
+                        extra = "(secrets)"
+
+                    print(
+                        table_f(
+                            pri=priority,
+                            repo=(repo[: maxlen - 3] + "...")
+                            if len(repo) > maxlen
+                            else repo,
+                            cve=cve,
+                            extra=extra,
+                        )
+                    )
+
+        print("\nTotals:")
+        for priority in ["critical", "high", "medium", "low", "negligible"]:
+            print(
+                "- %s: %d in %d repos"
+                % (priority, totals[priority]["num"], totals[priority]["num_repos"])
+            )
+
+    pkgs: Optional[Set[str]] = _readPackagesFile(pkg_fn)
+
+    stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(cves)
+    _output(stats_open, "open", pkgs)
+
+    if closed:
+        print("\n")
+        stats_closed: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
+            cves, filter_status=["released"]
+        )
+        _output(stats_closed, "closed", pkgs)
+
+
+# line protocol
+# We plan to query on priority, status and product so put them as tags
+#
+#   <measurement>,priority=X,status=X,product=X,modifier=X id=X software=X
+#
+# Note: the concept of 'team' will be handled within the flux
+def _readStatsLineProtocol(
+    cves: List[CVE],
+    measurement="cveLog",
+    filter_status: List[str] = ["needs-triage", "needed", "pending"],
+    base_timestamp: Optional[int] = None,
+    pkgs: Optional[Set[str]] = None,
+) -> List[str]:
+    stats: List[str] = []
+    lp_f: object = '{measurement},priority={priority},status={status},product={product} id="{id}",software="{software}",modifier="{modifier}" {timestamp}'.format
+
+    base_tm: Optional[int] = None
+    if base_timestamp is not None:
+        if not isinstance(base_timestamp, int) or base_timestamp < 0:
+            raise ValueError
+        base_tm = int(time.mktime(time.gmtime(base_timestamp))) * 1000 * 1000 * 1000
+
+    # XXX: perhaps use a timestamp relative to the mtime of the file or git
+    # commit (that would rotate out though with retention policy)
+    for cve in cves:
+        for pkg in cve.pkgs:
+            if pkgs is not None and pkg.software not in pkgs:
+                continue
+
+            priority: str = cve.priority
+            if pkg.software in pkg.priorities:
+                priority = pkg.priorities[pkg.software]
+
+            if pkg.status not in filter_status:
+                continue
+
+            timestamp: int
+            if base_tm is None:
+                timestamp = int(time.time_ns())
+            else:
+                timestamp = base_tm
+                base_tm += 1
+
+            stats.append(
+                lp_f(
+                    measurement=measurement,
+                    priority=priority,
+                    status=pkg.status,
+                    product=pkg.product,
+                    id=cve.candidate,
+                    software=pkg.software,
+                    modifier=pkg.modifier,
+                    timestamp=timestamp,
+                )
+            )
+
+    return stats
+
+
+def getInfluxDBLineProtocol(
+    cves: List[CVE], pkg_fn: str = "", base_timestamp: Optional[int] = None
+) -> None:
+    pkgs: Optional[Set[str]] = _readPackagesFile(pkg_fn)
+    stats_open: List[str] = _readStatsLineProtocol(
+        cves, base_timestamp=base_timestamp, pkgs=pkgs
+    )
+    for s in stats_open:
+        print(s)
