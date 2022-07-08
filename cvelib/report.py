@@ -120,7 +120,8 @@ def _getGHIssuesForRepo(
                 if "html_url" in issue:
                     if repo not in issues_all:
                         issues_all[repo] = []
-                    issues_all[repo].append(issue["html_url"])
+                    if issue["html_url"] not in issues_all[repo]:
+                        issues_all[repo].append(issue["html_url"])
     print(" done!")
 
     if repo in issues_all:
@@ -256,7 +257,7 @@ def _getGHAlertsEnabled(
         elif res.status_code == 404:
             # disabled
             disabled.append(repo)
-        else:
+        else:  # pragma: nocover
             error("Problem fetching %s:\n%d - %s" % (url, res.status_code, res))
 
     return enabled, disabled

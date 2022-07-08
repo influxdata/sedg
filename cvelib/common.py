@@ -319,7 +319,8 @@ def updateProgress(
     bar: str = "[{0}] {1}% {2}".format(
         "#" * block + "-" * (barLength - block), int(progress * 100), status
     )
-    print("%s%s\r" % (prefix, bar), end="")
+    if "TEST_NO_UPDATE_PROGRESS" not in os.environ:
+        print("%s%s\r" % (prefix, bar), end="")
 
 
 def readCve(fn: str) -> Dict[str, str]:

@@ -10,6 +10,7 @@ debug: bool = True
 
 class TestNet(TestCase):
     """Tests for the net functions"""
+
     def setUp(self):
         """Setup functions common for all tests"""
         self.orig_ghtoken = None
@@ -27,31 +28,29 @@ class TestNet(TestCase):
     def _mock_response(self, status=200, json_data=None):
         """Build a mocked requests response
 
-           Example:
+        Example:
 
-             @mock.patch('requests.get')
-             def test_requestGetRaw(self, mock_get):
-                 // successful
-                 mr = self._mock_response(json_data={"foo": "bar"})
-                 mock_get.return_value = mr
-                 res = foo('good')
-                 self.assertEqual(res, "...")
+          @mock.patch('requests.get')
+          def test_requestGetRaw(self, mock_get):
+              // successful
+              mr = self._mock_response(json_data={"foo": "bar"})
+              mock_get.return_value = mr
+              res = foo('good')
+              self.assertEqual(res, "...")
 
-                 // error status
-                 mr = self._mock_response(status=401)
-                 mock_get.return_value = mr
-                 res = foo('bad')
-                 self.assertEqual(res.status_code, 401)
+              // error status
+              mr = self._mock_response(status=401)
+              mock_get.return_value = mr
+              res = foo('bad')
+              self.assertEqual(res.status_code, 401)
         """
         mr = mock.Mock()
         mr.status_code = status
         if json_data:
-            mr.json = mock.Mock(
-                return_value=json_data
-            )
+            mr.json = mock.Mock(return_value=json_data)
         return mr
 
-    @mock.patch('requests.get')
+    @mock.patch("requests.get")
     def test_requestGetRaw(self, mock_get):
         """Test requestGetRaw()"""
         mr = self._mock_response(json_data={"foo": "bar"})
@@ -68,7 +67,7 @@ class TestNet(TestCase):
         self.assertTrue("foo" in rjson)
         self.assertEqual("bar", rjson["foo"])
 
-    @mock.patch('requests.get')
+    @mock.patch("requests.get")
     def test_requestGet(self, mock_get):
         """Test requestGet()"""
         mr = self._mock_response(json_data={"foo": "bar"})
@@ -83,7 +82,7 @@ class TestNet(TestCase):
         self.assertTrue("foo" in rjson)
         self.assertEqual("bar", rjson["foo"])
 
-    @mock.patch('requests.post')
+    @mock.patch("requests.post")
     def test_graphQL(self, mock_post):
         """Test requestGet()"""
         mr = self._mock_response(json_data={"foo": "bar"})
@@ -92,5 +91,3 @@ class TestNet(TestCase):
         rjson = cvelib.net.queryGraphQL("foo", headers={})
         self.assertTrue("foo" in rjson)
         self.assertEqual("bar", rjson["foo"])
-
-        print("JAMIE: %s" % rjson)
