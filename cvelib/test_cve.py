@@ -336,68 +336,205 @@ git/github_norf: needs-triage
         self.assertEqual("missing field 'Bar'", str(context.exception))
 
     def test__verifySingleline(self):
-        """Test _isSingleline()"""
+        """Test _verifySingleline()"""
         tsts = [
             # valid
-            ("Empty", "", None),
-            ("Key", "value", None),
-            ("Key", "foo bar 😀", None),
-            ("Key", "foo\\tbar", None),
-            ("Key", "foo bár", None),  # printable utf-8 supported
+            ("Empty", "", False, None),
+            ("Key", "value", False, None),
+            ("Key", "foo\\tbar", False, None),
+            # allow_utf8 true
+            ("Empty", "", True, None),
+            ("Key", "value", True, None),
+            ("Key", "foo\\tbar", True, None),
+            ("Key", "foo bár", True, None),  # printable utf-8 supported
             # invalid
-            ("Key", "foo\nbar", "invalid Key: 'foo\nbar' (expected single line)"),
-            ("Key", "foo\x00bar", "invalid Key (contains unprintable characters)"),
-            ("Key", "foo\tbar", "invalid Key (contains unprintable characters)"),
-            ("Key", "foo b\u00A0r", "invalid Key (contains unprintable characters)"),
+            (
+                "Key",
+                "foo\nbar",
+                False,
+                "invalid Key: 'foo\nbar' (expected single line)",
+            ),
+            (
+                "Key",
+                "foo\x00bar",
+                False,
+                "invalid Key (contains unprintable characters)",
+            ),
+            ("Key", "foo\tbar", False, "invalid Key (contains unprintable characters)"),
+            (
+                "Key",
+                "foo b\u00A0r",
+                False,
+                "invalid Key (contains unprintable characters)",
+            ),
+            (
+                "Key",
+                "foo bar 😀",
+                False,
+                "invalid Key: 'foo bar 😀' (contains non-ASCII characters)",
+            ),
+            # invalid allow_utf8 true
+            ("Key", "foo\nbar", True, "invalid Key: 'foo\nbar' (expected single line)"),
+            (
+                "Key",
+                "foo\x00bar",
+                True,
+                "invalid Key (contains unprintable characters)",
+            ),
+            ("Key", "foo\tbar", True, "invalid Key (contains unprintable characters)"),
+            (
+                "Key",
+                "foo b\u00A0r",
+                True,
+                "invalid Key (contains unprintable characters)",
+            ),
         ]
 
-        for key, val, expErr in tsts:
+        for key, val, allow_utf8, expErr in tsts:
             if expErr is None:
-                cvelib.cve.CVE()._verifySingleline(key, val)
+                cvelib.cve.CVE()._verifySingleline(key, val, allow_utf8=allow_utf8)
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
-                    cvelib.cve.CVE()._verifySingleline(key, val)
-                self.assertEqual(
-                    expErr, str(context.exception)
-                )
+                    cvelib.cve.CVE()._verifySingleline(key, val, allow_utf8=allow_utf8)
+                self.assertEqual(expErr, str(context.exception))
 
     def test__verifyMultiline(self):
         """Test _isMultiline()"""
         tsts = [
-            ("Empty", "", 0, None),
-            ("Key", "\n foo bar 😀", 1, None),
-            ("Key", "\n foo", 1, None),
-            ("Key", "\n foo\n", 1, None),
-            ("Key", "\n foo\n bar", 2, None),
-            ("Key", "\n foo\n .\n bar", 3, None),
-            ("Key", "\n foo bár", 1, None),  # printable utf-8 supported
+            # valid
+            ("Empty", "", False, 0, None),
+            ("Key", "\n foo", False, 1, None),
+            ("Key", "\n foo\n", False, 1, None),
+            ("Key", "\n foo\n bar", False, 2, None),
+            ("Key", "\n foo\n .\n bar", False, 3, None),
+            # valid allow_utf8 true
+            ("Empty", "", True, 0, None),
+            ("Key", "\n foo", True, 1, None),
+            ("Key", "\n foo\n", True, 1, None),
+            ("Key", "\n foo\n bar", True, 2, None),
+            ("Key", "\n foo\n .\n bar", True, 3, None),
+            ("Key", "\n foo bar 😀", True, 1, None),
+            ("Key", "\n foo bár", True, 1, None),
             # bad
-            ("Key", "\n", None, "invalid Key (empty)"),
-            ("Key", "single", None, "invalid Key: 'single' (missing leading newline)"),
+            ("Key", "\n", False, None, "invalid Key (empty)"),
+            (
+                "Key",
+                "single",
+                False,
+                None,
+                "invalid Key: 'single' (missing leading newline)",
+            ),
             (
                 "Key",
                 "no\nleading\nnewline",
+                False,
                 None,
                 "invalid Key: 'no\nleading\nnewline' (missing leading newline)",
             ),
             (
                 "Key",
                 "\nno\nleading\nspace",
+                False,
                 None,
                 "invalid Key: '\nno\nleading\nspace' (missing leading space)",
             ),
-            ("Key", "\n foo\n\n", None, "invalid Key: '\n foo\n\n' (empty line)"),
-            ("Key", "\n foo\x00bar", None, "invalid Key (contains unprintable characters)"),
-            ("Key", "\n foo\tbar", None, "invalid Key (contains unprintable characters)"),
-            ("Key", "\n foo b\u00A0r", None, "invalid Key (contains unprintable characters)"),
+            (
+                "Key",
+                "\n foo\n\n",
+                False,
+                None,
+                "invalid Key: '\n foo\n\n' (empty line)",
+            ),
+            (
+                "Key",
+                "\n foo\x00bar",
+                False,
+                None,
+                "invalid Key (contains unprintable characters)",
+            ),
+            (
+                "Key",
+                "\n foo\tbar",
+                False,
+                None,
+                "invalid Key (contains unprintable characters)",
+            ),
+            (
+                "Key",
+                "\n foo b\u00A0r",
+                False,
+                None,
+                "invalid Key (contains unprintable characters)",
+            ),
+            (
+                "Key",
+                "\n foo bar 😀",
+                False,
+                None,
+                "invalid Key: '\n foo bar 😀' (contains non-ASCII characters)",
+            ),
+            (
+                "Key",
+                "\n foo bár",
+                False,
+                None,
+                "invalid Key: '\n foo bár' (contains non-ASCII characters)",
+            ),
+            # bad allow_utf8 true
+            ("Key", "\n", True, None, "invalid Key (empty)"),
+            (
+                "Key",
+                "single",
+                True,
+                None,
+                "invalid Key: 'single' (missing leading newline)",
+            ),
+            (
+                "Key",
+                "no\nleading\nnewline",
+                True,
+                None,
+                "invalid Key: 'no\nleading\nnewline' (missing leading newline)",
+            ),
+            (
+                "Key",
+                "\nno\nleading\nspace",
+                True,
+                None,
+                "invalid Key: '\nno\nleading\nspace' (missing leading space)",
+            ),
+            ("Key", "\n foo\n\n", True, None, "invalid Key: '\n foo\n\n' (empty line)"),
+            (
+                "Key",
+                "\n foo\x00bar",
+                True,
+                None,
+                "invalid Key (contains unprintable characters)",
+            ),
+            (
+                "Key",
+                "\n foo\tbar",
+                True,
+                None,
+                "invalid Key (contains unprintable characters)",
+            ),
+            (
+                "Key",
+                "\n foo b\u00A0r",
+                True,
+                None,
+                "invalid Key (contains unprintable characters)",
+            ),
         ]
-        for key, val, num, err in tsts:
+        for key, val, allow_utf8, num, err in tsts:
             if num is not None:
-                lines = cvelib.cve.CVE()._verifyMultiline(key, val)
+                lines = cvelib.cve.CVE()._verifyMultiline(
+                    key, val, allow_utf8=allow_utf8
+                )
                 self.assertEqual(num, len(lines))
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
-                    cvelib.cve.CVE()._verifyMultiline(key, val)
+                    cvelib.cve.CVE()._verifyMultiline(key, val, allow_utf8=allow_utf8)
                 self.assertEqual(err, str(context.exception))
 
     def test__verifyRequired(self):

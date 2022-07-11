@@ -511,7 +511,9 @@ CVSS:%(cvss)s
             if key.startswith("Priority_"):
                 self._verifyPriority(key, val)
 
-    def _verifySingleline(self, key: str, val: str) -> None:
+    def _verifySingleline(
+        self, key: str, val: str, allow_utf8: Optional[bool] = False
+    ) -> None:
         """Verify single-line value"""
         if val != "":
             if "\n" in val:
@@ -519,11 +521,18 @@ CVSS:%(cvss)s
                     "invalid %s: '%s' (expected single line)" % (key, val)
                 )
             if not val.isprintable():
-                raise CveException(
-                    "invalid %s (contains unprintable characters)" % key
-                )
+                raise CveException("invalid %s (contains unprintable characters)" % key)
+            if not allow_utf8:
+                try:
+                    val.encode("ascii")
+                except UnicodeEncodeError:
+                    raise CveException(
+                        "invalid %s: '%s' (contains non-ASCII characters)" % (key, val)
+                    )
 
-    def _verifyMultiline(self, key: str, val: str) -> List[str]:
+    def _verifyMultiline(
+        self, key: str, val: str, allow_utf8: Optional[bool] = False
+    ) -> List[str]:
         """Verify multiline value"""
         strippedList: List[str] = []
         lines: List[str] = val.splitlines()
@@ -548,9 +557,14 @@ CVSS:%(cvss)s
                     "invalid %s: '%s' (missing leading space)" % (key, val)
                 )
             if not line.isprintable():
-                raise CveException(
-                    "invalid %s (contains unprintable characters)" % key
-                )
+                raise CveException("invalid %s (contains unprintable characters)" % key)
+            if not allow_utf8:
+                try:
+                    line.encode("ascii")
+                except UnicodeEncodeError:
+                    raise CveException(
+                        "invalid %s: '%s' (contains non-ASCII characters)" % (key, val)
+                    )
             strippedList.append(line.strip())
 
         return strippedList
@@ -648,17 +662,17 @@ CVSS:%(cvss)s
     def _verifyDescription(self, key: str, val: str) -> None:
         """Verify CVE Description"""
         if val != "":  # empty is ok
-            self._verifyMultiline(key, val)
+            self._verifyMultiline(key, val, allow_utf8=True)
 
     def _verifyNotes(self, key: str, val: str) -> None:
         """Verify CVE Notes"""
         if val != "":  # empty is ok
-            self._verifyMultiline(key, val)
+            self._verifyMultiline(key, val, allow_utf8=True)
 
     def _verifyMitigation(self, key: str, val: str) -> None:
         """Verify CVE Mitigation"""
         if val != "":  # empty is ok
-            self._verifyMultiline(key, val)
+            self._verifyMultiline(key, val, allow_utf8=True)
 
     def _verifyBugs(self, key: str, val: str) -> None:
         """Verify CVE Bugs"""
@@ -676,13 +690,13 @@ CVSS:%(cvss)s
 
     def _verifyDiscoveredBy(self, key: str, val: str) -> None:
         """Verify CVE Discovered-by"""
-        self._verifySingleline(key, val)
+        self._verifySingleline(key, val, allow_utf8=True)
         if val != "":
             if not rePatterns["attribution"].search(val):
                 raise CveException("invalid %s: '%s'" % (key, val))
 
     def _verifyAssignedTo(self, key: str, val: str) -> None:
-        self._verifySingleline(key, val)
+        self._verifySingleline(key, val, allow_utf8=True)
         """Verify CVE Assigned-to"""
         if val != "":
             if not rePatterns["attribution"].search(val):
