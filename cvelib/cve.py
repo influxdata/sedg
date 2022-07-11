@@ -512,7 +512,7 @@ CVSS:%(cvss)s
                 self._verifyPriority(key, val)
 
     def _verifySingleline(self, key: str, val: str) -> None:
-        """Verify multiline value"""
+        """Verify single-line value"""
         if val != "":
             if "\n" in val:
                 raise CveException(
