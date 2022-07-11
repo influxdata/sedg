@@ -105,6 +105,8 @@ rePatterns: Dict[str, Pattern[str]] = {
         r"^CVE-[0-9]{4}-([0-9N]{3,11}[0-9]|GH[0-9]{1,12}#[a-zA-Z0-9+.-]{1,%(software_len)d})$"
         % ({"software_len": _patLengths["pkg-software"]})
     ),
+    # CVE-YYYY-NNNX (1-11 N's)
+    "CVE-placeholder": re.compile(r"^CVE-[0-9]{4}-N{3,11}[0-9]$"),
     # CVE priorities
     "priorities": re.compile(r"^(%s)$" % "|".join(cve_priorities)),
     # date only: YYYY-MM-DD

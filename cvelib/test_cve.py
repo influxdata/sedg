@@ -1446,6 +1446,23 @@ cve-data = %s
             error.getvalue().strip(),
         )
 
+        # missing references with CVE placeholder
+        tmpl = self._cve_template()
+        tmpl["Candidate"] = "CVE-2022-NNN1"
+        tmpl["References"] = ""
+        tmpl["git/github_pkg1"] = "needed"
+        content = cvelib.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual("", error.getvalue().strip())
+
         # retired has needed
         tmpl = self._cve_template()
         tmpl["Candidate"] = "CVE-1234-5678"
