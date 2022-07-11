@@ -47,6 +47,32 @@ class CVE(object):
     def __repr__(self) -> str:
         return self.__str__()
 
+    def serializeJson(self):
+        """Convert to something that is json serializable"""
+        d = copy.deepcopy(self.data)
+        for m in ["References", "Description", "Notes", "Mitigation", "Bugs"]:
+            d[m] = ""
+            if len(self.data[m]) > 0:
+                d[m] = "\n "
+                d[m] += "\n ".join(self.data[m])
+        return d
+
+    def deserializeJson(self, data):
+        """Convert from something that is json serializable"""
+        for k in data:
+            self.data[k] = data[k]
+            if k == "References":
+                self.setReferences(data[k])
+            elif k == "Description":
+                self.setDescription(data[k])
+            elif k == "Notes":
+                self.setNotes(data[k])
+            elif k == "Mitigation":
+                self.setMitigation(data[k])
+            elif k == "Bugs":
+                self.setBugs(data[k])
+
+
     def __init__(
         self,
         fn: Optional[str] = None,
@@ -513,7 +539,7 @@ CVSS:%(cvss)s
                 self._verifyPriority(key, val)
 
     def _verifySingleline(self, key: str, val: str) -> None:
-        """Verify multiline value"""
+        """Verify single line value"""
         if val != "":
             if "\n" in val:
                 raise CveException(
@@ -959,6 +985,33 @@ def _getCVEPaths(cveDirs: Dict[str, str]) -> List[str]:
     return cves
 
 
+def readCacheDB(cveDirs) -> Optional[List[CVE]]:
+    """Read in cache file"""
+    cacheDir: str = getCacheDir()
+    fn: str = os.path.join(os.path.expanduser(cacheDir), "db.json")
+    if not os.path.isfile(fn):
+         return None
+
+    # if cache out of date, skip it
+    db_mtime = os.path.getmtime(fn)
+    for cve_fn in _getCVEPaths(cveDirs):
+        if os.path.getmtime(cve_fn) > db_mtime:
+            return None
+
+    with open(fn, "r") as fp:
+        cache = json.load(fp)
+
+    cves: List[CVE] = []
+    for c in cache["cves"]:
+        cveObj: CVE = CVE()
+        # copy the data without verifying instead of using setData()
+        #cveObj.data = cache["cves"][c]
+        cveObj.setData(cache["cves"][c])
+        cves.append(copy.deepcopy(cveObj))
+
+    return cves
+
+
 def writeCacheDB(cveDirs: Dict[str, str], cves: List[CVE]) -> None:
     """Write out cache file"""
     cacheDir: str = getCacheDir()
@@ -984,7 +1037,7 @@ def writeCacheDB(cveDirs: Dict[str, str], cves: List[CVE]) -> None:
 
     serialized: Dict[str, Any] = {}
     for cve in cves:
-        serialized[cve.candidate] = cve.data
+        serialized[cve.candidate] = cve.serializeJson()
 
     db: Dict[str, Union[str, Dict[str, Any]]] = {"version": "1", "cves": serialized}
     with open(fn, "w") as fp:
@@ -995,11 +1048,21 @@ def collectCVEData(
     cveDirs: Dict[str, str], compatUbuntu: bool, untriagedOk: bool = True
 ) -> List[CVE]:
     """Read in all CVEs"""
+    # unconditionally try to read in the cache file
     cves: List[CVE] = []
+    try:
+        tmp: Optional[List[CVE]] = readCacheDB(cveDirs)
+        if tmp is not None:
+            return tmp
+    except Exception:
+        cvelib.common.warn("Problem reading db cache in %s, skipping" % getCacheDir())
+        raise
+
     cve_fn: str
     for cve_fn in _getCVEPaths(cveDirs):
         cves.append(CVE(fn=cve_fn, compatUbuntu=compatUbuntu, untriagedOk=untriagedOk))
 
+    # unconditionally try to write out the cache file
     try:
         writeCacheDB(cveDirs, cves)
     except Exception:  # pragma: nocover

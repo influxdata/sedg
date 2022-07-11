@@ -1859,6 +1859,9 @@ cve-data = %s
         self.orig_xdg_cache_home, self.tmpdir = cvelib.testutil._newCacheFileDB(
             "", self.tmpdir
         )
+        db_cache = os.path.join(self.tmpdir, ".cache/influx-security-tools/db.json")
+        # caching is tested elsewhere
+        os.unlink(db_cache)
 
         cveDirs = {}
         for d in cvelib.common.cve_reldirs:
@@ -1899,6 +1902,9 @@ cve-data = %s
 
         with open(cve_fn, "w") as fp:
             fp.write("%s" % content)
+
+        # caching is tested elsewhere
+        os.unlink(db_cache)
 
         with self.assertRaises(cvelib.common.CveException) as context:
             cvelib.cve.collectCVEData(cveDirs, False)
