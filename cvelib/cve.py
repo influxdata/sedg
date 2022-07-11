@@ -737,7 +737,10 @@ def checkSyntaxFile(
 
     # make sure Discovered-by is populated if specified GitHub-Advanced-Security
     seen: List[str] = []
+    open_ghas = False
     for item in cve.ghas:
+        if item.status.startswith("need"):
+            open_ghas = True
         needle: str = ""
         if isinstance(item, cvelib.github.GHDependabot):
             needle = "gh-dependabot"
@@ -755,6 +758,11 @@ def checkSyntaxFile(
                 cvelib.common.warn(
                     "%s: '%s' missing from Discovered-by" % (rel, needle)
                 )
+
+    if len(cve.ghas) > 0 and open_ghas and "retired" in rel:
+        cvelib.common.warn(
+            "%s: is retired but has open GitHub Advanced Security items" % rel
+        )
 
     return cve
 

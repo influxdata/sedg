@@ -1564,6 +1564,37 @@ cve-data = %s
                 self.assertEqual("", output.getvalue().strip())
                 self.assertEqual(expErr, error.getvalue().strip())
 
+        # retired has open GHAS
+        tmpl = self._cve_template()
+        tmpl["Candidate"] = "CVE-1234-5678"
+        tmpl["git/github_pkg1"] = "released"
+        tmpl["Discovered-by"] = "gh-dependabot"
+        tmpl[
+            "GitHub-Advanced-Security"
+        ] = """
+ - type: dependabot
+   dependency: foo
+   detectedIn: yarn.lock
+   advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
+   severity: moderate
+   status: needed
+   url: https://github.com/influxdata/foo/security/dependabot/1
+"""
+        content = cvelib.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["retired"], "CVE-1234-5678")
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: retired/CVE-1234-5678: is retired but has open GitHub Advanced Security items",
+            error.getvalue().strip(),
+        )
+
     def test_pkgFromCandidate(self):
         """Test pkgFromCandidate()"""
         tsts = [
