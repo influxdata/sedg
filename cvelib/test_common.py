@@ -254,9 +254,9 @@ compat-ubuntu = %s
             # weird cases
             ("bad", {}),
             ("f\x00o: bar", {}),
-            ("foo: b\xaar", {"foo": "b\\xc2\\xaar"}),
-            ("😀: bar", {"\\xf0\\x9f\\x98\\x80": "bar"}),  # utf-8 F09F9880
-            ("foo: 😀", {"foo": "\\xf0\\x9f\\x98\\x80"}),
+            ("foo: b\xaar", {"foo": "b\xaar"}),
+            ("😀: bar", {}),  # utf-8 F09F9880
+            ("foo: 😀", {"foo": "😀"}),
         ]
         for inp, exp in tsts:
             fn = os.path.join(self.tmpdir, "testcve")

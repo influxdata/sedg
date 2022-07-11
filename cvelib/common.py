@@ -206,13 +206,16 @@ rePatterns: Dict[str, Pattern[str]] = {
     ),
     # urls
     "url-schemes": re.compile(r"^(cvs|ftp|git|https?|sftp|shttp|svn)://."),
-    # People. We aren't accepting utf-8 elsewhere so only ascii here
+    # People. We accept utf-8 so this is broad
     # Some One
     # Some One (someone-handle)
     # Some One (someone-handle), Some One Else
     # Some "Nickname" One (someone-handle), Some One Else
+    # Another Náme
+    # Another Náme (someone-handle)
+    # Another Náme (someone-handle), Some One Else
     "attribution": re.compile(
-        r"^[a-zA-Z0-9'\"_ .-]+( \(@?[a-zA-Z0-9._-]+\))?(, [a-zA-Z0-9'\"_ .-]+( \(@?[a-zA-Z0-9._-]+\))?)*$"
+        r"^[^()@]+( \(@?[a-zA-Z0-9._-]+\))?(, [^()@]+( \(@?[a-zA-Z0-9._-]+\))?)*$"
     ),
 }
 
@@ -334,9 +337,8 @@ def readCve(fn: str) -> Dict[str, str]:
     if parent in cve_reldirs:
         rel_fn = "%s/%s" % (parent, rel_fn)
 
-    # Always encode to ascii (since we use strip() elsewhere), but don't lose
-    # data and escape
-    with open(fn, "r", encoding="ascii", errors="backslashreplace") as fp:
+    # Encode to to utf-8 since we do isprintable() checks elsewhere
+    with open(fn, "r", encoding="utf-8", errors="backslashreplace") as fp:
         policy: Compat32 = Compat32()
 
         # Obtain the header content

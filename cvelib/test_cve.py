@@ -343,10 +343,12 @@ git/github_norf: needs-triage
             ("Key", "value", None),
             ("Key", "foo bar 😀", None),
             ("Key", "foo\\tbar", None),
+            ("Key", "foo bár", None),  # printable utf-8 supported
             # invalid
             ("Key", "foo\nbar", "invalid Key: 'foo\nbar' (expected single line)"),
             ("Key", "foo\x00bar", "invalid Key (contains unprintable characters)"),
             ("Key", "foo\tbar", "invalid Key (contains unprintable characters)"),
+            ("Key", "foo b\u00A0r", "invalid Key (contains unprintable characters)"),
         ]
 
         for key, val, expErr in tsts:
@@ -368,6 +370,7 @@ git/github_norf: needs-triage
             ("Key", "\n foo\n", 1, None),
             ("Key", "\n foo\n bar", 2, None),
             ("Key", "\n foo\n .\n bar", 3, None),
+            ("Key", "\n foo bár", 1, None),  # printable utf-8 supported
             # bad
             ("Key", "\n", None, "invalid Key (empty)"),
             ("Key", "single", None, "invalid Key: 'single' (missing leading newline)"),
@@ -386,6 +389,7 @@ git/github_norf: needs-triage
             ("Key", "\n foo\n\n", None, "invalid Key: '\n foo\n\n' (empty line)"),
             ("Key", "\n foo\x00bar", None, "invalid Key (contains unprintable characters)"),
             ("Key", "\n foo\tbar", None, "invalid Key (contains unprintable characters)"),
+            ("Key", "\n foo b\u00A0r", None, "invalid Key (contains unprintable characters)"),
         ]
         for key, val, num, err in tsts:
             if num is not None:
@@ -1040,6 +1044,11 @@ git/github_norf: needs-triage
             ("Madonna (madonna), Joe Schmoe (@jschmoe)", None),
             ("Madonna, Joe Schmoe and Alfred Foo-Bar", None),
             ('Madonna, Joe "Ralph" Schmoe and Alfred Foo-Bar', None),
+            ("Joe Bár", None),  # printable utf-8 supported
+            ("Joe Bár (joebar)", None),
+            ("Joe Bár (@joebar)", None),
+            ("Joe Bár (@joebar), Joe Schmoe (@jschmoe)", None),
+            ("Madonna, Angus O'Hare, Joe Bár (@joebar)", None),
             # invalid
             ("Joe\nSchmoe", "invalid %(key)s: 'Joe\nSchmoe' (expected single line)"),
             ("Joe (", "invalid %(key)s: 'Joe ('"),
@@ -1047,7 +1056,7 @@ git/github_norf: needs-triage
             ("Joe ()", "invalid %(key)s: 'Joe ()'"),
             ("Joe (@)", "invalid %(key)s: 'Joe (@)'"),
             ("Joe @joeschmoe", "invalid %(key)s: 'Joe @joeschmoe'"),
-            ("Joe Bár", "invalid %(key)s: 'Joe Bár'"),  # utf-8 not supported
+            ("Joe B\u00A0r", "invalid %(key)s (contains unprintable characters)"),
         ]
         for tstType in ["Discovered-by", "Assigned-to"]:
             fn = None
