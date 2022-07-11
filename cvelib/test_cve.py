@@ -1370,6 +1370,10 @@ cve-data = %s
             tmpl = self._cve_template()
             dir, cand = fn.split("/")
             tmpl["Candidate"] = cand
+            if fn.startswith("retired"):
+                tmpl["git/github_pkg1"] = "released"
+            else:
+                tmpl["git/github_pkg1"] = "needed"
             content = cvelib.testutil.cveContentFromDict(tmpl)
 
             cve_fn = os.path.join(cveDirs[dir], cand)
@@ -1390,6 +1394,7 @@ cve-data = %s
 
         # non-matching
         tmpl = self._cve_template()
+        tmpl["git/github_pkg1"] = "needed"
         content = cvelib.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
         with open(cve_fn, "w") as fp:
@@ -1408,6 +1413,7 @@ cve-data = %s
         # missing references
         tmpl = self._cve_template()
         tmpl["References"] = ""
+        tmpl["git/github_pkg1"] = "needed"
         content = cvelib.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
         with open(cve_fn, "w") as fp:
@@ -1423,13 +1429,55 @@ cve-data = %s
             error.getvalue().strip(),
         )
 
+        # retired has needed
+        tmpl = self._cve_template()
+        tmpl["Candidate"] = "CVE-1234-5678"
+        tmpl["git/github_pkg1"] = "needed"
+        content = cvelib.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["retired"], "CVE-1234-5678")
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: retired/CVE-1234-5678: is retired but has open items",
+            error.getvalue().strip(),
+        )
+
+        # active has closed
+        tmpl = self._cve_template()
+        tmpl["Candidate"] = "CVE-1234-5678"
+        tmpl["git/github_pkg1"] = "released"
+        content = cvelib.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: active/CVE-1234-5678: is active but has only closed items",
+            error.getvalue().strip(),
+        )
+
         # multiple
         tmpl = self._cve_template()
+        tmpl["git/github_pkg1"] = "needed"
         content = cvelib.testutil.cveContentFromDict(tmpl)
         cve_active_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
         with open(cve_active_fn, "w") as fp:
             fp.write("%s" % content)
+
         cve_retired_fn = os.path.join(cveDirs["retired"], tmpl["Candidate"])
+        tmpl["git/github_pkg1"] = "released"
+        content = cvelib.testutil.cveContentFromDict(tmpl)
         with open(cve_retired_fn, "w") as fp:
             fp.write("%s" % content)
 
@@ -1482,6 +1530,7 @@ cve-data = %s
 
         for dsc, expErr in ghasTsts:
             tmpl = self._cve_template()
+            tmpl["git/github_pkg1"] = "needed"
             tmpl[
                 "GitHub-Advanced-Security"
             ] = """

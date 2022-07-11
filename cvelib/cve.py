@@ -724,6 +724,17 @@ def checkSyntaxFile(
     if len(cve.references) == 0:
         cvelib.common.warn("%s: missing references" % rel)
 
+    # make check status against reldir
+    open = False
+    for p in cve.pkgs:
+        if p.status.startswith("need") or p.status.startswith("pend"):
+            open = True
+            break
+    if open and "retired" in rel:
+        cvelib.common.warn("%s: is retired but has open items" % rel)
+    elif not open and "active" in rel:
+        cvelib.common.warn("%s: is active but has only closed items" % rel)
+
     # make sure Discovered-by is populated if specified GitHub-Advanced-Security
     seen: List[str] = []
     for item in cve.ghas:
