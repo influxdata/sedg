@@ -956,3 +956,15 @@ def _getCVEPaths(cveDirs: Dict[str, str]) -> List[str]:
     )
     cves.sort()
     return cves
+
+
+def collectCVEData(
+    cveDirs: Dict[str, str], compatUbuntu: bool, untriagedOk: bool = True
+) -> List[CVE]:
+    """Read in all CVEs"""
+    cves: List[CVE] = []
+    cve_fn: str
+    for cve_fn in _getCVEPaths(cveDirs):
+        cves.append(CVE(fn=cve_fn, compatUbuntu=compatUbuntu, untriagedOk=untriagedOk))
+
+    return cves
