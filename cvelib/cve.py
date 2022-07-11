@@ -3,6 +3,7 @@
 import copy
 import datetime
 import glob
+import json
 from operator import attrgetter
 import os
 import re
@@ -10,7 +11,7 @@ import shutil
 import tempfile
 from typing import Any, Dict, List, Optional, Pattern, Tuple, Union
 
-from cvelib.common import CveException, rePatterns
+from cvelib.common import CveException, rePatterns, getCacheDir
 import cvelib.common
 from cvelib.pkg import CvePkg, parse
 import cvelib.github
@@ -958,6 +959,38 @@ def _getCVEPaths(cveDirs: Dict[str, str]) -> List[str]:
     return cves
 
 
+def writeCacheDB(cveDirs: Dict[str, str], cves: List[CVE]) -> None:
+    """Write out cache file"""
+    cacheDir: str = getCacheDir()
+    parent: str = os.path.dirname(cacheDir)
+    if not os.path.isdir(parent):
+        os.mkdir(parent, 0o0700)
+    if not os.path.isdir(cacheDir):
+        os.mkdir(cacheDir, 0o0700)
+
+    fn: str = os.path.join(os.path.expanduser(cacheDir), "db.json")
+    update: bool = False
+    if not os.path.isfile(fn):
+        update = True
+    else:
+        db_mtime = os.path.getmtime(fn)
+        for cve_fn in _getCVEPaths(cveDirs):
+            if os.path.getmtime(cve_fn) > db_mtime:
+                update = True
+                break
+
+    if not update:
+        return
+
+    serialized: Dict[str, Any] = {}
+    for cve in cves:
+        serialized[cve.candidate] = cve.data
+
+    db: Dict[str, Union[str, Dict[str, Any]]] = {"version": "1", "cves": serialized}
+    with open(fn, "w") as fp:
+        json.dump(db, fp, indent=2, ensure_ascii=True)
+
+
 def collectCVEData(
     cveDirs: Dict[str, str], compatUbuntu: bool, untriagedOk: bool = True
 ) -> List[CVE]:
@@ -966,5 +999,10 @@ def collectCVEData(
     cve_fn: str
     for cve_fn in _getCVEPaths(cveDirs):
         cves.append(CVE(fn=cve_fn, compatUbuntu=compatUbuntu, untriagedOk=untriagedOk))
+
+    try:
+        writeCacheDB(cveDirs, cves)
+    except Exception:  # pragma: nocover
+        cvelib.common.warn("Problem updating db cache in %s" % getCacheDir())
 
     return cves

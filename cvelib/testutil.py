@@ -37,6 +37,28 @@ def _newConfigFile(content, tmpdir=None):
     return orig_xdg_config_home, tmpdir
 
 
+def _newCacheFileDB(content, tmpdir=None):
+    """Create a new cache file"""
+    if tmpdir is None:
+        tmpdir = _createTmpDir()
+
+    orig_xdg_cache_home = None
+    if "XDG_CACHE_HOME" in os.environ:
+        orig_xdg_cache_home = os.environ["XDG_CACHE_HOME"]
+
+    os.environ["XDG_CACHE_HOME"] = os.path.join(tmpdir, ".cache")
+    os.mkdir(os.environ["XDG_CACHE_HOME"], 0o0700)
+    os.mkdir(
+        os.path.join(os.environ["XDG_CACHE_HOME"], "influx-security-tools"), 0o0700
+    )
+
+    fn = os.path.expandvars("$XDG_CACHE_HOME/influx-security-tools/db.json")
+    with open(fn, "w") as fp:
+        fp.write("%s" % content)
+
+    return orig_xdg_cache_home, tmpdir
+
+
 @contextmanager
 def capturedOutput():
     newOut, newErr = StringIO(), StringIO()

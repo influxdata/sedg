@@ -4,8 +4,10 @@ from unittest import TestCase
 from unittest.mock import MagicMock
 import copy
 import datetime
+import json
 import os
 import tempfile
+import time
 
 import cvelib.cve
 import cvelib.common
@@ -1196,8 +1198,8 @@ cve-data = %s
 
         tsts = [
             # valid
-            ("active/CVE-2021-9999", None),
-            ("retired/CVE-2021-9999", None),
+            ("active/CVE-2021-9997", None),
+            ("retired/CVE-2021-9998", None),
             ("ignored/CVE-2021-9999", None),
             # invalid
             ("retired/CVE-bad", "WARN: retired/CVE-bad: invalid Candidate: 'CVE-bad'"),
@@ -1744,6 +1746,104 @@ cve-data = %s
         for i in range(len(testData)):
             self.assertTrue(testData[i] in res[i])
 
+    def test_z_writeCacheDB(self):
+        """Test writeCacheDB()"""
+        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        content = (
+            """[Location]
+cve-data = %s
+"""
+            % self.tmpdir
+        )
+        self.orig_xdg_config_home, self.tmpdir = cvelib.testutil._newConfigFile(
+            content, self.tmpdir
+        )
+
+        # sets env, creates dirs and an empty file
+        self.orig_xdg_cache_home, self.tmpdir = cvelib.testutil._newCacheFileDB(
+            "", self.tmpdir
+        )
+        db_cache = os.path.join(self.tmpdir, ".cache/influx-security-tools/db.json")
+        # for the create test, remove the dirs and db_cache (env still set)
+        os.unlink(db_cache)
+        os.rmdir(os.path.dirname(db_cache))
+        os.rmdir(os.path.dirname(os.path.dirname(db_cache)))
+
+        # create CVEs newer than cache
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
+
+        data = [
+            # valid
+            "active/CVE-2021-9997",
+            "retired/CVE-2021-9998",
+            "ignored/CVE-2021-9999",
+        ]
+
+        for fn in data:
+            tmpl = self._cve_template()
+            dir, cand = fn.split("/")
+            tmpl["Candidate"] = cand
+            content = cvelib.testutil.cveContentFromDict(tmpl)
+
+            cve_fn = os.path.join(cveDirs[dir], cand)
+
+            with open(cve_fn, "w") as fp:
+                fp.write("%s" % content)
+
+        # test create
+        cves = cvelib.cve.collectCVEData(cveDirs, False)
+        cvelib.cve.writeCacheDB(cveDirs, cves)
+
+        self.assertTrue(os.path.exists(db_cache))
+        with open(db_cache, "r") as fp:
+            res = json.load(fp)
+        self.assertEqual(2, len(res))
+        self.assertTrue("version" in res)
+        self.assertEqual("1", res["version"])
+        self.assertTrue("cves" in res)
+        self.assertEqual(3, len(res["cves"]))
+        self.assertTrue("CVE-2021-9997" in res["cves"])
+        self.assertEqual("CVE-2021-9997", res["cves"]["CVE-2021-9997"]["Candidate"])
+        self.assertEqual("2020-06-29", res["cves"]["CVE-2021-9997"]["OpenDate"])
+        self.assertTrue("CVE-2021-9998" in res["cves"])
+        self.assertEqual("CVE-2021-9998", res["cves"]["CVE-2021-9998"]["Candidate"])
+        self.assertTrue("CVE-2021-9999" in res["cves"])
+        self.assertEqual("CVE-2021-9999", res["cves"]["CVE-2021-9999"]["Candidate"])
+
+        # test update - sleep 1 second and update a file so the mtime is updated
+        time.sleep(1)
+        tmpl = self._cve_template()
+        dir = "active"
+        cand = "CVE-2021-9997"
+        tmpl["Candidate"] = cand
+        tmpl["OpenDate"] = "2020-06-30"
+        content = cvelib.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs[dir], cand)
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        cves = cvelib.cve.collectCVEData(cveDirs, False)
+        cvelib.cve.writeCacheDB(cveDirs, cves)
+
+        self.assertTrue(os.path.exists(db_cache))
+        with open(db_cache, "r") as fp:
+            res = json.load(fp)
+        self.assertEqual(2, len(res))
+        self.assertTrue("version" in res)
+        self.assertEqual("1", res["version"])
+        self.assertTrue("cves" in res)
+        self.assertEqual(3, len(res["cves"]))
+        self.assertTrue("CVE-2021-9997" in res["cves"])
+        self.assertEqual("CVE-2021-9997", res["cves"]["CVE-2021-9997"]["Candidate"])
+        self.assertEqual("2020-06-30", res["cves"]["CVE-2021-9997"]["OpenDate"])
+        self.assertTrue("CVE-2021-9998" in res["cves"])
+        self.assertEqual("CVE-2021-9998", res["cves"]["CVE-2021-9998"]["Candidate"])
+        self.assertTrue("CVE-2021-9999" in res["cves"])
+        self.assertEqual("CVE-2021-9999", res["cves"]["CVE-2021-9999"]["Candidate"])
+
     def test_collectCVEData(self):
         """Test collectCVEData()"""
         self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
@@ -1756,6 +1856,9 @@ cve-data = %s
         self.orig_xdg_config_home, self.tmpdir = cvelib.testutil._newConfigFile(
             content, self.tmpdir
         )
+        self.orig_xdg_cache_home, self.tmpdir = cvelib.testutil._newCacheFileDB(
+            "", self.tmpdir
+        )
 
         cveDirs = {}
         for d in cvelib.common.cve_reldirs:
@@ -1764,8 +1867,8 @@ cve-data = %s
 
         data = [
             # valid
-            "active/CVE-2021-9999",
-            "retired/CVE-2021-9999",
+            "active/CVE-2021-9997",
+            "retired/CVE-2021-9998",
             "ignored/CVE-2021-9999",
         ]
 

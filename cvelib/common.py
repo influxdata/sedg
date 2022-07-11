@@ -374,6 +374,13 @@ def setCveHeader(headers: Message, key: str, val: Optional[str]) -> None:
         headers.add_header(key, val)
 
 
+def getCacheDir() -> str:
+    """Return the path to our cache dir"""
+    if "XDG_CACHE_HOME" in os.environ:
+        return os.path.expandvars("$XDG_CACHE_HOME/influx-security-tools")
+    return os.path.expandvars("$HOME/.cache/influx-security-tools")
+
+
 def getConfigFilePath() -> str:
     """Return the path to influx-security-tools.conf"""
     if "XDG_CONFIG_HOME" in os.environ:
