@@ -105,7 +105,8 @@ class TestCve(TestCase):
         tmpl = self._cve_template()
         tmpl[
             "GitHub-Advanced-Security"
-        ] = """ - type: dependabot
+        ] = """
+ - type: dependabot
    dependency: foo
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
@@ -1211,6 +1212,70 @@ git/github_norf: needs-triage
                     with self.assertRaises(cvelib.common.CveException) as context:
                         fn(tstType, val)
                     self.assertEqual(err % {"key": tstType}, str(context.exception))
+
+    def test__verifyCVSS(self):
+        """Test _verifyCVSS()"""
+        tsts = [
+            # valid
+            ("CVSS", "negligible", None),
+            # invalid
+            ("CVSS", "bár", "invalid CVSS: 'bár' (contains non-ASCII characters)"),
+        ]
+        for (key, val, expErr) in tsts:
+            if expErr is None:
+                cvelib.cve.CVE()._verifyCVSS(key, val)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    cvelib.cve.CVE()._verifyCVSS(key, val)
+                self.assertEqual(expErr, str(context.exception))
+
+    def test__verifyGHAS(self):
+        """Test _verifyGHAS()"""
+        tsts = [
+            # valid
+            (
+                "GitHub-Advanced-Security",
+                """
+ - type: dependabot
+   dependency: foo
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
+   severity: moderate
+   status: dismissed (inaccurate; who)
+   url: https://github.com/bar/baz/security/dependabot/1
+""",
+                None,
+            ),
+            # invalid
+            (
+                "GitHub-Advanced-Security",
+                """
+ - type: dependabot
+   dependency: bár
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
+   severity: moderate
+   status: dismissed (inaccurate; who)
+   url: https://github.com/bar/baz/security/dependabot/1
+""",
+                """invalid GitHub-Advanced-Security: '
+ - type: dependabot
+   dependency: bár
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
+   severity: moderate
+   status: dismissed (inaccurate; who)
+   url: https://github.com/bar/baz/security/dependabot/1
+' (contains non-ASCII characters)""",
+            ),
+        ]
+        for (key, val, expErr) in tsts:
+            if expErr is None:
+                cvelib.cve.CVE()._verifyGHAS(key, val)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    cvelib.cve.CVE()._verifyGHAS(key, val)
+                self.assertEqual(expErr, str(context.exception))
 
     def test_cveFromUrl(self):
         """Test cveFromUrl()"""

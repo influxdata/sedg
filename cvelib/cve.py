@@ -496,6 +496,8 @@ CVSS:%(cvss)s
                 self._verifyDiscoveredBy(key, val)
             elif key == "Assigned-to":
                 self._verifyAssignedTo(key, val)
+            elif key == "CVSS":
+                self._verifyCVSS(key, val)
 
         # optional
         for key in self.cve_optional:
@@ -504,6 +506,10 @@ CVSS:%(cvss)s
             val = data[key]
             if key == "CRD":
                 self._verifyCRD(key, val)
+            elif key == "Mitigation":
+                self._verifyMitigation(key, val)
+            elif key == "GitHub-Advanced-Security":
+                self._verifyGHAS(key, val)
 
         # namespaced keys
         for key in data:
@@ -701,6 +707,17 @@ CVSS:%(cvss)s
         if val != "":
             if not rePatterns["attribution"].search(val):
                 raise CveException("invalid %s: '%s'" % (key, val))
+
+    def _verifyCVSS(self, key: str, val: str) -> None:
+        """Verify CVE CVSS"""
+        self._verifySingleline(key, val)
+
+    def _verifyGHAS(self, key: str, val: str) -> None:
+        """Verify CVE GitHub-Advanced-Security"""
+        # only verify multi-line here as the parse() function in setGHAS() will
+        # handle this more fully
+        if val != "":  # empty is ok
+            self._verifyMultiline(key, val)
 
 
 # Utility functions that work on CVE files
