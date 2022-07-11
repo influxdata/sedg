@@ -666,12 +666,19 @@ git/github_norf: needs-triage
         del hdrs["Mitigation"]
         cvelib.cve.CVE()._verifyCve(hdrs)
 
-        # invalid
+        # invalid - missing required
         hdrs = self._mockHeaders(self._cve_template())
         del hdrs["Candidate"]
         with self.assertRaises(cvelib.common.CveException) as context:
             cvelib.cve.CVE()._verifyCve(hdrs)
         self.assertEqual("missing required field 'Candidate'", str(context.exception))
+
+        # invalid - wrong type
+        hdrs = self._mockHeaders(self._cve_template())
+        hdrs["Description"] = ["wrong type"]
+        with self.assertRaises(cvelib.common.CveException) as context:
+            cvelib.cve.CVE()._verifyCve(hdrs)
+        self.assertEqual("field 'Description' is not str", str(context.exception))
 
     def test__verifyCandidate(self):
         """Test _verifyCandidate()"""

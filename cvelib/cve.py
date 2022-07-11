@@ -467,6 +467,12 @@ CVSS:%(cvss)s
     # json)?
     def _verifyCve(self, data: Dict[str, str], untriagedOk: bool = False) -> None:
         """Verify the CVE"""
+        # verify input is correct type at runtime so we can rely on IDE type
+        # hints elsewhere
+        for key in data:
+            if not isinstance(data[key], str):
+                raise CveException("field '%s' is not str" % key)
+
         self._verifyRequired(data)
 
         for key in self.cve_required:
