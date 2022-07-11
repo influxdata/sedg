@@ -831,7 +831,7 @@ No updated issues for the specified repos."""
     # _printGHAlertsUpdatedSummary()
     #
     def test__printGHAlertsUpdatedSummary(self):
-        """_printGHAlertsUpdatedSummary()"""
+        """Test _printGHAlertsUpdatedSummary()"""
         with cvelib.testutil.capturedOutput() as (output, error):
             cvelib.report._printGHAlertsUpdatedSummary("valid-org", "valid-repo", [])
         self.assertEqual("", error.getvalue().strip())
