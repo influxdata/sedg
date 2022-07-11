@@ -720,6 +720,10 @@ def checkSyntaxFile(
     if bn != cve.candidate:
         cvelib.common.warn("%s: non-matching candidate '%s'" % (rel, cve.candidate))
 
+    # make sure References is non-empty
+    if len(cve.references) == 0:
+        cvelib.common.warn("%s: missing references" % rel)
+
     # make sure Discovered-by is populated if specified GitHub-Advanced-Security
     seen: List[str] = []
     for item in cve.ghas:

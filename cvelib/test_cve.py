@@ -1405,6 +1405,24 @@ cve-data = %s
             error.getvalue().strip(),
         )
 
+        # missing references
+        tmpl = self._cve_template()
+        tmpl["References"] = ""
+        content = cvelib.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: active/CVE-2020-1234: missing references",
+            error.getvalue().strip(),
+        )
+
         # multiple
         tmpl = self._cve_template()
         content = cvelib.testutil.cveContentFromDict(tmpl)
