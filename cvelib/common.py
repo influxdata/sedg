@@ -377,8 +377,12 @@ def setCveHeader(headers: Message, key: str, val: Optional[str]) -> None:
 def getConfigFilePath() -> str:
     """Return the path to influx-security-tools.conf"""
     if "XDG_CONFIG_HOME" in os.environ:
-        return os.path.expandvars("$XDG_CONFIG_HOME/influx-security-tools.conf")
-    return os.path.expandvars("$HOME/.config/influx-security-tools.conf")
+        return os.path.expandvars(
+            "$XDG_CONFIG_HOME/influx-security-tools/influx-security-tools.conf"
+        )
+    return os.path.expandvars(
+        "$HOME/.config/influx-security-tools/influx-security-tools.conf"
+    )
 
 
 def readConfig() -> Tuple[configparser.ConfigParser, str]:
@@ -395,6 +399,9 @@ def readConfig() -> Tuple[configparser.ConfigParser, str]:
             config.read(configFilePath)
         else:
             parent: str = os.path.dirname(configFilePath)
+            grandparent: str = os.path.dirname(parent)
+            if not os.path.isdir(grandparent):
+                os.mkdir(grandparent, 0o0700)
             if not os.path.isdir(parent):
                 os.mkdir(parent, 0o0700)
             config["Locations"] = {

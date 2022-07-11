@@ -24,7 +24,12 @@ def _newConfigFile(content, tmpdir=None):
 
     os.environ["XDG_CONFIG_HOME"] = os.path.join(tmpdir, ".config")
     os.mkdir(os.environ["XDG_CONFIG_HOME"], 0o0700)
-    fn = os.path.expandvars("$XDG_CONFIG_HOME/influx-security-tools.conf")
+    os.mkdir(
+        os.path.join(os.environ["XDG_CONFIG_HOME"], "influx-security-tools"), 0o0700
+    )
+    fn = os.path.expandvars(
+        "$XDG_CONFIG_HOME/influx-security-tools/influx-security-tools.conf"
+    )
 
     with open(fn, "w") as fp:
         fp.write("%s" % content)

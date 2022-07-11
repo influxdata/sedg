@@ -101,12 +101,17 @@ class TestCommon(TestCase):
 
         os.environ["XDG_CONFIG_HOME"] = "/fake/.config"
         res = cvelib.common.getConfigFilePath()
-        self.assertEqual("/fake/.config/influx-security-tools.conf", res)
+        self.assertEqual(
+            "/fake/.config/influx-security-tools/influx-security-tools.conf", res
+        )
 
         del os.environ["XDG_CONFIG_HOME"]
         res = cvelib.common.getConfigFilePath()
         self.assertEqual(
-            os.path.expandvars("$HOME/.config/influx-security-tools.conf"), res
+            os.path.expandvars(
+                "$HOME/.config/influx-security-tools/influx-security-tools.conf"
+            ),
+            res,
         )
 
     def test_readConfig(self):
@@ -117,7 +122,9 @@ class TestCommon(TestCase):
             self.orig_xdg_config_home = os.environ["XDG_CONFIG_HOME"]
 
         os.environ["XDG_CONFIG_HOME"] = os.path.join(self.tmpdir, ".config")
-        fn = os.path.expandvars("$XDG_CONFIG_HOME/influx-security-tools.conf")
+        fn = os.path.expandvars(
+            "$XDG_CONFIG_HOME/influx-security-tools/influx-security-tools.conf"
+        )
 
         # create
         with cvelib.testutil.capturedOutput() as (output, error):
@@ -150,6 +157,9 @@ class TestCommon(TestCase):
 
         os.environ["XDG_CONFIG_HOME"] = os.path.join(self.tmpdir, ".config")
         os.mkdir(os.environ["XDG_CONFIG_HOME"], 0o0700)
+        os.mkdir(
+            os.path.join(os.environ["XDG_CONFIG_HOME"], "influx-security-tools"), 0o0700
+        )
 
         dataDir = os.path.join(os.environ["XDG_CONFIG_HOME"], "dataDir")
         os.mkdir(dataDir, 0o0700)
@@ -158,7 +168,9 @@ class TestCommon(TestCase):
             exp[d] = os.path.join(dataDir, d)
             os.mkdir(exp[d], 0o0700)
 
-        fn = os.path.expandvars("$XDG_CONFIG_HOME/influx-security-tools.conf")
+        fn = os.path.expandvars(
+            "$XDG_CONFIG_HOME/influx-security-tools/influx-security-tools.conf"
+        )
         with open(fn, "w") as fp:
             fp.write(
                 """[Locations]
