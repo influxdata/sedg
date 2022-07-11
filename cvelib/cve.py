@@ -518,6 +518,10 @@ CVSS:%(cvss)s
                 raise CveException(
                     "invalid %s: '%s' (expected single line)" % (key, val)
                 )
+            if not val.isprintable():
+                raise CveException(
+                    "invalid %s (contains unprintable characters)" % key
+                )
 
     def _verifyMultiline(self, key: str, val: str) -> List[str]:
         """Verify multiline value"""
@@ -542,6 +546,10 @@ CVSS:%(cvss)s
             if line[0] != " ":
                 raise CveException(
                     "invalid %s: '%s' (missing leading space)" % (key, val)
+                )
+            if not line.isprintable():
+                raise CveException(
+                    "invalid %s (contains unprintable characters)" % key
                 )
             strippedList.append(line.strip())
 

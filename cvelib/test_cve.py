@@ -337,18 +337,33 @@ git/github_norf: needs-triage
 
     def test__verifySingleline(self):
         """Test _isSingleline()"""
-        cvelib.cve.CVE()._verifySingleline("Empty", "")
-        cvelib.cve.CVE()._verifySingleline("Key", "value")
-        with self.assertRaises(cvelib.common.CveException) as context:
-            cvelib.cve.CVE()._verifySingleline("Key", "foo\nbar")
-        self.assertEqual(
-            "invalid Key: 'foo\nbar' (expected single line)", str(context.exception)
-        )
+        tsts = [
+            # valid
+            ("Empty", "", None),
+            ("Key", "value", None),
+            ("Key", "foo bar 😀", None),
+            ("Key", "foo\\tbar", None),
+            # invalid
+            ("Key", "foo\nbar", "invalid Key: 'foo\nbar' (expected single line)"),
+            ("Key", "foo\x00bar", "invalid Key (contains unprintable characters)"),
+            ("Key", "foo\tbar", "invalid Key (contains unprintable characters)"),
+        ]
+
+        for key, val, expErr in tsts:
+            if expErr is None:
+                cvelib.cve.CVE()._verifySingleline(key, val)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    cvelib.cve.CVE()._verifySingleline(key, val)
+                self.assertEqual(
+                    expErr, str(context.exception)
+                )
 
     def test__verifyMultiline(self):
         """Test _isMultiline()"""
         tsts = [
             ("Empty", "", 0, None),
+            ("Key", "\n foo bar 😀", 1, None),
             ("Key", "\n foo", 1, None),
             ("Key", "\n foo\n", 1, None),
             ("Key", "\n foo\n bar", 2, None),
@@ -369,6 +384,8 @@ git/github_norf: needs-triage
                 "invalid Key: '\nno\nleading\nspace' (missing leading space)",
             ),
             ("Key", "\n foo\n\n", None, "invalid Key: '\n foo\n\n' (empty line)"),
+            ("Key", "\n foo\x00bar", None, "invalid Key (contains unprintable characters)"),
+            ("Key", "\n foo\tbar", None, "invalid Key (contains unprintable characters)"),
         ]
         for key, val, num, err in tsts:
             if num is not None:
