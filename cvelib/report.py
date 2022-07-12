@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import copy
+import datetime
 import os
 import requests
 import time
@@ -329,7 +330,8 @@ def _printGHAlertsUpdatedSummary(
         print("    - severity: %s" % n["severity"])
         print("    - created: %s" % n["created"])
         print("    - %s" % n["path"])
-        print("    - %s" % n["ghsa"])
+        print("    - advisory: %s" % n["ghsa"])
+        print("    - url: %s/%d" % (url, n["number"]))
         print("")
 
 
@@ -349,7 +351,8 @@ def _printGHAlertsDismissedSummary(
         if n["name"] is not None:
             print("    - by: %s" % n["name"])
         print("    - %s" % n["path"])
-        print("    - %s" % n["ghsa"])
+        print("    - advisory: %s" % n["ghsa"])
+        print("    - url: %s/%d" % (url, n["number"]))
         print("")
 
 
@@ -358,15 +361,27 @@ def _printGHAlertsUpdatedTemplates(
 ) -> None:
     """Print out the updated alerts issue templates"""
     sev: List[str] = ["unknown", "low", "moderate", "high", "critical"]
+    url: str = "https://github.com/%s/%s/security/dependabot" % (org, repo)
     highest: int = 0
 
-    items: Dict[str, int] = {}
+    references: List[str] = []
+    advisories: List[str] = []
+    html_items: List[str] = []
+    txt_items: Dict[str, int] = {}
     for n in alert:
-        s: str = "- [ ] %s (%s)" % (n["pkg"], n["severity"])
-        if s not in items:
-            items[s] = 1
+        ref = "%s/%d" % (url, n["number"])
+        references.append(ref)
+        advisories.append("%s (%s)" % (n["ghsa"], n["pkg"]))
+        s: str = "- [ ] [%s](%s) (%s)" % (n["pkg"], ref, n["severity"])
+
+        if s not in html_items:
+            html_items.append(s)
+
+        t: str = "- [ ] %s (%s)" % (n["pkg"], n["severity"])
+        if t not in txt_items:
+            txt_items[t] = 1
         else:
-            items[s] += 1
+            txt_items[t] += 1
 
         cur: int
         try:
@@ -379,18 +394,14 @@ def _printGHAlertsUpdatedTemplates(
 
     checklist: str = ""
     i: str
-    for i in sorted(items.keys()):
-        if items[i] > 1:
-            checklist += "%s\n" % (i.replace("(", "(%d " % (items[i])))
-        else:
-            checklist += "%s\n" % i
+    for i in sorted(html_items):
+        checklist += "%s\n" % i
 
     priority: str = sev[highest]
     if priority == "moderate" or priority == "unknown":
         priority = "medium"
 
     print("## %s template" % repo)
-    url: str = "https://github.com/%s/%s/security/dependabot" % (org, repo)
     template: str = """Please update dependabot flagged dependencies in %s
 
 %s lists the following updates:
@@ -413,7 +424,110 @@ References:
     print(template)
     print("## end template")
 
+    checklist: str = ""
+    i: str
+    for i in sorted(txt_items.keys()):
+        if txt_items[i] > 1:
+            checklist += " %s\n" % (i.replace("(", "(%d " % (txt_items[i])))
+        else:
+            checklist += " %s\n" % i
+    now: datetime.datetime = datetime.datetime.now()
+    print("\n## %s CVE template" % repo)
+    print(
+        """Candidate: %s
+OpenDate: %s
+CRD:
+References:
+ %s
+ %s
+Description:
+ Please update dependabot flagged dependencies in %s
+%sGitHub-Advanced-Security:"""
+        % (
+            "CVE-%d-NNNN" % now.year,
+            "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
+            "\n ".join(references),
+            "\n ".join(advisories),
+            repo,
+            checklist,
+        )
+    )
+    for n in alert:
+        s: str = """ - type: dependabot
+   dependency: %s
+   detectedIn: %s
+   severity: %s
+   advisory: %s
+   status: needs-triage
+   url: %s/%d""" % (
+            n["pkg"],
+            n["path"],
+            n["severity"],
+            n["ghsa"],
+            url,
+            n["number"],
+        )
+        print(s)
+    print(
+        """Notes:
+Mitigation:
+Bugs:
+Priority: %s
+Discovered-by: gh-dependabot
+Assigned-to:
+CVSS:
 
+Patches_%s:
+git/%s_%s: needs-triage"""
+        % (
+            priority,
+            repo,
+            org,
+            repo,
+        )
+    )
+    print("## end CVE template")
+
+
+# https://docs.github.com/en/graphql/reference/objects#repositoryvulnerabilityalert
+#
+# GraphQL can be used on repos that have dependabot enabled. Oddly, there
+# doesn't seem to be a way to see 'active' alerts. It seems that one would
+# have to pull down the dependency graph (DependencyGraphDependency?) then
+# see if anything in the RepositoryVulnerabilityAlerts are affected by looking
+# at the versions....
+#
+# Eg:
+# query = '''
+# {
+#   repository(name: "%s", owner: "%s") {
+#     vulnerabilityAlerts(first: 100) {
+#       nodes {
+#         createdAt
+#         dismissedAt
+#         dismissReason
+#         dismisser {
+#           name
+#         }
+#         number
+#         securityVulnerability {
+#           package {
+#             name
+#           }
+#           severity
+#           advisory {
+#             description
+#           }
+#         }
+#         vulnerableManifestPath
+#         securityAdvisory {
+#           permalink
+#         }
+#       }
+#     }
+#   }
+# }
+# ''' % (repo, org)
 def getGHAlertsUpdatedReport(
     org: str,
     since: int = 0,
@@ -456,6 +570,7 @@ def getGHAlertsUpdatedReport(
             dismisser {
               name
             }
+            number
             securityVulnerability {
               package {
                 name
@@ -499,6 +614,7 @@ def getGHAlertsUpdatedReport(
                             "dismissed": n["dismissedAt"],
                             "name": n["dismisser"]["name"],
                             "reason": n["dismissReason"],
+                            "number": n["number"],
                         }
                     )
                 elif n["createdAt"] > since_str:
@@ -512,6 +628,7 @@ def getGHAlertsUpdatedReport(
                             "path": n["vulnerableManifestPath"],
                             "ghsa": n["securityAdvisory"]["permalink"],
                             "created": n["createdAt"],
+                            "number": n["number"],
                         }
                     )
 

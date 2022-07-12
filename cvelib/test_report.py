@@ -2,6 +2,7 @@
 
 from unittest import TestCase, mock
 import copy
+import datetime
 import os
 
 import cvelib.cve
@@ -437,6 +438,7 @@ def mocked_requests_post_getGHAlertsUpdatedReport(*args, **kwargs):
                                     "dismisser": {
                                         "name": "ghuser1",
                                     },
+                                    "number": 1,
                                     "securityVulnerability": {
                                         "package": {
                                             "name": "github.com/foo/bar",
@@ -451,6 +453,7 @@ def mocked_requests_post_getGHAlertsUpdatedReport(*args, **kwargs):
                                 {
                                     "createdAt": "2022-07-03T18:27:30Z",
                                     "dismissedAt": None,
+                                    "number": 3,
                                     "securityVulnerability": {
                                         "package": {
                                             "name": "baz",
@@ -465,6 +468,7 @@ def mocked_requests_post_getGHAlertsUpdatedReport(*args, **kwargs):
                                 {
                                     "createdAt": "2022-07-04T18:27:30Z",
                                     "dismissedAt": None,
+                                    "number": 4,
                                     "securityVulnerability": {
                                         "package": {
                                             "name": "baz",
@@ -479,6 +483,7 @@ def mocked_requests_post_getGHAlertsUpdatedReport(*args, **kwargs):
                                 {
                                     "createdAt": "2022-07-05T18:27:30Z",
                                     "dismissedAt": None,
+                                    "number": 5,
                                     "securityVulnerability": {
                                         "package": {
                                             "name": "norf",
@@ -847,7 +852,7 @@ No updated issues for the specified repos."""
     )
     def test_getGHAlertsUpdatedReport(self, _, __):  # 2nd arg is mock_post and args
         """Test getGHAlertsUpdatedReport()"""
-        self.maxDiff = 4096
+        self.maxDiff = 8192
 
         # with_templates = false
         with cvelib.testutil.capturedOutput() as (output, error):
@@ -859,19 +864,22 @@ valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabo
     - severity: moderate
     - created: 2022-07-03T18:27:30Z
     - path/yarn.lock
-    - https://github.com/advisories/GHSA-b
+    - advisory: https://github.com/advisories/GHSA-b
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/3
 
   baz
     - severity: moderate
     - created: 2022-07-04T18:27:30Z
     - path/yarn.lock
-    - https://github.com/advisories/GHSA-c
+    - advisory: https://github.com/advisories/GHSA-c
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/4
 
   norf
     - severity: unknown
     - created: 2022-07-05T18:27:30Z
     - path/yarn.lock
-    - https://github.com/advisories/GHSA-d
+    - advisory: https://github.com/advisories/GHSA-d
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/5
 
 Dismissed vulnerability alerts:
 
@@ -882,7 +890,8 @@ valid-repo dismissed alerts: 1 (https://github.com/valid-org/valid-repo/security
     - reason: tolerable
     - by: ghuser1
     - go.sum
-    - https://github.com/advisories/GHSA-a"""
+    - advisory: https://github.com/advisories/GHSA-a
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/1"""
         self.assertEqual(exp, output.getvalue().strip())
 
         # with_templates = true
@@ -891,13 +900,16 @@ valid-repo dismissed alerts: 1 (https://github.com/valid-org/valid-repo/security
                 "valid-org", repos=["valid-repo"], with_templates=True
             )
         self.assertEqual("", error.getvalue().strip())
+
+        now: datetime.datetime = datetime.datetime.now()
         exp = """Vulnerability alerts:
 ## valid-repo template
 Please update dependabot flagged dependencies in valid-repo
 
 https://github.com/valid-org/valid-repo/security/dependabot lists the following updates:
-- [ ] baz (2 moderate)
-- [ ] norf (unknown)
+- [ ] [baz](https://github.com/valid-org/valid-repo/security/dependabot/3) (moderate)
+- [ ] [baz](https://github.com/valid-org/valid-repo/security/dependabot/4) (moderate)
+- [ ] [norf](https://github.com/valid-org/valid-repo/security/dependabot/5) (unknown)
 
 Since a 'moderate' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
 
@@ -909,24 +921,76 @@ References:
 
 ## end template
 
+## valid-repo CVE template
+Candidate: CVE-2022-NNNN
+OpenDate: %s
+CRD:
+References:
+ https://github.com/valid-org/valid-repo/security/dependabot/3
+ https://github.com/valid-org/valid-repo/security/dependabot/4
+ https://github.com/valid-org/valid-repo/security/dependabot/5
+ https://github.com/advisories/GHSA-b (baz)
+ https://github.com/advisories/GHSA-c (baz)
+ https://github.com/advisories/GHSA-d (norf)
+Description:
+ Please update dependabot flagged dependencies in valid-repo
+ - [ ] baz (2 moderate)
+ - [ ] norf (unknown)
+GitHub-Advanced-Security:
+ - type: dependabot
+   dependency: baz
+   detectedIn: path/yarn.lock
+   severity: moderate
+   advisory: https://github.com/advisories/GHSA-b
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/dependabot/3
+ - type: dependabot
+   dependency: baz
+   detectedIn: path/yarn.lock
+   severity: moderate
+   advisory: https://github.com/advisories/GHSA-c
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/dependabot/4
+ - type: dependabot
+   dependency: norf
+   detectedIn: path/yarn.lock
+   severity: unknown
+   advisory: https://github.com/advisories/GHSA-d
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/dependabot/5
+Notes:
+Mitigation:
+Bugs:
+Priority: medium
+Discovered-by: gh-dependabot
+Assigned-to:
+CVSS:
+
+Patches_valid-repo:
+git/valid-org_valid-repo: needs-triage
+## end CVE template
+
 valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabot)
   baz
     - severity: moderate
     - created: 2022-07-03T18:27:30Z
     - path/yarn.lock
-    - https://github.com/advisories/GHSA-b
+    - advisory: https://github.com/advisories/GHSA-b
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/3
 
   baz
     - severity: moderate
     - created: 2022-07-04T18:27:30Z
     - path/yarn.lock
-    - https://github.com/advisories/GHSA-c
+    - advisory: https://github.com/advisories/GHSA-c
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/4
 
   norf
     - severity: unknown
     - created: 2022-07-05T18:27:30Z
     - path/yarn.lock
-    - https://github.com/advisories/GHSA-d
+    - advisory: https://github.com/advisories/GHSA-d
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/5
 
 Dismissed vulnerability alerts:
 
@@ -937,7 +1001,10 @@ valid-repo dismissed alerts: 1 (https://github.com/valid-org/valid-repo/security
     - reason: tolerable
     - by: ghuser1
     - go.sum
-    - https://github.com/advisories/GHSA-a"""
+    - advisory: https://github.com/advisories/GHSA-a
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/1""" % (
+            "%d-%0.2d-%0.2d" % (now.year, now.month, now.day)
+        )
         self.assertEqual(exp, output.getvalue().strip())
 
         # some updated since 1656792271 (2022-07-02)
@@ -952,19 +1019,22 @@ valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabo
     - severity: moderate
     - created: 2022-07-03T18:27:30Z
     - path/yarn.lock
-    - https://github.com/advisories/GHSA-b
+    - advisory: https://github.com/advisories/GHSA-b
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/3
 
   baz
     - severity: moderate
     - created: 2022-07-04T18:27:30Z
     - path/yarn.lock
-    - https://github.com/advisories/GHSA-c
+    - advisory: https://github.com/advisories/GHSA-c
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/4
 
   norf
     - severity: unknown
     - created: 2022-07-05T18:27:30Z
     - path/yarn.lock
-    - https://github.com/advisories/GHSA-d"""
+    - advisory: https://github.com/advisories/GHSA-d
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/5"""
         self.assertEqual(exp, output.getvalue().strip())
 
         # none updated since 1657224398 (2022-07-07) (with pre-fetched)
