@@ -204,6 +204,7 @@ class TestGitHubDependabot(TestCase):
         tsts = [
             # valid
             ("https://github.com/advisories/GHSA-a", None),
+            ("unavailable", None),
             # invalid
             ("foo", "invalid dependabot advisory: foo"),
         ]
@@ -285,6 +286,7 @@ class TestGitHubDependabot(TestCase):
         tsts = [
             # valid
             ("https://github.com/bar/baz/security/dependabot/1", None),
+            ("unavailable", None),
             # invalid
             ("foo", "invalid dependabot alert url: foo"),
             (
@@ -493,6 +495,7 @@ class TestGitHubSecret(TestCase):
         tsts = [
             # valid
             ("https://github.com/bar/baz/security/secret-scanning/1", None),
+            ("unavailable", None),
             # invalid
             ("foo", "invalid secret alert url: foo"),
             (
