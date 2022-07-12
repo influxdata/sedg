@@ -33,44 +33,6 @@ def requestGet(
     return r.json()
 
 
-# https://docs.github.com/en/graphql/reference/objects#repositoryvulnerabilityalert
-#
-# GraphQL can be used on repos that have dependabot enabled. Oddly, there
-# doesn't seem to be a way to see 'active' alerts. It seems that one would
-# have to pull down the dependency graph (DependencyGraphDependency?) then
-# see if anything in the RepositoryVulnerabilityAlerts are affected by looking
-# at the versions....
-#
-# Eg:
-# query = '''
-# {
-#   repository(name: "%s", owner: "%s") {
-#     vulnerabilityAlerts(first: 100) {
-#       nodes {
-#         createdAt
-#         dismissedAt
-#         dismissReason
-#         dismisser {
-#           name
-#         }
-#         securityVulnerability {
-#           package {
-#             name
-#           }
-#           severity
-#           advisory {
-#             description
-#           }
-#         }
-#         vulnerableManifestPath
-#         securityAdvisory {
-#           permalink
-#         }
-#       }
-#     }
-#   }
-# }
-# ''' % (repo, org)
 # TODO: type hint the return value (it's tricky)
 def queryGraphQL(query: str, headers: Dict[str, str] = {}):
     """Wrapper around requests.post() for graphql"""
