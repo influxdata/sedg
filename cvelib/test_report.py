@@ -889,6 +889,7 @@ Dismissed vulnerability alerts:
 valid-repo dismissed alerts: 1 (https://github.com/valid-org/valid-repo/security/dependabot)
   github.com/foo/bar
     - severity: low
+    - created: 2022-07-01T18:27:30Z
     - dismissed: 2022-07-02T18:27:30Z
     - reason: tolerable
     - by: ghuser1
@@ -1049,6 +1050,7 @@ Dismissed vulnerability alerts:
 valid-repo dismissed alerts: 1 (https://github.com/valid-org/valid-repo/security/dependabot)
   github.com/foo/bar
     - severity: low
+    - created: 2022-07-01T18:27:30Z
     - dismissed: 2022-07-02T18:27:30Z
     - reason: tolerable
     - by: ghuser1

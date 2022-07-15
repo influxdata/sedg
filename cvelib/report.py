@@ -346,6 +346,7 @@ def _printGHAlertsDismissedSummary(
     for n in sorted(alert, key=lambda i: (i["pkg"], i["dismissed"])):
         print("  %s" % n["pkg"])
         print("    - severity: %s" % n["severity"])
+        print("    - created: %s" % n["created"])
         print("    - dismissed: %s" % n["dismissed"])
         print("    - reason: %s" % n["reason"])
         if n["name"] is not None:
@@ -624,6 +625,7 @@ def getGHAlertsUpdatedReport(
                             "severity": n["securityVulnerability"]["severity"].lower(),
                             "path": n["vulnerableManifestPath"],
                             "ghsa": n["securityAdvisory"]["permalink"],
+                            "created": n["createdAt"],
                             "dismissed": n["dismissedAt"],
                             "name": n["dismisser"]["name"],
                             "reason": n["dismissReason"],
