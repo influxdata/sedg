@@ -7,7 +7,7 @@ import requests
 import time
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, TypedDict, Union
 
-from cvelib.cve import CVE
+from cvelib.cve import CVE, collectGHAlertUrls
 from cvelib.common import (
     cve_priorities,
     error,
@@ -529,13 +529,14 @@ git/%s_%s: needs-triage"""
 # }
 # ''' % (repo, org)
 def getGHAlertsUpdatedReport(
+    cves: List[CVE],
     org: str,
     since: int = 0,
     repos: List[str] = [],
     excluded_repos: List[str] = [],
     with_templates: bool = False,
 ) -> None:
-    """Obtain list of URLs that have received a vulnerability update since last run"""
+    """Show GitHub alerts alerts"""
     enabled: List[str]
     enabled, _ = _getGHAlertsEnabled(org, repos, excluded_repos)
 
@@ -549,6 +550,9 @@ def getGHAlertsUpdatedReport(
     updated: Dict[str, List[Dict[str, str]]] = {}
     dismissed: Dict[str, List[Dict[str, str]]] = {}
     count: int = 0
+
+    # collect the alerts we know about
+    knownAlerts: Set[str] = collectGHAlertUrls(cves)
 
     # for large numbers of 'enabled', we might get rate limited:
     # https://docs.github.com/en/graphql/overview/resource-limitations
@@ -600,8 +604,15 @@ def getGHAlertsUpdatedReport(
             # print(json.dumps(res, indent=2))
             n: Dict[str, Any]
             for n in res["data"]["repository"]["vulnerabilityAlerts"]["nodes"]:
-                # skip any that are dismissed
-                if n["dismissedAt"] is not None and n["dismissedAt"] > since_str:
+                url: str = "https://github.com/%s/%s/security/dependabot/%d" % (
+                    org,
+                    repo,
+                    n["number"],
+                )
+                if url in knownAlerts:
+                    # only care about missing alerts
+                    continue
+                elif n["dismissedAt"] is not None and n["dismissedAt"] > since_str:
                     if repo not in dismissed:
                         dismissed[repo] = []
 

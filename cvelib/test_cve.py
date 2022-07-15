@@ -2160,3 +2160,38 @@ cve-data = %s
         with self.assertRaises(cvelib.common.CveException) as context:
             cvelib.cve.collectCVEData(cveDirs, False)
         self.assertEqual("invalid Candidate: 'CVE-bad'", str(context.exception))
+
+    def test_collectGHAlertUrls(self):
+        """Test collectGHAlertUrls()"""
+        self._mock_readCve(self._cve_template())
+        cve1 = cvelib.cve.CVE(fn="fake")
+        cve1.setGHAS(
+            """ - type: dependabot
+   dependency: foo
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-foo
+   severity: moderate
+   status: dismissed (inaccurate; who)
+   url: https://github.com/bar/baz/security/dependabot/1
+ - type: secret
+   secret: Slack Incoming Webhook URL
+   detectedIn: /path/to/file
+   status: dismissed (revoked; who)
+   url: https://github.com/bar/baz/security/secret-scanning/1
+"""
+        )
+        cve2 = cvelib.cve.CVE(fn="fake")
+        cve2.setGHAS(
+            """ - type: dependabot
+   dependency: bar
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-bar
+   severity: moderate
+   status: dismissed (inaccurate; who)
+   url: https://github.com/bar/baz/security/dependabot/2"""
+        )
+        res = cvelib.cve.collectGHAlertUrls([cve1, cve2])
+        self.assertEqual(3, len(res))
+        self.assertTrue("https://github.com/bar/baz/security/dependabot/1" in res)
+        self.assertTrue("https://github.com/bar/baz/security/dependabot/2" in res)
+        self.assertTrue("https://github.com/bar/baz/security/secret-scanning/1" in res)

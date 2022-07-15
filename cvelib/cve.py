@@ -8,7 +8,7 @@ import os
 import re
 import shutil
 import tempfile
-from typing import Any, Dict, List, Optional, Pattern, Tuple, Union
+from typing import Any, Dict, List, Optional, Pattern, Set, Tuple, Union
 
 from cvelib.common import CveException, rePatterns
 import cvelib.common
@@ -1037,3 +1037,14 @@ def collectCVEData(
         cves.append(CVE(fn=cve_fn, compatUbuntu=compatUbuntu, untriagedOk=untriagedOk))
 
     return cves
+
+
+def collectGHAlertUrls(cves: List[CVE]) -> Set[str]:
+    """Collect all known urls"""
+    urls: List[str] = []
+    for cve in cves:
+        a: Union[cvelib.github.GHDependabot, cvelib.github.GHSecret]
+        for a in cve.ghas:
+            if a.url not in urls:
+                urls.append(a.url)
+    return set(urls)

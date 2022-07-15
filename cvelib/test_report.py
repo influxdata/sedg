@@ -6,6 +6,7 @@ import datetime
 import os
 
 import cvelib.cve
+import cvelib.github
 import cvelib.report
 import cvelib.testutil
 
@@ -856,7 +857,9 @@ No updated issues for the specified repos."""
 
         # with_templates = false
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getGHAlertsUpdatedReport("valid-org", repos=["valid-repo"])
+            cvelib.report.getGHAlertsUpdatedReport(
+                [], "valid-org", repos=["valid-repo"]
+            )
         self.assertEqual("", error.getvalue().strip())
         exp = """Vulnerability alerts:
 valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabot)
@@ -894,10 +897,58 @@ valid-repo dismissed alerts: 1 (https://github.com/valid-org/valid-repo/security
     - url: https://github.com/valid-org/valid-repo/security/dependabot/1"""
         self.assertEqual(exp, output.getvalue().strip())
 
+        # with_templates = false and one known CVE
+        cves = []
+        cve = cvelib.cve.CVE()
+        c = self._cve_template(
+            cand="CVE-2022-GH1001#valid-repo",
+            references=["https://github.com/advisories/GHSA-a"],
+        )
+        c[
+            "GitHub-Advanced-Security"
+        ] = """
+ - type: dependabot
+   dependency: github.com/foo/bar
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-a
+   severity: low
+   status: dismissed (tolerable; ghuser1)
+   url: https://github.com/valid-org/valid-repo/security/dependabot/1"""
+        cve.setData(c)
+        cves.append(cve)
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getGHAlertsUpdatedReport(
+                cves, "valid-org", repos=["valid-repo"]
+            )
+        self.assertEqual("", error.getvalue().strip())
+        exp = """Vulnerability alerts:
+valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabot)
+  baz
+    - severity: moderate
+    - created: 2022-07-03T18:27:30Z
+    - path/yarn.lock
+    - advisory: https://github.com/advisories/GHSA-b
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/3
+
+  baz
+    - severity: moderate
+    - created: 2022-07-04T18:27:30Z
+    - path/yarn.lock
+    - advisory: https://github.com/advisories/GHSA-c
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/4
+
+  norf
+    - severity: unknown
+    - created: 2022-07-05T18:27:30Z
+    - path/yarn.lock
+    - advisory: https://github.com/advisories/GHSA-d
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/5"""
+        self.assertEqual(exp, output.getvalue().strip())
+
         # with_templates = true
         with cvelib.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsUpdatedReport(
-                "valid-org", repos=["valid-repo"], with_templates=True
+                [], "valid-org", repos=["valid-repo"], with_templates=True
             )
         self.assertEqual("", error.getvalue().strip())
 
@@ -1010,7 +1061,7 @@ valid-repo dismissed alerts: 1 (https://github.com/valid-org/valid-repo/security
         # some updated since 1656792271 (2022-07-02)
         with cvelib.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsUpdatedReport(
-                "valid-org", repos=["valid-repo"], since=1656792271
+                [], "valid-org", repos=["valid-repo"], since=1656792271
             )
         self.assertEqual("", error.getvalue().strip())
         exp = """Vulnerability alerts:
@@ -1040,7 +1091,7 @@ valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabo
         # none updated since 1657224398 (2022-07-07) (with pre-fetched)
         with cvelib.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsUpdatedReport(
-                "valid-org", repos=["valid-repo"], since=1657224398
+                [], "valid-org", repos=["valid-repo"], since=1657224398
             )
         self.assertEqual("", error.getvalue().strip())
         exp = "No vulnerability alerts for the specified repos."
@@ -1049,5 +1100,5 @@ valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabo
         # error
         with self.assertRaises(ValueError):
             cvelib.report.getGHAlertsUpdatedReport(
-                "valid-org", repos=["valid-repo"], since=-1
+                [], "valid-org", repos=["valid-repo"], since=-1
             )
