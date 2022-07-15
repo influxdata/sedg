@@ -1694,6 +1694,80 @@ cve-data = %s
             error.getvalue().strip(),
         )
 
+    def test_checkSyntaxCrossChecks(self):
+        """Test checkSyntax() - cross checks"""
+        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        content = (
+            """[Location]
+cve-data = %s
+"""
+            % self.tmpdir
+        )
+        self.orig_xdg_config_home, self.tmpdir = cvelib.testutil._newConfigFile(
+            content, self.tmpdir
+        )
+
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
+
+        tmpl = self._cve_template()
+        tmpl["Candidate"] = "CVE-2022-0001"
+        tmpl["git/github_pkg1"] = "needed"
+        tmpl["Discovered-by"] = "gh-dependabot"
+        tmpl[
+            "GitHub-Advanced-Security"
+        ] = """
+ - type: dependabot
+   dependency: foo
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
+   severity: moderate
+   status: needed
+   url: https://github.com/bar/baz/security/dependabot/1
+"""
+        content = cvelib.testutil.cveContentFromDict(tmpl)
+        cve_active_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
+        with open(cve_active_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        tmpl = self._cve_template()
+        tmpl["Candidate"] = "CVE-2022-0002"
+        tmpl["git/github_pkg1"] = "released"
+        tmpl["Discovered-by"] = "gh-dependabot"
+        tmpl[
+            "GitHub-Advanced-Security"
+        ] = """
+ - type: dependabot
+   dependency: foo
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
+   severity: moderate
+   status: released
+   url: https://github.com/bar/baz/security/dependabot/1
+"""
+        content = cvelib.testutil.cveContentFromDict(tmpl)
+        cve_retired_fn = os.path.join(cveDirs["retired"], tmpl["Candidate"])
+        content = cvelib.testutil.cveContentFromDict(tmpl)
+        with open(cve_retired_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_active_fn)
+        os.unlink(cve_retired_fn)
+
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue(
+            "WARN: active/CVE-2022-0001: duplicate alert URL 'https://github.com/bar/baz/security/dependabot/1'"
+            in error.getvalue().strip()
+        )
+        self.assertTrue(
+            "WARN: retired/CVE-2022-0002: duplicate alert URL 'https://github.com/bar/baz/security/dependabot/1'"
+            in error.getvalue().strip()
+        )
+
     def test_pkgFromCandidate(self):
         """Test pkgFromCandidate()"""
         tsts = [
@@ -2190,8 +2264,21 @@ cve-data = %s
    status: dismissed (inaccurate; who)
    url: https://github.com/bar/baz/security/dependabot/2"""
         )
-        res = cvelib.cve.collectGHAlertUrls([cve1, cve2])
-        self.assertEqual(3, len(res))
-        self.assertTrue("https://github.com/bar/baz/security/dependabot/1" in res)
-        self.assertTrue("https://github.com/bar/baz/security/dependabot/2" in res)
-        self.assertTrue("https://github.com/bar/baz/security/secret-scanning/1" in res)
+        cve3 = cvelib.cve.CVE(fn="fake")
+        cve3.setGHAS(
+            """ - type: secret
+   secret: Slack Incoming Webhook URL
+   detectedIn: /path/to/file
+   status: dismissed (revoked; who)
+   url: https://github.com/bar/baz/security/secret-scanning/1
+"""
+        )
+        urls, dupes = cvelib.cve.collectGHAlertUrls([cve1, cve2, cve3])
+        self.assertEqual(3, len(urls))
+        self.assertTrue("https://github.com/bar/baz/security/dependabot/1" in urls)
+        self.assertTrue("https://github.com/bar/baz/security/dependabot/2" in urls)
+        self.assertTrue("https://github.com/bar/baz/security/secret-scanning/1" in urls)
+        self.assertEqual(1, len(dupes))
+        self.assertTrue(
+            "https://github.com/bar/baz/security/secret-scanning/1" in dupes
+        )

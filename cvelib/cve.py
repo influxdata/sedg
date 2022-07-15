@@ -814,6 +814,32 @@ def checkSyntax(
                 % (cve.candidate, ", ".join(seen[cve.candidate]))
             )
 
+    # These cross-CVE checks require having all the data and should be done
+    # separately from individual checks (though it does mean we do a 2nd pass)
+    try:
+        cveData: List[CVE] = collectCVEData(
+            cveDirs, compatUbuntu, untriagedOk=untriagedOk
+        )
+    except CveException:
+        # This shouldn't happen without previous warnings, so if it does, just
+        # return and let the user fix the warnings
+        return
+
+    # check for duplicate dependabot alert urls
+    dupes: Set[str]
+    _, dupes = collectGHAlertUrls(cveData)
+    for cve in cveData:
+        for item in cve.ghas:
+            if item.url in dupes:
+                rel: str = ""
+                fn: str = cve.candidate
+                for dir in [cveDirs["retired"], cveDirs["active"], cveDirs["ignored"]]:
+                    fn: str = dir + "/" + cve.candidate
+                    if os.path.exists(fn):
+                        tmp: List[str] = os.path.realpath(fn).split("/")
+                        rel = tmp[-2] + "/" + tmp[-1]
+                cvelib.common.warn("%s: duplicate alert URL '%s'" % (rel, item.url))
+
 
 def cveFromUrl(url: str) -> str:
     """Return a CVE based on the url"""
@@ -1039,12 +1065,15 @@ def collectCVEData(
     return cves
 
 
-def collectGHAlertUrls(cves: List[CVE]) -> Set[str]:
+def collectGHAlertUrls(cves: List[CVE]) -> Tuple[Set[str], Set[str]]:
     """Collect all known urls"""
     urls: List[str] = []
+    dupes: List[str] = []
     for cve in cves:
         a: Union[cvelib.github.GHDependabot, cvelib.github.GHSecret]
         for a in cve.ghas:
             if a.url not in urls:
                 urls.append(a.url)
-    return set(urls)
+            elif a.url != "unavailable" and a.url not in dupes:
+                dupes.append(a.url)
+    return set(urls), set(dupes)

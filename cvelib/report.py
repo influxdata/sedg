@@ -555,7 +555,8 @@ def getGHAlertsUpdatedReport(
     count: int = 0
 
     # collect the alerts we know about
-    knownAlerts: Set[str] = collectGHAlertUrls(cves)
+    knownAlerts: Set[str]
+    knownAlerts, _ = collectGHAlertUrls(cves)
 
     # for large numbers of 'enabled', we might get rate limited:
     # https://docs.github.com/en/graphql/overview/resource-limitations
