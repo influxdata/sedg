@@ -436,6 +436,7 @@ References:
     print(
         """Candidate: %s
 OpenDate: %s
+PublicDate: %s
 CRD:
 References:
  %s
@@ -445,6 +446,7 @@ Description:
 %sGitHub-Advanced-Security:"""
         % (
             "CVE-%d-NNNN" % now.year,
+            "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
             "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
             "\n ".join(references),
             "\n ".join(advisories),
