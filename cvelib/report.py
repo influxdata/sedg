@@ -673,6 +673,9 @@ def getGHAlertsUpdatedReport(
         print("Dismissed vulnerability alerts:")
         for repo in sorted(dismissed.keys()):
             print("")
+            if with_templates:
+                _printGHAlertsUpdatedTemplates(org, repo, dismissed[repo])
+                print("")
             _printGHAlertsDismissedSummary(org, repo, dismissed[repo])
 
 

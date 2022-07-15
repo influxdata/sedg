@@ -1047,6 +1047,53 @@ valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabo
 
 Dismissed vulnerability alerts:
 
+## valid-repo template
+Please update dependabot flagged dependencies in valid-repo
+
+https://github.com/valid-org/valid-repo/security/dependabot lists the following updates:
+- [ ] [github.com/foo/bar](https://github.com/valid-org/valid-repo/security/dependabot/1) (low)
+
+Since a 'low' severity issue is present, tentatively adding the 'security/low' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
+
+Thanks!
+
+References:
+ * https://docs.influxdata.io/development/security/issue_handling/
+ * https://docs.influxdata.io/development/security/issue_response/#developers
+
+## end template
+
+## valid-repo CVE template
+Candidate: CVE-2022-NNNN
+OpenDate: 2022-07-15
+PublicDate: 2022-07-15
+CRD:
+References:
+ https://github.com/valid-org/valid-repo/security/dependabot/1
+ https://github.com/advisories/GHSA-a (github.com/foo/bar)
+Description:
+ Please update dependabot flagged dependencies in valid-repo
+ - [ ] github.com/foo/bar (low)
+GitHub-Advanced-Security:
+ - type: dependabot
+   dependency: github.com/foo/bar
+   detectedIn: go.sum
+   severity: low
+   advisory: https://github.com/advisories/GHSA-a
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/dependabot/1
+Notes:
+Mitigation:
+Bugs:
+Priority: low
+Discovered-by: gh-dependabot
+Assigned-to:
+CVSS:
+
+Patches_valid-repo:
+git/valid-org_valid-repo: needs-triage
+## end CVE template
+
 valid-repo dismissed alerts: 1 (https://github.com/valid-org/valid-repo/security/dependabot)
   github.com/foo/bar
     - severity: low
