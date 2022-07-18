@@ -703,7 +703,9 @@ class _statsUniqueCVEsPkgSoftware(TypedDict):
 
 
 def _readStatsUniqueCVEs(
-    cves: List[CVE], filter_status: List[str] = ["needs-triage", "needed", "pending"]
+    cves: List[CVE],
+    filter_status: List[str] = ["needs-triage", "needed", "pending"],
+    filter_product: Optional[str] = None,
 ) -> Dict[str, _statsUniqueCVEsPkgSoftware]:
     """Read in stats by unique CVE, discovering dependabot and secrets"""
     # stats = {
@@ -720,6 +722,19 @@ def _readStatsUniqueCVEs(
         for pkg in cve.pkgs:
             if pkg.status not in filter_status:
                 continue
+
+            if filter_product is not None:
+                found = False
+                for filter in filter_product.split(","):
+                    tmp = filter.split("/", maxsplit=1)
+                    if tmp[0] != pkg.product:
+                        continue
+                    elif len(tmp) == 2 and tmp[1] != pkg.where:
+                        continue
+                    found = True
+                    break
+                if not found:
+                    continue
 
             # only count an open CVE once per software/priority
             if last_software == pkg.software:
@@ -815,14 +830,16 @@ def getHumanReportOpenByPkgPriority(
     )
 
 
-def getHumanReport(cves: List[CVE]) -> None:
-    stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(cves)
+def getHumanReport(cves: List[CVE], filter_product: Optional[str] = None) -> None:
+    stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
+        cves, filter_product=filter_product
+    )
     print("# Unique open issues by software")
     getHumanReportOpenByPkgPriority(stats_open)
 
     print("\n# Unique closed issues by software")
     stats_closed: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
-        cves, filter_status=["released"]
+        cves, filter_status=["released"], filter_product=filter_product
     )
     getHumanReportOpenByPkgPriority(stats_closed)
 
@@ -834,8 +851,10 @@ class _humanTodoScores(TypedDict):
     msg: str
 
 
-def getHumanTodo(cves: List[CVE]) -> None:
-    stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(cves)
+def getHumanTodo(cves: List[CVE], filter_product: Optional[str] = None) -> None:
+    stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
+        cves, filter_product=filter_product
+    )
     points: Dict[str, int] = {
         "critical": 200,
         "high": 100,
@@ -863,8 +882,12 @@ def getHumanTodo(cves: List[CVE]) -> None:
         print("%-8d %s" % (v["score"], v["msg"]))
 
 
-def getHumanSoftwareInfo(cves: List[CVE], pkg: str = "") -> None:
-    stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(cves)
+def getHumanSoftwareInfo(
+    cves: List[CVE], pkg: str = "", filter_product: Optional[str] = None
+) -> None:
+    stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
+        cves, filter_product=filter_product
+    )
 
     sw: str
     for sw in sorted(stats_open.keys()):
@@ -890,7 +913,12 @@ def _readPackagesFile(pkg_fn: str) -> Optional[Set[str]]:
     return pkgs
 
 
-def getHumanSummary(cves: List[CVE], pkg_fn: str = "", closed: bool = False) -> None:
+def getHumanSummary(
+    cves: List[CVE],
+    pkg_fn: str = "",
+    closed: bool = False,
+    filter_product: Optional[str] = None,
+) -> None:
     def _output(
         stats: Dict[str, _statsUniqueCVEsPkgSoftware],
         state: str,
@@ -966,13 +994,15 @@ def getHumanSummary(cves: List[CVE], pkg_fn: str = "", closed: bool = False) -> 
 
     pkgs: Optional[Set[str]] = _readPackagesFile(pkg_fn)
 
-    stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(cves)
+    stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
+        cves, filter_product=filter_product
+    )
     _output(stats_open, "open", pkgs)
 
     if closed:
         print("\n")
         stats_closed: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
-            cves, filter_status=["released"]
+            cves, filter_status=["released"], filter_product=filter_product
         )
         _output(stats_closed, "closed", pkgs)
 
@@ -987,6 +1017,7 @@ def _readStatsLineProtocol(
     cves: List[CVE],
     measurement="cveLog",
     filter_status: List[str] = ["needs-triage", "needed", "pending"],
+    filter_product: Optional[str] = None,
     base_timestamp: Optional[int] = None,
     pkgs: Optional[Set[str]] = None,
 ) -> List[str]:
@@ -1006,12 +1037,25 @@ def _readStatsLineProtocol(
             if pkgs is not None and pkg.software not in pkgs:
                 continue
 
+            if pkg.status not in filter_status:
+                continue
+
+            if filter_product is not None:
+                found = False
+                for filter in filter_product.split(","):
+                    tmp = filter.split("/", maxsplit=1)
+                    if tmp[0] != pkg.product:
+                        continue
+                    elif len(tmp) == 2 and tmp[1] != pkg.where:
+                        continue
+                    found = True
+                    break
+                if not found:
+                    continue
+
             priority: str = cve.priority
             if pkg.software in pkg.priorities:
                 priority = pkg.priorities[pkg.software]
-
-            if pkg.status not in filter_status:
-                continue
 
             timestamp: int
             if base_tm is None:
@@ -1037,11 +1081,14 @@ def _readStatsLineProtocol(
 
 
 def getInfluxDBLineProtocol(
-    cves: List[CVE], pkg_fn: str = "", base_timestamp: Optional[int] = None
+    cves: List[CVE],
+    pkg_fn: str = "",
+    base_timestamp: Optional[int] = None,
+    filter_product: Optional[str] = None,
 ) -> None:
     pkgs: Optional[Set[str]] = _readPackagesFile(pkg_fn)
     stats_open: List[str] = _readStatsLineProtocol(
-        cves, base_timestamp=base_timestamp, pkgs=pkgs
+        cves, base_timestamp=base_timestamp, pkgs=pkgs, filter_product=filter_product
     )
     for s in stats_open:
         print(s)
