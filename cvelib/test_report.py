@@ -1065,8 +1065,8 @@ References:
 
 ## valid-repo CVE template
 Candidate: CVE-2022-NNNN
-OpenDate: 2022-07-15
-PublicDate: 2022-07-15
+OpenDate: %s
+PublicDate: %s
 CRD:
 References:
  https://github.com/valid-org/valid-repo/security/dependabot/1
@@ -1104,6 +1104,8 @@ valid-repo dismissed alerts: 1 (https://github.com/valid-org/valid-repo/security
     - go.sum
     - advisory: https://github.com/advisories/GHSA-a
     - url: https://github.com/valid-org/valid-repo/security/dependabot/1""" % (
+            "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
+            "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
             "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
             "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
         )
