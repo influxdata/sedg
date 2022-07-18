@@ -723,18 +723,21 @@ CVSS:%(cvss)s
 # Utility functions that work on CVE files
 def checkSyntaxFile(
     f: str, rel: str, compatUbuntu: bool, untriagedOk: bool = False
-) -> Optional[CVE]:
+) -> Tuple[Optional[CVE], bool]:
     """Perform syntax check on one CVE"""
     cve: Optional[CVE] = None
     try:
         cve = CVE(fn=f, compatUbuntu=compatUbuntu, untriagedOk=untriagedOk)
     except Exception as e:
         cvelib.common.warn("%s: %s" % (rel, str(e)))
-        return cve
+        return cve, False
+
+    ok: bool = True
 
     # make sure the name of the file matches the candidate
     bn: str = os.path.basename(f)
     if bn != cve.candidate:
+        ok = False
         cvelib.common.warn("%s: non-matching candidate '%s'" % (rel, cve.candidate))
 
     # make sure References is non-empty for non-placeholder CVEs
@@ -742,10 +745,12 @@ def checkSyntaxFile(
         not rePatterns["CVE-placeholder"].match(cve.candidate)
         and len(cve.references) == 0
     ):
+        ok = False
         cvelib.common.warn("%s: missing references" % rel)
 
     # ensure pkgs is populated
     if len(cve.pkgs) == 0:
+        ok = False
         cvelib.common.warn("%s: missing affected software" % rel)
     else:
         # check package status against reldir
@@ -755,8 +760,10 @@ def checkSyntaxFile(
                 open = True
                 break
         if open and "retired" in rel:
+            ok = False
             cvelib.common.warn("%s: is retired but has open items" % rel)
         elif not open and "active" in rel:
+            ok = False
             cvelib.common.warn("%s: is active but has only closed items" % rel)
 
     # make sure Discovered-by is populated if specified GitHub-Advanced-Security
@@ -779,36 +786,45 @@ def checkSyntaxFile(
                 and not cve.discoveredBy.endswith(", %s" % needle)
             ):
                 seen.append(needle)
+                ok = False
                 cvelib.common.warn(
                     "%s: '%s' missing from Discovered-by" % (rel, needle)
                 )
 
     if len(cve.ghas) > 0 and open_ghas and "retired" in rel:
+        ok = False
         cvelib.common.warn(
             "%s: is retired but has open GitHub Advanced Security items" % rel
         )
 
-    return cve
+    return cve, ok
 
 
 def checkSyntax(
     cveDirs: Dict[str, str], compatUbuntu: bool, untriagedOk: bool = False
-) -> None:
+) -> bool:
     """Perform syntax checks on CVEs"""
     # TODO: make configurable
     seen: Dict[str, List[str]] = {}
     cves: List[str] = _getCVEPaths(cveDirs)
+    ok = True
     for f in cves:
         tmp: List[str] = os.path.realpath(f).split("/")
         rel: str = tmp[-2] + "/" + tmp[-1]
-        cve: Optional[CVE] = checkSyntaxFile(f, rel, compatUbuntu, untriagedOk)
+        cve: Optional[CVE]
+        cveOk: bool
+        cve, cveOk = checkSyntaxFile(f, rel, compatUbuntu, untriagedOk)
         if cve is None:
             continue
+
+        if not cveOk:
+            ok = False
 
         if cve.candidate not in seen:
             seen[cve.candidate] = [rel]
         else:
             seen[cve.candidate].append(rel)
+            ok = False
             cvelib.common.warn(
                 "multiple entries for %s: %s"
                 % (cve.candidate, ", ".join(seen[cve.candidate]))
@@ -823,7 +839,7 @@ def checkSyntax(
     except CveException:
         # This shouldn't happen without previous warnings, so if it does, just
         # return and let the user fix the warnings
-        return
+        return False
 
     # check for duplicate dependabot alert urls
     dupes: Set[str]
@@ -838,7 +854,10 @@ def checkSyntax(
                     if os.path.exists(fn):
                         tmp: List[str] = os.path.realpath(fn).split("/")
                         rel = tmp[-2] + "/" + tmp[-1]
+                ok = False
                 cvelib.common.warn("%s: duplicate alert URL '%s'" % (rel, item.url))
+
+    return ok
 
 
 def cveFromUrl(url: str) -> str:

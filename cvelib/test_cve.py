@@ -1447,13 +1447,15 @@ cve-data = %s
                 fp.write("%s" % content)
 
             with cvelib.testutil.capturedOutput() as (output, error):
-                cvelib.cve.checkSyntax(cveDirs, False)
+                res = cvelib.cve.checkSyntax(cveDirs, False)
             os.unlink(cve_fn)
 
             if expErr is None:
+                self.assertTrue(res)
                 self.assertEqual("", output.getvalue().strip())
                 self.assertEqual("", error.getvalue().strip())
             else:
+                self.assertFalse(res)
                 self.assertEqual("", output.getvalue().strip())
                 self.assertEqual(expErr, error.getvalue().strip())
 
@@ -1466,9 +1468,10 @@ cve-data = %s
             fp.write("%s" % content)
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.cve.checkSyntax(cveDirs, False)
+            res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
+        self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
             "WARN: active/CVE-1234-5678: non-matching candidate 'CVE-2020-1234'",
@@ -1483,9 +1486,10 @@ cve-data = %s
             fp.write("%s" % content)
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.cve.checkSyntax(cveDirs, False)
+            res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
+        self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
             "WARN: active/CVE-2020-1234: missing affected software",
@@ -1502,16 +1506,17 @@ cve-data = %s
             fp.write("%s" % content)
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.cve.checkSyntax(cveDirs, False)
+            res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
+        self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
             "WARN: active/CVE-2020-1234: missing references",
             error.getvalue().strip(),
         )
 
-        # missing references with CVE placeholder
+        # missing references with CVE placeholder are ok
         tmpl = self._cve_template()
         tmpl["Candidate"] = "CVE-2022-NNN1"
         tmpl["References"] = ""
@@ -1522,9 +1527,10 @@ cve-data = %s
             fp.write("%s" % content)
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.cve.checkSyntax(cveDirs, False)
+            res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
+        self.assertTrue(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual("", error.getvalue().strip())
 
@@ -1538,9 +1544,10 @@ cve-data = %s
             fp.write("%s" % content)
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.cve.checkSyntax(cveDirs, False)
+            res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
+        self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
             "WARN: retired/CVE-1234-5678: is retired but has open items",
@@ -1557,9 +1564,10 @@ cve-data = %s
             fp.write("%s" % content)
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.cve.checkSyntax(cveDirs, False)
+            res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
+        self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
             "WARN: active/CVE-1234-5678: is active but has only closed items",
@@ -1581,10 +1589,11 @@ cve-data = %s
             fp.write("%s" % content)
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.cve.checkSyntax(cveDirs, False)
+            res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_active_fn)
         os.unlink(cve_retired_fn)
 
+        self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             error.getvalue()
@@ -1653,13 +1662,15 @@ cve-data = %s
                 fp.write("%s" % content)
 
             with cvelib.testutil.capturedOutput() as (output, error):
-                cvelib.cve.checkSyntax(cveDirs, False)
+                res = cvelib.cve.checkSyntax(cveDirs, False)
             os.unlink(cve_fn)
 
             if expErr is None:
+                self.assertTrue(res)
                 self.assertEqual("", output.getvalue().strip())
                 self.assertEqual("", error.getvalue().strip())
             else:
+                self.assertFalse(res)
                 self.assertEqual("", output.getvalue().strip())
                 self.assertEqual(expErr, error.getvalue().strip())
 
@@ -1685,9 +1696,10 @@ cve-data = %s
             fp.write("%s" % content)
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.cve.checkSyntax(cveDirs, False)
+            res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
+        self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
             "WARN: retired/CVE-1234-5678: is retired but has open GitHub Advanced Security items",
@@ -1754,10 +1766,11 @@ cve-data = %s
             fp.write("%s" % content)
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.cve.checkSyntax(cveDirs, False)
+            res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_active_fn)
         os.unlink(cve_retired_fn)
 
+        self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "WARN: active/CVE-2022-0001: duplicate alert URL 'https://github.com/bar/baz/security/dependabot/1'"
