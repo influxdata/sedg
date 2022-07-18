@@ -1008,9 +1008,9 @@ def getHumanSummary(
 
 
 # line protocol
-# We plan to query on priority, status and product so put them as tags
+# We plan to query on priority, status, product and where so put them as tags
 #
-#   <measurement>,priority=X,status=X,product=X,modifier=X id=X software=X
+#   <measurement>,priority=X,status=X,product=X,where=X id=X software=X modifier=X
 #
 # Note: the concept of 'team' will be handled within the flux
 def _readStatsLineProtocol(
@@ -1022,7 +1022,7 @@ def _readStatsLineProtocol(
     pkgs: Optional[Set[str]] = None,
 ) -> List[str]:
     stats: List[str] = []
-    lp_f: object = '{measurement},priority={priority},status={status},product={product} id="{id}",software="{software}",modifier="{modifier}" {timestamp}'.format
+    lp_f: object = '{measurement},priority={priority},status={status},product={product},where={where} id="{id}",software="{software}",modifier="{modifier}" {timestamp}'.format
 
     base_tm: Optional[int] = None
     if base_timestamp is not None:
@@ -1064,12 +1064,17 @@ def _readStatsLineProtocol(
                 timestamp = base_tm
                 base_tm += 1
 
+            where: str = pkg.where
+            if where == "":
+                where = "unspecified"
+
             stats.append(
                 lp_f(
                     measurement=measurement,
                     priority=priority,
                     status=pkg.status,
                     product=pkg.product,
+                    where=where,
                     id=cve.candidate,
                     software=pkg.software,
                     modifier=pkg.modifier,
