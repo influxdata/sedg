@@ -21,10 +21,10 @@
     $ cve-add --cve <url to github issue>
 
     # create a CVE against a particular package
-    $ cve-add --cve CVE-2020-1234 -p git/github_flux
+    $ cve-add --cve CVE-2020-1234 -p git/foo-org_foo
 
     # create a placeholder CVE with a particular id and package boilerplate
-    $ cve-add -c CVE-2020-GH1234#foo -p git/github_foo --package-boiler=bar
+    $ cve-add -c CVE-2020-GH1234#foo -p git/foo-org_foo --package-boiler=bar
 
     $ <work on CVEs in .../influx-security-tools-cve-data>
     $ cve-check-syntax
@@ -134,8 +134,8 @@ Note that the blank line before each software section is not required but is
 conventional and easier to read.
 
 For each field in the software section:
- * `<product>` is the supporting technology (eg, `git`, `snap`, `oci`, etc).
-   Could also be OS (eg, `ubuntu`, `debian`, `suse`, etc).
+ * `<product>` is the supporting technology (eg, `git`, `snap`, `oci`, etc),
+   OS (eg, `ubuntu`, `debian`, `suse`, etc) or simply `upstream`
  * `<where>` indicates where the software lives or in the case of snaps or
    other technologies with a concept of publishers, who the publisher is. For
    OS (eg, `ubuntu`, `debian`, `suse`, etc), `<where>` indicates the release of
@@ -175,17 +175,18 @@ Typical software stanza examples:
     Patches_foo:
     upstream_foo: released (1.2)
 
-    # github-hosted example
+    # github-hosted example for https://github.com/barproj/bar
     Patches_bar:
-    git/github_bar: needed
+    git/barprog_bar: needed
 
-    # github-hosted example with different branches for different releases for
-    # v1/v2 and continuous development on main
+    # github-hosted example for https://github.com/barproj/baz with different
+    # branches for different releases for v1/v2 and continuous development on
+    # main
     Patches_baz:
      upstream: https://github.com/org/baz/pull/123
-    git/github_baz/v1: pending
-    git/github_baz/v2: released (2.0.13)
-    git/github_baz/main: released (907e560b)
+    git/barproj_baz/v1: pending
+    git/barproj_baz/v2: released (2.0.13)
+    git/barproj_baz/main: released (907e560b)
 
     # OCI images for different registries
     Patches_norf:
@@ -207,9 +208,16 @@ Typical software stanza examples:
     snap/pub2_qux: not-affected (code not compiled)
 ```
 
-The format offers considerable flexibility. For example, to capture the
-organization with github, one might use `github/<org>_...` instead of
-`git/github_...`.
+The format offers considerable flexibility. For example, to capture upstream vs
+GitLab vs GitHub (where, for example, GitHub and GitLab might be forks of
+upstream), one might use:
+
+```
+    Patches_foo:
+    upstream_foo: needed
+    github/someacct_foo: needed
+    gitlab/otheracct_foo: needed
+```
 
 
 ## Ubuntu compatibility
