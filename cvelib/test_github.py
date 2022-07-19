@@ -543,6 +543,7 @@ class TestGitHubCommon(TestCase):
         tsts = [
             # valid
             (self._getValidYaml(), None),
+            ("", None),
             # invalid
             (None, "invalid yaml:\n'None'"),
             ("bad", "invalid GHAS document: 'type' missing for item"),
@@ -556,7 +557,11 @@ class TestGitHubCommon(TestCase):
 
         for s, expErr in tsts:
             if expErr is None:
-                github.parse(s)
+                res = github.parse(s)
+                if s == "":
+                    self.assertEqual(0, len(res))
+                else:
+                    self.assertEqual(2, len(res))
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
                     github.parse(s)

@@ -179,7 +179,10 @@ def _isNonEmptyStr(s: str) -> bool:
 
 
 def parse(s: str) -> List[Union[GHDependabot, GHSecret]]:
-    """Parse a string and return a GHDependabot"""
+    """Parse a string and return a list of GHDependabots and/or GHSecrets"""
+    if s == "":
+        return []
+
     yml: List[Dict[str, str]]
     try:
         yml = yaml.safe_load(s)
