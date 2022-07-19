@@ -613,10 +613,7 @@ def getGHAlertsUpdatedReport(
                     repo,
                     n["number"],
                 )
-                if url in knownAlerts:
-                    # only care about missing alerts
-                    continue
-                elif n["dismissedAt"] is not None and n["dismissedAt"] > since_str:
+                if n["dismissedAt"] is not None and n["dismissedAt"] > since_str:
                     if repo not in dismissed:
                         dismissed[repo] = []
 
@@ -634,6 +631,10 @@ def getGHAlertsUpdatedReport(
                         }
                     )
                 elif n["createdAt"] > since_str:
+                    if url in knownAlerts:
+                        warn("found previously known url with newer createdAt: %s (skipping)" % url)
+                        continue
+
                     if repo not in updated:
                         updated[repo] = []
 

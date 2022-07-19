@@ -943,7 +943,20 @@ valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabo
     - created: 2022-07-05T18:27:30Z
     - path/yarn.lock
     - advisory: https://github.com/advisories/GHSA-d
-    - url: https://github.com/valid-org/valid-repo/security/dependabot/5"""
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/5
+
+Dismissed vulnerability alerts:
+
+valid-repo dismissed alerts: 1 (https://github.com/valid-org/valid-repo/security/dependabot)
+  github.com/foo/bar
+    - severity: low
+    - created: 2022-07-01T18:27:30Z
+    - dismissed: 2022-07-02T18:27:30Z
+    - reason: tolerable
+    - by: ghuser1
+    - go.sum
+    - advisory: https://github.com/advisories/GHSA-a
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/1"""
         self.assertEqual(exp, output.getvalue().strip())
 
         # with_templates = true
