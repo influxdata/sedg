@@ -632,7 +632,10 @@ def getGHAlertsUpdatedReport(
                     )
                 elif n["createdAt"] > since_str:
                     if url in knownAlerts:
-                        warn("found previously known url with newer createdAt: %s (skipping)" % url)
+                        warn(
+                            "found previously known url with newer createdAt: %s (skipping)"
+                            % url
+                        )
                         continue
 
                     if repo not in updated:
