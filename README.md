@@ -77,6 +77,7 @@ This file format is compliant with various language libraries, such as Python's
 email.policy.Compat32 (compat since it doesn't conform to Python's shipping
 policies). Since RFC5322 doesn't support utf-8, utf-8 is not properly supported
 by the file format. The format could be moved to RFC6532 at a future date.
+Items within `[]` are optional.
 
 ```
     Candidate: CVE-<year>-<number> | CVE-<year>-GH<issue/pull>#<project>
@@ -92,6 +93,20 @@ by the file format. The format could be moved to RFC6532 at a future date.
      consequat id porta nibh venenatis.
      .
      Tellus orci ac auctor augue mauris augue neque.
+    [GitHub-Advanced-Security:
+     - type: dependabot
+       dependency: <3rd party software>
+       detectedIn: path/to/file
+       advisory: https://github.com/advisories/GHSA-... | unavailable
+       severity: low | moderate | high | critical
+       status: needs-triage | needed | released | dismissed (<reason>; <who>)
+       url: https://github.com/ORG/REPO/security/dependabot/N | unavailable
+     - type: secret
+       secret: <found secret description>
+       detectedIn: path/to/file
+       status: needs-triage |needed | released | dismissed (<reason>; <who>)
+       url: https://github.com/ORG/REPO/security/secret-scanning/N | unavailable
+    ]
     Notes:
      person> One line note
      person> Multi-line note. Lorem ipsum dolor sit amet, consectetur adipiscing
