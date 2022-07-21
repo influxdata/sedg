@@ -565,6 +565,7 @@ class TestPkg(TestCase):
             ([("test-key", "symlink-restriction")], None),
             ([("test-key", "hardlink-restriction")], None),
             ([("test-key", "heap-protector")], None),
+            ([("test-key", "limit-report")], None),
             ([("test-key", "pie")], None),
             ([("test-key", "apparmor"), ("test-key2", "pie stack-protector")], None),
             ([("test-key", "apparmor"), ("test-key_3", "pie stack-protector")], None),

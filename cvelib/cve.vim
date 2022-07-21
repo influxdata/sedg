@@ -51,7 +51,7 @@ syn match cvePriorityKey "^Priority\(_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(_\(upstream\
 " TODO: reuse the above definitions here
 " Tags key
 " Tags_<srcpkg>[_<release>]: <tag>
-syn match cveTagValue contained "\(apparmor\|fortify-source\|hardlink-restriction\|heap-protector\|pie\|stack-protector\|symlink-restriction\) *"
+syn match cveTagValue contained "\(apparmor\|fortify-source\|hardlink-restriction\|heap-protector\|limit-report\|pie\|stack-protector\|symlink-restriction\) *"
 syn match cveTagKey "^Tags_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(_\(upstream\|snap\)\)\?: *"
 
 " Fields where we do strict syntax checking

@@ -177,7 +177,7 @@ rePatterns: Dict[str, Pattern[str]] = {
     ),
     # TODO: break out Ubuntu-specific tags
     "pkg-tags": re.compile(
-        r"^(apparmor|stack-protector|fortify-source|symlink-restriction|hardlink-restriction|heap-protector|pie|universe-binary|not-ue)$"
+        r"^(apparmor|stack-protector|fortify-source|symlink-restriction|hardlink-restriction|heap-protector|limit-report|pie|universe-binary|not-ue)$"
     ),
     # TODO: reuse product/where
     "pkg-tags-key": re.compile(
