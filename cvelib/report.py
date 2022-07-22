@@ -25,7 +25,6 @@ from cvelib.net import requestGetRaw, requestGet, queryGraphQL
 
 # TODO: pass these around
 repos_all: List[str] = []  # list of repos
-issues_all: Dict[str, List[str]] = {}  # keys are repos, values are lists of issue urls
 issues_ind: Dict[
     str, Mapping[str, Any]
 ] = {}  # keys are 'repo/num', values are arbitrary json docs from GitHub
@@ -71,11 +70,6 @@ def _getGHIssuesForRepo(
     since: int = 0,
 ) -> List[str]:
     """Obtain the list of GitHub issues for the specified repo and org"""
-    global issues_all
-    if repo in issues_all:
-        print("Using previously fetched list of issues for %s" % repo)
-        return sorted(copy.deepcopy(issues_all[repo]))
-
     url: str = "https://api.github.com/repos/%s/%s/issues" % (org, repo)
     params: Dict[str, Union[str, int]] = {
         "accept": "application/vnd.github.v3+json",
@@ -86,19 +80,24 @@ def _getGHIssuesForRepo(
     if since > 0:
         params["since"] = epochToISO8601(since)
 
-    print(" %s/%s: " % (org, repo), end="", flush=True)
-
     # Unfortunately, we have to do a separate query per label because sending
     # params["labels"] = ",".join(labels) doesn't work (the labels are ANDed)
     query_labels: List[str] = [""]
+    total: int = 1
     if len(labels) > 0:
         query_labels = labels
+        total = len(labels)
+
+    issues: Dict[str, List[str]] = {}  # keys are repos, values are lists of issue urls
     query_label: str
+    label_count: int = 0
     for query_label in query_labels:
+        updateProgress(label_count / total, prefix=" %s/%s: " % (org, repo))
+        label_count += 1
+
         count: int = 0
         while True:
             count += 1
-            print(".", end="", flush=True)
             params["page"] = count
 
             if query_label != "":
@@ -138,14 +137,14 @@ def _getGHIssuesForRepo(
                 if "pull_request" in issue and len(issue["pull_request"]) > 0:
                     continue  # skip pull requests
                 if "html_url" in issue:
-                    if repo not in issues_all:
-                        issues_all[repo] = []
-                    if issue["html_url"] not in issues_all[repo]:
-                        issues_all[repo].append(issue["html_url"])
-    print(" done!")
+                    if repo not in issues:
+                        issues[repo] = []
+                    if issue["html_url"] not in issues[repo]:
+                        issues[repo].append(issue["html_url"])
+    updateProgress(label_count / total, prefix=" %s/%s: " % (org, repo))
 
-    if repo in issues_all:
-        return sorted(copy.deepcopy(issues_all[repo]))
+    if repo in issues:
+        return sorted(copy.deepcopy(issues[repo]))
     return []  # repo with turned off issues
 
 
@@ -301,25 +300,31 @@ def getGHAlertsStatusReport(
 
 def getUpdatedReport(cves: List[CVE], org: str, since: int = 0) -> None:
     """Obtain list of URLs that have received an update since last run"""
+    cachedGetGHIssuesForRepo: Dict[str, List[str]] = {}
     urls: Dict[str, List[str]] = _getKnownIssues(cves, filter_url=org)
-
-    since_str: str = epochToISO8601(since)
 
     # find updates
     updated_urls: List[str] = []
-    count: int = 0
+    print("Collecting known issues:")
     for url in sorted(urls.keys()):
-        count += 1
-        updateProgress(count / len(urls), prefix="Collecting known issues: ")
-
         # TODO: break this out
         if not rePatterns["github-issue"].match(url):
             continue  # only support github issues at this time
+        # ['https:', '', 'github.com', '<org>', '<repo>', 'issues', '<num>']
         tmp: List[str] = url.split("/")
 
-        # compare the issue's updated_at with our since time
-        issue: Mapping[str, Any] = _getGHIssue(tmp[4], tmp[3], int(tmp[6]))
-        if "updated_at" in issue and issue["updated_at"] > since_str:
+        if tmp[3] != org:
+            continue
+
+        repo: str = tmp[4]
+        if repo not in cachedGetGHIssuesForRepo:
+            cachedGetGHIssuesForRepo[repo] = _getGHIssuesForRepo(
+                repo,
+                org,
+                since=since,
+            )
+
+        if url in cachedGetGHIssuesForRepo[repo]:
             updated_urls.append(url)
 
     if len(updated_urls) == 0:

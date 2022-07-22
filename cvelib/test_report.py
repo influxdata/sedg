@@ -5,6 +5,7 @@ import copy
 import datetime
 import os
 
+import cvelib.common
 import cvelib.cve
 import cvelib.github
 import cvelib.report
@@ -156,7 +157,88 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
     elif args[0] == "https://api.github.com/repos/valid-org/empty-repo/issues":
         return MockResponse([], 200)
     elif args[0] == "https://api.github.com/repos/valid-org/valid-repo/issues":
-        if "labels" in kwargs["params"] and kwargs["params"]["labels"] == "label1":
+        if "since" in kwargs["params"]:
+            if kwargs["params"]["since"] == "2022-06-22T12:33:47Z":
+                if "page" not in kwargs["params"] or kwargs["params"]["page"] == 1:
+                    return MockResponse(
+                        [
+                            {
+                                "html_url": "https://github.com/valid-org/valid-repo/issues/1",
+                                "labels": [{"name": "label1", "id": 2001}],
+                                "locked": False,
+                                "id": 1001,
+                                "state_reason": None,
+                                "user": {"login": "user1", "id": 3000},
+                                "updated_at": "2022-07-01T18:27:30Z",
+                            },
+                            {
+                                "html_url": "https://github.com/valid-org/valid-repo/issues/2",
+                                "labels": [{"name": "label2", "id": 2002}],
+                                "locked": False,
+                                "id": 1002,
+                                "state_reason": None,
+                                "user": {"login": "user1", "id": 3000},
+                                "updated_at": "2022-07-02T18:27:30Z",
+                            },
+                            {
+                                "html_url": "https://github.com/valid-org/valid-repo/issues/3",
+                                "labels": [
+                                    {"name": "label1", "id": 2001},
+                                    {"name": "label2", "id": 2002},
+                                ],
+                                "locked": False,
+                                "id": 1000,
+                                "state_reason": None,
+                                "user": {"login": "user1", "id": 3000},
+                                "updated_at": "2022-07-03T18:27:30Z",
+                            },
+                            {
+                                "html_url": "https://github.com/valid-org/valid-repo/issues/4",
+                                "labels": [],
+                                "locked": False,
+                                "id": 1000,
+                                "state_reason": None,
+                                "user": {"login": "user1", "id": 3000},
+                                "updated_at": "2022-07-04T18:27:30Z",
+                            },
+                        ],
+                        200,
+                    )
+                else:
+                    return MockResponse([], 200)
+            elif kwargs["params"]["since"] == "2022-07-02T20:04:31Z":
+                if "page" not in kwargs["params"] or kwargs["params"]["page"] == 1:
+                    return MockResponse(
+                        [
+                            {
+                                "html_url": "https://github.com/valid-org/valid-repo/issues/3",
+                                "labels": [
+                                    {"name": "label1", "id": 2001},
+                                    {"name": "label2", "id": 2002},
+                                ],
+                                "locked": False,
+                                "id": 1000,
+                                "state_reason": None,
+                                "user": {"login": "user1", "id": 3000},
+                                "updated_at": "2022-07-03T18:27:30Z",
+                            },
+                            {
+                                "html_url": "https://github.com/valid-org/valid-repo/issues/4",
+                                "labels": [],
+                                "locked": False,
+                                "id": 1000,
+                                "state_reason": None,
+                                "user": {"login": "user1", "id": 3000},
+                                "updated_at": "2022-07-04T18:27:30Z",
+                            },
+                        ],
+                        200,
+                    )
+                else:
+                    return MockResponse([], 200)
+            elif kwargs["params"]["since"] == "2022-07-07T20:06:38Z":
+                return MockResponse([], 200)
+        elif "labels" in kwargs["params"] and kwargs["params"]["labels"] == "label1":
             # return things with only 'label1'
             if "page" not in kwargs["params"] or kwargs["params"]["page"] == 1:
                 return MockResponse(
@@ -537,7 +619,6 @@ class TestReport(TestCase):
 
         # TODO: when pass these around, can remove this
         cvelib.report.repos_all = []
-        cvelib.report.issues_all = {}
         cvelib.report.issues_ind = {}
 
     def _cve_template(self, cand="", references=[]):
@@ -603,27 +684,9 @@ class TestReport(TestCase):
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/3" in r)
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/4" in r)
 
-        # do it a second time to use issues_all
-        r = cvelib.report._getGHIssuesForRepo("valid-repo", "valid-org")
-        self.assertEqual(4, len(r))
-        self.assertTrue("https://github.com/valid-org/valid-repo/issues/1" in r)
-        self.assertTrue("https://github.com/valid-org/valid-repo/issues/2" in r)
-        self.assertTrue("https://github.com/valid-org/valid-repo/issues/3" in r)
-        self.assertTrue("https://github.com/valid-org/valid-repo/issues/4" in r)
-
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
     def test__getGHIssuesForRepoSince(self, _):  # 2nd arg is 'mock_get'
         """Test _getGHIssuesForRepo() since 2022-06-22T12:33:47Z"""
-        r = cvelib.report._getGHIssuesForRepo(
-            "valid-repo", "valid-org", since=1655901227
-        )
-        self.assertEqual(4, len(r))
-        self.assertTrue("https://github.com/valid-org/valid-repo/issues/1" in r)
-        self.assertTrue("https://github.com/valid-org/valid-repo/issues/2" in r)
-        self.assertTrue("https://github.com/valid-org/valid-repo/issues/3" in r)
-        self.assertTrue("https://github.com/valid-org/valid-repo/issues/4" in r)
-
-        # do it a second time to use issues_all
         r = cvelib.report._getGHIssuesForRepo(
             "valid-repo", "valid-org", since=1655901227
         )
@@ -748,7 +811,6 @@ class TestReport(TestCase):
             cvelib.report.getMissingReport(cves, "valid-org", repos=["valid-repo"])
         self.assertEqual("", error.getvalue().strip())
         exp = """Fetching list of issues for:
- valid-org/valid-repo: ... done!
 Issues missing from CVE data:
  https://github.com/valid-org/valid-repo/issues/4"""
         self.assertEqual(exp, output.getvalue().strip())
@@ -815,7 +877,7 @@ Disabled:
     #
     # getUpdatedReport()
     #
-    @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssue)
+    @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
     def test_getUpdatedReport(self, _):  # 2nd arg is mock_get
         """Test _getUpdatedReport()"""
         cves = self._mock_cve_list()
@@ -824,36 +886,29 @@ Disabled:
         with cvelib.testutil.capturedOutput() as (output, error):
             cvelib.report.getUpdatedReport(cves, "valid-org")
         self.assertEqual("", error.getvalue().strip())
-        exp = """Updated issues:
+        exp = """Collecting known issues:
+Updated issues:
  https://github.com/valid-org/valid-repo/issues/1 (CVE-2022-GH1001#valid-repo)
  https://github.com/valid-org/valid-repo/issues/2 (CVE-2022-GH1002#valid-repo)
  https://github.com/valid-org/valid-repo/issues/3 (CVE-2022-GH1003#valid-repo)"""
         self.assertEqual(exp, output.getvalue().strip())
 
-        # some updated since 1656792271 (2022-07-02) (with pre-fetched)
+        # some updated since 1656792271 (2022-07-02)
         with cvelib.testutil.capturedOutput() as (output, error):
             cvelib.report.getUpdatedReport(cves, "valid-org", since=1656792271)
         self.assertEqual("", error.getvalue().strip())
-        exp = """Using previously fetched issue for valid-repo/1
-Using previously fetched issue for valid-repo/2
-Using previously fetched issue for valid-repo/3
+        exp = """Collecting known issues:
 Updated issues:
  https://github.com/valid-org/valid-repo/issues/3 (CVE-2022-GH1003#valid-repo)"""
         self.assertEqual(exp, output.getvalue().strip())
 
-        # none updated since 1657224398 (2022-07-07) (with pre-fetched)
+        # none updated since 1657224398 (2022-07-07)
         with cvelib.testutil.capturedOutput() as (output, error):
             cvelib.report.getUpdatedReport(cves, "valid-org", since=1657224398)
         self.assertEqual("", error.getvalue().strip())
-        exp = """Using previously fetched issue for valid-repo/1
-Using previously fetched issue for valid-repo/2
-Using previously fetched issue for valid-repo/3
+        exp = """Collecting known issues:
 No updated issues for the specified repos."""
         self.assertEqual(exp, output.getvalue().strip())
-
-        # error
-        with self.assertRaises(ValueError):
-            cvelib.report.getUpdatedReport(cves, "valid-org", since=-1)
 
     #
     # _printGHAlertsUpdatedSummary()
@@ -1176,7 +1231,7 @@ valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabo
     - url: https://github.com/valid-org/valid-repo/security/dependabot/5"""
         self.assertEqual(exp, output.getvalue().strip())
 
-        # none updated since 1657224398 (2022-07-07) (with pre-fetched)
+        # none updated since 1657224398 (2022-07-07)
         with cvelib.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsUpdatedReport(
                 [], "valid-org", repos=["valid-repo"], since=1657224398
