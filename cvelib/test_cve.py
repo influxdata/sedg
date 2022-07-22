@@ -1287,42 +1287,54 @@ git/github_norf: needs-triage
             (
                 "https://github.com/influxdata/idpe/issues/5519",
                 "CVE-%s-GH5519#idpe" % year,
+                "influxdata",
                 None,
             ),
-            ("https://github.com/foo/bar/issues/1", "CVE-%s-GH1#bar" % year, None),
+            (
+                "https://github.com/foo/bar/issues/1",
+                "CVE-%s-GH1#bar" % year,
+                "foo",
+                None,
+            ),
             (
                 "https://github.com/foo/%s/issues/1" % ("a" * 50),
                 "CVE-%s-GH1#%s" % (year, ("a" * 50)),
+                "foo",
                 None,
             ),
             # invalid
-            ("bad", None, "unsupported url: 'bad' (only support github)"),
+            ("bad", None, None, "unsupported url: 'bad' (only support github)"),
             (
                 "http://example.com",
+                None,
                 None,
                 "unsupported url: 'http://example.com' (only support github)",
             ),
             (
                 "https://launchpad.net/bugs/1234",
                 None,
+                None,
                 "unsupported url: 'https://launchpad.net/bugs/1234' (only support github)",
             ),
             (
                 "https://github.com/influxdata/idpe/pull/6238",
+                None,
                 None,
                 "invalid url: 'https://github.com/influxdata/idpe/pull/6238' (only support github issues)",
             ),
             (
                 "https://github.com/foo/%s/issues/1" % ("a" * 51),
                 None,
+                None,
                 "invalid url: 'https://github.com/foo/%s/issues/1' (only support github issues)"
                 % ("a" * 51),
             ),
         ]
-        for (url, exp, exp_fail) in tsts:
+        for (url, exp, exp2, exp_fail) in tsts:
             if exp is not None:
-                res = cvelib.cve.cveFromUrl(url)
+                res, res2 = cvelib.cve.cveFromUrl(url)
                 self.assertEqual(exp, res)
+                self.assertEqual(exp2, res2)
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
                     cvelib.cve.cveFromUrl(url)
@@ -1785,27 +1797,30 @@ cve-data = %s
         """Test pkgFromCandidate()"""
         tsts = [
             # valid package
-            ("CVE-2021-GH1234#foo", "git/github_foo", None),
-            ("CVE-2021-GH1234#bar", "git/github_bar", None),
-            ("CVE-2020-GH9999#foobar", "git/github_foobar", None),
+            ("CVE-2021-GH1234#foo", "github", "git/github_foo", None),
+            ("CVE-2021-GH1234#bar", "github", "git/github_bar", None),
+            ("CVE-2020-GH9999#foobar", "github", "git/github_foobar", None),
+            ("CVE-2020-GH9999#foobar", "blah", "git/blah_foobar", None),
+            ("CVE-2020-GH9999#foobar", "", "git/github_foobar", None),
             # no package
-            ("CVE-2021-1234", None, None),
-            ("CVE-2021-LP1234", None, None),
+            ("CVE-2021-1234", "", None, None),
+            ("CVE-2021-LP1234", "", None, None),
             # invalid
-            ("CVE-2021-GH1234", "", "invalid candidate: 'CVE-2021-GH1234'"),
+            ("CVE-2021-GH1234", "", "", "invalid candidate: 'CVE-2021-GH1234'"),
             (
                 "CVE-2021-GH1234#",
+                "",
                 "",
                 "invalid candidate: 'CVE-2021-GH1234#' (empty package)",
             ),
         ]
-        for (cand, exp, exp_fail) in tsts:
+        for (cand, where, exp, exp_fail) in tsts:
             if exp_fail is None:
-                res = cvelib.cve.pkgFromCandidate(cand)
+                res = cvelib.cve.pkgFromCandidate(cand, where)
                 self.assertEqual(exp, res)
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
-                    res = cvelib.cve.pkgFromCandidate(cand)
+                    res = cvelib.cve.pkgFromCandidate(cand, where)
                 self.assertEqual(
                     exp_fail,
                     str(context.exception),
@@ -2023,6 +2038,8 @@ upstream_baz: needed
             # valid strict
             ("CVE-2021-999999", ["git/github_foo"], False, None, False, None),
             ("CVE-2021-999999", ["git/github_foo"], False, None, True, None),
+            ("CVE-2021-999999", ["git/bar_foo"], False, None, False, None),
+            ("CVE-2021-999999", ["git/bar_foo"], False, None, True, None),
             (
                 "CVE-2021-999999",
                 ["git/github_foo", "git/github_bar"],
@@ -2044,6 +2061,22 @@ upstream_baz: needed
             (
                 "https://github.com/foo/bar/issues/1234",
                 ["git/github_bar"],
+                False,
+                "baz",
+                False,
+                None,
+            ),
+            (
+                "https://github.com/foo/bar/issues/1234",
+                ["git/foo_bar"],
+                False,
+                None,
+                False,
+                None,
+            ),
+            (
+                "https://github.com/foo/bar/issues/1234",
+                ["git/foo_bar"],
                 False,
                 "baz",
                 False,
@@ -2106,7 +2139,8 @@ upstream_baz: needed
                 dir = "retired"
             cve_fn = os.path.join(cveDirs[dir], cve)
             if cve.startswith("http"):
-                cve_fn = os.path.join(cveDirs[dir], cvelib.cve.cveFromUrl(cve))
+                cve_name, _ = cvelib.cve.cveFromUrl(cve)
+                cve_fn = os.path.join(cveDirs[dir], cve_name)
 
             with cvelib.testutil.capturedOutput() as (output, error):
                 cvelib.cve.addCve(

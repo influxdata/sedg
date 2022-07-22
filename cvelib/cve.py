@@ -860,7 +860,7 @@ def checkSyntax(
     return ok
 
 
-def cveFromUrl(url: str) -> str:
+def cveFromUrl(url: str) -> Tuple[str, str]:
     """Return a CVE based on the url"""
     if not url.startswith("https://github.com/"):
         raise CveException("unsupported url: '%s' (only support github)" % url)
@@ -870,10 +870,11 @@ def cveFromUrl(url: str) -> str:
 
     year: int = datetime.datetime.now().year
     tmp: List[str] = url.split("/")  # based on rePatterns, we know we have 7 elements
-    return "CVE-%d-GH%s#%s" % (year, tmp[6], tmp[4])
+    # ['https:', '', 'github.com', '<org>', '<repo>', 'issues', 'N']
+    return "CVE-%d-GH%s#%s" % (year, tmp[6], tmp[4]), tmp[3]
 
 
-def pkgFromCandidate(cand: str) -> Optional[str]:
+def pkgFromCandidate(cand: str, where: str) -> Optional[str]:
     """Find pkg name from url"""
     pkg: Optional[str] = None
     if "-GH" in cand:
@@ -882,7 +883,10 @@ def pkgFromCandidate(cand: str) -> Optional[str]:
 
         if cand.endswith("#"):
             raise CveException("invalid candidate: '%s' (empty package)" % cand)
-        pkg = "git/github_%s" % cand.split("#")[1]
+
+        if where == "":
+            where = "github"
+        pkg = "git/%s_%s" % (where, cand.split("#")[1])
 
     return pkg
 
@@ -1003,8 +1007,9 @@ def addCve(
 
     # See if we can parse
     cand: Optional[str] = None
+    where: str = ""
     if orig_cve.startswith("http"):
-        cand = cveFromUrl(orig_cve)  # raises an error
+        cand, where = cveFromUrl(orig_cve)  # raises an error
     else:
         cand = orig_cve
 
@@ -1017,7 +1022,7 @@ def addCve(
 
     # If we can determine a pkg from the candidate, then add it to the
     # front of the list, removing it from the pkgs if it is already there
-    p: Optional[str] = pkgFromCandidate(cand)
+    p: Optional[str] = pkgFromCandidate(cand, where)
     if p:
         if p in pkgs:
             pkgs.remove(p)
