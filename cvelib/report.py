@@ -978,6 +978,8 @@ def getHumanSummary(
                     elif cve in stats[repo]["secrets"]:
                         extra = "(secrets)"
 
+                    # TODO: add 'limit-report' to extra if specified
+
                     print(
                         table_f(
                             pri=priority,
