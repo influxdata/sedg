@@ -317,7 +317,8 @@ def updateProgress(
         # as a convenience for leaving room for the bar and status)
         pad: int = 10
         if len(prefix) > tw - pad * 2:
-            error("'prefix' too long for window size", do_exit=False)
+            if "TEST_NO_UPDATE_PROGRESS" not in os.environ:
+                print("%s..." % prefix[:max-8], end="")
             return
         barLength = tw - len(prefix) - pad
 
