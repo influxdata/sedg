@@ -11,6 +11,7 @@ from cvelib.cve import CVE, collectGHAlertUrls
 from cvelib.common import (
     cve_priorities,
     error,
+    epochToISO8601,
     rePatterns,
     updateProgress,
     warn,
@@ -63,7 +64,11 @@ def _getGHReposAll(org: str) -> List[str]:
 
 
 def _getGHIssuesForRepo(
-    repo: str, org: str, labels: List[str] = [], skip_labels: List[str] = []
+    repo: str,
+    org: str,
+    labels: List[str] = [],
+    skip_labels: List[str] = [],
+    since: int = 0,
 ) -> List[str]:
     """Obtain the list of GitHub issues for the specified repo and org"""
     global issues_all
@@ -75,12 +80,19 @@ def _getGHIssuesForRepo(
     params: Dict[str, Union[str, int]] = {
         "accept": "application/vnd.github.v3+json",
         "per_page": 100,
+        "state": "all",
     }
+
+    if since > 0:
+        params["since"] = epochToISO8601(since)
+
+    print(" %s/%s: " % (org, repo), end="", flush=True)
+
+    # Unfortunately, we have to do a separate query per label because sending
+    # params["labels"] = ",".join(labels) doesn't work (the labels are ANDed)
     query_labels: List[str] = [""]
     if len(labels) > 0:
         query_labels = labels
-
-    print(" %s/%s: " % (org, repo), end="", flush=True)
     query_label: str
     for query_label in query_labels:
         count: int = 0
@@ -200,6 +212,7 @@ def getMissingReport(
     excluded_repos: List[str] = [],
     labels: List[str] = [],
     skip_labels: List[str] = [],
+    since: int = 0,
 ) -> None:
     """Compare list of issues in issue trackers against our CVE data"""
     known_urls: Dict[str, List[str]] = _getKnownIssues(cves, filter_url=org)
@@ -216,7 +229,11 @@ def getMissingReport(
 
         url: str
         for url in _getGHIssuesForRepo(
-            repo, org, labels=labels, skip_labels=skip_labels
+            repo,
+            org,
+            labels=labels,
+            skip_labels=skip_labels,
+            since=since,
         ):
             if url not in known_urls and url not in gh_urls:
                 gh_urls.append(url)
@@ -286,11 +303,7 @@ def getUpdatedReport(cves: List[CVE], org: str, since: int = 0) -> None:
     """Obtain list of URLs that have received an update since last run"""
     urls: Dict[str, List[str]] = _getKnownIssues(cves, filter_url=org)
 
-    # convert since to a date string that we can lexigraphically compare to the
-    # github string
-    if not isinstance(since, int) or since < 0:
-        raise ValueError
-    since_str: str = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(since))
+    since_str: str = epochToISO8601(since)
 
     # find updates
     updated_urls: List[str] = []
@@ -543,11 +556,7 @@ def getGHAlertsUpdatedReport(
     enabled: List[str]
     enabled, _ = _getGHAlertsEnabled(org, repos, excluded_repos)
 
-    # convert since to a date string that we can lexigraphically compare to the
-    # github string
-    if not isinstance(since, int) or since < 0:
-        raise ValueError
-    since_str: str = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(since))
+    since_str: str = epochToISO8601(since)
 
     # find updates
     updated: Dict[str, List[Dict[str, str]]] = {}

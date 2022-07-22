@@ -612,6 +612,28 @@ class TestReport(TestCase):
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/4" in r)
 
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
+    def test__getGHIssuesForRepoSince(self, _):  # 2nd arg is 'mock_get'
+        """Test _getGHIssuesForRepo() since 2022-06-22T12:33:47Z"""
+        r = cvelib.report._getGHIssuesForRepo(
+            "valid-repo", "valid-org", since=1655901227
+        )
+        self.assertEqual(4, len(r))
+        self.assertTrue("https://github.com/valid-org/valid-repo/issues/1" in r)
+        self.assertTrue("https://github.com/valid-org/valid-repo/issues/2" in r)
+        self.assertTrue("https://github.com/valid-org/valid-repo/issues/3" in r)
+        self.assertTrue("https://github.com/valid-org/valid-repo/issues/4" in r)
+
+        # do it a second time to use issues_all
+        r = cvelib.report._getGHIssuesForRepo(
+            "valid-repo", "valid-org", since=1655901227
+        )
+        self.assertEqual(4, len(r))
+        self.assertTrue("https://github.com/valid-org/valid-repo/issues/1" in r)
+        self.assertTrue("https://github.com/valid-org/valid-repo/issues/2" in r)
+        self.assertTrue("https://github.com/valid-org/valid-repo/issues/3" in r)
+        self.assertTrue("https://github.com/valid-org/valid-repo/issues/4" in r)
+
+    @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
     def test__getGHIssuesForRepoLabel1(self, _):  # 2nd arg is 'mock_get'
         """Test _getGHIssuesForRepo() - with label1"""
         r = cvelib.report._getGHIssuesForRepo(

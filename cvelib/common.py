@@ -7,6 +7,7 @@ import re
 import shutil
 import sys
 import tempfile
+import time
 from typing import Dict, List, Optional, Pattern, Tuple, Union
 
 from email.message import Message
@@ -326,6 +327,13 @@ def updateProgress(
     )
     if "TEST_NO_UPDATE_PROGRESS" not in os.environ:
         print("%s%s\r" % (prefix, bar), end="")
+
+
+def epochToISO8601(since: int) -> str:
+    """Convert epoch seconds to ISO 8601 YYYY-MM-DDTHH:MM:SSZ"""
+    if not isinstance(since, int) or since < 0:
+        raise ValueError
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(since))
 
 
 def readCve(fn: str) -> Dict[str, str]:

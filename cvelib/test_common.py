@@ -73,6 +73,25 @@ class TestCommon(TestCase):
                 self.assertEqual(expOut, output.getvalue().strip())
             self.assertEqual(expErr, error.getvalue().strip())
 
+    def test_epochToISO8601(self):
+        """Test epochToISO8601()"""
+        tsts = [
+            # valid
+            (1, "1970-01-01T00:00:01Z", True),
+            (1658491453, "2022-07-22T12:04:13Z", True),
+            # invalid
+            (-1, "", False),
+            ("1", "", False),
+        ]
+
+        for input, exp, is_valid in tsts:
+            if is_valid:
+                res = cvelib.common.epochToISO8601(input)
+                self.assertEqual(exp, res)
+            else:
+                with self.assertRaises(ValueError):
+                    cvelib.common.epochToISO8601(input)
+
     def test_setCveHeader(self):
         """Test setCveHeader()"""
         m = EmailMessage()
