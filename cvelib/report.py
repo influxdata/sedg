@@ -148,35 +148,6 @@ def _getGHIssuesForRepo(
     return []  # repo with turned off issues
 
 
-def _getGHIssue(repo: str, org: str, number: int) -> Mapping[str, Any]:
-    """Obtain the GitHub issue for the specified repo, org and issue number"""
-    global issues_ind
-    k: str = "%s/%d" % (repo, number)
-    if k in issues_ind:
-        print("Using previously fetched issue for %s" % k)
-        return issues_ind[k]
-
-    url: str = "https://api.github.com/repos/%s/%s/issues/%d" % (org, repo, number)
-    params: Dict[str, Union[str, int]] = {"accept": "application/vnd.github.v3+json"}
-
-    r: requests.Response = requestGetRaw(url, params=params)
-    if r.status_code == 410:  # repo turned off issues
-        # warn("Skipping %s (%d) - issues turned off" % (url, r.status_code))
-        return {}
-    elif r.status_code == 404:
-        warn("Skipping %s (%d)" % (url, r.status_code))
-        return {}
-    elif r.status_code >= 400:
-        error(
-            "Problem fetching %s:\n%d - %s" % (url, r.status_code, r.json()),
-            do_exit=False,
-        )
-        return {}
-
-    issues_ind[k] = r.json()
-    return issues_ind[k]
-
-
 def _getKnownIssues(
     cves: List[CVE], filter_url: Optional[str] = None
 ) -> Dict[str, List[str]]:
