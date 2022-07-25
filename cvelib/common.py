@@ -318,7 +318,7 @@ def updateProgress(
         pad: int = 10
         if len(prefix) > tw - pad * 2:
             if "TEST_NO_UPDATE_PROGRESS" not in os.environ:
-                print("%s..." % prefix[: max - 8], end="")
+                print("%s...\r" % prefix[: max - 8], end="")
             return
         barLength = tw - len(prefix) - pad
 
