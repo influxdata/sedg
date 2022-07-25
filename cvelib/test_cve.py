@@ -1907,7 +1907,6 @@ cve-data = %s
             os.mkdir(cveDirs[d], 0o0700)
 
         cve_fn = os.path.join(cveDirs["active"], "CVE-2021-999999")
-        boiler_fn = os.path.join(cveDirs["active"], "00boilerplate")
 
         # missing boiler
         with self.assertRaises(cvelib.common.CveException) as context:
@@ -1919,6 +1918,8 @@ cve-data = %s
             str(context.exception),
         )
 
+        # standard boiler
+        boiler_fn = os.path.join(cveDirs["active"], "00boilerplate")
         boiler_content = """Candidate:
 PublicDate:
 References:
@@ -1940,6 +1941,26 @@ CVSS:
         res = createAndVerify(
             cveDirs, cve_fn, os.path.basename(cve_fn), ["git/github_foo"]
         )
+        self.assertTrue("Candidate" in res)
+        self.assertEqual(os.path.basename(cve_fn), res["Candidate"])
+        self.assertTrue("References" in res)
+        self.assertEqual(
+            "\n https://www.cve.org/CVERecord?id=CVE-2021-999999", res["References"]
+        )
+        self.assertTrue("Description" in res)
+        self.assertEqual("", res["Description"])
+        self.assertTrue("Notes" in res)
+        self.assertEqual("", res["Notes"])
+        self.assertTrue("Mitigation" in res)
+        self.assertEqual("", res["Mitigation"])
+        self.assertTrue("Bugs" in res)
+        self.assertEqual("", res["Bugs"])
+        self.assertTrue("Priority" in res)
+        self.assertEqual("untriaged", res["Priority"])
+        self.assertTrue("Discovered-by" in res)
+        self.assertEqual("", res["Discovered-by"])
+        self.assertTrue("Assigned-to" in res)
+        self.assertEqual("", res["Assigned-to"])
         self.assertTrue("Patches_foo" in res)
         self.assertTrue("git/github_foo" in res)
         self.assertEqual("needs-triage", res["git/github_foo"])
@@ -1982,7 +2003,7 @@ CVSS:
         self.assertEqual("foo", res4["Discovered-by"])
 
     def test_addCve(self):
-        """Test _createCve()"""
+        """Test addCve()"""
         self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
         cveDirs = {}
         for d in cvelib.common.cve_reldirs:
@@ -2182,6 +2203,87 @@ upstream_baz: needed
             if boiler is not None:
                 self.assertTrue("upstream_baz" in res)
                 self.assertEqual("needed", res["upstream_baz"])
+
+    def test_z_addCvePackageBoiler(self):
+        """Test addCve()"""
+        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
+
+        # populated boiler
+        cve_fn = os.path.join(cveDirs["active"], "CVE-2021-888888")
+        boiler_fn = os.path.join(cveDirs["active"], "00boilerplate.foo")
+        boiler_content = """Candidate:
+OpenDate:
+PublicDate:
+References:
+ https://foo.com
+Description:
+ some description
+Notes:
+ who> note 1
+ who> note 2
+Mitigation:
+ some mitigation
+Bugs:
+ https://foo.com/1
+Priority: low
+Discovered-by: who1
+Assigned-to: who2
+CVSS:
+
+Patches_foo:
+upstream_foo: needed
+oci/bar_foo: pending
+git/bar_foo: ignored
+"""
+        with open(boiler_fn, "w") as fp:
+            fp.write("%s" % boiler_content)
+
+        cvelib.cve.addCve(
+            cveDirs,
+            False,
+            os.path.basename(cve_fn),
+            ["git/github_foo"],
+            boiler=None,
+            retired=False,
+        )
+
+        res = cvelib.common.readCve(cve_fn)
+        self.assertTrue("Candidate" in res)
+        self.assertEqual(os.path.basename(cve_fn), res["Candidate"])
+        self.assertTrue("References" in res)
+        self.assertEqual(
+            "\n https://foo.com\n https://www.cve.org/CVERecord?id=CVE-2021-888888",
+            res["References"],
+        )
+        self.assertTrue("Description" in res)
+        self.assertEqual("\n some description", res["Description"])
+        self.assertTrue("Notes" in res)
+        self.assertEqual("\n who> note 1\n who> note 2", res["Notes"])
+        self.assertTrue("Mitigation" in res)
+        self.assertEqual("\n some mitigation", res["Mitigation"])
+        self.assertTrue("Bugs" in res)
+        self.assertEqual("\n https://foo.com/1", res["Bugs"])
+        self.assertTrue("Priority" in res)
+        self.assertEqual("low", res["Priority"])
+        self.assertTrue("Discovered-by" in res)
+        self.assertEqual("who1", res["Discovered-by"])
+        self.assertTrue("Assigned-to" in res)
+        self.assertEqual("who2", res["Assigned-to"])
+
+        self.assertTrue("Patches_foo" in res)
+        self.assertTrue("upstream_foo" in res)
+        self.assertEqual("needed", res["upstream_foo"])
+        self.assertTrue("oci/bar_foo" in res)
+        self.assertEqual("pending", res["oci/bar_foo"])
+        self.assertTrue("git/bar_foo" in res)
+        self.assertEqual("ignored", res["git/bar_foo"])
+
+        self.assertFalse("Patches_bar" in res)
+        self.assertFalse("git/github_bar" in res)
 
     def test__getCVEPaths(self):
         """Test _getCVEPaths"""

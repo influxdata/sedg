@@ -957,8 +957,8 @@ def _createCve(
         refs: List[str]
         bugs: List[str]
         refs, bugs = _genReferencesAndBugs(cve)
-        data["References"] = "\n %s" % " ".join(refs)
-        data["Bugs"] = "\n %s" % " ".join(bugs) if bugs else ""
+        data["References"] += "\n %s" % " ".join(refs)
+        data["Bugs"] += "\n %s" % " ".join(bugs) if bugs else ""
 
     # fill in the CVE candidate (needed with new and per-package boiler, but
     # re-setting it for existing is harmless and makes the logic simpler)
