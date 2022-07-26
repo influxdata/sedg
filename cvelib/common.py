@@ -103,7 +103,7 @@ rePatterns: Dict[str, Pattern[str]] = {
     # CVE-YYYY-NNNX (1-11 N's)
     # CVE-YYYY-GHXXXX#AAAA (1-12 X's, 1-40 A's)
     "CVE": re.compile(
-        r"^CVE-[0-9]{4}-([0-9N]{3,11}[0-9]|GH[0-9]{1,12}#[a-zA-Z0-9+.-]{1,%(software_len)d})$"
+        r"^CVE-[0-9]{4}-([0-9N]{3,11}[0-9]|GH[0-9]{1,12}#[a-zA-Z0-9+._-]{1,%(software_len)d})$"
         % ({"software_len": _patLengths["pkg-software"]})
     ),
     # CVE-YYYY-NNNX (1-11 N's)
@@ -128,7 +128,7 @@ rePatterns: Dict[str, Pattern[str]] = {
     ),
     # https://github.com/<org>/<project>/issues/<num>
     "github-issue": re.compile(
-        r"^https://github.com/[a-z0-9+.-]{1,40}/[a-zA-Z0-9+.-]{1,%(software_len)d}/issues/[0-9]{1,12}"
+        r"^https://github.com/[a-z0-9+.-]{1,40}/[a-zA-Z0-9+._-]{1,%(software_len)d}/issues/[0-9]{1,12}"
         % ({"software_len": _patLengths["pkg-software"]})
     ),
     # https://github.com/advisories/GHSA-...

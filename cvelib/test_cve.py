@@ -855,6 +855,7 @@ git/github_norf: needs-triage
             ("CVE-2020-GH123456789012#a", True),
             ("CVE-2020-GH1#%s" % ("a" * 50), True),
             ("CVE-2020-GH123456789012#A", True),
+            ("CVE-2020-GH1234#foo_bar", True),
             ("BAD", False),
             ("CVE-202O-1234", False),
             ("CV3-2020-1234", False),
@@ -1293,6 +1294,12 @@ git/github_norf: needs-triage
             (
                 "https://github.com/foo/bar/issues/1",
                 "CVE-%s-GH1#bar" % year,
+                "foo",
+                None,
+            ),
+            (
+                "https://github.com/foo/bar_baz/issues/1",
+                "CVE-%s-GH1#bar_baz" % year,
                 "foo",
                 None,
             ),
