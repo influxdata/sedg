@@ -248,6 +248,7 @@ class TestGitHubDependabot(TestCase):
             ("needs-triage", None),
             ("needed", None),
             ("released", None),
+            ("removed", None),
             ("dismissed (started; username)", None),
             ("dismissed (no-bandwidth; username)", None),
             ("dismissed (tolerable; username)", None),
@@ -256,7 +257,7 @@ class TestGitHubDependabot(TestCase):
             # invalid
             (
                 "fixed",
-                "invalid dependabot status: fixed. Use 'needs-triage|needed|released|dismissed (...)'",
+                "invalid dependabot status: fixed. Use 'needs-triage|needed|released|removed|dismissed (...)'",
             ),
             (
                 "dismissed",

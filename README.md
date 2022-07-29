@@ -99,7 +99,7 @@ Items within `[]` are optional.
        detectedIn: path/to/file
        advisory: https://github.com/advisories/GHSA-... | unavailable
        severity: low | moderate | high | critical
-       status: needs-triage | needed | released | dismissed (<reason>; <who>)
+       status: needs-triage | needed | released | removed | dismissed (<reason>; <who>)
        url: https://github.com/ORG/REPO/security/dependabot/N | unavailable
      - type: secret
        secret: <found secret description>

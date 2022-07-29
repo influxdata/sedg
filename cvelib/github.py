@@ -91,7 +91,7 @@ class GHDependabot(object):
                     % s
                 )
             raise CveException(
-                "invalid dependabot status: %s. Use 'needs-triage|needed|released|dismissed (...)'"
+                "invalid dependabot status: %s. Use 'needs-triage|needed|released|removed|dismissed (...)'"
                 % s
             )
         self.status = s
