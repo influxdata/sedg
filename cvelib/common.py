@@ -317,7 +317,10 @@ def updateProgress(
         # as a convenience for leaving room for the bar and status)
         pad: int = 10
         if len(prefix) > tw - pad * 2:
-            if "TEST_NO_UPDATE_PROGRESS" not in os.environ:
+            if (sys.stdout.isatty() and "TEST_UPDATE_PROGRESS" not in os.environ) or (
+                "TEST_UPDATE_PROGRESS" in os.environ
+                and os.environ["TEST_UPDATE_PROGRESS"] != "0"
+            ):
                 print("%s...\r" % prefix[: max - 8], end="")
             return
         barLength = tw - len(prefix) - pad
@@ -326,7 +329,10 @@ def updateProgress(
     bar: str = "[{0}] {1}% {2}".format(
         "#" * block + "-" * (barLength - block), int(progress * 100), status
     )
-    if "TEST_NO_UPDATE_PROGRESS" not in os.environ:
+    if (sys.stdout.isatty() and "TEST_UPDATE_PROGRESS" not in os.environ) or (
+        "TEST_UPDATE_PROGRESS" in os.environ
+        and os.environ["TEST_UPDATE_PROGRESS"] != "0"
+    ):
         print("%s%s\r" % (prefix, bar), end="")
 
 

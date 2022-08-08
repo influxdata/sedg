@@ -485,7 +485,7 @@ class TestReport(TestCase):
         if "GHTOKEN" in os.environ:
             self.orig_ghtoken = os.getenv("GHTOKEN")
         os.environ["GHTOKEN"] = "fake-test-token"
-        os.environ["TEST_NO_UPDATE_PROGRESS"] = "1"
+        os.environ["TEST_UPDATE_PROGRESS"] = "0"
 
     def tearDown(self):
         """Teardown functions common for all tests"""
@@ -496,6 +496,8 @@ class TestReport(TestCase):
         # TODO: when pass these around, can remove this
         cvelib.report.repos_all = []
         cvelib.report.issues_ind = {}
+        if "TEST_UPDATE_PROGRESS" in os.environ:
+            del os.environ["TEST_UPDATE_PROGRESS"]
 
     def _cve_template(self, cand="", references=[]):
         """Generate a valid CVE to mimic what readCve() might see"""

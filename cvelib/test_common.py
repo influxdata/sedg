@@ -30,6 +30,9 @@ class TestCommon(TestCase):
 
         cvelib.common.configCache = None
 
+        if "TEST_UPDATE_PROGRESS" in os.environ:
+            del os.environ["TEST_UPDATE_PROGRESS"]
+
     def test_msg(self):
         """Test msg()"""
         with cvelib.testutil.capturedOutput() as (output, error):
@@ -53,6 +56,7 @@ class TestCommon(TestCase):
 
     def test_updateProgress(self):
         """Test updateProgress()"""
+        os.environ["TEST_UPDATE_PROGRESS"] = "1"
         tsts = [
             # (progress, barLength, prefix, expOut)
             (0, 10, "", "[----------] 0%"),
