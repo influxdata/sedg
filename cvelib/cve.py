@@ -801,12 +801,16 @@ def checkSyntaxFile(
 
 
 def checkSyntax(
-    cveDirs: Dict[str, str], compatUbuntu: bool, untriagedOk: bool = False
+        cveDirs: Dict[str, str], compatUbuntu: bool, untriagedOk: bool = False, cveFiles: Optional[List[str]] = None
 ) -> bool:
     """Perform syntax checks on CVEs"""
     # TODO: make configurable
     seen: Dict[str, List[str]] = {}
-    cves: List[str] = _getCVEPaths(cveDirs)
+    cves: List[str] = []
+    if cveFiles is not None:
+        cves = cveFiles
+    else:
+        cves = _getCVEPaths(cveDirs)
     ok = True
     for f in cves:
         tmp: List[str] = os.path.realpath(f).split("/")
