@@ -801,7 +801,10 @@ def checkSyntaxFile(
 
 
 def checkSyntax(
-        cveDirs: Dict[str, str], compatUbuntu: bool, untriagedOk: bool = False, cveFiles: Optional[List[str]] = None
+    cveDirs: Dict[str, str],
+    compatUbuntu: bool,
+    untriagedOk: bool = False,
+    cveFiles: Optional[List[str]] = None,
 ) -> bool:
     """Perform syntax checks on CVEs"""
     # TODO: make configurable
