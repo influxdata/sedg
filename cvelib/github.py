@@ -2,7 +2,7 @@
 
 import re
 from typing import Dict, List, Union
-import yaml
+from yaml import load, CSafeLoader
 
 from cvelib.common import CveException, rePatterns
 
@@ -185,7 +185,10 @@ def parse(s: str) -> List[Union[GHDependabot, GHSecret]]:
 
     yml: List[Dict[str, str]]
     try:
-        yml = yaml.safe_load(s)
+        # Use yaml.load(s, Loader=yaml.CSafeLoader) instead of
+        # yaml.safe_load(s) since the C implementation is so much faster
+        #yml = yaml.load(s, Loader=yaml.CSafeLoader)
+        yml = load(s, Loader=CSafeLoader)
     except Exception:
         raise CveException("invalid yaml:\n'%s'" % s)
 
