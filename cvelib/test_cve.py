@@ -1478,7 +1478,7 @@ cve-data = %s
                 self.assertEqual("", output.getvalue().strip())
                 self.assertEqual(expErr, error.getvalue().strip())
 
-        # non-matching
+        # non-matching with cveFiles unset
         tmpl = self._cve_template()
         tmpl["git/github_pkg1"] = "needed"
         content = cvelib.testutil.cveContentFromDict(tmpl)
@@ -1488,6 +1488,25 @@ cve-data = %s
 
         with cvelib.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertFalse(res)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: active/CVE-1234-5678: non-matching candidate 'CVE-2020-1234'",
+            error.getvalue().strip(),
+        )
+
+        # non-matching with cveFiles set
+        tmpl = self._cve_template()
+        tmpl["git/github_pkg1"] = "needed"
+        content = cvelib.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            res = cvelib.cve.checkSyntax(cveDirs, False, cveFiles=[cve_fn])
         os.unlink(cve_fn)
 
         self.assertFalse(res)
