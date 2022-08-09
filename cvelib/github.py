@@ -187,7 +187,7 @@ def parse(s: str) -> List[Union[GHDependabot, GHSecret]]:
     try:
         # Use yaml.load(s, Loader=yaml.CSafeLoader) instead of
         # yaml.safe_load(s) since the C implementation is so much faster
-        #yml = yaml.load(s, Loader=yaml.CSafeLoader)
+        # yml = yaml.load(s, Loader=yaml.CSafeLoader)
         yml = load(s, Loader=CSafeLoader)
     except Exception:
         raise CveException("invalid yaml:\n'%s'" % s)

@@ -1569,7 +1569,7 @@ cve-data = %s
         self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
-            "WARN: retired/CVE-1234-5678: is retired but has open items",
+            "WARN: retired/CVE-1234-5678: is retired but has software with open status",
             error.getvalue().strip(),
         )
 
@@ -1589,7 +1589,7 @@ cve-data = %s
         self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
-            "WARN: active/CVE-1234-5678: is active but has only closed items",
+            "WARN: active/CVE-1234-5678: is active but has software with only closed status",
             error.getvalue().strip(),
         )
 
@@ -1666,12 +1666,12 @@ cve-data = %s
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
    severity: moderate
-   status: dismissed (inaccurate; who)
+   status: needed
    url: https://github.com/bar/baz/security/dependabot/1
  - type: secret
    secret: Slack Incoming Webhook URL
    detectedIn: /path/to/file
-   status: dismissed (revoked; who)
+   status: needed
    url: https://github.com/bar/baz/security/secret-scanning/1
 """
             tmpl["Discovered-by"] = dsc
@@ -1721,7 +1721,39 @@ cve-data = %s
         self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
-            "WARN: retired/CVE-1234-5678: is retired but has open GitHub Advanced Security items",
+            "WARN: retired/CVE-1234-5678: is retired but has open GitHub Advanced Security entries",
+            error.getvalue().strip(),
+        )
+
+        # active has closed GHAS
+        tmpl = self._cve_template()
+        tmpl["Candidate"] = "CVE-1234-5678"
+        tmpl["git/github_pkg1"] = "needed"
+        tmpl["Discovered-by"] = "gh-dependabot"
+        tmpl[
+            "GitHub-Advanced-Security"
+        ] = """
+ - type: dependabot
+   dependency: foo
+   detectedIn: yarn.lock
+   advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
+   severity: moderate
+   status: released
+   url: https://github.com/influxdata/foo/security/dependabot/1
+"""
+        content = cvelib.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            res = cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertFalse(res)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: active/CVE-1234-5678: is active but has only closed GitHub Advanced Security entries",
             error.getvalue().strip(),
         )
 

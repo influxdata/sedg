@@ -761,10 +761,12 @@ def checkSyntaxFile(
                 break
         if open and "retired" in rel:
             ok = False
-            cvelib.common.warn("%s: is retired but has open items" % rel)
+            cvelib.common.warn("%s: is retired but has software with open status" % rel)
         elif not open and "active" in rel:
             ok = False
-            cvelib.common.warn("%s: is active but has only closed items" % rel)
+            cvelib.common.warn(
+                "%s: is active but has software with only closed status" % rel
+            )
 
     # make sure Discovered-by is populated if specified GitHub-Advanced-Security
     seen: List[str] = []
@@ -794,7 +796,12 @@ def checkSyntaxFile(
     if len(cve.ghas) > 0 and open_ghas and "retired" in rel:
         ok = False
         cvelib.common.warn(
-            "%s: is retired but has open GitHub Advanced Security items" % rel
+            "%s: is retired but has open GitHub Advanced Security entries" % rel
+        )
+    elif len(cve.ghas) > 0 and not open_ghas and "active" in rel:
+        ok = False
+        cvelib.common.warn(
+            "%s: is active but has only closed GitHub Advanced Security entries" % rel
         )
 
     return cve, ok
