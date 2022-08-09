@@ -2243,7 +2243,114 @@ upstream_baz: needed
                 self.assertTrue("upstream_baz" in res)
                 self.assertEqual("needed", res["upstream_baz"])
 
-    def test_z_addCvePackageBoiler(self):
+    def test_addCveAppend(self):
+        """Test addCve() - append"""
+        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
+
+        boiler_fn = os.path.join(cveDirs["active"], "00boilerplate")
+        boiler_content = """Candidate:
+PublicDate:
+References:
+Description:
+Notes:
+Mitigation:
+Bugs:
+Priority: untriaged
+Discovered-by:
+Assigned-to:
+CVSS:
+
+#Patches_PKG:
+#upstream_PKG:
+"""
+        with open(boiler_fn, "w") as fp:
+            fp.write("%s" % boiler_content)
+
+        # add the first CVE
+        cve_fn = os.path.join(cveDirs["active"], "CVE-2021-777777")
+        cvelib.cve.addCve(
+            cveDirs,
+            False,
+            os.path.basename(cve_fn),
+            ["git/github_foo"],
+            boiler=None,
+            retired=False,
+        )
+
+        res = cvelib.common.readCve(cve_fn)
+        self.assertEqual(15, len(res))
+        self.assertTrue("Candidate" in res)
+        self.assertEqual(os.path.basename(cve_fn), res["Candidate"])
+
+        now = datetime.datetime.now()
+        t = "%d-%0.2d-%0.2d" % (now.year, now.month, now.day)
+        self.assertTrue("OpenDate" in res)
+        self.assertEqual(t, res["OpenDate"])
+
+        self.assertTrue("PublicDate" in res)
+        self.assertEqual("", res["PublicDate"])
+        self.assertTrue("CRD" in res)
+        self.assertEqual("", res["CRD"])
+
+        self.assertTrue("References" in res)
+        self.assertEqual(
+            "\n https://www.cve.org/CVERecord?id=CVE-2021-777777",
+            res["References"],
+        )
+
+        self.assertTrue("Description" in res)
+        self.assertEqual("", res["Description"])
+        self.assertTrue("Notes" in res)
+        self.assertEqual("", res["Notes"])
+        self.assertTrue("Mitigation" in res)
+        self.assertEqual("", res["Mitigation"])
+        self.assertTrue("Bugs" in res)
+        self.assertEqual("", res["Bugs"])
+        self.assertTrue("Priority" in res)
+        self.assertEqual("untriaged", res["Priority"])
+        self.assertTrue("Discovered-by" in res)
+        self.assertEqual("", res["Discovered-by"])
+        self.assertTrue("Assigned-to" in res)
+        self.assertEqual("", res["Assigned-to"])
+
+        self.assertTrue("Patches_foo" in res)
+        self.assertTrue("git/github_foo" in res)
+        self.assertEqual("needs-triage", res["git/github_foo"])
+
+        # adjust a couple of things manually and write it out
+        past = "2020-02-02"
+        cve = cvelib.cve.CVE(fn=cve_fn, untriagedOk=True)
+        cve.setOpenDate(past)
+        cve.setPublicDate(past)
+        with open(cve_fn, "w") as fp:
+            fp.write(cve.onDiskFormat())
+
+        # add the second CVE
+        cve_fn = os.path.join(cveDirs["active"], "CVE-2021-777777")
+        cvelib.cve.addCve(
+            cveDirs,
+            False,
+            os.path.basename(cve_fn),
+            ["git/github_bar"],
+            boiler=None,
+            retired=False,
+        )
+
+        res = cvelib.common.readCve(cve_fn)
+        self.assertEqual(17, len(res))
+        self.assertTrue("OpenDate" in res)
+        self.assertEqual(past, res["OpenDate"])
+        self.assertTrue("PublicDate" in res)
+        self.assertEqual(past, res["PublicDate"])
+        self.assertTrue("Patches_bar" in res)
+        self.assertTrue("git/github_bar" in res)
+        self.assertEqual("needs-triage", res["git/github_bar"])
+
+    def test_addCvePackageBoiler(self):
         """Test addCve()"""
         self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
         cveDirs = {}

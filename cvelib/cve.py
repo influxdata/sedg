@@ -978,8 +978,9 @@ def _createCve(
     # re-setting it for existing is harmless and makes the logic simpler)
     data["Candidate"] = os.path.basename(cve_path)
 
-    now: datetime.datetime = datetime.datetime.now()
-    data["OpenDate"] = "%d-%0.2d-%0.2d" % (now.year, now.month, now.day)
+    if not append or "OpenDate" not in data or data["OpenDate"] == "":
+        now: datetime.datetime = datetime.datetime.now()
+        data["OpenDate"] = "%d-%0.2d-%0.2d" % (now.year, now.month, now.day)
 
     pkgObjs: List[CvePkg] = []
     for p in args_pkgs:
