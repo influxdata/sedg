@@ -90,7 +90,7 @@ by the file format. The format could be moved to RFC6532 at a future date.
 Items within `[]` are optional.
 
 ```
-    Candidate: CVE-<year>-<number> | CVE-<year>-GH<issue/pull>#<project>
+    Candidate: CVE-<year>-<number> | CVE-<year>-GH<issue/pull>#<project> | CVE-<year>-NNNX
     OpenDate: YYYY-MM-DD [ HH:MM:SS [ TZ|+-N ] ]
     PublicDate: YYYY-MM-DD [ HH:MM:SS [ TZ|+-N ] ]
     CRD: YYYY-MM-DD [ HH:MM:SS [ TZ|+-N ] ]
@@ -155,10 +155,96 @@ Items within `[]` are optional.
     ... <additional software> ...
 ```
 
-Note that the blank line before each software section is not required but is
-conventional and easier to read.
+The CVE format can be thought of in two sections: the global section and the
+software section. Since CVE identifiers often apply to more than one product,
+software version, etc, the global section is meant to generally apply to all
+software declared in the CVE, whereas the software section lists specifics for
+each software product, version, etc. In this manner, a single CVE file may
+contain all pertinent information for the CVE on the whole with per-software
+entries showing status for this issue.
+
+
+## Global section
+
+For each field in the global section:
+ * `Candidate` is the CVE identifier for this issue. 3 formats are supported:
+   * `CVE-<year>-<number>` (eg, `CVE-2020-1234`) is used for tracking publicly
+     assigned issues
+   * `CVE-<year>-NNNX` (eg, `CVE-2020-NNN1` or `CVE-2020-NNN2`) is used for
+     tracking non-public issues. This might be useful for tracking before a
+     public assignment or when tracking a private issue. By convention, when
+     first creating a non-public CVE, choose the current year and increment the
+     value of `X` like so: `CVE-2020-NNN1`, `CVE-2020-NNN2`, ...,
+     `CVE-2020-NNN9`, `CVE-2020-NN10`, ..., `CVE-2020-N999`, `CVE-2020-N1000`,
+     etc)
+   * `CVE-<year>-GH<issue/pull>#<project>` (eg, `CVE-2020-GH1234#foo`) is used
+     for tracking a non-public or a not-yet-assigned-CVE identifier issue in
+     GitHub. It encodes both the GitHub repository and issue number/pull
+     request, such that `CVE-2020-GH1234#foo` corresponds with
+     https://github.com/<yourorg>/foo/issues/1234. This is particularly useful
+     for organizations with lots of repositories.
+ * `OpenDate` is the date the CVE was created
+ * `PublicDate` is the date that a private CVE was made public
+ * `CRD` is the Coordinated Release Date. This can be used for coordinating
+   with other parties to make a CVE public at a specific time
+ * `References` contains a list of URLs, one per line, relevant for the CVE
+ * `Description` contains the general description for the CVE. It may contain
+   details for a specific piece of software (but typically not details on how
+   other software might use it)
+ * `GitHub-Advanced-Security` is optional and may be used to track GitHub
+   dependabot alerts and secret scanning
+ * `Notes` contains information from triagers, developers, etc to give more
+   insight into the vulnerability, particularly how it pertains to individual
+   pieces of software, configuration, build artifacts, etc. It will often
+   contain rationale for entries in the software section (below), but may
+   contain anything that is relevant
+ * `Mitigation` contains information on how available mitigations may be
+   applied before patching
+ * `Bugs` contains a list of Bug tracker URLs, one per line. These may also be
+   listed in the References section
+ * `Priority` contains the priority for fixing the CVE, typically as it pertains
+   to the item described in the `Description` (above). Per-software priority
+   overrides are possible in the software section (below). Supported
+   priorities are:
+   * `negligible`
+   * `low`
+   * `medium`
+   * `high`
+   * `critical`
+ * `Discovered-by` is a comma-separated list of names, slack handles, GitHub
+   usernames, etc and used for attribution. `gh-dependabot` and `gh-secret` are
+   used when using `GitHub-Advanced-Security` (above)
+ * `Assigned-to` contains the name, slack handle, GitHub username, etc of the
+   person assigned to this issue
+ * `CVSS` contains a list of CVSS scores as assigned by different entities
+
+
+## Software section
+
+By convention, the software section is typically divided into stanzas grouped
+by software. The blank line before each software section is not required but is
+normally used since it makes the CVE easier to read.
 
 For each field in the software section:
+ * `Patches_<softwareN>` (eg, `Patches_foo` or `Patches_bar`) contains a list
+   of patch URLs, one per line, with provenance prefixed
+ * `Tags_<softwareN>[/modifier]` (eg, `Tags_foo` or `Tags_bar/v1`) is optional
+   and when specified contains a comma-separated list of tags. Tags have
+   historically been used to describe a mitigating factor provided by the OS
+   (ie, without user intervention, so different than the `Mitigation` section,
+   above). The `limit-report` tag is used to manipulate reports in different
+   ways. Currently supported tags are:
+   * `apparmor`
+   * `fortify-source`
+   * `hardlink-restriction`
+   * `heap-protector`
+   * `limit-report`
+   * `pie`
+   * `stack-protector`
+   * `symlink-restriction`
+ * `Priority_<softwareN>[/modifier]` (eg, `Priority_foo` or `Priority_bar/v1`)
+   is optional and when specified contains a priority override for
+   `<softwareN>[/modifier]`
  * `<product>` is the supporting technology (eg, `git`, `snap`, `oci`, etc),
    OS (eg, `ubuntu`, `debian`, `suse`, etc) or simply `upstream`
  * `<where>` indicates where the software lives or in the case of snaps or
@@ -166,7 +252,15 @@ For each field in the software section:
    OS (eg, `ubuntu`, `debian`, `suse`, etc), `<where>` indicates the release of
    the distribution (eg, `ubuntu/focal` indicates 20.04 for Ubuntu where
    `ubuntu` is the `<product>` (distro) and `focal` is the `<where>` (distro
-   release)).
+   release)). For `git`, `<where>` could indicate the source code hosting
+   provider (eg, `github`, `gitlab`, `launchpad`, etc) or could be used to
+   indicate the organization/user in a hosting provider. Eg, `git/github_foo`
+   indicates that `foo` is somewhere in GitHub whereas `git/bar_foo` could be
+   used to indicate that `foo` is in some provider's organization/user. How
+   `<where>` is used is not prescribed and the `<product>/<where>` combination
+   is not meant to capture everything where the software lives. It is meant to
+   be flexible to allow triagers a means to discern these differences as
+   appropriate for their requirements
  * `<software>` is the name of the software as dictated by the product (eg, the
    name of the github project, the name of the OCI image, the deb source
    package, the name of the snap, etc)
