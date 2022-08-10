@@ -149,12 +149,15 @@ class GHSecret(object):
 
     # set methods
     def setSecret(self, s: str) -> None:
+        """Set secret"""
         self.secret = s
 
     def setDetectedIn(self, s: str) -> None:
+        """Set detectedIn"""
         self.detectedIn = s
 
     def setStatus(self, s: str) -> None:
+        """Set status"""
         if not rePatterns["github-secret-status"].search(s):
             if "dismissed" in s:
                 raise CveException(
@@ -175,6 +178,7 @@ class GHSecret(object):
 
 
 def _isNonEmptyStr(s: str) -> bool:
+    """Check if string is non-empty"""
     return s != ""
 
 

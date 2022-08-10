@@ -263,7 +263,7 @@ def error(out: str, exitCode: int = 1, do_exit: bool = True) -> None:
 
 
 def recursive_rm(dirPath: str, contents_only: bool = False, top: bool = True) -> None:
-    """recursively remove directory"""
+    """Recursively remove directory"""
     if top:
         os.chmod(dirPath, 0o0755)  # ensure the top dir is always removable
 
@@ -450,6 +450,7 @@ def readConfig() -> Tuple[configparser.ConfigParser, str]:
 
 
 def getConfigCveDataPaths() -> Dict[str, str]:
+    """Find the configured CVE data directories"""
     config: configparser.ConfigParser
     configFilePath: str
     top: Optional[str] = None
@@ -483,6 +484,7 @@ def getConfigCveDataPaths() -> Dict[str, str]:
 
 
 def getConfigCompatUbuntu() -> bool:
+    """Read Ubuntu compat configuration from config"""
     config: configparser.ConfigParser
     (config, _) = readConfig()
     if "Behavior" in config and "compat-ubuntu" in config["Behavior"]:

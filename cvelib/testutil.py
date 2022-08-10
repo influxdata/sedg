@@ -39,6 +39,7 @@ def _newConfigFile(content, tmpdir=None):
 
 @contextmanager
 def capturedOutput():
+    """Capture stdout and stderr as StringIO()"""
     newOut, newErr = StringIO(), StringIO()
     oldOut, oldErr = sys.stdout, sys.stderr
     try:

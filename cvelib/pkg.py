@@ -66,7 +66,7 @@ class CvePkg(object):
         return self.__str__()
 
     def what(self) -> str:
-        """The product/where_software/modififer"""
+        """The product/where_software/modifier"""
         s: str = ""
         if self.product:
             s += self.product

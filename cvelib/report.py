@@ -219,6 +219,7 @@ def getMissingReport(
 def _getGHAlertsEnabled(
     org: str, repos: List[str] = [], excluded_repos: List[str] = []
 ) -> Tuple[List[str], List[str]]:
+    """Obtain list of GitHub repositories with alerts enabled"""
     fetch_repos: List[str] = repos
     if len(fetch_repos) == 0:
         fetch_repos = _getGHReposAll(org)
@@ -768,6 +769,7 @@ def _readStatsUniqueCVEs(
 def getHumanReportOpenByPkgPriority(
     stats: Dict[str, _statsUniqueCVEsPkgSoftware]
 ) -> None:
+    """Show report of open issues by package priority"""
     maxlen: int = 30
     headerStr: str = (
         "{pkg:%d} {critical:>10s} {high:>10s} {medium:>10s} {low:>10s} {negligible:>10s}"
@@ -820,6 +822,7 @@ def getHumanReportOpenByPkgPriority(
 
 
 def getHumanReport(cves: List[CVE], filter_product: Optional[str] = None) -> None:
+    """Show report of open and closed issues"""
     stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
         cves, filter_product=filter_product
     )
@@ -841,6 +844,7 @@ class _humanTodoScores(TypedDict):
 
 
 def getHumanTodo(cves: List[CVE], filter_product: Optional[str] = None) -> None:
+    """Show report of open items in todo list format"""
     stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
         cves, filter_product=filter_product
     )
@@ -874,6 +878,7 @@ def getHumanTodo(cves: List[CVE], filter_product: Optional[str] = None) -> None:
 def getHumanSoftwareInfo(
     cves: List[CVE], pkg: str = "", filter_product: Optional[str] = None
 ) -> None:
+    """Show report of open items by software and priority"""
     stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
         cves, filter_product=filter_product
     )
@@ -892,6 +897,7 @@ def getHumanSoftwareInfo(
 
 
 def _readPackagesFile(pkg_fn: str) -> Optional[Set[str]]:
+    """Read the 'packages file' (a list of packages, one per line)"""
     pkgs = None
     if pkg_fn:
         if not os.path.isfile(pkg_fn):
@@ -908,6 +914,8 @@ def getHumanSummary(
     closed: bool = False,
     filter_product: Optional[str] = None,
 ) -> None:
+    """Show report in summary format"""
+
     def _output(
         stats: Dict[str, _statsUniqueCVEsPkgSoftware],
         state: str,
@@ -1012,6 +1020,7 @@ def _readStatsLineProtocol(
     base_timestamp: Optional[int] = None,
     pkgs: Optional[Set[str]] = None,
 ) -> List[str]:
+    """Obtain InfluxDB line protocol from stats"""
     stats: List[str] = []
     lp_f: object = '{measurement},priority={priority},status={status},product={product},where={where} id="{id}",software="{software}",modifier="{modifier}" {timestamp}'.format
 
@@ -1082,6 +1091,7 @@ def getInfluxDBLineProtocol(
     base_timestamp: Optional[int] = None,
     filter_product: Optional[str] = None,
 ) -> None:
+    """Show report of open items in InfluxDB line protocol format"""
     pkgs: Optional[Set[str]] = _readPackagesFile(pkg_fn)
     stats_open: List[str] = _readStatsLineProtocol(
         cves, base_timestamp=base_timestamp, pkgs=pkgs, filter_product=filter_product
