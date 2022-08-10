@@ -1005,6 +1005,27 @@ def _createCve(
         os.unlink(f.name)
 
 
+def _findNextPlaceholder(cveDirs: Dict[str, str]) -> str:
+    """Find next placeholder CVE-YYYY-NNN#"""
+    cves: List[str] = _getCVEPaths(cveDirs)
+    year: int = datetime.datetime.now().year
+    highest: int = 0
+    next: str = "CVE-%d-NNN1" % year
+    for cve in sorted(cves):
+        bn: str = os.path.basename(cve)
+        if rePatterns["CVE-next-placeholder"].match(bn):
+            n: str
+            _, n = bn.rsplit("N", 1)
+            if int(n) > highest:
+                highest = int(n)
+                # leading 'N' is required, but pad out to at least 4 chars
+                next = "CVE-%d-N%s" % (year, str(highest + 1).rjust(3, "N"))
+                if not rePatterns["CVE-next-placeholder"].match(next):
+                    raise CveException("could not calculate next placeholder")
+
+    return next
+
+
 def addCve(
     cveDirs: Dict[str, str],
     compatUbuntu: bool,
@@ -1025,6 +1046,8 @@ def addCve(
     where: str = ""
     if orig_cve.startswith("http"):
         cand, where = cveFromUrl(orig_cve)  # raises an error
+    elif orig_cve == "next":
+        cand = _findNextPlaceholder(cveDirs)
     else:
         cand = orig_cve
 
@@ -1078,6 +1101,9 @@ def addCve(
         discovered_by,
         assigned_to,
     )
+
+    if orig_cve == "next":
+        cvelib.common.msg("Created %s" % cand)
 
 
 # misc helpers

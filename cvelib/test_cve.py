@@ -846,9 +846,10 @@ git/github_norf: needs-triage
             ("CVE-2020-1234", True),
             ("CVE-2020-123456789012", True),
             ("CVE-2020-NNN1", True),
-            ("CVE-2020-NNNN1", True),
-            ("CVE-2020-NNNN1234", True),
-            ("CVE-2020-NNNN12345678", True),
+            ("CVE-2020-NN99", True),
+            ("CVE-2020-N999", True),
+            ("CVE-2020-N1000", True),
+            ("CVE-2020-N12345678901", True),
             ("CVE-2020-GH1234#foo", True),
             ("CVE-2020-GH1#a", True),
             ("CVE-2020-GH1234#abcdefg-1.2beta", True),
@@ -856,6 +857,7 @@ git/github_norf: needs-triage
             ("CVE-2020-GH1#%s" % ("a" * 50), True),
             ("CVE-2020-GH123456789012#A", True),
             ("CVE-2020-GH1234#foo_bar", True),
+            # invalid
             ("BAD", False),
             ("CVE-202O-1234", False),
             ("CV3-2020-1234", False),
@@ -869,6 +871,9 @@ git/github_norf: needs-triage
             ("CVE-2020-123", False),
             ("CVE-2020-NNN", False),
             ("CVE-2020-NNNN", False),
+            ("CVE-2020-NNNN1", False),
+            ("CVE-2020-NNNN1234", False),
+            ("CVE-2020-N123456789012", False),
             ("CVE-2020-1234N", False),
             ("CVE-2020-1234BAD", False),
             ("CVE-2020-G1234", False),
@@ -2449,6 +2454,114 @@ git/bar_foo: ignored
 
         self.assertFalse("Patches_bar" in res)
         self.assertFalse("git/github_bar" in res)
+
+    def test_addCveNextPlaceholder(self):
+        """Test addCve() - next"""
+        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
+
+        boiler_fn = os.path.join(cveDirs["active"], "00boilerplate")
+        boiler_content = """Candidate:
+PublicDate:
+References:
+Description:
+Notes:
+Mitigation:
+Bugs:
+Priority: untriaged
+Discovered-by:
+Assigned-to:
+CVSS:
+
+#Patches_PKG:
+#upstream_PKG:
+"""
+        with open(boiler_fn, "w") as fp:
+            fp.write("%s" % boiler_content)
+
+        year = datetime.datetime.now().year
+        cvelib.cve.addCve(
+            cveDirs,
+            False,
+            "next",
+            ["git/github_foo"],
+            boiler=None,
+            retired=False,
+        )
+
+        exp_cve_fn = os.path.join(cveDirs["active"], "CVE-%d-NNN1" % year)
+        self.assertTrue(os.path.exists(exp_cve_fn))
+        res = cvelib.common.readCve(exp_cve_fn)
+        self.assertTrue("Candidate" in res)
+        self.assertEqual(os.path.basename(exp_cve_fn), res["Candidate"])
+
+    def test__findNextPlaceholder(self):
+        """Test _findNextPlaceholder"""
+        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        content = (
+            """[Location]
+cve-data = %s
+"""
+            % self.tmpdir
+        )
+        self.orig_xdg_config_home, self.tmpdir = cvelib.testutil._newConfigFile(
+            content, self.tmpdir
+        )
+
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
+
+        year = datetime.datetime.now().year
+        tsts = [
+            ([], "CVE-%d-NNN1" % year, None),
+            (["active/CVE-%d-NNN1" % year], "CVE-%d-NNN2" % year, None),
+            (
+                [
+                    "active/CVE-2021-NNN1",
+                    "retired/CVE-2019-NNN2",
+                    "ignored/CVE-%d-NNN3" % year,
+                    "active/CVE-%d-1234" % year,
+                    "active/CVE-%d-1235" % year,
+                    "retired/CVE-%d-1236" % year,
+                ],
+                "CVE-%d-NNN4" % year,
+                None,
+            ),
+            (["active/CVE-%d-NNN9" % year], "CVE-%d-NN10" % year, None),
+            (["retired/CVE-%d-NN99" % year], "CVE-%d-N100" % year, None),
+            (["ignored/CVE-%d-N999" % year], "CVE-%d-N1000" % year, None),
+            (["active/CVE-%d-N9999" % year], "CVE-%d-N10000" % year, None),
+            (["active/CVE-%d-N10000" % year], "CVE-%d-N10001" % year, None),
+            # the long one is a problem
+            (
+                ["active/CVE-%d-N99999999999" % year, "ignored/CVE-%d-NNN4" % year],
+                "CVE-%d-NNN5" % year,
+                "could not calculate next placeholder",
+            ),
+        ]
+        for cveFns, exp, expErr in tsts:
+            # create the CVEs
+            if len(cveFns) > 0:
+                for cve in cveFns:
+                    with open(os.path.join(self.tmpdir, cve), "w") as fp:
+                        fp.write("content")
+            if expErr is None:
+                res = cvelib.cve._findNextPlaceholder(cveDirs)
+                self.assertEqual(exp, res)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    cvelib.cve._findNextPlaceholder(cveDirs)
+                self.assertEqual(expErr, str(context.exception))
+
+            # delete the created CVEs
+            if len(cveFns) > 0:
+                for cve in cveFns:
+                    os.unlink(os.path.join(self.tmpdir, cve))
 
     def test__getCVEPaths(self):
         """Test _getCVEPaths"""

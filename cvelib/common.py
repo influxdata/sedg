@@ -2,6 +2,7 @@
 
 import configparser
 import copy
+import datetime
 import os
 import re
 import shutil
@@ -100,14 +101,19 @@ rePatterns: Dict[str, Pattern[str]] = {
         )
     ),
     # CVE-YYYY-XXXX (1-12 X's)
-    # CVE-YYYY-NNNX (1-11 N's)
+    # CVE-YYYY-NNNX (1-3 N's, 1-11 X's (ie, NNN1 through N99999999999))
     # CVE-YYYY-GHXXXX#AAAA (1-12 X's, 1-40 A's)
     "CVE": re.compile(
-        r"^CVE-[0-9]{4}-([0-9N]{3,11}[0-9]|GH[0-9]{1,12}#[a-zA-Z0-9+._-]{1,%(software_len)d})$"
+        r"^CVE-[0-9]{4}-([0-9]{4,12}|N{3}[0-9]|N{2}[0-9]{2}|N[0-9]{1,11}|GH[0-9]{1,12}#[a-zA-Z0-9+._-]{1,%(software_len)d})$"
         % ({"software_len": _patLengths["pkg-software"]})
     ),
-    # CVE-YYYY-NNNX (1-11 N's)
-    "CVE-placeholder": re.compile(r"^CVE-[0-9]{4}-N{3,11}[0-9]$"),
+    # CVE-YYYY-NNNX (NNN1 through N99999999999)
+    "CVE-placeholder": re.compile(
+        r"^CVE-[0-9]{4}-(N{3}[0-9]|N{2}[0-9]{2}|N[0-9]{1,11})$"
+    ),
+    "CVE-next-placeholder": re.compile(
+        r"^CVE-%d-(N{3}[0-9]|N{2}[0-9]{2}|N[0-9]{1,11})$" % datetime.datetime.now().year
+    ),
     # CVE priorities
     "priorities": re.compile(r"^(%s)$" % "|".join(cve_priorities)),
     # date only: YYYY-MM-DD

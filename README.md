@@ -17,13 +17,23 @@
     $ export PYTHONPATH=/path/to/influx-security-tools
     $ export PATH=$PATH:/path/to/influx-security-tools/bin
 
-    # create a placeholder CVE using this year
-    $ cve-add --cve <url to github issue>
-
     # create a CVE against a particular package
     $ cve-add --cve CVE-2020-1234 -p git/foo-org_foo
 
-    # create a placeholder CVE with a particular id and package boilerplate
+    # create a placeholder CVE against a particular package
+    $ cve-add -c CVE-2020-NNN1 -p git/foo-org_foo
+
+    # create a new placeholder CVE for this year against a particular package
+    # (creates CVE-<YEAR>-NNN1 if it doesn't exist or incremements the highest
+    # found for the year and adds it (eg, if CVE-<YEAR>-NNN9 exists,
+    # CVE-<YEAR>-NN10 is created))
+    $ cve-add -c next -p git/foo-org_foo
+
+    # create a GitHub placholder CVE from the GitHub url using this year
+    $ cve-add --cve https://github.com/...
+
+    # create a GitHub placeholder CVE with a particular id and package
+    # boilerplate
     $ cve-add -c CVE-2020-GH1234#foo -p git/foo-org_foo --package-boiler=bar
 
     $ <work on CVEs in .../influx-security-tools-cve-data>
