@@ -346,7 +346,7 @@ def mocked_requests_get__getGHAlertsEnabled(*args, **kwargs):
             self.json_data = json_data
             self.status_code = status_code
 
-        def json(self):
+        def json(self):  # pragma: nocover
             return self.json_data
 
     # https://docs.github.com/en/rest/issues/issues#get-an-issue
