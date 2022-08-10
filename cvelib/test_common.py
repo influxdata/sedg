@@ -2,7 +2,7 @@
 
 from email.message import EmailMessage
 import os
-from unittest import TestCase
+from unittest import TestCase, mock
 
 import cvelib.common
 import cvelib.testutil
@@ -170,8 +170,7 @@ class TestCommon(TestCase):
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual("", error.getvalue().strip())
 
-    def test_getConfigCveDataPath(self):
-        """Test getConfigCveDataPath()"""
+    def _setup_conf_and_data(self):
         self.tmpdir = cvelib.testutil._createTmpDir()
 
         if "XDG_CONFIG_HOME" in os.environ:
@@ -185,10 +184,8 @@ class TestCommon(TestCase):
 
         dataDir = os.path.join(os.environ["XDG_CONFIG_HOME"], "dataDir")
         os.mkdir(dataDir, 0o0700)
-        exp = {}
         for d in cvelib.common.cve_reldirs:
-            exp[d] = os.path.join(dataDir, d)
-            os.mkdir(exp[d], 0o0700)
+            os.mkdir(os.path.join(dataDir, d), 0o0700)
 
         fn = os.path.expandvars(
             "$XDG_CONFIG_HOME/influx-security-tools/influx-security-tools.conf"
@@ -201,8 +198,87 @@ cve-data = %s
                 % dataDir
             )
 
+        return fn, dataDir
+
+    def test_getConfigCveDataPaths(self):
+        """Test getConfigCveDataPaths()"""
+        _, dataDir = self._setup_conf_and_data()
+        exp = {}
+        for d in cvelib.common.cve_reldirs:
+            exp[d] = os.path.join(dataDir, d)
+
         res_dirs = cvelib.common.getConfigCveDataPaths()
         self.assertTrue(res_dirs == exp)
+
+    def test_getConfigCveDataPathsNonexistentDataDir(self):
+        """Test getConfigCveDataPaths() - nonexistent cve-data"""
+        fn, dataDir = self._setup_conf_and_data()
+
+        # now remove the dir, patching error() to not sys.exit()
+        cvelib.common.recursive_rm(dataDir)
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with cvelib.testutil.capturedOutput() as (output, error):
+                res = cvelib.common.getConfigCveDataPaths()
+            self.assertEqual(0, len(res))
+            self.assertEqual("", output.getvalue().strip())
+            expErr = (
+                "ERROR: Please configure %s to\nset 'cve-data' in '[Locations]' to a valid path"
+                % fn
+            )
+            self.assertEqual(expErr, error.getvalue().strip())
+
+    def test_getConfigCveDataPathsNonexistentSubdir(self):
+        """Test getConfigCveDataPaths() - nonexistent cve-data/subdir"""
+        _, dataDir = self._setup_conf_and_data()
+
+        # now remove the ignored dir, patching error() to not sys.exit()
+        cvelib.common.recursive_rm(os.path.join(dataDir, "ignored"))
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with cvelib.testutil.capturedOutput() as (output, error):
+                res = cvelib.common.getConfigCveDataPaths()
+            self.assertEqual(0, len(res))
+            self.assertEqual("", output.getvalue().strip())
+            expErr = "ERROR: Could not find 'ignored' in '%s'" % dataDir
+            self.assertEqual(expErr, error.getvalue().strip())
+
+    def test_getConfigCveDataPathsLocationsInConfig(self):
+        """Test getConfigCveDataPaths() - missing Locations"""
+        fn, _ = self._setup_conf_and_data()
+
+        # now clear out the config file, patching error() to not sys.exit()
+        with open(fn, "w") as fp:
+            fp.write("")
+
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with cvelib.testutil.capturedOutput() as (output, error):
+                res = cvelib.common.getConfigCveDataPaths()
+            self.assertEqual(0, len(res))
+            self.assertEqual("", output.getvalue().strip())
+            expErr = (
+                "ERROR: Please configure %s to\nset 'cve-data' in '[Locations]'" % fn
+            )
+            self.assertEqual(expErr, error.getvalue().strip())
 
     def test_getConfigCompatUbuntu(self):
         """Test getConfigCompatUbuntu()"""

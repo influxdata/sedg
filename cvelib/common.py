@@ -462,6 +462,7 @@ def getConfigCveDataPaths() -> Dict[str, str]:
                 "Please configure %s to\nset 'cve-data' in "
                 "'[Locations]' to a valid path" % configFilePath
             )
+            return {}  # needed by pyright since it doesn't know error() exits
 
         top = config["Locations"]["cve-data"]
     else:
@@ -473,8 +474,9 @@ def getConfigCveDataPaths() -> Dict[str, str]:
     cveDirs: Dict[str, str] = {}
     for d in cve_reldirs:
         tmp: str = os.path.join(top, d)
-        if not os.path.isdir(top):
+        if not os.path.isdir(tmp):
             error("Could not find '%s' in '%s'" % (d, top))
+            return {}  # needed by pyright since it doesn't know error() exits
         cveDirs[d] = tmp
 
     return cveDirs
