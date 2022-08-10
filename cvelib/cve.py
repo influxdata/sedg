@@ -756,6 +756,15 @@ def checkSyntaxFile(
         # check package status against reldir
         open = False
         for p in cve.pkgs:
+            if p.when != "":
+                if (
+                    p.when == "code-not-used" or p.when == "code-not-imported"
+                ) and p.status != "not-affected":
+                    ok = False
+                    cvelib.common.warn(
+                        "%s: specifies '%s' with '%s' (should use 'not-affected')"
+                        % (rel, p.when, p.status)
+                    )
             if p.status.startswith("need") or p.status.startswith("pend"):
                 open = True
                 break

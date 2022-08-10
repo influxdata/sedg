@@ -1644,6 +1644,25 @@ cve-data = %s
             .startswith("WARN: multiple entries for CVE-2020-1234: ")
         )
 
+        # status should use 'not-affected'
+        tmpl = self._cve_template()
+        tmpl["git/github_pkg1"] = "needed (code-not-imported)"
+        content = cvelib.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            res = cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertFalse(res)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: active/CVE-2020-1234: specifies 'code-not-imported' with 'needed' (should use 'not-affected')",
+            error.getvalue().strip(),
+        )
+
         # ghas
         ghasTsts = [
             # valid
