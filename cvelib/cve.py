@@ -628,7 +628,7 @@ CVSS:%(cvss)s
                 datetime.datetime.strptime(
                     " ".join(date.split()[:-1]), "%Y-%m-%d %H:%M:%S"
                 )
-            except ValueError:
+            except ValueError:  # pragma: nocover
                 raise CveException(err)
 
     def _verifyPublicDate(self, key: str, val: str) -> None:
