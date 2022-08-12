@@ -1066,11 +1066,13 @@ def addCve(
     else:
         cve_fn = os.path.join(cveDirs["active"], cand)
 
+    exists: bool = os.path.exists(cve_fn)
+
     # For a new CVE (where the path doesn't already exist), if we can determine
     # a pkg from the candidate, then add it to the front of the list, removing
     # it from the pkgs if it is already there
     p: Optional[str] = pkgFromCandidate(cand, where)
-    if not os.path.exists(cve_fn) and p:
+    if not exists and p:
         if p in pkgs:
             pkgs.remove(p)
         pkgs.insert(0, p)
@@ -1111,8 +1113,11 @@ def addCve(
         assigned_to,
     )
 
-    if orig_cve == "next":
-        cvelib.common.msg("Created %s" % cand)
+    if not exists:
+        rel: str = "active/%s" % cand
+        if retired:
+            rel = "retired/%s" % cand
+        cvelib.common.msg("Created %s" % rel)
 
 
 # misc helpers

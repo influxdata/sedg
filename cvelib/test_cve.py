@@ -2253,7 +2253,10 @@ upstream_baz: needed
 
             out = output.getvalue().strip()
             err = error.getvalue().strip()
-            self.assertEqual("", out)
+            if retired:
+                self.assertEqual("Created retired/%s" % os.path.basename(cve_fn), out)
+            else:
+                self.assertEqual("Created active/%s" % os.path.basename(cve_fn), out)
             self.assertEqual("", err)
 
             with cvelib.testutil.capturedOutput() as (output, error):
