@@ -226,6 +226,10 @@ rePatterns: Dict[str, Pattern[str]] = {
     "attribution": re.compile(
         r"^[^()@]+( \(@?[a-zA-Z0-9._-]+\))?(, [^()@]+( \(@?[a-zA-Z0-9._-]+\))?)*$"
     ),
+    # http://www.unicode.org/Public/security/revision-03/confusablesSummary.txt
+    # patterns for subset of confusable quotes and dashes which pass
+    # isprintable()
+    "confusable-utf8": re.compile(r"[“”‟＂‘’‛＇˗‐‒–−‑﹘]"),
 }
 
 # Subdirectories of CVEs in config["Locations"]["cve-data"]

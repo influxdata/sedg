@@ -526,6 +526,10 @@ CVSS:%(cvss)s
                 raise CveException(
                     "invalid %s: '%s' (expected single line)" % (key, val)
                 )
+            if rePatterns["confusable-utf8"].search(val):
+                raise CveException(
+                    "invalid %s (contains confusable UTF-8 quotes and/or hyphens)" % key
+                )
             if not val.isprintable():
                 raise CveException("invalid %s (contains unprintable characters)" % key)
             if not allow_utf8:
@@ -561,6 +565,10 @@ CVSS:%(cvss)s
             if line[0] != " ":
                 raise CveException(
                     "invalid %s: '%s' (missing leading space)" % (key, val)
+                )
+            if rePatterns["confusable-utf8"].search(line):
+                raise CveException(
+                    "invalid %s (contains confusable UTF-8 quotes and/or hyphens)" % key
                 )
             if not line.isprintable():
                 raise CveException("invalid %s (contains unprintable characters)" % key)

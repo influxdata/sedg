@@ -351,6 +351,24 @@ git/github_norf: needs-triage
             # invalid
             (
                 "Key",
+                "‘",
+                False,
+                "invalid Key (contains confusable UTF-8 quotes and/or hyphens)",
+            ),
+            (
+                "Key",
+                "“",
+                False,
+                "invalid Key (contains confusable UTF-8 quotes and/or hyphens)",
+            ),
+            (
+                "Key",
+                "‒",
+                False,
+                "invalid Key (contains confusable UTF-8 quotes and/or hyphens)",
+            ),
+            (
+                "Key",
                 "foo\nbar",
                 False,
                 "invalid Key: 'foo\nbar' (expected single line)",
@@ -418,6 +436,27 @@ git/github_norf: needs-triage
             ("Key", "\n foo bár", True, 1, None),
             # bad
             ("Key", "\n", False, None, "invalid Key (empty)"),
+            (
+                "Key",
+                "\n ’",
+                False,
+                None,
+                "invalid Key (contains confusable UTF-8 quotes and/or hyphens)",
+            ),
+            (
+                "Key",
+                "\n ”",
+                False,
+                None,
+                "invalid Key (contains confusable UTF-8 quotes and/or hyphens)",
+            ),
+            (
+                "Key",
+                "\n ﹘",
+                False,
+                None,
+                "invalid Key (contains confusable UTF-8 quotes and/or hyphens)",
+            ),
             (
                 "Key",
                 "single",
