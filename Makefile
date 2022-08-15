@@ -20,7 +20,16 @@ syntax-check: clean
 style-check: clean
 	./cvelib/run-black
 
-check: check-deps test syntax-check style-check
+inclusivity-check: clean
+	echo "# try woke"; \
+	if which woke >/dev/null ; then \
+		woke --exit-1-on-failure . ; \
+	else \
+		echo "Could not find woke!" ; \
+	fi \
+
+
+check: check-deps test inclusivity-check syntax-check style-check
 
 coverage: check-deb-deps
 	PYTHONPATH=./ python3 -m coverage run ./cvelib/run-tests
