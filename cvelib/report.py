@@ -674,7 +674,7 @@ def getGHAlertsUpdatedReport(
 # cve-report
 #
 class _statsUniqueCVEsPriorityCounts(TypedDict):
-    """Type hinting for _readStatsUniqueCVEs()"""
+    """Type hinting for priorities in _statsUniqueCVEsPkgSoftware"""
 
     num: int
     cves: List[str]
@@ -690,6 +690,7 @@ class _statsUniqueCVEsPkgSoftware(TypedDict):
     medium: _statsUniqueCVEsPriorityCounts
     high: _statsUniqueCVEsPriorityCounts
     critical: _statsUniqueCVEsPriorityCounts
+    tags: Dict[str, List[str]]
 
 
 def _readStatsUniqueCVEs(
@@ -701,9 +702,13 @@ def _readStatsUniqueCVEs(
     # stats = {
     #   pkg.software: {          // _statsUniqueCVEsPkgSoftware
     #     "deps": [<candidate>]
+    #     "secrets": [<candidate>]
     #     "<priority>": {        // _statsUniqueCVEsPriorityCounts
     #       "num": int,
     #       "cves": [<candidate>]
+    #     },
+    #     "tags": {
+    #       "<tag>": [<candidate>]
     #     },
     #   }
     stats: Dict[str, _statsUniqueCVEsPkgSoftware] = {}
@@ -744,12 +749,19 @@ def _readStatsUniqueCVEs(
                     medium=_statsUniqueCVEsPriorityCounts(num=0, cves=[]),
                     high=_statsUniqueCVEsPriorityCounts(num=0, cves=[]),
                     critical=_statsUniqueCVEsPriorityCounts(num=0, cves=[]),
+                    tags={},
                 )
 
             stats[pkg.software][priority]["num"] += 1
             if "cves" not in stats[pkg.software][priority]:
                 stats[pkg.software][priority]["cves"] = []
             stats[pkg.software][priority]["cves"].append(cve.candidate)
+
+            if pkg.software in pkg.tags:
+                for tag in pkg.tags[pkg.software]:
+                    if tag not in stats[pkg.software]["tags"]:
+                        stats[pkg.software]["tags"][tag] = []
+                    stats[pkg.software]["tags"][tag].append(cve.candidate)
 
             if (
                 "gh-dependabot" in cve.discoveredBy.lower()
@@ -941,7 +953,7 @@ def getHumanSummary(
 
             priority: str
             for priority in stats[repo]:
-                if priority == "deps" or priority == "secrets":
+                if priority in ["deps", "secrets", "tags"]:
                     continue
 
                 if stats[repo][priority]["num"] > 0:
@@ -949,29 +961,35 @@ def getHumanSummary(
                         lines_open[priority] = {}
                     lines_open[priority][repo] = stats[repo][priority]["cves"]
 
-                    if priority not in totals:
-                        totals[priority] = {"num": 0, "num_repos": 0}
                     totals[priority]["num"] += len(stats[repo][priority]["cves"])
                     totals[priority]["num_repos"] += 1
 
         print("# %s\n" % state.capitalize())
-        print(table_f(pri="Priority", repo="Repository", cve="Issue", extra=""))
-        print(table_f(pri="--------", repo="----------", cve="-----", extra=""))
+        print(
+            table_f(pri="Priority", repo="Repository", cve="Issue", extra="").rstrip()
+        )
+        print(
+            table_f(pri="--------", repo="----------", cve="-----", extra="").rstrip()
+        )
         for priority in ["critical", "high", "medium", "low", "negligible"]:
             if priority not in lines_open:
                 continue
             for repo in sorted(lines_open[priority]):
                 for cve in sorted(lines_open[priority][repo]):
                     # print("%s\t%s\t%s" % (priority, repo, cve))
-                    extra: str = ""
-                    if cve in stats[repo]["deps"] and cve in stats[repo]["secrets"]:
-                        extra = "(dependabot, secret)"
-                    elif cve in stats[repo]["deps"]:
-                        extra = "(dependabot)"
-                    elif cve in stats[repo]["secrets"]:
-                        extra = "(secrets)"
+                    extras: List[str] = []
 
-                    # TODO: add 'limit-report' to extra if specified
+                    if cve in stats[repo]["deps"]:
+                        extras.append("gh-dependabot")
+                    if cve in stats[repo]["secrets"]:
+                        extras.append("gh-secrets")
+                    for tag in stats[repo]["tags"]:
+                        if cve in stats[repo]["tags"][tag]:
+                            extras.append(tag)
+
+                    extra: str = ""
+                    if len(extras) > 0:
+                        extra = "(%s)" % ", ".join(extras)
 
                     print(
                         table_f(
@@ -981,7 +999,7 @@ def getHumanSummary(
                             else repo,
                             cve=cve,
                             extra=extra,
-                        )
+                        ).rstrip()
                     )
 
         print("\nTotals:")

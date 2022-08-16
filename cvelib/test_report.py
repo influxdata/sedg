@@ -4,6 +4,7 @@ from unittest import TestCase, mock
 import copy
 import datetime
 import os
+import tempfile
 
 import cvelib.common
 import cvelib.cve
@@ -481,6 +482,7 @@ class TestReport(TestCase):
         """Setup functions common for all tests"""
         self.orig_ghtoken = None
         self.maxDiff = None
+        self.tmpdir = None
 
         if "GHTOKEN" in os.environ:
             self.orig_ghtoken = os.getenv("GHTOKEN")
@@ -499,13 +501,18 @@ class TestReport(TestCase):
         if "TEST_UPDATE_PROGRESS" in os.environ:
             del os.environ["TEST_UPDATE_PROGRESS"]
 
+        if self.tmpdir is not None:
+            cvelib.common.recursive_rm(self.tmpdir)
+
     def _cve_template(self, cand="", references=[]):
         """Generate a valid CVE to mimic what readCve() might see"""
         d = {
             "Candidate": cand,
             "OpenDate": "2020-06-29",
             "PublicDate": "",
-            "References": "\n %s" % " \n".join(references),
+            "References": "\n %s" % " \n".join(references)
+            if len(references) > 0
+            else "",
             "Description": "\n Some description\n more desc",
             "Notes": "\n person> some notes\n  more notes\n person2> blah",
             "Mitigation": "",
@@ -517,7 +524,7 @@ class TestReport(TestCase):
         }
         return copy.deepcopy(d)
 
-    def _mock_cve_list(self):
+    def _mock_cve_list_basic(self):
         """Generate a List[cvelib.cve.CVE]"""
         cves = []
         for n in [1, 2, 3]:
@@ -528,6 +535,90 @@ class TestReport(TestCase):
             cve = cvelib.cve.CVE()
             cve.setData(d)
             cves.append(cve)
+        return copy.deepcopy(cves)
+
+    def _mock_cve_list_mixed(self):
+        """Generate a List[cvelib.cve.CVE]"""
+        cves = []
+
+        # regular CVE - foo
+        cve = cvelib.cve.CVE()
+        d = self._cve_template(cand="CVE-2022-0001")
+        d["upstream_foo"] = "needs-triage"
+        cve.setData(d)
+        cves.append(cve)
+
+        # regular CVE - bar
+        cve = cvelib.cve.CVE()
+        d = self._cve_template(cand="CVE-2022-0002")
+        d["Priority"] = "low"
+        d["upstream_bar"] = "needs-triage"
+        cve.setData(d)
+        cves.append(cve)
+
+        # regular CVE - baz
+        cve = cvelib.cve.CVE()
+        d = self._cve_template(cand="CVE-2022-0003")
+        d["Priority"] = "low"
+        d["upstream_foo"] = "needs-triage"
+        cve.setData(d)
+        cves.append(cve)
+
+        # placeholder with priority override
+        cve = cvelib.cve.CVE()
+        d = self._cve_template(cand="CVE-2022-NNN1")
+        d["upstream_foo"] = "needed"
+        d["Priority_foo"] = "low"
+        cve.setData(d)
+        cves.append(cve)
+
+        # github placeholder with tag
+        cve = cvelib.cve.CVE()
+        d = self._cve_template(
+            cand="CVE-2022-GH1#foo",
+            references=["https://github.com/org/foo/issues/1"],
+        )
+        d["git/org_foo"] = "pending"
+        d["Tags_foo"] = "limit-report"
+        cve.setData(d)
+        cves.append(cve)
+
+        # github placeholder with gh-dependabot and gh-secrets discovered-by
+        cve = cvelib.cve.CVE()
+        d = self._cve_template(
+            cand="CVE-2022-GH2#bar",
+            references=["https://github.com/org/bar/issues/2"],
+        )
+        d["Priority"] = "high"
+        d["git/org_bar"] = "needed"
+        d["Discovered-by"] = "gh-secrets, gh-dependabot"
+        cve.setData(d)
+        cves.append(cve)
+
+        # regular CVE, closed
+        cve = cvelib.cve.CVE()
+        d = self._cve_template(cand="CVE-2021-9991")
+        d["upstream_foo"] = "released"
+        d["Priority"] = "critical"
+        cve.setData(d)
+        cves.append(cve)
+
+        # regular CVE, closed
+        cve = cvelib.cve.CVE()
+        d = self._cve_template(cand="CVE-2021-9992")
+        d["git/org_bar"] = "released"
+        d["Priority"] = "negligible"
+        cve.setData(d)
+        cves.append(cve)
+
+        # regular CVE, ignored
+        cve = cvelib.cve.CVE()
+        d = self._cve_template(cand="CVE-2021-9993")
+        d["upstream_bar"] = "ignored"
+        d["Priority"] = "negligible"
+        cve.setData(d)
+        cves.append(cve)
+
         return copy.deepcopy(cves)
 
     #
@@ -623,7 +714,7 @@ class TestReport(TestCase):
     #
     def test__getKnownIssues(self):
         """Test _getKnownIssues()"""
-        res = cvelib.report._getKnownIssues(self._mock_cve_list())
+        res = cvelib.report._getKnownIssues(self._mock_cve_list_basic())
         self.assertEqual(3, len(res))
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/1" in res)
         self.assertTrue(
@@ -647,7 +738,7 @@ class TestReport(TestCase):
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
     def test_getMissingReport(self, _):  # 2nd arg is mock_get
         """Test getMissingReport()"""
-        cves = self._mock_cve_list()
+        cves = self._mock_cve_list_basic()
         with cvelib.testutil.capturedOutput() as (output, error):
             cvelib.report.getMissingReport(cves, "valid-org", repos=["valid-repo"])
         self.assertEqual("", error.getvalue().strip())
@@ -721,7 +812,7 @@ Disabled:
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
     def test_getUpdatedReport(self, _):  # 2nd arg is mock_get
         """Test _getUpdatedReport()"""
-        cves = self._mock_cve_list()
+        cves = self._mock_cve_list_basic()
 
         # all updated since
         with cvelib.testutil.capturedOutput() as (output, error):
@@ -1086,3 +1177,202 @@ valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabo
             cvelib.report.getGHAlertsUpdatedReport(
                 [], "valid-org", repos=["valid-repo"], since=-1
             )
+
+    #
+    # getHumanSummary()
+    #
+    def test_getHumanSummary(self):
+        """Test getHumanSummary()"""
+        # empty cve list
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSummary([], "", False)
+        self.assertEqual("", error.getvalue().strip())
+        exp = """# Open
+
+Priority   Repository                     Issue
+--------   ----------                     -----
+
+Totals:
+- critical: 0 in 0 repos
+- high: 0 in 0 repos
+- medium: 0 in 0 repos
+- low: 0 in 0 repos
+- negligible: 0 in 0 repos"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        cves = self._mock_cve_list_mixed()
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSummary(cves, "", False)
+        self.assertEqual("", error.getvalue().strip())
+        exp = """# Open
+
+Priority   Repository                     Issue
+--------   ----------                     -----
+high       bar                            CVE-2022-GH2#bar          (gh-dependabot, gh-secrets)
+medium     foo                            CVE-2022-0001
+medium     foo                            CVE-2022-GH1#foo          (limit-report)
+low        bar                            CVE-2022-0002
+low        foo                            CVE-2022-0003
+low        foo                            CVE-2022-NNN1
+
+Totals:
+- critical: 0 in 0 repos
+- high: 1 in 1 repos
+- medium: 2 in 1 repos
+- low: 3 in 2 repos
+- negligible: 0 in 0 repos"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSummary(cves, "", True)
+        self.assertEqual("", error.getvalue().strip())
+        expClosed = (
+            exp
+            + """
+
+
+# Closed
+
+Priority   Repository                     Issue
+--------   ----------                     -----
+critical   foo                            CVE-2021-9991
+negligible bar                            CVE-2021-9992
+
+Totals:
+- critical: 1 in 1 repos
+- high: 0 in 0 repos
+- medium: 0 in 0 repos
+- low: 0 in 0 repos
+- negligible: 1 in 1 repos"""
+        )
+        self.assertEqual(expClosed, output.getvalue().strip())
+
+    def test_getHumanSummaryWithPkgFn(self):
+        """Test getHumanSummary() with pkg_fn"""
+        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        pkg_fn = os.path.join(self.tmpdir, "pkgs")
+        content = "bar\n"
+        with open(pkg_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        # empty cve list
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSummary([], pkg_fn, False)
+        self.assertEqual("", error.getvalue().strip())
+        exp = """# Open
+
+Priority   Repository                     Issue
+--------   ----------                     -----
+
+Totals:
+- critical: 0 in 0 repos
+- high: 0 in 0 repos
+- medium: 0 in 0 repos
+- low: 0 in 0 repos
+- negligible: 0 in 0 repos"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        cves = self._mock_cve_list_mixed()
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSummary(cves, pkg_fn, False)
+        self.assertEqual("", error.getvalue().strip())
+        exp = """# Open
+
+Priority   Repository                     Issue
+--------   ----------                     -----
+high       bar                            CVE-2022-GH2#bar          (gh-dependabot, gh-secrets)
+low        bar                            CVE-2022-0002
+
+Totals:
+- critical: 0 in 0 repos
+- high: 1 in 1 repos
+- medium: 0 in 0 repos
+- low: 1 in 1 repos
+- negligible: 0 in 0 repos"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSummary(cves, pkg_fn, True)
+        self.assertEqual("", error.getvalue().strip())
+        expClosed = (
+            exp
+            + """
+
+
+# Closed
+
+Priority   Repository                     Issue
+--------   ----------                     -----
+negligible bar                            CVE-2021-9992
+
+Totals:
+- critical: 0 in 0 repos
+- high: 0 in 0 repos
+- medium: 0 in 0 repos
+- low: 0 in 0 repos
+- negligible: 1 in 1 repos"""
+        )
+        self.assertEqual(expClosed, output.getvalue().strip())
+
+    def test_z_getHumanSummaryWithFilterProduct(self):
+        """Test getHumanSummary() with filter_product"""
+        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+
+        # empty cve list
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSummary([], "", False, filter_product="git/org")
+        self.assertEqual("", error.getvalue().strip())
+        exp = """# Open
+
+Priority   Repository                     Issue
+--------   ----------                     -----
+
+Totals:
+- critical: 0 in 0 repos
+- high: 0 in 0 repos
+- medium: 0 in 0 repos
+- low: 0 in 0 repos
+- negligible: 0 in 0 repos"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        cves = self._mock_cve_list_mixed()
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSummary(cves, "", False, filter_product="git/org")
+        self.assertEqual("", error.getvalue().strip())
+        exp = """# Open
+
+Priority   Repository                     Issue
+--------   ----------                     -----
+high       bar                            CVE-2022-GH2#bar          (gh-dependabot, gh-secrets)
+medium     foo                            CVE-2022-GH1#foo          (limit-report)
+
+Totals:
+- critical: 0 in 0 repos
+- high: 1 in 1 repos
+- medium: 1 in 1 repos
+- low: 0 in 0 repos
+- negligible: 0 in 0 repos"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSummary(cves, "", True, filter_product="git/org")
+        self.assertEqual("", error.getvalue().strip())
+        expClosed = (
+            exp
+            + """
+
+
+# Closed
+
+Priority   Repository                     Issue
+--------   ----------                     -----
+negligible bar                            CVE-2021-9992
+
+Totals:
+- critical: 0 in 0 repos
+- high: 0 in 0 repos
+- medium: 0 in 0 repos
+- low: 0 in 0 repos
+- negligible: 1 in 1 repos"""
+        )
+        self.assertEqual(expClosed, output.getvalue().strip())
