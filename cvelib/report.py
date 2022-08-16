@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, TypedDict, Un
 
 from cvelib.cve import CVE, collectGHAlertUrls
 from cvelib.common import (
+    CveException,
     cve_priorities,
     error,
     epochToISO8601,
@@ -693,10 +694,38 @@ class _statsUniqueCVEsPkgSoftware(TypedDict):
     tags: Dict[str, List[str]]
 
 
+def _filterPriorities(filt: str) -> List[str]:
+    """Return a list of filtered priorities"""
+    priorities: List[str] = copy.deepcopy(cve_priorities)
+    if filt != "":
+        skipping: bool = False
+        if filt.startswith("-") or ",-" in filt:
+            skipping = True
+        else:
+            priorities = []
+
+        for p in filt.split(","):
+            if skipping and not p.startswith("-"):
+                raise CveException(
+                    "invalid filter-priority: cannot mix priorities and skipped priorities"
+                )
+
+            tmp_p: str = p[1:] if p.startswith("-") else p
+            if tmp_p not in cve_priorities:
+                raise CveException("invalid filter-priority: %s" % p)
+
+            if not p.startswith("-") and tmp_p not in priorities:
+                priorities.append(tmp_p)
+            elif p.startswith("-") and tmp_p in priorities:
+                priorities.remove(tmp_p)
+    return priorities
+
+
 def _readStatsUniqueCVEs(
     cves: List[CVE],
     filter_status: List[str] = ["needs-triage", "needed", "pending"],
     filter_product: Optional[str] = None,
+    filter_priority: Optional[str] = None,
 ) -> Dict[str, _statsUniqueCVEsPkgSoftware]:
     """Read in stats by unique CVE, discovering dependabot and secrets"""
     # stats = {
@@ -712,6 +741,10 @@ def _readStatsUniqueCVEs(
     #     },
     #   }
     stats: Dict[str, _statsUniqueCVEsPkgSoftware] = {}
+    priorities: List[str] = cve_priorities
+    if filter_priority is not None:
+        priorities = _filterPriorities(filter_priority)
+
     for cve in cves:
         last_software: str = ""
         for pkg in cve.pkgs:
@@ -721,7 +754,7 @@ def _readStatsUniqueCVEs(
             if filter_product is not None:
                 found = False
                 for filter in filter_product.split(","):
-                    tmp = filter.split("/", maxsplit=1)
+                    tmp: List[str] = filter.split("/", maxsplit=1)
                     if tmp[0] != pkg.product:
                         continue
                     elif len(tmp) == 2 and tmp[1] != pkg.where:
@@ -739,6 +772,9 @@ def _readStatsUniqueCVEs(
             priority: str = cve.priority
             if pkg.software in pkg.priorities:
                 priority = pkg.priorities[pkg.software]
+
+            if priority not in priorities:
+                continue
 
             if pkg.software not in stats:
                 stats[pkg.software] = _statsUniqueCVEsPkgSoftware(
@@ -833,17 +869,24 @@ def getHumanReportOpenByPkgPriority(
     )
 
 
-def getHumanReport(cves: List[CVE], filter_product: Optional[str] = None) -> None:
+def getHumanReport(
+    cves: List[CVE],
+    filter_product: Optional[str] = None,
+    filter_priority: Optional[str] = None,
+) -> None:
     """Show report of open and closed issues"""
     stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
-        cves, filter_product=filter_product
+        cves, filter_product=filter_product, filter_priority=filter_priority
     )
     print("# Unique open issues by software")
     getHumanReportOpenByPkgPriority(stats_open)
 
     print("\n# Unique closed issues by software")
     stats_closed: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
-        cves, filter_status=["released"], filter_product=filter_product
+        cves,
+        filter_status=["released"],
+        filter_product=filter_product,
+        filter_priority=filter_priority,
     )
     getHumanReportOpenByPkgPriority(stats_closed)
 
@@ -855,10 +898,14 @@ class _humanTodoScores(TypedDict):
     msg: str
 
 
-def getHumanTodo(cves: List[CVE], filter_product: Optional[str] = None) -> None:
+def getHumanTodo(
+    cves: List[CVE],
+    filter_product: Optional[str] = None,
+    filter_priority: Optional[str] = None,
+) -> None:
     """Show report of open items in todo list format"""
     stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
-        cves, filter_product=filter_product
+        cves, filter_product=filter_product, filter_priority=filter_priority
     )
     points: Dict[str, int] = {
         "critical": 200,
@@ -888,11 +935,14 @@ def getHumanTodo(cves: List[CVE], filter_product: Optional[str] = None) -> None:
 
 
 def getHumanSoftwareInfo(
-    cves: List[CVE], pkg: str = "", filter_product: Optional[str] = None
+    cves: List[CVE],
+    pkg: str = "",
+    filter_product: Optional[str] = None,
+    filter_priority: Optional[str] = None,
 ) -> None:
     """Show report of open items by software and priority"""
     stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
-        cves, filter_product=filter_product
+        cves, filter_product=filter_product, filter_priority=filter_priority
     )
 
     sw: str
@@ -925,6 +975,7 @@ def getHumanSummary(
     pkg_fn: str = "",
     closed: bool = False,
     filter_product: Optional[str] = None,
+    filter_priority: Optional[str] = None,
 ) -> None:
     """Show report in summary format"""
 
@@ -1012,14 +1063,17 @@ def getHumanSummary(
     pkgs: Optional[Set[str]] = _readPackagesFile(pkg_fn)
 
     stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
-        cves, filter_product=filter_product
+        cves, filter_product=filter_product, filter_priority=filter_priority
     )
     _output(stats_open, "open", pkgs)
 
     if closed:
         print("\n")
         stats_closed: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
-            cves, filter_status=["released"], filter_product=filter_product
+            cves,
+            filter_status=["released"],
+            filter_product=filter_product,
+            filter_priority=filter_priority,
         )
         _output(stats_closed, "closed", pkgs)
 
@@ -1035,6 +1089,7 @@ def _readStatsLineProtocol(
     measurement="cveLog",
     filter_status: List[str] = ["needs-triage", "needed", "pending"],
     filter_product: Optional[str] = None,
+    filter_priority: Optional[str] = None,
     base_timestamp: Optional[int] = None,
     pkgs: Optional[Set[str]] = None,
 ) -> List[str]:
@@ -1047,6 +1102,10 @@ def _readStatsLineProtocol(
         if not isinstance(base_timestamp, int) or base_timestamp < 0:
             raise ValueError
         base_tm = int(time.mktime(time.gmtime(base_timestamp))) * 1000 * 1000 * 1000
+
+    priorities: List[str] = cve_priorities
+    if filter_priority is not None:
+        priorities = _filterPriorities(filter_priority)
 
     # XXX: perhaps use a timestamp relative to the mtime of the file or git
     # commit (that would rotate out though with retention policy)
@@ -1074,6 +1133,9 @@ def _readStatsLineProtocol(
             priority: str = cve.priority
             if pkg.software in pkg.priorities:
                 priority = pkg.priorities[pkg.software]
+
+            if priority not in priorities:
+                continue
 
             timestamp: int
             if base_tm is None:
@@ -1108,11 +1170,16 @@ def getInfluxDBLineProtocol(
     pkg_fn: str = "",
     base_timestamp: Optional[int] = None,
     filter_product: Optional[str] = None,
+    filter_priority: Optional[str] = None,
 ) -> None:
     """Show report of open items in InfluxDB line protocol format"""
     pkgs: Optional[Set[str]] = _readPackagesFile(pkg_fn)
     stats_open: List[str] = _readStatsLineProtocol(
-        cves, base_timestamp=base_timestamp, pkgs=pkgs, filter_product=filter_product
+        cves,
+        base_timestamp=base_timestamp,
+        pkgs=pkgs,
+        filter_product=filter_product,
+        filter_priority=filter_priority,
     )
     for s in stats_open:
         print(s)

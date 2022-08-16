@@ -1179,6 +1179,49 @@ valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabo
             )
 
     #
+    # _filterPriorities()
+    #
+    def test__filterPriorities(self):
+        """Test _filterPriorities()"""
+        tsts = [
+            # valid
+            ("", cvelib.common.cve_priorities, None),
+            ("critical", ["critical"], None),
+            ("high", ["high"], None),
+            ("medium", ["medium"], None),
+            ("low", ["low"], None),
+            ("negligible", ["negligible"], None),
+            ("high,critical", ["critical", "high"], None),
+            ("high,critical,high", ["critical", "high"], None),
+            ("-negligible", ["critical", "high", "medium", "low"], None),
+            ("-negligible,-low", ["critical", "high", "medium"], None),
+            # invalid
+            ("blah", None, "invalid filter-priority: blah"),
+            ("-blah", None, "invalid filter-priority: -blah"),
+            (
+                "-negligible,critical",
+                None,
+                "invalid filter-priority: cannot mix priorities and skipped priorities",
+            ),
+        ]
+
+        for filt, exp, expErr in tsts:
+            if expErr is None:
+                res = cvelib.report._filterPriorities(filt)
+                # https://docs.python.org/3.2/library/unittest.html#unittest.TestCase.assertCountEqual
+                # "Test that sequence first contains the same elements as second,
+                # regardless of their order. When they don't, an error message
+                # listing the differences between the sequences will be generated.
+                # Duplicate elements are not ignored when comparing first and
+                # second. It verifies whether each element has the same count in
+                # both sequences."
+                self.assertCountEqual(exp, res)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    cvelib.report._filterPriorities(filt)
+                self.assertEqual(expErr, str(context.exception))
+
+    #
     # getHumanSummary()
     #
     def test_getHumanSummary(self):
@@ -1314,7 +1357,7 @@ Totals:
         )
         self.assertEqual(expClosed, output.getvalue().strip())
 
-    def test_z_getHumanSummaryWithFilterProduct(self):
+    def test_getHumanSummaryWithFilterProduct(self):
         """Test getHumanSummary() with filter_product"""
         self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
 
@@ -1374,5 +1417,65 @@ Totals:
 - medium: 0 in 0 repos
 - low: 0 in 0 repos
 - negligible: 1 in 1 repos"""
+        )
+        self.assertEqual(expClosed, output.getvalue().strip())
+
+    def test_getHumanSummaryWithFilterPriority(self):
+        """Test getHumanSummary() with filter_priority"""
+        # empty cve list
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSummary([], "", False, filter_priority="high")
+        self.assertEqual("", error.getvalue().strip())
+        exp = """# Open
+
+Priority   Repository                     Issue
+--------   ----------                     -----
+
+Totals:
+- critical: 0 in 0 repos
+- high: 0 in 0 repos
+- medium: 0 in 0 repos
+- low: 0 in 0 repos
+- negligible: 0 in 0 repos"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        cves = self._mock_cve_list_mixed()
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSummary(cves, "", False, filter_priority="high,critical")
+        self.assertEqual("", error.getvalue().strip())
+        exp = """# Open
+
+Priority   Repository                     Issue
+--------   ----------                     -----
+high       bar                            CVE-2022-GH2#bar          (gh-dependabot, gh-secrets)
+
+Totals:
+- critical: 0 in 0 repos
+- high: 1 in 1 repos
+- medium: 0 in 0 repos
+- low: 0 in 0 repos
+- negligible: 0 in 0 repos"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSummary(cves, "", True, filter_priority="high,critical")
+        self.assertEqual("", error.getvalue().strip())
+        expClosed = (
+            exp
+            + """
+
+
+# Closed
+
+Priority   Repository                     Issue
+--------   ----------                     -----
+critical   foo                            CVE-2021-9991
+
+Totals:
+- critical: 1 in 1 repos
+- high: 0 in 0 repos
+- medium: 0 in 0 repos
+- low: 0 in 0 repos
+- negligible: 0 in 0 repos"""
         )
         self.assertEqual(expClosed, output.getvalue().strip())
