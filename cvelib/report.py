@@ -967,7 +967,7 @@ def getHumanSummary(
         print(
             table_f(pri="--------", repo="----------", cve="-----", extra="").rstrip()
         )
-        for priority in ["critical", "high", "medium", "low", "negligible"]:
+        for priority in cve_priorities:
             if priority not in lines_open:
                 continue
             for repo in sorted(lines_open[priority]):
@@ -999,7 +999,7 @@ def getHumanSummary(
                     )
 
         print("\nTotals:")
-        for priority in ["critical", "high", "medium", "low", "negligible"]:
+        for priority in cve_priorities:
             print(
                 "- %s: %d in %d repos"
                 % (priority, totals[priority]["num"], totals[priority]["num_repos"])
