@@ -1140,63 +1140,46 @@ def _getCVEPaths(cveDirs: Dict[str, str]) -> List[str]:
     return cves
 
 
+def _commonParseFilter(default: List[str], filt: str, errText: str) -> List[str]:
+    """Common helper to return a list of filtered items based on default"""
+    items: List[str] = copy.deepcopy(default)
+    if filt != "":
+        skipping: bool = False
+        if filt.startswith("-") or ",-" in filt:
+            skipping = True
+        else:
+            items = []
+
+        for f in filt.split(","):
+            if skipping and not f.startswith("-"):
+                raise CveException(
+                    "invalid filter: cannot mix %s and skipped %s" % (errText, errText)
+                )
+
+            tmp: str = f[1:] if f.startswith("-") else f
+            if tmp not in default:
+                raise CveException("invalid filter: %s" % f)
+
+            if not f.startswith("-") and tmp not in items:
+                items.append(tmp)
+            elif f.startswith("-") and tmp in items:
+                items.remove(tmp)
+
+    return items
+
+
 def _parseFilterPriorities(filt: str) -> List[str]:
     """Return a list of filtered priorities"""
-    priorities: List[str] = copy.deepcopy(cve_priorities)
-    if filt != "":
-        skipping: bool = False
-        if filt.startswith("-") or ",-" in filt:
-            skipping = True
-        else:
-            priorities = []
-
-        for p in filt.split(","):
-            if skipping and not p.startswith("-"):
-                raise CveException(
-                    "invalid filter-priority: cannot mix priorities and skipped priorities"
-                )
-
-            tmp_p: str = p[1:] if p.startswith("-") else p
-            if tmp_p not in cve_priorities:
-                raise CveException("invalid filter-priority: %s" % p)
-
-            if not p.startswith("-") and tmp_p not in priorities:
-                priorities.append(tmp_p)
-            elif p.startswith("-") and tmp_p in priorities:
-                priorities.remove(tmp_p)
-
-    return priorities
+    return _commonParseFilter(cve_priorities, filt, "priorities")
 
 
-# TODO: combine this with _filterPriorities()
 def _parseFilterStatuses(filt: str) -> List[str]:
     """Return a list of filtered statuses"""
-    statuses: List[str] = copy.deepcopy(cve_statuses)
-    if filt != "":
-        skipping: bool = False
-        if filt.startswith("-") or ",-" in filt:
-            skipping = True
-        else:
-            statuses = []
-
-        for s in filt.split(","):
-            if skipping and not s.startswith("-"):
-                raise CveException(
-                    "invalid filter-status: cannot mix statuses and skipped statuses"
-                )
-
-            tmp_s: str = s[1:] if s.startswith("-") else s
-            if tmp_s not in cve_statuses:
-                raise CveException("invalid filter-status: %s" % s)
-
-            if not s.startswith("-") and tmp_s not in statuses:
-                statuses.append(tmp_s)
-            elif s.startswith("-") and tmp_s in statuses:
-                statuses.remove(tmp_s)
-
-    return statuses
+    return _commonParseFilter(cve_statuses, filt, "statuses")
 
 
+# _parseFilterTags() is sufficiently different from _parseFilterPriorities()
+# and _parseFilterStatuses() that we implement it separately.
 def _parseFilterTags(filt: str) -> Tuple[List[str], bool]:
     """Return a list of filtered tags"""
     tags: List[str] = []

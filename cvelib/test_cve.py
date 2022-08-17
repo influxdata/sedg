@@ -2684,12 +2684,12 @@ cve-data = %s
             ("-negligible", ["critical", "high", "medium", "low"], None),
             ("-negligible,-low", ["critical", "high", "medium"], None),
             # invalid
-            ("blah", None, "invalid filter-priority: blah"),
-            ("-blah", None, "invalid filter-priority: -blah"),
+            ("blah", None, "invalid filter: blah"),
+            ("-blah", None, "invalid filter: -blah"),
             (
                 "-negligible,critical",
                 None,
-                "invalid filter-priority: cannot mix priorities and skipped priorities",
+                "invalid filter: cannot mix priorities and skipped priorities",
             ),
         ]
 
@@ -2750,12 +2750,12 @@ cve-data = %s
                 None,
             ),
             # invalid
-            ("blah", None, "invalid filter-status: blah"),
-            ("-blah", None, "invalid filter-status: -blah"),
+            ("blah", None, "invalid filter: blah"),
+            ("-blah", None, "invalid filter: -blah"),
             (
                 "-released,needed",
                 None,
-                "invalid filter-status: cannot mix statuses and skipped statuses",
+                "invalid filter: cannot mix statuses and skipped statuses",
             ),
         ]
 
