@@ -10,7 +10,7 @@ import shutil
 import tempfile
 from typing import Any, Dict, List, Optional, Pattern, Set, Tuple, Union
 
-from cvelib.common import CveException, rePatterns
+from cvelib.common import CveException, rePatterns, cve_priorities, cve_statuses
 import cvelib.common
 from cvelib.pkg import CvePkg, parse
 import cvelib.github
@@ -1140,14 +1140,189 @@ def _getCVEPaths(cveDirs: Dict[str, str]) -> List[str]:
     return cves
 
 
+def _parseFilterPriorities(filt: str) -> List[str]:
+    """Return a list of filtered priorities"""
+    priorities: List[str] = copy.deepcopy(cve_priorities)
+    if filt != "":
+        skipping: bool = False
+        if filt.startswith("-") or ",-" in filt:
+            skipping = True
+        else:
+            priorities = []
+
+        for p in filt.split(","):
+            if skipping and not p.startswith("-"):
+                raise CveException(
+                    "invalid filter-priority: cannot mix priorities and skipped priorities"
+                )
+
+            tmp_p: str = p[1:] if p.startswith("-") else p
+            if tmp_p not in cve_priorities:
+                raise CveException("invalid filter-priority: %s" % p)
+
+            if not p.startswith("-") and tmp_p not in priorities:
+                priorities.append(tmp_p)
+            elif p.startswith("-") and tmp_p in priorities:
+                priorities.remove(tmp_p)
+
+    return priorities
+
+
+# TODO: combine this with _filterPriorities()
+def _parseFilterStatuses(filt: str) -> List[str]:
+    """Return a list of filtered statuses"""
+    statuses: List[str] = copy.deepcopy(cve_statuses)
+    if filt != "":
+        skipping: bool = False
+        if filt.startswith("-") or ",-" in filt:
+            skipping = True
+        else:
+            statuses = []
+
+        for s in filt.split(","):
+            if skipping and not s.startswith("-"):
+                raise CveException(
+                    "invalid filter-status: cannot mix statuses and skipped statuses"
+                )
+
+            tmp_s: str = s[1:] if s.startswith("-") else s
+            if tmp_s not in cve_statuses:
+                raise CveException("invalid filter-status: %s" % s)
+
+            if not s.startswith("-") and tmp_s not in statuses:
+                statuses.append(tmp_s)
+            elif s.startswith("-") and tmp_s in statuses:
+                statuses.remove(tmp_s)
+
+    return statuses
+
+
+def _parseFilterTags(filt: str) -> Tuple[List[str], bool]:
+    """Return a list of filtered tags"""
+    tags: List[str] = []
+    skipping: bool = False
+
+    if filt != "":
+        if filt.startswith("-") or ",-" in filt:
+            skipping = True
+        else:
+            tags = []
+
+        for t in filt.split(","):
+            if skipping and not t.startswith("-"):
+                raise CveException(
+                    "invalid filter-tag: cannot mix tags and skipped tags"
+                )
+
+            tmp_t: str = t[1:] if t.startswith("-") else t
+            if tmp_t not in tags:
+                tags.append(tmp_t)
+
+    return tags, skipping
+
+
 def collectCVEData(
-    cveDirs: Dict[str, str], compatUbuntu: bool, untriagedOk: bool = True
+    cveDirs: Dict[str, str],
+    compatUbuntu: bool,
+    untriagedOk: bool = True,
+    filter_status: Optional[str] = None,
+    filter_product: Optional[str] = None,
+    filter_priority: Optional[str] = None,
+    filter_tag: Optional[str] = None,
 ) -> List[CVE]:
     """Read in all CVEs"""
     cves: List[CVE] = []
     cve_fn: str
+
+    # if no status filter, default to all statuses
+    statuses: List[str] = cve_statuses
+    if filter_status is not None:
+        statuses = _parseFilterStatuses(filter_status)
+
+    # if no priority filter, default to all priorities
+    priorities: List[str] = cve_priorities
+    if filter_priority is not None:
+        priorities = _parseFilterPriorities(filter_priority)
+
+    # if no tags filter, default to any tag
+    tags: List[str] = []
+    skip_tags: bool = False
+    if filter_tag is not None:
+        tags, skip_tags = _parseFilterTags(filter_tag)
+
     for cve_fn in _getCVEPaths(cveDirs):
-        cves.append(CVE(fn=cve_fn, compatUbuntu=compatUbuntu, untriagedOk=untriagedOk))
+        cve: CVE = CVE(fn=cve_fn, compatUbuntu=compatUbuntu, untriagedOk=untriagedOk)
+
+        # Check if the CVE has package data that meets our search criteria
+        pkgs: List[CvePkg] = copy.deepcopy(cve.pkgs)
+        remove_indexes: List[int] = []
+        idx: int
+        pkg: CvePkg
+        for idx, pkg in enumerate(pkgs):
+            # TODO: treat filter_product like other filter_*
+            if filter_product is not None:
+                found: bool = False
+                filter: str
+                for filter in filter_product.split(","):
+                    tmp: List[str] = filter.split("/", maxsplit=1)
+                    if tmp[0] != pkg.product:
+                        continue
+                    elif len(tmp) == 2 and tmp[1] != pkg.where:
+                        continue
+                    found = True
+                    break
+                if not found:
+                    remove_indexes.append(idx)
+                    continue
+
+            if pkg.status not in statuses:
+                remove_indexes.append(idx)
+                continue
+
+            priority: str = cve.priority
+            if pkg.software in pkg.priorities:
+                priority = pkg.priorities[pkg.software]
+
+            # filter by priority
+            if priority not in priorities:
+                remove_indexes.append(idx)
+                continue
+
+            # filter by tags
+            if len(tags) > 0:
+                # if user specified a required tag ('not skip_tags') but there
+                # are no package tags, skip
+                if not skip_tags and pkg.software not in pkg.tags:
+                    remove_indexes.append(idx)
+                    continue
+
+                # search the package tags
+                if pkg.software in pkg.tags:
+                    found: bool = False
+                    sw_tag: str
+                    for sw_tag in pkg.tags[pkg.software]:
+                        if sw_tag in tags:
+                            found = True
+                            break
+
+                    # if found user-specified tag in package tags and supposed
+                    # to skip, then skip. Or, if didn't find a user-specified
+                    # required tag in packages tags, skip.
+                    if (found and skip_tags) or (not found and not skip_tags):
+                        remove_indexes.append(idx)
+                        continue
+
+        # things went very wrong if we have duplicate indexes...
+        assert len(remove_indexes) == len(set(remove_indexes))
+
+        # now remove any packages that didn't meet the search critieria
+        for idx in sorted(remove_indexes, reverse=True):
+            del cve.pkgs[idx]
+
+        # By now, the CVE should only have package data that meets our search
+        # criteria. If there are any packages left, add it to the list
+        if len(cve.pkgs) > 0:
+            cves.append(copy.deepcopy(cve))
 
     return cves
 

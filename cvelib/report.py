@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, TypedDict, Un
 
 from cvelib.cve import CVE, collectGHAlertUrls
 from cvelib.common import (
-    CveException,
     cve_priorities,
     error,
     epochToISO8601,
@@ -694,136 +693,38 @@ class _statsUniqueCVEsPkgSoftware(TypedDict):
     tags: Dict[str, List[str]]
 
 
-def _filterPriorities(filt: str) -> List[str]:
-    """Return a list of filtered priorities"""
-    priorities: List[str] = copy.deepcopy(cve_priorities)
-    if filt != "":
-        skipping: bool = False
-        if filt.startswith("-") or ",-" in filt:
-            skipping = True
-        else:
-            priorities = []
-
-        for p in filt.split(","):
-            if skipping and not p.startswith("-"):
-                raise CveException(
-                    "invalid filter-priority: cannot mix priorities and skipped priorities"
-                )
-
-            tmp_p: str = p[1:] if p.startswith("-") else p
-            if tmp_p not in cve_priorities:
-                raise CveException("invalid filter-priority: %s" % p)
-
-            if not p.startswith("-") and tmp_p not in priorities:
-                priorities.append(tmp_p)
-            elif p.startswith("-") and tmp_p in priorities:
-                priorities.remove(tmp_p)
-
-    return priorities
-
-
-def _filterTags(filt: str) -> Tuple[List[str], bool]:
-    """Return a list of filtered tags"""
-    tags: List[str] = []
-    skipping: bool = False
-
-    if filt != "":
-        if filt.startswith("-") or ",-" in filt:
-            skipping = True
-        else:
-            tags = []
-
-        for t in filt.split(","):
-            if skipping and not t.startswith("-"):
-                raise CveException(
-                    "invalid filter-tag: cannot mix tags and skipped tags"
-                )
-
-            tmp_t: str = t[1:] if t.startswith("-") else t
-            if tmp_t not in tags:
-                tags.append(tmp_t)
-
-    return tags, skipping
-
-
+# _readStatsUniqueCVEs() takes the list of provided CVEs and generates a stats
+# dict:
+#   stats = {
+#     pkg.software: {          // _statsUniqueCVEsPkgSoftware
+#       "deps": [<candidate>]
+#       "secrets": [<candidate>]
+#       "<priority>": {        // _statsUniqueCVEsPriorityCounts
+#         "num": int,
+#         "cves": [<candidate>]
+#       },
+#       "tags": {
+#         "<tag>": [<candidate>]
+#       },
+#     }
+# While the results of collectCVEData() is typically what is passed into 'cves'
+# and those CVEs may already be filtered, allow filtering by status even more
+# to allow not having to call collectCVEData() twice.
 def _readStatsUniqueCVEs(
     cves: List[CVE],
-    filter_status: List[str] = ["needs-triage", "needed", "pending"],
-    filter_product: Optional[str] = None,
-    filter_priority: Optional[str] = None,
-    filter_tag: Optional[str] = None,
+    filter_status: Optional[List[str]] = None,
 ) -> Dict[str, _statsUniqueCVEsPkgSoftware]:
     """Read in stats by unique CVE, discovering dependabot and secrets"""
-    # stats = {
-    #   pkg.software: {          // _statsUniqueCVEsPkgSoftware
-    #     "deps": [<candidate>]
-    #     "secrets": [<candidate>]
-    #     "<priority>": {        // _statsUniqueCVEsPriorityCounts
-    #       "num": int,
-    #       "cves": [<candidate>]
-    #     },
-    #     "tags": {
-    #       "<tag>": [<candidate>]
-    #     },
-    #   }
     stats: Dict[str, _statsUniqueCVEsPkgSoftware] = {}
-    priorities: List[str] = cve_priorities
-    if filter_priority is not None:
-        priorities = _filterPriorities(filter_priority)
-
-    tags: List[str] = []
-    skip_tags: bool = False
-    if filter_tag is not None:
-        tags, skip_tags = _filterTags(filter_tag)
-
     for cve in cves:
         last_software: str = ""
         for pkg in cve.pkgs:
-            if pkg.status not in filter_status:
+            if filter_status is not None and pkg.status not in filter_status:
                 continue
-
-            if filter_product is not None:
-                found = False
-                for filter in filter_product.split(","):
-                    tmp: List[str] = filter.split("/", maxsplit=1)
-                    if tmp[0] != pkg.product:
-                        continue
-                    elif len(tmp) == 2 and tmp[1] != pkg.where:
-                        continue
-                    found = True
-                    break
-                if not found:
-                    continue
 
             priority: str = cve.priority
             if pkg.software in pkg.priorities:
                 priority = pkg.priorities[pkg.software]
-
-            # filter by priority
-            if priority not in priorities:
-                continue
-
-            # filter by tags
-            if len(tags) > 0:
-                # if user specified a required tag ('not skip_tags') but there
-                # are no package tags, skip
-                if not skip_tags and pkg.software not in pkg.tags:
-                    continue
-
-                # search the package tags
-                if pkg.software in pkg.tags:
-                    found: bool = False
-                    sw_tag: str
-                    for sw_tag in pkg.tags[pkg.software]:
-                        if sw_tag in tags:
-                            found = True
-                            break
-
-                    # if found user-specified tag in package tags and supposed
-                    # to skip, then skip. Or, if didn't find a user-specified
-                    # required tag in packages tags, skip.
-                    if (found and skip_tags) or (not found and not skip_tags):
-                        continue
 
             # only count an open CVE once per software/priority
             if last_software == pkg.software:
@@ -925,13 +826,10 @@ def getHumanReportOpenByPkgPriority(
 
 def getHumanReport(
     cves: List[CVE],
-    filter_product: Optional[str] = None,
-    filter_priority: Optional[str] = None,
-    filter_tag: Optional[str] = None,
 ) -> None:
     """Show report of open and closed issues"""
     stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
-        cves, filter_product=filter_product, filter_priority=filter_priority
+        cves,
     )
     print("# Unique open issues by software")
     getHumanReportOpenByPkgPriority(stats_open)
@@ -940,9 +838,6 @@ def getHumanReport(
     stats_closed: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
         cves,
         filter_status=["released"],
-        filter_product=filter_product,
-        filter_priority=filter_priority,
-        filter_tag=filter_tag,
     )
     getHumanReportOpenByPkgPriority(stats_closed)
 
@@ -956,16 +851,10 @@ class _humanTodoScores(TypedDict):
 
 def getHumanTodo(
     cves: List[CVE],
-    filter_product: Optional[str] = None,
-    filter_priority: Optional[str] = None,
-    filter_tag: Optional[str] = None,
 ) -> None:
     """Show report of open items in todo list format"""
     stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
         cves,
-        filter_product=filter_product,
-        filter_priority=filter_priority,
-        filter_tag=filter_tag,
     )
     points: Dict[str, int] = {
         "critical": 200,
@@ -997,16 +886,10 @@ def getHumanTodo(
 def getHumanSoftwareInfo(
     cves: List[CVE],
     pkg: str = "",
-    filter_product: Optional[str] = None,
-    filter_priority: Optional[str] = None,
-    filter_tag: Optional[str] = None,
 ) -> None:
     """Show report of open items by software and priority"""
     stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
         cves,
-        filter_product=filter_product,
-        filter_priority=filter_priority,
-        filter_tag=filter_tag,
     )
 
     sw: str
@@ -1038,9 +921,6 @@ def getHumanSummary(
     cves: List[CVE],
     pkg_fn: str = "",
     closed: bool = False,
-    filter_product: Optional[str] = None,
-    filter_priority: Optional[str] = None,
-    filter_tag: Optional[str] = None,
 ) -> None:
     """Show report in summary format"""
 
@@ -1129,9 +1009,7 @@ def getHumanSummary(
 
     stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
         cves,
-        filter_product=filter_product,
-        filter_priority=filter_priority,
-        filter_tag=filter_tag,
+        filter_status=["needs-triage", "needed", "pending"],
     )
     _output(stats_open, "open", pkgs)
 
@@ -1140,9 +1018,6 @@ def getHumanSummary(
         stats_closed: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
             cves,
             filter_status=["released"],
-            filter_product=filter_product,
-            filter_priority=filter_priority,
-            filter_tag=filter_tag,
         )
         _output(stats_closed, "closed", pkgs)
 
@@ -1156,10 +1031,6 @@ def getHumanSummary(
 def _readStatsLineProtocol(
     cves: List[CVE],
     measurement="cveLog",
-    filter_status: List[str] = ["needs-triage", "needed", "pending"],
-    filter_product: Optional[str] = None,
-    filter_priority: Optional[str] = None,
-    filter_tag: Optional[str] = None,
     base_timestamp: Optional[int] = None,
     pkgs: Optional[Set[str]] = None,
 ) -> List[str]:
@@ -1173,15 +1044,6 @@ def _readStatsLineProtocol(
             raise ValueError
         base_tm = int(time.mktime(time.gmtime(base_timestamp))) * 1000 * 1000 * 1000
 
-    priorities: List[str] = cve_priorities
-    if filter_priority is not None:
-        priorities = _filterPriorities(filter_priority)
-
-    tags: List[str] = []
-    skip_tags: bool = False
-    if filter_tag is not None:
-        tags, skip_tags = _filterTags(filter_tag)
-
     # XXX: perhaps use a timestamp relative to the mtime of the file or git
     # commit (that would rotate out though with retention policy)
     for cve in cves:
@@ -1189,51 +1051,9 @@ def _readStatsLineProtocol(
             if pkgs is not None and pkg.software not in pkgs:
                 continue
 
-            if pkg.status not in filter_status:
-                continue
-
-            if filter_product is not None:
-                found = False
-                for filter in filter_product.split(","):
-                    tmp = filter.split("/", maxsplit=1)
-                    if tmp[0] != pkg.product:
-                        continue
-                    elif len(tmp) == 2 and tmp[1] != pkg.where:
-                        continue
-                    found = True
-                    break
-                if not found:
-                    continue
-
             priority: str = cve.priority
             if pkg.software in pkg.priorities:
                 priority = pkg.priorities[pkg.software]
-
-            # filter by priorities
-            if priority not in priorities:
-                continue
-
-            # filter by tags
-            if len(tags) > 0:
-                # if user specified a required tag ('not skip_tags') but there
-                # are no package tags, skip
-                if not skip_tags and pkg.software not in pkg.tags:
-                    continue
-
-                # search the package tags
-                if pkg.software in pkg.tags:
-                    found: bool = False
-                    sw_tag: str
-                    for sw_tag in pkg.tags[pkg.software]:
-                        if sw_tag in tags:
-                            found = True
-                            break
-
-                    # if found user-specified tag in package tags and supposed
-                    # to skip, then skip. Or, if didn't find a user-specified
-                    # required tag in packages tags, skip.
-                    if (found and skip_tags) or (not found and not skip_tags):
-                        continue
 
             timestamp: int
             if base_tm is None:
@@ -1267,9 +1087,6 @@ def getInfluxDBLineProtocol(
     cves: List[CVE],
     pkg_fn: str = "",
     base_timestamp: Optional[int] = None,
-    filter_product: Optional[str] = None,
-    filter_priority: Optional[str] = None,
-    filter_tag: Optional[str] = None,
 ) -> None:
     """Show report of open items in InfluxDB line protocol format"""
     pkgs: Optional[Set[str]] = _readPackagesFile(pkg_fn)
@@ -1277,9 +1094,6 @@ def getInfluxDBLineProtocol(
         cves,
         base_timestamp=base_timestamp,
         pkgs=pkgs,
-        filter_product=filter_product,
-        filter_priority=filter_priority,
-        filter_tag=filter_tag,
     )
     for s in stats_open:
         print(s)

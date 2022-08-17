@@ -537,54 +537,63 @@ class TestReport(TestCase):
             cves.append(cve)
         return copy.deepcopy(cves)
 
-    def _mock_cve_list_mixed(self):
+    def _mock_cve_data_mixed(self):
         """Generate a List[cvelib.cve.CVE]"""
-        cves = []
+
+        def _write_cve(cve_fn, d):
+            content = cvelib.testutil.cveContentFromDict(d)
+            with open(cve_fn, "w") as fp:
+                fp.write("%s" % content)
+
+        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        content = (
+            """[Location]
+cve-data = %s
+"""
+            % self.tmpdir
+        )
+        self.orig_xdg_config_home, self.tmpdir = cvelib.testutil._newConfigFile(
+            content, self.tmpdir
+        )
+
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
 
         # regular CVE - foo
-        cve = cvelib.cve.CVE()
         d = self._cve_template(cand="CVE-2022-0001")
         d["upstream_foo"] = "needs-triage"
-        cve.setData(d)
-        cves.append(cve)
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
 
         # regular CVE - bar
-        cve = cvelib.cve.CVE()
         d = self._cve_template(cand="CVE-2022-0002")
         d["Priority"] = "low"
         d["upstream_bar"] = "needs-triage"
-        cve.setData(d)
-        cves.append(cve)
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
 
         # regular CVE - baz
-        cve = cvelib.cve.CVE()
         d = self._cve_template(cand="CVE-2022-0003")
         d["Priority"] = "low"
-        d["upstream_foo"] = "needs-triage"
-        cve.setData(d)
-        cves.append(cve)
+        d["upstream_baz"] = "needs-triage"
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
 
         # placeholder with priority override
-        cve = cvelib.cve.CVE()
         d = self._cve_template(cand="CVE-2022-NNN1")
         d["upstream_foo"] = "needed"
         d["Priority_foo"] = "low"
-        cve.setData(d)
-        cves.append(cve)
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
 
         # github placeholder with tag
-        cve = cvelib.cve.CVE()
         d = self._cve_template(
             cand="CVE-2022-GH1#foo",
             references=["https://github.com/org/foo/issues/1"],
         )
         d["git/org_foo"] = "pending"
         d["Tags_foo"] = "limit-report"
-        cve.setData(d)
-        cves.append(cve)
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
 
         # github placeholder with gh-dependabot and gh-secrets discovered-by
-        cve = cvelib.cve.CVE()
         d = self._cve_template(
             cand="CVE-2022-GH2#bar",
             references=["https://github.com/org/bar/issues/2"],
@@ -592,34 +601,27 @@ class TestReport(TestCase):
         d["Priority"] = "high"
         d["git/org_bar"] = "needed"
         d["Discovered-by"] = "gh-secrets, gh-dependabot"
-        cve.setData(d)
-        cves.append(cve)
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
 
         # regular CVE, closed
-        cve = cvelib.cve.CVE()
         d = self._cve_template(cand="CVE-2021-9991")
         d["upstream_foo"] = "released"
         d["Priority"] = "critical"
-        cve.setData(d)
-        cves.append(cve)
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
 
         # regular CVE, closed
-        cve = cvelib.cve.CVE()
         d = self._cve_template(cand="CVE-2021-9992")
         d["git/org_bar"] = "released"
         d["Priority"] = "negligible"
-        cve.setData(d)
-        cves.append(cve)
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
 
         # regular CVE, ignored
-        cve = cvelib.cve.CVE()
         d = self._cve_template(cand="CVE-2021-9993")
         d["upstream_bar"] = "ignored"
         d["Priority"] = "negligible"
-        cve.setData(d)
-        cves.append(cve)
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
 
-        return copy.deepcopy(cves)
+        return cveDirs
 
     #
     # _getGHReposAll() tests
@@ -1179,100 +1181,6 @@ valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabo
             )
 
     #
-    # _filterPriorities()
-    #
-    def test__filterPriorities(self):
-        """Test _filterPriorities()"""
-        tsts = [
-            # valid
-            ("", cvelib.common.cve_priorities, None),
-            ("critical", ["critical"], None),
-            ("high", ["high"], None),
-            ("medium", ["medium"], None),
-            ("low", ["low"], None),
-            ("negligible", ["negligible"], None),
-            ("high,critical", ["critical", "high"], None),
-            ("high,critical,high", ["critical", "high"], None),
-            ("-negligible", ["critical", "high", "medium", "low"], None),
-            ("-negligible,-low", ["critical", "high", "medium"], None),
-            # invalid
-            ("blah", None, "invalid filter-priority: blah"),
-            ("-blah", None, "invalid filter-priority: -blah"),
-            (
-                "-negligible,critical",
-                None,
-                "invalid filter-priority: cannot mix priorities and skipped priorities",
-            ),
-        ]
-
-        for filt, exp, expErr in tsts:
-            if expErr is None:
-                res = cvelib.report._filterPriorities(filt)
-                # https://docs.python.org/3.2/library/unittest.html#unittest.TestCase.assertCountEqual
-                # "Test that sequence first contains the same elements as second,
-                # regardless of their order. When they don't, an error message
-                # listing the differences between the sequences will be generated.
-                # Duplicate elements are not ignored when comparing first and
-                # second. It verifies whether each element has the same count in
-                # both sequences."
-                self.assertCountEqual(exp, res)
-            else:
-                with self.assertRaises(cvelib.common.CveException) as context:
-                    cvelib.report._filterPriorities(filt)
-                self.assertEqual(expErr, str(context.exception))
-
-    #
-    # _filterTags()
-    #
-    def test__filterTags(self):
-        """Test _filterTags()"""
-        tsts = [
-            # valid
-            ("", [], False, None),
-            ("apparmor", ["apparmor"], False, None),
-            ("fortify-source", ["fortify-source"], False, None),
-            ("hardlink-restriction", ["hardlink-restriction"], False, None),
-            ("heap-protector", ["heap-protector"], False, None),
-            ("limit-report", ["limit-report"], False, None),
-            ("not-ue", ["not-ue"], False, None),
-            ("pie", ["pie"], False, None),
-            ("stack-protector", ["stack-protector"], False, None),
-            ("symlink-restriction", ["symlink-restriction"], False, None),
-            ("universe-binary", ["universe-binary"], False, None),
-            (
-                "pie,apparmor,stack-protector",
-                ["apparmor", "pie", "stack-protector"],
-                False,
-                None,
-            ),
-            ("-limit-report", ["limit-report"], True, None),
-            # invalid
-            (
-                "-limit-report,pie",
-                None,
-                False,
-                "invalid filter-tag: cannot mix tags and skipped tags",
-            ),
-        ]
-
-        for filt, exp, expSkip, expErr in tsts:
-            if expErr is None:
-                res, resSkip = cvelib.report._filterTags(filt)
-                # https://docs.python.org/3.2/library/unittest.html#unittest.TestCase.assertCountEqual
-                # "Test that sequence first contains the same elements as second,
-                # regardless of their order. When they don't, an error message
-                # listing the differences between the sequences will be generated.
-                # Duplicate elements are not ignored when comparing first and
-                # second. It verifies whether each element has the same count in
-                # both sequences."
-                self.assertCountEqual(exp, res)
-                self.assertEqual(expSkip, resSkip)
-            else:
-                with self.assertRaises(cvelib.common.CveException) as context:
-                    cvelib.report._filterTags(filt)
-                self.assertEqual(expErr, str(context.exception))
-
-    #
     # getHumanSummary()
     #
     def test_getHumanSummary(self):
@@ -1294,7 +1202,12 @@ Totals:
 - negligible: 0 in 0 repos"""
         self.assertEqual(exp, output.getvalue().strip())
 
-        cves = self._mock_cve_list_mixed()
+        # mock some data by calling collectCVEData() like bin/cve-report
+        cveDirs = self._mock_cve_data_mixed()
+        cves = cvelib.cve.collectCVEData(
+            cveDirs, False, filter_status="needs-triage,needed,pending,released"
+        )
+
         with cvelib.testutil.capturedOutput() as (output, error):
             cvelib.report.getHumanSummary(cves, "", False)
         self.assertEqual("", error.getvalue().strip())
@@ -1306,14 +1219,14 @@ high       bar                            CVE-2022-GH2#bar          (gh-dependab
 medium     foo                            CVE-2022-0001
 medium     foo                            CVE-2022-GH1#foo          (limit-report)
 low        bar                            CVE-2022-0002
-low        foo                            CVE-2022-0003
+low        baz                            CVE-2022-0003
 low        foo                            CVE-2022-NNN1
 
 Totals:
 - critical: 0 in 0 repos
 - high: 1 in 1 repos
 - medium: 2 in 1 repos
-- low: 3 in 2 repos
+- low: 3 in 3 repos
 - negligible: 0 in 0 repos"""
         self.assertEqual(exp, output.getvalue().strip())
 
@@ -1343,30 +1256,17 @@ Totals:
 
     def test_getHumanSummaryWithPkgFn(self):
         """Test getHumanSummary() with pkg_fn"""
-        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
-        pkg_fn = os.path.join(self.tmpdir, "pkgs")
+        # mock some data by calling collectCVEData() like bin/cve-report
+        cveDirs = self._mock_cve_data_mixed()
+        cves = cvelib.cve.collectCVEData(
+            cveDirs, False, filter_status="needs-triage,needed,pending,released"
+        )
+
+        pkg_fn = "%s/pkgs" % self.tmpdir
         content = "bar\n"
         with open(pkg_fn, "w") as fp:
             fp.write("%s" % content)
 
-        # empty cve list
-        with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary([], pkg_fn, False)
-        self.assertEqual("", error.getvalue().strip())
-        exp = """# Open
-
-Priority   Repository                     Issue
---------   ----------                     -----
-
-Totals:
-- critical: 0 in 0 repos
-- high: 0 in 0 repos
-- medium: 0 in 0 repos
-- low: 0 in 0 repos
-- negligible: 0 in 0 repos"""
-        self.assertEqual(exp, output.getvalue().strip())
-
-        cves = self._mock_cve_list_mixed()
         with cvelib.testutil.capturedOutput() as (output, error):
             cvelib.report.getHumanSummary(cves, pkg_fn, False)
         self.assertEqual("", error.getvalue().strip())
@@ -1410,28 +1310,17 @@ Totals:
 
     def test_getHumanSummaryWithFilterProduct(self):
         """Test getHumanSummary() with filter_product"""
-        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        # mock some data by calling collectCVEData() like bin/cve-report
+        cveDirs = self._mock_cve_data_mixed()
+        cves = cvelib.cve.collectCVEData(
+            cveDirs,
+            False,
+            filter_status="needs-triage,needed,pending,released",
+            filter_product="git/org",
+        )
 
-        # empty cve list
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary([], "", False, filter_product="git/org")
-        self.assertEqual("", error.getvalue().strip())
-        exp = """# Open
-
-Priority   Repository                     Issue
---------   ----------                     -----
-
-Totals:
-- critical: 0 in 0 repos
-- high: 0 in 0 repos
-- medium: 0 in 0 repos
-- low: 0 in 0 repos
-- negligible: 0 in 0 repos"""
-        self.assertEqual(exp, output.getvalue().strip())
-
-        cves = self._mock_cve_list_mixed()
-        with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(cves, "", False, filter_product="git/org")
+            cvelib.report.getHumanSummary(cves, "", False)
         self.assertEqual("", error.getvalue().strip())
         exp = """# Open
 
@@ -1449,7 +1338,7 @@ Totals:
         self.assertEqual(exp, output.getvalue().strip())
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(cves, "", True, filter_product="git/org")
+            cvelib.report.getHumanSummary(cves, "", True)
         self.assertEqual("", error.getvalue().strip())
         expClosed = (
             exp
@@ -1473,28 +1362,17 @@ Totals:
 
     def test_getHumanSummaryWithFilterPriority(self):
         """Test getHumanSummary() with filter_priority"""
-        # empty cve list
+        # mock some data by calling collectCVEData() like bin/cve-report
+        cveDirs = self._mock_cve_data_mixed()
+        cves = cvelib.cve.collectCVEData(
+            cveDirs,
+            False,
+            filter_status="needs-triage,needed,pending,released",
+            filter_priority="high,critical",
+        )
+
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary([], "", False, filter_priority="high")
-        self.assertEqual("", error.getvalue().strip())
-        exp = """# Open
-
-Priority   Repository                     Issue
---------   ----------                     -----
-
-Totals:
-- critical: 0 in 0 repos
-- high: 0 in 0 repos
-- medium: 0 in 0 repos
-- low: 0 in 0 repos
-- negligible: 0 in 0 repos"""
-        self.assertEqual(exp, output.getvalue().strip())
-
-        cves = self._mock_cve_list_mixed()
-        with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(
-                cves, "", False, filter_priority="high,critical"
-            )
+            cvelib.report.getHumanSummary(cves, "", False)
         self.assertEqual("", error.getvalue().strip())
         exp = """# Open
 
@@ -1511,9 +1389,7 @@ Totals:
         self.assertEqual(exp, output.getvalue().strip())
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(
-                cves, "", True, filter_priority="high,critical"
-            )
+            cvelib.report.getHumanSummary(cves, "", True)
         self.assertEqual("", error.getvalue().strip())
         expClosed = (
             exp
@@ -1537,26 +1413,17 @@ Totals:
 
     def test_getHumanSummaryWithFilterTag(self):
         """Test getHumanSummary() with filter_tag"""
-        # empty cve list
+        # mock some data by calling collectCVEData() like bin/cve-report
+        cveDirs = self._mock_cve_data_mixed()
+        cves = cvelib.cve.collectCVEData(
+            cveDirs,
+            False,
+            filter_status="needs-triage,needed,pending,released",
+            filter_tag="-limit-report",
+        )
+
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary([], "", False, filter_tag="limit-report")
-        self.assertEqual("", error.getvalue().strip())
-        exp = """# Open
-
-Priority   Repository                     Issue
---------   ----------                     -----
-
-Totals:
-- critical: 0 in 0 repos
-- high: 0 in 0 repos
-- medium: 0 in 0 repos
-- low: 0 in 0 repos
-- negligible: 0 in 0 repos"""
-        self.assertEqual(exp, output.getvalue().strip())
-
-        cves = self._mock_cve_list_mixed()
-        with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(cves, "", False, filter_tag="-limit-report")
+            cvelib.report.getHumanSummary(cves, "", False)
         self.assertEqual("", error.getvalue().strip())
         exp = """# Open
 
@@ -1565,19 +1432,19 @@ Priority   Repository                     Issue
 high       bar                            CVE-2022-GH2#bar          (gh-dependabot, gh-secrets)
 medium     foo                            CVE-2022-0001
 low        bar                            CVE-2022-0002
-low        foo                            CVE-2022-0003
+low        baz                            CVE-2022-0003
 low        foo                            CVE-2022-NNN1
 
 Totals:
 - critical: 0 in 0 repos
 - high: 1 in 1 repos
 - medium: 1 in 1 repos
-- low: 3 in 2 repos
+- low: 3 in 3 repos
 - negligible: 0 in 0 repos"""
         self.assertEqual(exp, output.getvalue().strip())
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(cves, "", True, filter_tag="-limit-report")
+            cvelib.report.getHumanSummary(cves, "", True)
         self.assertEqual("", error.getvalue().strip())
         expClosed = (
             exp
@@ -1600,9 +1467,14 @@ Totals:
         )
         self.assertEqual(expClosed, output.getvalue().strip())
 
-        cves = self._mock_cve_list_mixed()
+        cves = cvelib.cve.collectCVEData(
+            cveDirs,
+            False,
+            filter_status="needs-triage,needed,pending,released",
+            filter_tag="limit-report",
+        )
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(cves, "", False, filter_tag="limit-report")
+            cvelib.report.getHumanSummary(cves, "", False)
         self.assertEqual("", error.getvalue().strip())
         exp = """# Open
 
@@ -1619,7 +1491,7 @@ Totals:
         self.assertEqual(exp, output.getvalue().strip())
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(cves, "", True, filter_tag="limit-report")
+            cvelib.report.getHumanSummary(cves, "", True)
         self.assertEqual("", error.getvalue().strip())
         expClosed = (
             exp

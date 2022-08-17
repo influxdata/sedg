@@ -49,11 +49,11 @@ class TestCve(TestCase):
 
         return expected
 
-    def _cve_template(self):
+    def _cve_template(self, cand="CVE-2020-1234"):
         """Generate a valid CVE to mimic what readCve() might see"""
         return copy.deepcopy(
             {
-                "Candidate": "CVE-2020-1234",
+                "Candidate": cand,
                 "OpenDate": "2020-06-29",
                 "PublicDate": "2020-06-30",
                 "CRD": "2020-06-30 01:02:03 -0700",
@@ -2666,7 +2666,167 @@ cve-data = %s
         for i in range(len(testData)):
             self.assertTrue(testData[i] in res[i])
 
-    def test_collectCVEData(self):
+    #
+    # _parseFilterPriorities()
+    #
+    def test__parseFilterPriorities(self):
+        """Test _parseFilterPriorities()"""
+        tsts = [
+            # valid
+            ("", cvelib.common.cve_priorities, None),
+            ("critical", ["critical"], None),
+            ("high", ["high"], None),
+            ("medium", ["medium"], None),
+            ("low", ["low"], None),
+            ("negligible", ["negligible"], None),
+            ("high,critical", ["critical", "high"], None),
+            ("high,critical,high", ["critical", "high"], None),
+            ("-negligible", ["critical", "high", "medium", "low"], None),
+            ("-negligible,-low", ["critical", "high", "medium"], None),
+            # invalid
+            ("blah", None, "invalid filter-priority: blah"),
+            ("-blah", None, "invalid filter-priority: -blah"),
+            (
+                "-negligible,critical",
+                None,
+                "invalid filter-priority: cannot mix priorities and skipped priorities",
+            ),
+        ]
+
+        for filt, exp, expErr in tsts:
+            if expErr is None:
+                res = cvelib.cve._parseFilterPriorities(filt)
+                # https://docs.python.org/3.2/library/unittest.html#unittest.TestCase.assertCountEqual
+                # "Test that sequence first contains the same elements as second,
+                # regardless of their order. When they don't, an error message
+                # listing the differences between the sequences will be generated.
+                # Duplicate elements are not ignored when comparing first and
+                # second. It verifies whether each element has the same count in
+                # both sequences."
+                self.assertCountEqual(exp, res)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    cvelib.cve._parseFilterPriorities(filt)
+                self.assertEqual(expErr, str(context.exception))
+
+    #
+    # _parseFilterStatuses()
+    #
+    def test__parseFilterStatuses(self):
+        """Test _parseFilterStatuses()"""
+        tsts = [
+            # valid
+            ("", cvelib.common.cve_statuses, None),
+            ("needed", ["needed"], None),
+            ("needs-triage", ["needs-triage"], None),
+            ("pending", ["pending"], None),
+            ("ignored", ["ignored"], None),
+            ("released", ["released"], None),
+            ("needs-triage,needed", ["needed", "needs-triage"], None),
+            ("needs-triage,needed,needs-triage", ["needed", "needs-triage"], None),
+            (
+                "-released",
+                [
+                    "needed",
+                    "needs-triage",
+                    "pending",
+                    "ignored",
+                    "deferred",
+                    "DNE",
+                    "not-affected",
+                ],
+                None,
+            ),
+            (
+                "-released,-ignored",
+                [
+                    "needed",
+                    "needs-triage",
+                    "pending",
+                    "deferred",
+                    "DNE",
+                    "not-affected",
+                ],
+                None,
+            ),
+            # invalid
+            ("blah", None, "invalid filter-status: blah"),
+            ("-blah", None, "invalid filter-status: -blah"),
+            (
+                "-released,needed",
+                None,
+                "invalid filter-status: cannot mix statuses and skipped statuses",
+            ),
+        ]
+
+        for filt, exp, expErr in tsts:
+            if expErr is None:
+                res = cvelib.cve._parseFilterStatuses(filt)
+                # https://docs.python.org/3.2/library/unittest.html#unittest.TestCase.assertCountEqual
+                # "Test that sequence first contains the same elements as second,
+                # regardless of their order. When they don't, an error message
+                # listing the differences between the sequences will be generated.
+                # Duplicate elements are not ignored when comparing first and
+                # second. It verifies whether each element has the same count in
+                # both sequences."
+                self.assertCountEqual(exp, res)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    cvelib.cve._parseFilterStatuses(filt)
+                self.assertEqual(expErr, str(context.exception))
+
+    #
+    # _parseFilterTags()
+    #
+    def test__parseFilterTags(self):
+        """Test _parseFilterTags()"""
+        tsts = [
+            # valid
+            ("", [], False, None),
+            ("apparmor", ["apparmor"], False, None),
+            ("fortify-source", ["fortify-source"], False, None),
+            ("hardlink-restriction", ["hardlink-restriction"], False, None),
+            ("heap-protector", ["heap-protector"], False, None),
+            ("limit-report", ["limit-report"], False, None),
+            ("not-ue", ["not-ue"], False, None),
+            ("pie", ["pie"], False, None),
+            ("stack-protector", ["stack-protector"], False, None),
+            ("symlink-restriction", ["symlink-restriction"], False, None),
+            ("universe-binary", ["universe-binary"], False, None),
+            (
+                "pie,apparmor,stack-protector",
+                ["apparmor", "pie", "stack-protector"],
+                False,
+                None,
+            ),
+            ("-limit-report", ["limit-report"], True, None),
+            # invalid
+            (
+                "-limit-report,pie",
+                None,
+                False,
+                "invalid filter-tag: cannot mix tags and skipped tags",
+            ),
+        ]
+
+        for filt, exp, expSkip, expErr in tsts:
+            if expErr is None:
+                res, resSkip = cvelib.cve._parseFilterTags(filt)
+                # https://docs.python.org/3.2/library/unittest.html#unittest.TestCase.assertCountEqual
+                # "Test that sequence first contains the same elements as second,
+                # regardless of their order. When they don't, an error message
+                # listing the differences between the sequences will be generated.
+                # Duplicate elements are not ignored when comparing first and
+                # second. It verifies whether each element has the same count in
+                # both sequences."
+                self.assertCountEqual(exp, res)
+                self.assertEqual(expSkip, resSkip)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    cvelib.cve._parseFilterTags(filt)
+                self.assertEqual(expErr, str(context.exception))
+
+    def test_collectCVEDataSimple(self):
         """Test collectCVEData()"""
         self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
         content = (
@@ -2722,6 +2882,378 @@ cve-data = %s
         with self.assertRaises(cvelib.common.CveException) as context:
             cvelib.cve.collectCVEData(cveDirs, False)
         self.assertEqual("invalid Candidate: 'CVE-bad'", str(context.exception))
+
+    def _mock_cve_data_mixed(self):
+        """Generate a bunch of CVEs"""
+
+        def _write_cve(cve_fn, d):
+            content = cvelib.testutil.cveContentFromDict(d)
+            with open(cve_fn, "w") as fp:
+                fp.write("%s" % content)
+
+        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        content = (
+            """[Location]
+cve-data = %s
+"""
+            % self.tmpdir
+        )
+        self.orig_xdg_config_home, self.tmpdir = cvelib.testutil._newConfigFile(
+            content, self.tmpdir
+        )
+
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
+
+        # regular CVE - foo
+        d = self._cve_template(cand="CVE-2022-0001")
+        d["upstream_foo"] = "needs-triage"
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+
+        # regular CVE - bar
+        d = self._cve_template(cand="CVE-2022-0002")
+        d["Priority"] = "low"
+        d["upstream_bar"] = "needs-triage"
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+
+        # regular CVE - baz
+        d = self._cve_template(cand="CVE-2022-0003")
+        d["Priority"] = "low"
+        d["upstream_baz"] = "needs-triage"
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+
+        # distro CVE
+        d = self._cve_template(cand="CVE-2022-0004")
+        d["ubuntu/focal_foo"] = "needed"
+        d["Priority"] = "low"
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+
+        # placeholder with priority override
+        d = self._cve_template(cand="CVE-2022-NNN1")
+        d["upstream_foo"] = "needed"
+        d["Priority_foo"] = "low"
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+
+        # github placeholder with tag
+        d = self._cve_template(
+            cand="CVE-2022-GH1#foo",
+        )
+        d["git/org_foo"] = "pending"
+        d["Tags_foo"] = "limit-report"
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+
+        # github placeholder with gh-dependabot and gh-secrets discovered-by
+        d = self._cve_template(
+            cand="CVE-2022-GH2#bar",
+        )
+        d["Priority"] = "high"
+        d["git/org_bar"] = "needed"
+        d["Discovered-by"] = "gh-secrets, gh-dependabot"
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+
+        # regular CVE, closed
+        d = self._cve_template(cand="CVE-2021-9991")
+        d["upstream_foo"] = "released"
+        d["Priority"] = "critical"
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+
+        # regular CVE, closed
+        d = self._cve_template(cand="CVE-2021-9992")
+        d["git/org_bar"] = "released"
+        d["Priority"] = "negligible"
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+
+        # regular CVE, ignored
+        d = self._cve_template(cand="CVE-2021-9993")
+        d["upstream_bar"] = "ignored"
+        d["Priority"] = "negligible"
+        d["Tags_bar"] = "pie"
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+
+        return cveDirs
+
+    def test_collectCVEDataFull(self):
+        """Test collectCVEData() - full"""
+        cveDirs = self._mock_cve_data_mixed()
+
+        # no filters, get all
+        cves = cvelib.cve.collectCVEData(cveDirs, False)
+        self.assertEqual(10, len(cves))
+        for c in cves:
+            self.assertTrue(
+                c.candidate
+                in [
+                    "CVE-2022-0001",
+                    "CVE-2022-0002",
+                    "CVE-2022-0003",
+                    "CVE-2022-0004",
+                    "CVE-2022-NNN1",
+                    "CVE-2022-GH1#foo",
+                    "CVE-2022-GH2#bar",
+                    "CVE-2021-9991",
+                    "CVE-2021-9992",
+                    "CVE-2021-9993",
+                ]
+            )
+
+        # filter product - upstream
+        cves = cvelib.cve.collectCVEData(cveDirs, False, filter_product="upstream")
+        self.assertEqual(6, len(cves))
+        for c in cves:
+            self.assertTrue(
+                c.candidate
+                in [
+                    "CVE-2022-0001",
+                    "CVE-2022-0002",
+                    "CVE-2022-0003",
+                    "CVE-2022-NNN1",
+                    "CVE-2021-9991",
+                    "CVE-2021-9993",
+                ]
+            )
+
+        # filter product - git/org
+        cves = cvelib.cve.collectCVEData(cveDirs, False, filter_product="git/org")
+        self.assertEqual(3, len(cves))
+        for c in cves:
+            self.assertTrue(
+                c.candidate
+                in [
+                    "CVE-2022-GH1#foo",
+                    "CVE-2022-GH2#bar",
+                    "CVE-2021-9992",
+                ]
+            )
+
+        # filter product - distro
+        cves = cvelib.cve.collectCVEData(cveDirs, False, filter_product="ubuntu/focal")
+        self.assertEqual(1, len(cves))
+        for c in cves:
+            self.assertTrue(c.candidate in ["CVE-2022-0004"])
+
+        # filter product - distro no match
+        cves = cvelib.cve.collectCVEData(cveDirs, False, filter_product="ubuntu/disco")
+        self.assertEqual(0, len(cves))
+
+        # filter product - multiple
+        cves = cvelib.cve.collectCVEData(
+            cveDirs, False, filter_product="ubuntu/focal,git/org"
+        )
+        self.assertEqual(4, len(cves))
+        for c in cves:
+            self.assertTrue(
+                c.candidate
+                in [
+                    "CVE-2022-0004",
+                    "CVE-2022-GH1#foo",
+                    "CVE-2022-GH2#bar",
+                    "CVE-2021-9992",
+                ]
+            )
+
+        # filter status
+        cves = cvelib.cve.collectCVEData(cveDirs, False, filter_status="released")
+        self.assertEqual(2, len(cves))
+        for c in cves:
+            self.assertTrue(c.candidate in ["CVE-2021-9991", "CVE-2021-9992"])
+
+        # filter status - no match
+        cves = cvelib.cve.collectCVEData(cveDirs, False, filter_status="deferred")
+        self.assertEqual(0, len(cves))
+
+        # filter status - multiple
+        cves = cvelib.cve.collectCVEData(
+            cveDirs, False, filter_status="needed,needs-triage"
+        )
+        self.assertEqual(6, len(cves))
+        for c in cves:
+            self.assertTrue(
+                c.candidate
+                in [
+                    "CVE-2022-0001",
+                    "CVE-2022-0002",
+                    "CVE-2022-0003",
+                    "CVE-2022-0004",
+                    "CVE-2022-NNN1",
+                    "CVE-2022-GH2#bar",
+                ]
+            )
+
+        # filter status - inverse
+        cves = cvelib.cve.collectCVEData(cveDirs, False, filter_status="-released")
+        self.assertEqual(8, len(cves))
+        for c in cves:
+            self.assertTrue(
+                c.candidate
+                in [
+                    "CVE-2022-0001",
+                    "CVE-2022-0002",
+                    "CVE-2022-0003",
+                    "CVE-2022-0004",
+                    "CVE-2022-NNN1",
+                    "CVE-2022-GH1#foo",
+                    "CVE-2022-GH2#bar",
+                    "CVE-2021-9993",
+                ]
+            )
+
+        # filter status - multiple inverse
+        cves = cvelib.cve.collectCVEData(
+            cveDirs, False, filter_status="-ignored,-released"
+        )
+        self.assertEqual(7, len(cves))
+        for c in cves:
+            self.assertTrue(
+                c.candidate
+                in [
+                    "CVE-2022-0001",
+                    "CVE-2022-0002",
+                    "CVE-2022-0003",
+                    "CVE-2022-0004",
+                    "CVE-2022-NNN1",
+                    "CVE-2022-GH1#foo",
+                    "CVE-2022-GH2#bar",
+                ]
+            )
+
+        # filter priority
+        cves = cvelib.cve.collectCVEData(cveDirs, False, filter_priority="high")
+        self.assertEqual(1, len(cves))
+        for c in cves:
+            self.assertTrue(c.candidate in ["CVE-2022-GH2#bar"])
+
+        # filter priority - multiple
+        cves = cvelib.cve.collectCVEData(
+            cveDirs, False, filter_priority="high,critical"
+        )
+        self.assertEqual(2, len(cves))
+        for c in cves:
+            self.assertTrue(c.candidate in ["CVE-2022-GH2#bar", "CVE-2021-9991"])
+
+        # filter priority - inverse
+        cves = cvelib.cve.collectCVEData(cveDirs, False, filter_priority="-high")
+        self.assertEqual(9, len(cves))
+        for c in cves:
+            self.assertTrue(
+                c.candidate
+                in [
+                    "CVE-2022-0001",
+                    "CVE-2022-0002",
+                    "CVE-2022-0003",
+                    "CVE-2022-0004",
+                    "CVE-2022-NNN1",
+                    "CVE-2022-GH1#foo",
+                    "CVE-2021-9991",
+                    "CVE-2021-9992",
+                    "CVE-2021-9993",
+                ]
+            )
+
+        # filter priority - multiple inverse
+        cves = cvelib.cve.collectCVEData(
+            cveDirs, False, filter_priority="-high,-critical"
+        )
+        self.assertEqual(8, len(cves))
+        for c in cves:
+            self.assertTrue(
+                c.candidate
+                in [
+                    "CVE-2022-0001",
+                    "CVE-2022-0002",
+                    "CVE-2022-0003",
+                    "CVE-2022-0004",
+                    "CVE-2022-NNN1",
+                    "CVE-2022-GH1#foo",
+                    "CVE-2021-9992",
+                    "CVE-2021-9993",
+                ]
+            )
+
+        # filter priority - multiple inverse no match
+        cves = cvelib.cve.collectCVEData(
+            cveDirs, False, filter_priority="-critical,-high,-medium,-low,-negligible"
+        )
+        self.assertEqual(0, len(cves))
+
+        # filter tags
+        cves = cvelib.cve.collectCVEData(cveDirs, False, filter_tag="limit-report")
+        self.assertEqual(1, len(cves))
+        for c in cves:
+            self.assertTrue(c.candidate in ["CVE-2022-GH1#foo"])
+
+        # filter tags - no match
+        cves = cvelib.cve.collectCVEData(
+            cveDirs, False, filter_tag="symlink-restriction"
+        )
+        self.assertEqual(0, len(cves))
+
+        # filter tags - multiple
+        cves = cvelib.cve.collectCVEData(cveDirs, False, filter_tag="pie,limit-report")
+        self.assertEqual(2, len(cves))
+        for c in cves:
+            self.assertTrue(c.candidate in ["CVE-2022-GH1#foo", "CVE-2021-9993"])
+
+        # filter tags - inverse
+        cves = cvelib.cve.collectCVEData(cveDirs, False, filter_tag="-limit-report")
+        self.assertEqual(9, len(cves))
+        for c in cves:
+            self.assertTrue(
+                c.candidate
+                in [
+                    "CVE-2022-0001",
+                    "CVE-2022-0002",
+                    "CVE-2022-0003",
+                    "CVE-2022-0004",
+                    "CVE-2022-NNN1",
+                    "CVE-2022-GH2#bar",
+                    "CVE-2021-9991",
+                    "CVE-2021-9992",
+                    "CVE-2021-9993",
+                ]
+            )
+
+        # filter tags - multiple inverse
+        cves = cvelib.cve.collectCVEData(
+            cveDirs, False, filter_tag="-pie,-limit-report"
+        )
+        self.assertEqual(8, len(cves))
+        for c in cves:
+            self.assertTrue(
+                c.candidate
+                in [
+                    "CVE-2022-0001",
+                    "CVE-2022-0002",
+                    "CVE-2022-0003",
+                    "CVE-2022-0004",
+                    "CVE-2022-NNN1",
+                    "CVE-2022-GH2#bar",
+                    "CVE-2021-9991",
+                    "CVE-2021-9992",
+                ]
+            )
+
+        # multiple filters
+        cves = cvelib.cve.collectCVEData(
+            cveDirs,
+            False,
+            filter_product="upstream",
+            filter_status="needed,needs-triage,ignored",
+            filter_priority="medium,low,negligible",
+            filter_tag="-pie",
+        )
+        self.assertEqual(4, len(cves))
+        for c in cves:
+            self.assertTrue(
+                c.candidate
+                in [
+                    "CVE-2022-0001",
+                    "CVE-2022-0002",
+                    "CVE-2022-0003",
+                    "CVE-2022-NNN1",
+                ]
+            )
 
     def test_collectGHAlertUrls(self):
         """Test collectGHAlertUrls()"""
