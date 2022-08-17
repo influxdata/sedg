@@ -8,6 +8,7 @@ import time
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, TypedDict, Union
 
 from cvelib.cve import CVE, collectGHAlertUrls
+from cvelib.github import GHDependabot, GHSecret
 from cvelib.common import (
     cve_priorities,
     error,
@@ -714,7 +715,7 @@ def _readStatsUniqueCVEs(
     cves: List[CVE],
     filter_status: Optional[List[str]] = None,
 ) -> Dict[str, _statsUniqueCVEsPkgSoftware]:
-    """Read in stats by unique CVE, discovering dependabot and secrets"""
+    """Read in stats by unique CVE and discovered-by dependabot and secrets"""
     stats: Dict[str, _statsUniqueCVEsPkgSoftware] = {}
     for cve in cves:
         last_software: str = ""
@@ -1097,3 +1098,196 @@ def getInfluxDBLineProtocol(
     )
     for s in stats_open:
         print(s)
+
+
+# _readStatsGHAS() takes the list of provided CVEs and generates a stats
+# dict:
+#   stats = {
+#     pkg.software: {
+#       "<dependabot|secret>": {
+#         "<dependency or secret name>": {
+#           "<status>": {
+#             "<priority>": {
+#               "num": <num>,
+#               "cves": [<candidate>]
+#           }
+#         }
+#       }
+#     }
+#   }
+def _readStatsGHAS(
+    cves: List[CVE],
+    filter_status: Optional[List[str]] = None,
+) -> Dict[str, _statsUniqueCVEsPkgSoftware]:
+    """Read in stats by GHAS"""
+
+    def _find_adjusted_priority(pkg: str, sev: str) -> str:
+        if sev == "moderate" or priority == "unknown":
+            sev = "medium"
+        if cve_priorities.index(sev) > cve_priorities.index(pkg):
+            return sev
+        return pkg
+
+    # TODO: type hint
+    stats = {}
+    for cve in cves:
+        alert: Union[GHDependabot, GHSecret]
+        for alert in cve.ghas:
+            for pkg in cve.pkgs:
+                if filter_status is not None and pkg.status not in filter_status:
+                    continue
+
+                priority: str = cve.priority
+                if pkg.software in pkg.priorities:
+                    priority = pkg.priorities[pkg.software]
+                if isinstance(alert, GHDependabot):
+                    priority = _find_adjusted_priority(priority, alert.severity)
+
+                sw = (
+                    "%s/%s" % (pkg.software, pkg.modifier)
+                    if pkg.modifier != ""
+                    else pkg.software
+                )
+                if sw not in stats:
+                    stats[sw] = {}
+
+                alert_type = "dependabot"
+                if isinstance(alert, GHSecret):
+                    alert_type = "secret"
+
+                if alert_type not in stats[sw]:
+                    stats[sw][alert_type] = {}
+
+                what: str
+                if isinstance(alert, GHSecret):
+                    what = alert.secret
+                else:
+                    what = alert.dependency
+                if what not in stats[sw][alert_type]:
+                    stats[sw][alert_type][what] = {}
+
+                if priority not in stats[sw][alert_type][what]:
+                    stats[sw][alert_type][what][priority] = {"num": 0, "cves": []}
+
+                stats[sw][alert_type][what][priority]["num"] += 1
+                if cve.candidate not in stats[sw][alert_type][what][priority]["cves"]:
+                    stats[sw][alert_type][what][priority]["cves"].append(cve.candidate)
+
+    return stats
+
+
+def getHumanSummaryGHAS(
+    cves: List[CVE],
+    closed: bool = False,
+) -> None:
+    """Show GitHub Advanced Security report in summary format"""
+
+    def _output(stats, state: str):
+        maxlen: int = 20
+        maxlen_aff: int = 35
+        tableStr: str = "{pri:10s} {repo:%ds} {aff:%ds} {cve:s}" % (maxlen, maxlen_aff)
+        table_f: object = tableStr.format
+
+        # TODO: cleanup Any
+        lines_open: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]] = {}
+        totals: Dict[str, Dict[str, int]] = {
+            "critical": {"num": 0, "num_repos": 0},
+            "high": {"num": 0, "num_repos": 0},
+            "medium": {"num": 0, "num_repos": 0},
+            "low": {"num": 0, "num_repos": 0},
+            "negligible": {"num": 0, "num_repos": 0},
+        }
+
+        last: str = ""
+        for priority in cve_priorities:
+            for repo in sorted(stats):
+                typ: str
+                for typ in stats[repo]:
+                    dependency: str
+                    for dependency in stats[repo][typ]:
+                        if (
+                            priority not in stats[repo][typ][dependency]
+                            or stats[repo][typ][dependency][priority]["num"] < 1
+                        ):
+                            continue
+
+                        if priority not in lines_open:
+                            lines_open[priority] = {}
+                        if repo not in lines_open[priority]:
+                            lines_open[priority][repo] = {}
+                        if dependency not in lines_open[priority][repo]:
+                            lines_open[priority][repo][dependency] = {
+                                "cves": [],
+                                "num_affected": 0,
+                            }
+                        cves: List[str] = stats[repo][typ][dependency][priority]["cves"]
+                        lines_open[priority][repo][dependency]["cves"] = cves
+
+                        num: int = stats[repo][typ][dependency][priority]["num"]
+                        totals[priority]["num"] += num
+
+                        lines_open[priority][repo][dependency]["num_affected"] += num
+                        if repo != last:
+                            totals[priority]["num_repos"] += 1
+                            last = repo
+
+        print("# %s\n" % state.capitalize())
+        print(
+            table_f(
+                pri="Priority", repo="Repository", aff="Affected", cve="CVEs"
+            ).rstrip()
+        )
+        print(
+            table_f(
+                pri="--------", repo="----------", aff="--------", cve="----"
+            ).rstrip()
+        )
+        for priority in cve_priorities:
+            if priority not in lines_open:
+                continue
+            repo: str
+            for repo in sorted(lines_open[priority]):
+                dependency: str
+                for dependency in sorted(lines_open[priority][repo]):
+                    num_aff: str = ""
+                    if lines_open[priority][repo][dependency]["num_affected"] > 1:
+                        num_aff = (
+                            " (%d)"
+                            % lines_open[priority][repo][dependency]["num_affected"]
+                        )
+
+                    aff = (
+                        (dependency[: maxlen_aff - (3 + len(num_aff))] + "...")
+                        if len(dependency) > (maxlen_aff - len(num_aff))
+                        else dependency
+                    )
+                    aff += num_aff
+                    print(
+                        table_f(
+                            pri=priority,
+                            repo=(repo[: maxlen - 3] + "...")
+                            if len(repo) > maxlen
+                            else repo,
+                            aff=aff,
+                            cve=", ".join(
+                                lines_open[priority][repo][dependency]["cves"]
+                            ),
+                        ).rstrip()
+                    )
+
+        print("\nTotals:")
+        for priority in cve_priorities:
+            print(
+                "- %s: %d in %d repos"
+                % (priority, totals[priority]["num"], totals[priority]["num_repos"])
+            )
+
+    stats_open = _readStatsGHAS(
+        cves, filter_status=["needed", "needs-triage", "pending"]
+    )
+    _output(stats_open, "open")
+
+    if closed:
+        print("\n")
+        stats_closed = _readStatsGHAS(cves, filter_status=["released"])
+        _output(stats_closed, "closed")
