@@ -64,6 +64,15 @@ class GHDependabot(object):
         """Set dependency"""
         if re.search(r"\s", s):
             raise CveException("invalid dependabot dependency: %s" % s)
+        # https://yaml.org/spec/1.2.2/#chapter-2-language-overview section 5.3,
+        # "The '@' (x40, at) and '`' (x60, grave accent) are reserved for
+        # future use.". Since they're reserved, just quote them ('@' is common
+        # with nodejs dependencies)
+        if s.startswith("`"):
+            raise CveException("invalid dependabot dependency: %s ('`' is reserved)" % s)
+
+        if s.startswith("@"):
+            s = '"%s"' % s
         self.dependency = s
 
     def setDetectedIn(self, s: str) -> None:

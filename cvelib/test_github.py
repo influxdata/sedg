@@ -59,6 +59,18 @@ class TestGitHubDependabot(TestCase):
         ghd = github.GHDependabot(data)
         self.assertEqual(exp, ghd.__str__())
 
+        data["dependency"] = "@foo/bar"
+        exp = """ - type: dependabot
+   dependency: "@foo/bar"
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-a
+   severity: moderate
+   status: needed
+   url: https://github.com/bar/baz/security/dependabot/1"""
+
+        ghd = github.GHDependabot(data)
+        self.assertEqual(exp, ghd.__str__())
+
     def test__verifyRequired(self):
         """Test _verifyRequired()"""
         tsts = [
@@ -174,8 +186,10 @@ class TestGitHubDependabot(TestCase):
         tsts = [
             # valid
             ("foo", None),
+            ("@foo/bar", None),
             # invalid
             ("foo bar", "invalid dependabot dependency: foo bar"),
+            ("`foo", "invalid dependabot dependency: `foo ('`' is reserved)"),
         ]
 
         for s, expErr in tsts:
