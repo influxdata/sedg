@@ -69,7 +69,9 @@ class GHDependabot(object):
         # future use.". Since they're reserved, just quote them ('@' is common
         # with nodejs dependencies)
         if s.startswith("`"):
-            raise CveException("invalid dependabot dependency: %s ('`' is reserved)" % s)
+            raise CveException(
+                "invalid dependabot dependency: %s ('`' is reserved)" % s
+            )
 
         if s.startswith("@"):
             s = '"%s"' % s
