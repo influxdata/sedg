@@ -271,7 +271,9 @@ def getGHAlertsStatusReport(
     print("Disabled:\n%s" % "\n".join(" %s" % r for r in disabled))
 
 
-def getUpdatedReport(cves: List[CVE], org: str, since: int = 0) -> None:
+def getUpdatedReport(
+    cves: List[CVE], org: str, excluded_repos: List[str] = [], since: int = 0
+) -> None:
     """Obtain list of URLs that have received an update since last run"""
     cachedGetGHIssuesForRepo: Dict[str, List[str]] = {}
     urls: Dict[str, List[str]] = _getKnownIssues(cves, filter_url=org)
@@ -290,6 +292,9 @@ def getUpdatedReport(cves: List[CVE], org: str, since: int = 0) -> None:
             continue
 
         repo: str = tmp[4]
+        if repo in excluded_repos:
+            continue
+
         if repo not in cachedGetGHIssuesForRepo:
             cachedGetGHIssuesForRepo[repo] = _getGHIssuesForRepo(
                 repo,

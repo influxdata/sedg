@@ -157,6 +157,27 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
         return MockResponse(None, 400)
     elif args[0] == "https://api.github.com/repos/valid-org/empty-repo/issues":
         return MockResponse([], 200)
+    elif args[0] == "https://api.github.com/repos/valid-org/other-repo/issues":
+        if "page" not in kwargs["params"] or kwargs["params"]["page"] == 1:
+            return MockResponse(
+                [
+                    {
+                        "html_url": "https://github.com/valid-org/other-repo/issues/77",
+                        "labels": [
+                            {"name": "label1", "id": 5001},
+                            {"name": "label2", "id": 5002},
+                        ],
+                        "locked": False,
+                        "id": 77,
+                        "state_reason": None,
+                        "user": {"login": "user1", "id": 3000},
+                        "updated_at": "2022-07-03T18:27:30Z",
+                    },
+                ],
+                200,
+            )
+        else:
+            return MockResponse([], 200)
     elif args[0] == "https://api.github.com/repos/valid-org/valid-repo/issues":
         if "since" in kwargs["params"]:
             if kwargs["params"]["since"] == "2022-06-22T12:33:47Z":
@@ -167,7 +188,7 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
                                 "html_url": "https://github.com/valid-org/valid-repo/issues/1",
                                 "labels": [{"name": "label1", "id": 2001}],
                                 "locked": False,
-                                "id": 1001,
+                                "id": 1,
                                 "state_reason": None,
                                 "user": {"login": "user1", "id": 3000},
                                 "updated_at": "2022-07-01T18:27:30Z",
@@ -176,7 +197,7 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
                                 "html_url": "https://github.com/valid-org/valid-repo/issues/2",
                                 "labels": [{"name": "label2", "id": 2002}],
                                 "locked": False,
-                                "id": 1002,
+                                "id": 2,
                                 "state_reason": None,
                                 "user": {"login": "user1", "id": 3000},
                                 "updated_at": "2022-07-02T18:27:30Z",
@@ -188,7 +209,7 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
                                     {"name": "label2", "id": 2002},
                                 ],
                                 "locked": False,
-                                "id": 1000,
+                                "id": 3,
                                 "state_reason": None,
                                 "user": {"login": "user1", "id": 3000},
                                 "updated_at": "2022-07-03T18:27:30Z",
@@ -197,7 +218,7 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
                                 "html_url": "https://github.com/valid-org/valid-repo/issues/4",
                                 "labels": [],
                                 "locked": False,
-                                "id": 1000,
+                                "id": 4,
                                 "state_reason": None,
                                 "user": {"login": "user1", "id": 3000},
                                 "updated_at": "2022-07-04T18:27:30Z",
@@ -218,7 +239,7 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
                                     {"name": "label2", "id": 2002},
                                 ],
                                 "locked": False,
-                                "id": 1000,
+                                "id": 3,
                                 "state_reason": None,
                                 "user": {"login": "user1", "id": 3000},
                                 "updated_at": "2022-07-03T18:27:30Z",
@@ -227,7 +248,7 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
                                 "html_url": "https://github.com/valid-org/valid-repo/issues/4",
                                 "labels": [],
                                 "locked": False,
-                                "id": 1000,
+                                "id": 4,
                                 "state_reason": None,
                                 "user": {"login": "user1", "id": 3000},
                                 "updated_at": "2022-07-04T18:27:30Z",
@@ -248,7 +269,7 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
                             "html_url": "https://github.com/valid-org/valid-repo/issues/1",
                             "labels": [{"name": "label1", "id": 2001}],
                             "locked": False,
-                            "id": 1001,
+                            "id": 1,
                             "state_reason": None,
                             "user": {"login": "user1", "id": 3000},
                             "updated_at": "2022-07-01T18:27:30Z",
@@ -260,7 +281,7 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
                                 {"name": "label2", "id": 2002},
                             ],
                             "locked": False,
-                            "id": 1000,
+                            "id": 3,
                             "state_reason": None,
                             "user": {"login": "user1", "id": 3000},
                             "updated_at": "2022-07-03T18:27:30Z",
@@ -277,7 +298,7 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
                         "html_url": "https://github.com/valid-org/valid-repo/issues/1",
                         "labels": [{"name": "label1", "id": 2001}],
                         "locked": False,
-                        "id": 1001,
+                        "id": 1,
                         "state_reason": None,
                         "user": {"login": "user1", "id": 3000},
                         "updated_at": "2022-07-01T18:27:30Z",
@@ -286,7 +307,7 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
                         "html_url": "https://github.com/valid-org/valid-repo/issues/2",
                         "labels": [{"name": "label2", "id": 2002}],
                         "locked": False,
-                        "id": 1002,
+                        "id": 2,
                         "state_reason": None,
                         "user": {"login": "user1", "id": 3000},
                         "updated_at": "2022-07-02T18:27:30Z",
@@ -298,7 +319,7 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
                             {"name": "label2", "id": 2002},
                         ],
                         "locked": False,
-                        "id": 1000,
+                        "id": 3,
                         "state_reason": None,
                         "user": {"login": "user1", "id": 3000},
                         "updated_at": "2022-07-03T18:27:30Z",
@@ -313,7 +334,7 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
                         "html_url": "https://github.com/valid-org/valid-repo/issues/4",
                         "labels": [],
                         "locked": False,
-                        "id": 1000,
+                        "id": 4,
                         "state_reason": None,
                         "user": {"login": "user1", "id": 3000},
                         "updated_at": "2022-07-04T18:27:30Z",
@@ -322,7 +343,7 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
                         "html_url": "https://github.com/valid-org/valid-repo/issues/5",
                         "labels": [],
                         "locked": False,
-                        "id": 1000,
+                        "id": 5,
                         "pull_request": {"url": "..."},
                         "state_reason": None,
                         "user": {"login": "user1", "id": 3000},
@@ -842,6 +863,41 @@ Updated issues:
         self.assertEqual("", error.getvalue().strip())
         exp = """Collecting known issues:
 No updated issues for the specified repos."""
+        self.assertEqual(exp, output.getvalue().strip())
+
+    @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
+    def test_getUpdatedReportWithOther(self, _):  # 2nd arg is mock_get
+        """Test _getUpdatedReportWithOther()"""
+        cves = self._mock_cve_list_basic()
+        d = self._cve_template(
+            cand="CVE-2022-GH77#other-repo",
+            references=["https://github.com/valid-org/other-repo/issues/77"],
+        )
+        cve = cvelib.cve.CVE()
+        cve.setData(d)
+        cves.append(cve)
+
+        # all updated since with other-repo in the mix
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getUpdatedReport(cves, "valid-org", excluded_repos=[])
+        self.assertEqual("", error.getvalue().strip())
+        exp = """Collecting known issues:
+Updated issues:
+ https://github.com/valid-org/other-repo/issues/77 (CVE-2022-GH77#other-repo)
+ https://github.com/valid-org/valid-repo/issues/1 (CVE-2022-GH1001#valid-repo)
+ https://github.com/valid-org/valid-repo/issues/2 (CVE-2022-GH1002#valid-repo)
+ https://github.com/valid-org/valid-repo/issues/3 (CVE-2022-GH1003#valid-repo)"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        # other-repo updated when excluding valid-repo
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getUpdatedReport(
+                cves, "valid-org", excluded_repos=["valid-repo"]
+            )
+        self.assertEqual("", error.getvalue().strip())
+        exp = """Collecting known issues:
+Updated issues:
+ https://github.com/valid-org/other-repo/issues/77 (CVE-2022-GH77#other-repo)"""
         self.assertEqual(exp, output.getvalue().strip())
 
     #
