@@ -104,7 +104,12 @@ def _getGHIssuesForRepo(
             if query_label != "":
                 params["labels"] = query_label
 
-            r: requests.Response = requestGetRaw(url, params=params)
+            try:
+                r: requests.Response = requestGetRaw(url, params=params)
+            except ConnectionError as e:
+                warn("Skipping %s (connection error: %s)" % (url, str(e)))
+                return []
+
             if r.status_code == 410:  # repo turned off issues
                 # warn("Skipping %s (%d) - issues turned off" % (url, r.status_code))
                 return []
