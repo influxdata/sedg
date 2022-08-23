@@ -1702,6 +1702,25 @@ cve-data = %s
             error.getvalue().strip(),
         )
 
+        # when should use 'code not used'
+        tmpl = self._cve_template()
+        tmpl["git/github_pkg1"] = "not-affected (code not used)"
+        content = cvelib.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["retired"], tmpl["Candidate"])
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            res = cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertFalse(res)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: retired/CVE-2020-1234: specifies 'code not used' (should use 'code-not-used')",
+            error.getvalue().strip(),
+        )
+
         # ghas
         ghasTsts = [
             # valid

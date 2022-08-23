@@ -766,13 +766,22 @@ def checkSyntaxFile(
         for p in cve.pkgs:
             if p.when != "":
                 if (
-                    p.when == "code-not-used" or p.when == "code-not-imported"
+                    p.when == "code-not-used"
+                    or p.when == "code-not-imported"
+                    or p.when == "code-not-present"
                 ) and p.status != "not-affected":
                     ok = False
                     cvelib.common.warn(
                         "%s: specifies '%s' with '%s' (should use 'not-affected')"
                         % (rel, p.when, p.status)
                     )
+                elif p.when.startswith("code not "):
+                    ok = False
+                    cvelib.common.warn(
+                        "%s: specifies '%s' (should use '%s')"
+                        % (rel, p.when, p.when.replace(" ", "-"))
+                    )
+
             if p.status.startswith("need") or p.status.startswith("pend"):
                 open = True
                 break
