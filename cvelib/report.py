@@ -1299,5 +1299,5 @@ def getHumanSummaryGHAS(
 
     if closed:
         print("\n")
-        stats_closed = _readStatsGHAS(cves, filter_status=["released"])
+        stats_closed = _readStatsGHAS(cves, filter_status=["released", "ignored", "not-affected"])
         _output(stats_closed, "closed")
