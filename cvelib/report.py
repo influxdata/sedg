@@ -2,6 +2,7 @@
 
 import copy
 import datetime
+from enum import Enum
 import os
 import requests
 import time
@@ -29,6 +30,12 @@ repos_all: List[str] = []  # list of repos
 issues_ind: Dict[
     str, Mapping[str, Any]
 ] = {}  # keys are 'repo/num', values are arbitrary json docs from GitHub
+
+
+class ReportOutput(Enum):
+    OPEN = 1
+    CLOSED = 2
+    BOTH = 3
 
 
 def _getGHReposAll(org: str) -> List[str]:
@@ -931,7 +938,7 @@ def _readPackagesFile(pkg_fn: str) -> Optional[Set[str]]:
 def getHumanSummary(
     cves: List[CVE],
     pkg_fn: str = "",
-    closed: bool = False,
+    report_output: ReportOutput = ReportOutput.OPEN,
 ) -> None:
     """Show report in summary format"""
 
@@ -1018,14 +1025,16 @@ def getHumanSummary(
 
     pkgs: Optional[Set[str]] = _readPackagesFile(pkg_fn)
 
-    stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
-        cves,
-        filter_status=["needs-triage", "needed", "pending"],
-    )
-    _output(stats_open, "open", pkgs)
+    if report_output == ReportOutput.OPEN or report_output == ReportOutput.BOTH:
+        stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
+            cves,
+            filter_status=["needs-triage", "needed", "pending"],
+        )
+        _output(stats_open, "open", pkgs)
 
-    if closed:
-        print("\n")
+    if report_output == ReportOutput.CLOSED or report_output == ReportOutput.BOTH:
+        if report_output == ReportOutput.BOTH:
+            print("\n")
         stats_closed: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
             cves,
             filter_status=["released"],
@@ -1188,7 +1197,7 @@ def _readStatsGHAS(
 
 def getHumanSummaryGHAS(
     cves: List[CVE],
-    closed: bool = False,
+    report_output: ReportOutput = ReportOutput.OPEN,
 ) -> None:
     """Show GitHub Advanced Security report in summary format"""
 
@@ -1292,12 +1301,16 @@ def getHumanSummaryGHAS(
                 % (priority, totals[priority]["num"], totals[priority]["num_repos"])
             )
 
-    stats_open = _readStatsGHAS(
-        cves, filter_status=["needed", "needs-triage", "pending"]
-    )
-    _output(stats_open, "open")
+    if report_output == ReportOutput.OPEN or report_output == ReportOutput.BOTH:
+        stats_open = _readStatsGHAS(
+            cves, filter_status=["needed", "needs-triage", "pending"]
+        )
+        _output(stats_open, "open")
 
-    if closed:
-        print("\n")
-        stats_closed = _readStatsGHAS(cves, filter_status=["released", "ignored", "not-affected"])
+    if report_output == ReportOutput.CLOSED or report_output == ReportOutput.BOTH:
+        if report_output == ReportOutput.BOTH:
+            print("\n")
+        stats_closed = _readStatsGHAS(
+            cves, filter_status=["released", "ignored", "not-affected"]
+        )
         _output(stats_closed, "closed")
