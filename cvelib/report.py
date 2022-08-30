@@ -1156,6 +1156,10 @@ def _readStatsGHAS(
                 if filter_status is not None and pkg.status not in filter_status:
                     continue
 
+                ghas_status: str = alert.status.split()[0]
+                if filter_status is not None and ghas_status not in filter_status:
+                    continue
+
                 priority: str = cve.priority
                 if pkg.software in pkg.priorities:
                     priority = pkg.priorities[pkg.software]
@@ -1302,15 +1306,11 @@ def getHumanSummaryGHAS(
             )
 
     if report_output == ReportOutput.OPEN or report_output == ReportOutput.BOTH:
-        stats_open = _readStatsGHAS(
-            cves, filter_status=["needed", "needs-triage", "pending"]
-        )
+        stats_open = _readStatsGHAS(cves, filter_status=["needed", "needs-triage"])
         _output(stats_open, "open")
 
     if report_output == ReportOutput.CLOSED or report_output == ReportOutput.BOTH:
         if report_output == ReportOutput.BOTH:
             print("\n")
-        stats_closed = _readStatsGHAS(
-            cves, filter_status=["released", "ignored", "not-affected"]
-        )
+        stats_closed = _readStatsGHAS(cves, filter_status=["released", "dismissed"])
         _output(stats_closed, "closed")
