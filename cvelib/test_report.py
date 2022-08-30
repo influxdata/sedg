@@ -1243,7 +1243,9 @@ valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabo
         """Test getHumanSummary()"""
         # empty cve list
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary([], "", False)
+            cvelib.report.getHumanSummary(
+                [], "", report_output=cvelib.report.ReportOutput.OPEN
+            )
         self.assertEqual("", error.getvalue().strip())
         exp = """# Open
 
@@ -1265,7 +1267,9 @@ Totals:
         )
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(cves, "", False)
+            cvelib.report.getHumanSummary(
+                cves, "", report_output=cvelib.report.ReportOutput.OPEN
+            )
         self.assertEqual("", error.getvalue().strip())
         exp = """# Open
 
@@ -1287,7 +1291,9 @@ Totals:
         self.assertEqual(exp, output.getvalue().strip())
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(cves, "", True)
+            cvelib.report.getHumanSummary(
+                cves, "", report_output=cvelib.report.ReportOutput.BOTH
+            )
         self.assertEqual("", error.getvalue().strip())
         expClosed = (
             exp
@@ -1324,7 +1330,9 @@ Totals:
             fp.write("%s" % content)
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(cves, pkg_fn, False)
+            cvelib.report.getHumanSummary(
+                cves, pkg_fn, report_output=cvelib.report.ReportOutput.OPEN
+            )
         self.assertEqual("", error.getvalue().strip())
         exp = """# Open
 
@@ -1342,7 +1350,9 @@ Totals:
         self.assertEqual(exp, output.getvalue().strip())
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(cves, pkg_fn, True)
+            cvelib.report.getHumanSummary(
+                cves, pkg_fn, report_output=cvelib.report.ReportOutput.BOTH
+            )
         self.assertEqual("", error.getvalue().strip())
         expClosed = (
             exp
@@ -1376,7 +1386,9 @@ Totals:
         )
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(cves, "", False)
+            cvelib.report.getHumanSummary(
+                cves, "", report_output=cvelib.report.ReportOutput.OPEN
+            )
         self.assertEqual("", error.getvalue().strip())
         exp = """# Open
 
@@ -1394,7 +1406,9 @@ Totals:
         self.assertEqual(exp, output.getvalue().strip())
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(cves, "", True)
+            cvelib.report.getHumanSummary(
+                cves, "", report_output=cvelib.report.ReportOutput.BOTH
+            )
         self.assertEqual("", error.getvalue().strip())
         expClosed = (
             exp
@@ -1428,7 +1442,9 @@ Totals:
         )
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(cves, "", False)
+            cvelib.report.getHumanSummary(
+                cves, "", report_output=cvelib.report.ReportOutput.OPEN
+            )
         self.assertEqual("", error.getvalue().strip())
         exp = """# Open
 
@@ -1445,7 +1461,9 @@ Totals:
         self.assertEqual(exp, output.getvalue().strip())
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(cves, "", True)
+            cvelib.report.getHumanSummary(
+                cves, "", report_output=cvelib.report.ReportOutput.BOTH
+            )
         self.assertEqual("", error.getvalue().strip())
         expClosed = (
             exp
@@ -1479,7 +1497,9 @@ Totals:
         )
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(cves, "", False)
+            cvelib.report.getHumanSummary(
+                cves, "", report_output=cvelib.report.ReportOutput.OPEN
+            )
         self.assertEqual("", error.getvalue().strip())
         exp = """# Open
 
@@ -1500,7 +1520,9 @@ Totals:
         self.assertEqual(exp, output.getvalue().strip())
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(cves, "", True)
+            cvelib.report.getHumanSummary(
+                cves, "", report_output=cvelib.report.ReportOutput.BOTH
+            )
         self.assertEqual("", error.getvalue().strip())
         expClosed = (
             exp
@@ -1530,7 +1552,9 @@ Totals:
             filter_tag="limit-report",
         )
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(cves, "", False)
+            cvelib.report.getHumanSummary(
+                cves, "", report_output=cvelib.report.ReportOutput.OPEN
+            )
         self.assertEqual("", error.getvalue().strip())
         exp = """# Open
 
@@ -1547,7 +1571,9 @@ Totals:
         self.assertEqual(exp, output.getvalue().strip())
 
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummary(cves, "", True)
+            cvelib.report.getHumanSummary(
+                cves, "", report_output=cvelib.report.ReportOutput.BOTH
+            )
         self.assertEqual("", error.getvalue().strip())
         expClosed = (
             exp
