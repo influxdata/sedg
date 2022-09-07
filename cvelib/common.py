@@ -242,7 +242,7 @@ cve_reldirs: List[str] = ["active", "retired", "ignored"]
 def msg(out: str) -> None:
     """Print message"""
     try:
-        print("%s" % (out), file=sys.stdout)
+        print("%s" % (out), file=sys.stdout, flush=True)
     except IOError:  # pragma: nocover
         pass
 
@@ -250,7 +250,7 @@ def msg(out: str) -> None:
 def warn(out: str) -> None:
     """Print warning message"""
     try:
-        print("WARN: %s" % (out), file=sys.stderr)
+        print("WARN: %s" % (out), file=sys.stderr, flush=True)
     except IOError:  # pragma: nocover
         pass
 
@@ -258,7 +258,7 @@ def warn(out: str) -> None:
 def error(out: str, exitCode: int = 1, do_exit: bool = True) -> None:
     """Print error message"""
     try:
-        print("ERROR: %s" % (out), file=sys.stderr)
+        print("ERROR: %s" % (out), file=sys.stderr, flush=True)
     except IOError:  # pragma: nocover
         pass
 
