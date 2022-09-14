@@ -1537,7 +1537,7 @@ cve-data = %s
         self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
-            "WARN: active/CVE-1234-5678: non-matching candidate 'CVE-2020-1234'",
+            "WARN: active/CVE-1234-5678 has non-matching candidate 'CVE-2020-1234'",
             error.getvalue().strip(),
         )
 
@@ -1556,7 +1556,7 @@ cve-data = %s
         self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
-            "WARN: active/CVE-1234-5678: non-matching candidate 'CVE-2020-1234'",
+            "WARN: active/CVE-1234-5678 has non-matching candidate 'CVE-2020-1234'",
             error.getvalue().strip(),
         )
 
@@ -1574,7 +1574,7 @@ cve-data = %s
         self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
-            "WARN: active/CVE-2020-1234: missing affected software",
+            "WARN: active/CVE-2020-1234 has missing affected software",
             error.getvalue().strip(),
         )
 
@@ -1594,7 +1594,7 @@ cve-data = %s
         self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
-            "WARN: active/CVE-2020-1234: missing references",
+            "WARN: active/CVE-2020-1234 has missing references",
             error.getvalue().strip(),
         )
 
@@ -1632,7 +1632,7 @@ cve-data = %s
         self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
-            "WARN: retired/CVE-1234-5678: is retired but has software with open status",
+            "WARN: retired/CVE-1234-5678 is retired but has software with open status",
             error.getvalue().strip(),
         )
 
@@ -1652,7 +1652,7 @@ cve-data = %s
         self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
-            "WARN: active/CVE-1234-5678: is active but has software with only closed status",
+            "WARN: active/CVE-1234-5678 is active but has software with only closed status",
             error.getvalue().strip(),
         )
 
@@ -1680,7 +1680,7 @@ cve-data = %s
         self.assertTrue(
             error.getvalue()
             .strip()
-            .startswith("WARN: multiple entries for CVE-2020-1234: ")
+            .startswith("WARN: CVE-2020-1234 has multiple entries: ")
         )
 
         # status should use 'not-affected'
@@ -1698,7 +1698,7 @@ cve-data = %s
         self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
-            "WARN: active/CVE-2020-1234: specifies 'code-not-imported' with 'needed' (should use 'not-affected')",
+            "WARN: active/CVE-2020-1234 specifies 'code-not-imported' with 'needed' (should use 'not-affected')",
             error.getvalue().strip(),
         )
 
@@ -1717,7 +1717,7 @@ cve-data = %s
         self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
-            "WARN: retired/CVE-2020-1234: specifies 'code not used' (should use 'code-not-used')",
+            "WARN: retired/CVE-2020-1234 specifies 'code not used' (should use 'code-not-used')",
             error.getvalue().strip(),
         )
 
@@ -1732,27 +1732,27 @@ cve-data = %s
             # invalid
             (
                 "g-dependabot, gh-secret",
-                "WARN: active/CVE-2020-1234: 'gh-dependabot' missing from Discovered-by",
+                "WARN: active/CVE-2020-1234 has 'gh-dependabot' missing from Discovered-by",
             ),
             (
                 "gh-dependaboT, gh-secret",
-                "WARN: active/CVE-2020-1234: 'gh-dependabot' missing from Discovered-by",
+                "WARN: active/CVE-2020-1234 has 'gh-dependabot' missing from Discovered-by",
             ),
             (
                 "gh-dependabotX, gh-secret",
-                "WARN: active/CVE-2020-1234: 'gh-dependabot' missing from Discovered-by",
+                "WARN: active/CVE-2020-1234 has 'gh-dependabot' missing from Discovered-by",
             ),
             (
                 "gh-dependabot, secret",
-                "WARN: active/CVE-2020-1234: 'gh-secret' missing from Discovered-by",
+                "WARN: active/CVE-2020-1234 has 'gh-secret' missing from Discovered-by",
             ),
             (
                 "gh-dependabot",
-                "WARN: active/CVE-2020-1234: 'gh-secret' missing from Discovered-by",
+                "WARN: active/CVE-2020-1234 has 'gh-secret' missing from Discovered-by",
             ),
             (
                 "gh-secret",
-                "WARN: active/CVE-2020-1234: 'gh-dependabot' missing from Discovered-by",
+                "WARN: active/CVE-2020-1234 has 'gh-dependabot' missing from Discovered-by",
             ),
         ]
 
@@ -1822,7 +1822,7 @@ cve-data = %s
         self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
-            "WARN: retired/CVE-1234-5678: is retired but has open GitHub Advanced Security entries",
+            "WARN: retired/CVE-1234-5678 is retired but has open GitHub Advanced Security entries",
             error.getvalue().strip(),
         )
 
@@ -1854,7 +1854,7 @@ cve-data = %s
         self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual(
-            "WARN: active/CVE-1234-5678: is active but has only closed GitHub Advanced Security entries",
+            "WARN: active/CVE-1234-5678 is active but has only closed GitHub Advanced Security entries",
             error.getvalue().strip(),
         )
 
@@ -1925,11 +1925,11 @@ cve-data = %s
         self.assertFalse(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
-            "WARN: active/CVE-2022-0001: duplicate alert URL 'https://github.com/bar/baz/security/dependabot/1'"
+            "WARN: active/CVE-2022-0001 has duplicate alert URL 'https://github.com/bar/baz/security/dependabot/1'"
             in error.getvalue().strip()
         )
         self.assertTrue(
-            "WARN: retired/CVE-2022-0002: duplicate alert URL 'https://github.com/bar/baz/security/dependabot/1'"
+            "WARN: retired/CVE-2022-0002 has duplicate alert URL 'https://github.com/bar/baz/security/dependabot/1'"
             in error.getvalue().strip()
         )
 

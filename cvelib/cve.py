@@ -746,7 +746,7 @@ def checkSyntaxFile(
     bn: str = os.path.basename(f)
     if bn != cve.candidate:
         ok = False
-        cvelib.common.warn("%s: non-matching candidate '%s'" % (rel, cve.candidate))
+        cvelib.common.warn("%s has non-matching candidate '%s'" % (rel, cve.candidate))
 
     # make sure References is non-empty for non-placeholder CVEs
     if (
@@ -754,12 +754,12 @@ def checkSyntaxFile(
         and len(cve.references) == 0
     ):
         ok = False
-        cvelib.common.warn("%s: missing references" % rel)
+        cvelib.common.warn("%s has missing references" % rel)
 
     # ensure pkgs is populated
     if len(cve.pkgs) == 0:
         ok = False
-        cvelib.common.warn("%s: missing affected software" % rel)
+        cvelib.common.warn("%s has missing affected software" % rel)
     else:
         # check package status against reldir
         open = False
@@ -772,13 +772,13 @@ def checkSyntaxFile(
                 ) and p.status != "not-affected":
                     ok = False
                     cvelib.common.warn(
-                        "%s: specifies '%s' with '%s' (should use 'not-affected')"
+                        "%s specifies '%s' with '%s' (should use 'not-affected')"
                         % (rel, p.when, p.status)
                     )
                 elif p.when.startswith("code not "):
                     ok = False
                     cvelib.common.warn(
-                        "%s: specifies '%s' (should use '%s')"
+                        "%s specifies '%s' (should use '%s')"
                         % (rel, p.when, p.when.replace(" ", "-"))
                     )
 
@@ -787,11 +787,11 @@ def checkSyntaxFile(
                 break
         if open and "retired" in rel:
             ok = False
-            cvelib.common.warn("%s: is retired but has software with open status" % rel)
+            cvelib.common.warn("%s is retired but has software with open status" % rel)
         elif not open and "active" in rel:
             ok = False
             cvelib.common.warn(
-                "%s: is active but has software with only closed status" % rel
+                "%s is active but has software with only closed status" % rel
             )
 
     # make sure Discovered-by is populated if specified GitHub-Advanced-Security
@@ -816,18 +816,18 @@ def checkSyntaxFile(
                 seen.append(needle)
                 ok = False
                 cvelib.common.warn(
-                    "%s: '%s' missing from Discovered-by" % (rel, needle)
+                    "%s has '%s' missing from Discovered-by" % (rel, needle)
                 )
 
     if len(cve.ghas) > 0 and open_ghas and "retired" in rel:
         ok = False
         cvelib.common.warn(
-            "%s: is retired but has open GitHub Advanced Security entries" % rel
+            "%s is retired but has open GitHub Advanced Security entries" % rel
         )
     elif len(cve.ghas) > 0 and not open_ghas and "active" in rel:
         ok = False
         cvelib.common.warn(
-            "%s: is active but has only closed GitHub Advanced Security entries" % rel
+            "%s is active but has only closed GitHub Advanced Security entries" % rel
         )
 
     return cve, ok
@@ -866,7 +866,7 @@ def checkSyntax(
             seen[cve.candidate].append(rel)
             ok = False
             cvelib.common.warn(
-                "multiple entries for %s: %s"
+                "%s has multiple entries: %s"
                 % (cve.candidate, ", ".join(seen[cve.candidate]))
             )
 
@@ -895,7 +895,7 @@ def checkSyntax(
                         tmp: List[str] = os.path.realpath(fn).split("/")
                         rel = tmp[-2] + "/" + tmp[-1]
                 ok = False
-                cvelib.common.warn("%s: duplicate alert URL '%s'" % (rel, item.url))
+                cvelib.common.warn("%s has duplicate alert URL '%s'" % (rel, item.url))
 
     return ok
 
