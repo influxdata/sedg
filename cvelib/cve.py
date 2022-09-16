@@ -183,7 +183,9 @@ class CVE(object):
         self.references = []
         for r in s.splitlines():
             r = r.strip()
-            if r != "" and r not in self.references:
+            if r != "":
+                if r in self.references:
+                    raise CveException("duplicate reference '%s'" % r)
                 self.references.append(r)
         self.data["References"] = self.references
 
@@ -224,7 +226,9 @@ class CVE(object):
         self.bugs = []
         for b in s.splitlines():
             b = b.strip()
-            if b != "" and b not in self.bugs:
+            if b != "":
+                if b in self.bugs:
+                    raise CveException("duplicate bug '%s'" % b)
                 self.bugs.append(b)
         self.data["Bugs"] = self.bugs
 

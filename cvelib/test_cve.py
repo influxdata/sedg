@@ -703,6 +703,18 @@ git/github_norf: needs-triage
             cvelib.cve.CVE().setData(hdrs)
         self.assertEqual("missing required field 'Candidate'", str(context.exception))
 
+        hdrs = self._mockHeaders(self._cve_template())
+        hdrs["References"] = "\n http://1\n http://2\n http://1"
+        with self.assertRaises(cvelib.common.CveException) as context:
+            cvelib.cve.CVE().setData(hdrs)
+        self.assertEqual("duplicate reference 'http://1'", str(context.exception))
+
+        hdrs = self._mockHeaders(self._cve_template())
+        hdrs["Bugs"] = "\n http://1\n http://2\n http://1"
+        with self.assertRaises(cvelib.common.CveException) as context:
+            cvelib.cve.CVE().setData(hdrs)
+        self.assertEqual("duplicate bug 'http://1'", str(context.exception))
+
     def test_setDataPatchesKeys(self):
         """Test setData() - Patches_"""
         tsts = [
