@@ -379,7 +379,8 @@ def _printGHAlertsUpdatedTemplates(
     txt_items: Dict[str, int] = {}
     for n in alert:
         ref = "%s/%d" % (url, n["number"])
-        references.append(ref)
+        if ref not in references:
+            references.append(ref)
         advisories.append("%s (%s)" % (n["ghsa"], n["pkg"]))
         s: str = "- [ ] [%s](%s) (%s)" % (n["pkg"], ref, n["severity"])
 
