@@ -741,7 +741,7 @@ def checkSyntaxFile(
     try:
         cve = CVE(fn=f, compatUbuntu=compatUbuntu, untriagedOk=untriagedOk)
     except Exception as e:
-        cvelib.common.warn("%s: %s" % (rel, str(e)))
+        cvelib.common.warn("%s parse error: %s" % (rel, str(e)))
         return cve, False
 
     ok: bool = True
