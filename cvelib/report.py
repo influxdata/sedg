@@ -1137,7 +1137,8 @@ def getInfluxDBLineProtocol(
 #   }
 def _readStatsGHAS(
     cves: List[CVE],
-    filter_status: Optional[List[str]] = None,
+    pkg_filter_status: Optional[List[str]] = None,
+    ghas_filter_status: Optional[List[str]] = None,
 ) -> Dict[str, _statsUniqueCVEsPkgSoftware]:
     """Read in stats by GHAS"""
 
@@ -1154,11 +1155,11 @@ def _readStatsGHAS(
         alert: Union[GHDependabot, GHSecret]
         for alert in cve.ghas:
             for pkg in cve.pkgs:
-                if filter_status is not None and pkg.status not in filter_status:
+                if pkg_filter_status is not None and pkg.status not in pkg_filter_status:
                     continue
 
                 ghas_status: str = alert.status.split()[0]
-                if filter_status is not None and ghas_status not in filter_status:
+                if ghas_filter_status is not None and ghas_status not in ghas_filter_status:
                     continue
 
                 priority: str = cve.priority
@@ -1307,11 +1308,14 @@ def getHumanSummaryGHAS(
             )
 
     if report_output == ReportOutput.OPEN or report_output == ReportOutput.BOTH:
-        stats_open = _readStatsGHAS(cves, filter_status=["needed", "needs-triage"])
+        # report on a) packages that are open and b) alerts that are needed
+        stats_open = _readStatsGHAS(cves, pkg_filter_status=["needed", "needs-triage", "pending"], ghas_filter_status=["needed", "needs-triage"])
         _output(stats_open, "open")
 
     if report_output == ReportOutput.CLOSED or report_output == ReportOutput.BOTH:
         if report_output == ReportOutput.BOTH:
             print("\n")
-        stats_closed = _readStatsGHAS(cves, filter_status=["released", "dismissed"])
+        # report on a) packages that are closed (but not ignored/deferred) and
+        # b) alerts that are released/dismissed
+        stats_closed = _readStatsGHAS(cves, pkg_filter_status=["released", "not-affected"], ghas_filter_status=["released", "dismissed"])
         _output(stats_closed, "closed")
