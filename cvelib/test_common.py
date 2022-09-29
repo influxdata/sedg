@@ -2,7 +2,7 @@
 
 from email.message import EmailMessage
 import os
-from unittest import TestCase, mock
+from unittest import TestCase, mock, skipIf
 
 import cvelib.common
 import cvelib.testutil
@@ -54,6 +54,7 @@ class TestCommon(TestCase):
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual("ERROR: Test error", error.getvalue().strip())
 
+    @skipIf("CI" in os.environ, "in CI environment")
     def test_updateProgress(self):
         """Test updateProgress()"""
         os.environ["TEST_UPDATE_PROGRESS"] = "1"
