@@ -27,13 +27,14 @@ commands:
             . venv/bin/activate
             pip install -r requirements.txt
 
+  # https://docs.getwoke.tech/installation/
   install_woke:
     description: Install woke non-inclusivity checker
     steps:
       - run:
           description: Install woke non-inclusivity checker
           command: |
-            go install github.com/get-woke/woke@latest
+            go install github.com/get-woke/woke@v0.19.0
 
 jobs:
   tests:
