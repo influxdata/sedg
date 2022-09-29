@@ -71,6 +71,16 @@ or a single test:
 
     $ PYTHONPATH=$PWD python3 -m unittest cvelib.tests.cve_test.TestCve.test_parse_headers
 
+or in a venv:
+
+    $ python3 -m venv venv
+    $ . venv/bin/activate
+    (venv) $ make test
+    ...
+    Ran 116 tests in 0.219s
+    OK
+    (venv) deactivate
+    $
 
 # CVE File format
 
