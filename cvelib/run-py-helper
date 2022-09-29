@@ -33,5 +33,5 @@ for i in ./cvelib/*py \
 
     echo "Checking $i"
     #shellcheck disable=2086
-    "$exe" $args "$i"
+    PYTHONPATH=./ "$exe" $args "$i"
 done
