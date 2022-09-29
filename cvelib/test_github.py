@@ -3,7 +3,7 @@
 from unittest import TestCase
 
 import cvelib.common
-import github
+import cvelib.github
 
 
 class TestGitHubDependabot(TestCase):
@@ -29,7 +29,7 @@ class TestGitHubDependabot(TestCase):
     def test___init__valid(self):
         """Test __init__()"""
         data = self._getValid()
-        github.GHDependabot(data)
+        cvelib.github.GHDependabot(data)
 
     def test___repr__(self):
         """Test __repr__()"""
@@ -42,7 +42,7 @@ class TestGitHubDependabot(TestCase):
    status: needed
    url: https://github.com/bar/baz/security/dependabot/1"""
 
-        ghd = github.GHDependabot(data)
+        ghd = cvelib.github.GHDependabot(data)
         self.assertEqual(exp, ghd.__repr__())
 
     def test___str__(self):
@@ -56,7 +56,7 @@ class TestGitHubDependabot(TestCase):
    status: needed
    url: https://github.com/bar/baz/security/dependabot/1"""
 
-        ghd = github.GHDependabot(data)
+        ghd = cvelib.github.GHDependabot(data)
         self.assertEqual(exp, ghd.__str__())
 
         data["dependency"] = "@foo/bar"
@@ -68,7 +68,7 @@ class TestGitHubDependabot(TestCase):
    status: needed
    url: https://github.com/bar/baz/security/dependabot/1"""
 
-        ghd = github.GHDependabot(data)
+        ghd = cvelib.github.GHDependabot(data)
         self.assertEqual(exp, ghd.__str__())
 
     def test__verifyRequired(self):
@@ -173,7 +173,7 @@ class TestGitHubDependabot(TestCase):
         ]
 
         for data, expErr in tsts:
-            ghd = github.GHDependabot(self._getValid())
+            ghd = cvelib.github.GHDependabot(self._getValid())
             if expErr is None:
                 ghd._verifyRequired(data)
             else:
@@ -193,7 +193,7 @@ class TestGitHubDependabot(TestCase):
         ]
 
         for s, expErr in tsts:
-            ghd = github.GHDependabot(self._getValid())
+            ghd = cvelib.github.GHDependabot(self._getValid())
             if expErr is None:
                 ghd.setDependency(s)
             else:
@@ -210,7 +210,7 @@ class TestGitHubDependabot(TestCase):
         ]
 
         for s, expErr in tsts:
-            ghd = github.GHDependabot(self._getValid())
+            ghd = cvelib.github.GHDependabot(self._getValid())
             ghd.setDetectedIn(s)
 
     def test_setAdvisory(self):
@@ -224,7 +224,7 @@ class TestGitHubDependabot(TestCase):
         ]
 
         for s, expErr in tsts:
-            ghd = github.GHDependabot(self._getValid())
+            ghd = cvelib.github.GHDependabot(self._getValid())
             if expErr is None:
                 ghd.setAdvisory(s)
             else:
@@ -247,7 +247,7 @@ class TestGitHubDependabot(TestCase):
         ]
 
         for s, expErr in tsts:
-            ghd = github.GHDependabot(self._getValid())
+            ghd = cvelib.github.GHDependabot(self._getValid())
             if expErr is None:
                 ghd.setSeverity(s)
             else:
@@ -288,7 +288,7 @@ class TestGitHubDependabot(TestCase):
         ]
 
         for s, expErr in tsts:
-            ghd = github.GHDependabot(self._getValid())
+            ghd = cvelib.github.GHDependabot(self._getValid())
             if expErr is None:
                 ghd.setStatus(s)
             else:
@@ -311,7 +311,7 @@ class TestGitHubDependabot(TestCase):
         ]
 
         for s, expErr in tsts:
-            ghd = github.GHDependabot(self._getValid())
+            ghd = cvelib.github.GHDependabot(self._getValid())
             if expErr is None:
                 ghd.setUrl(s)
             else:
@@ -341,7 +341,7 @@ class TestGitHubSecret(TestCase):
     def test___init__valid(self):
         """Test __init__()"""
         data = self._getValid()
-        github.GHSecret(data)
+        cvelib.github.GHSecret(data)
 
     def test___repr__(self):
         """Test __repr__()"""
@@ -352,7 +352,7 @@ class TestGitHubSecret(TestCase):
    status: needed
    url: https://github.com/bar/baz/security/secret-scanning/1"""
 
-        ghs = github.GHSecret(data)
+        ghs = cvelib.github.GHSecret(data)
         self.assertEqual(exp, ghs.__repr__())
 
     def test___str__(self):
@@ -364,7 +364,7 @@ class TestGitHubSecret(TestCase):
    status: needed
    url: https://github.com/bar/baz/security/secret-scanning/1"""
 
-        ghs = github.GHSecret(data)
+        ghs = cvelib.github.GHSecret(data)
         self.assertEqual(exp, ghs.__str__())
 
     def test__verifyRequired(self):
@@ -434,7 +434,7 @@ class TestGitHubSecret(TestCase):
         ]
 
         for data, expErr in tsts:
-            ghs = github.GHSecret(self._getValid())
+            ghs = cvelib.github.GHSecret(self._getValid())
             if expErr is None:
                 ghs._verifyRequired(data)
             else:
@@ -451,7 +451,7 @@ class TestGitHubSecret(TestCase):
         ]
 
         for s, expErr in tsts:
-            ghs = github.GHSecret(self._getValid())
+            ghs = cvelib.github.GHSecret(self._getValid())
             ghs.setSecret(s)
 
     def test_setDetectedIn(self):
@@ -463,7 +463,7 @@ class TestGitHubSecret(TestCase):
         ]
 
         for s, expErr in tsts:
-            ghs = github.GHSecret(self._getValid())
+            ghs = cvelib.github.GHSecret(self._getValid())
             ghs.setDetectedIn(s)
 
     def test_setStatus(self):
@@ -497,7 +497,7 @@ class TestGitHubSecret(TestCase):
         ]
 
         for s, expErr in tsts:
-            ghs = github.GHSecret(self._getValid())
+            ghs = cvelib.github.GHSecret(self._getValid())
             if expErr is None:
                 ghs.setStatus(s)
             else:
@@ -520,7 +520,7 @@ class TestGitHubSecret(TestCase):
         ]
 
         for s, expErr in tsts:
-            ghs = github.GHSecret(self._getValid())
+            ghs = cvelib.github.GHSecret(self._getValid())
             if expErr is None:
                 ghs.setUrl(s)
             else:
@@ -572,12 +572,12 @@ class TestGitHubCommon(TestCase):
 
         for s, expErr in tsts:
             if expErr is None:
-                res = github.parse(s)
+                res = cvelib.github.parse(s)
                 if s == "":
                     self.assertEqual(0, len(res))
                 else:
                     self.assertEqual(2, len(res))
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
-                    github.parse(s)
+                    cvelib.github.parse(s)
                 self.assertEqual(expErr, str(context.exception))

@@ -1,0 +1,7 @@
+pyyaml
+requests
+# syntax
+black
+coverage
+flake8
+pylint

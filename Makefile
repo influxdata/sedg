@@ -6,7 +6,7 @@ DEB_DEPENDENCIES := \
 	python3-coverage
 
 check-deb-deps:
-	@for dep in $(DEB_DEPENDENCIES); do if ! dpkg -l $$dep 1>/dev/null 2>&1; then echo "Please apt install $$dep" ; exit 1; fi; done
+	@for dep in $(DEB_DEPENDENCIES); do if test -z $(VIRTUAL_ENV) && ! dpkg -l $$dep 1>/dev/null 2>&1; then echo "Please apt install $$dep" ; exit 1; fi; done
 
 check-deps: check-deb-deps
 
