@@ -1155,11 +1155,17 @@ def _readStatsGHAS(
         alert: Union[GHDependabot, GHSecret]
         for alert in cve.ghas:
             for pkg in cve.pkgs:
-                if pkg_filter_status is not None and pkg.status not in pkg_filter_status:
+                if (
+                    pkg_filter_status is not None
+                    and pkg.status not in pkg_filter_status
+                ):
                     continue
 
                 ghas_status: str = alert.status.split()[0]
-                if ghas_filter_status is not None and ghas_status not in ghas_filter_status:
+                if (
+                    ghas_filter_status is not None
+                    and ghas_status not in ghas_filter_status
+                ):
                     continue
 
                 priority: str = cve.priority
@@ -1309,7 +1315,11 @@ def getHumanSummaryGHAS(
 
     if report_output == ReportOutput.OPEN or report_output == ReportOutput.BOTH:
         # report on a) packages that are open and b) alerts that are needed
-        stats_open = _readStatsGHAS(cves, pkg_filter_status=["needed", "needs-triage", "pending"], ghas_filter_status=["needed", "needs-triage"])
+        stats_open = _readStatsGHAS(
+            cves,
+            pkg_filter_status=["needed", "needs-triage", "pending"],
+            ghas_filter_status=["needed", "needs-triage"],
+        )
         _output(stats_open, "open")
 
     if report_output == ReportOutput.CLOSED or report_output == ReportOutput.BOTH:
@@ -1317,5 +1327,9 @@ def getHumanSummaryGHAS(
             print("\n")
         # report on a) packages that are closed (but not ignored/deferred) and
         # b) alerts that are released/dismissed
-        stats_closed = _readStatsGHAS(cves, pkg_filter_status=["released", "not-affected"], ghas_filter_status=["released", "dismissed"])
+        stats_closed = _readStatsGHAS(
+            cves,
+            pkg_filter_status=["released", "not-affected"],
+            ghas_filter_status=["released", "dismissed"],
+        )
         _output(stats_closed, "closed")

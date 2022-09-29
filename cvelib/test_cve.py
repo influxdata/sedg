@@ -1503,7 +1503,10 @@ cve-data = %s
             ("retired/CVE-2021-9999", None),
             ("ignored/CVE-2021-9999", None),
             # invalid
-            ("retired/CVE-bad", "WARN: retired/CVE-bad parse error: invalid Candidate: 'CVE-bad'"),
+            (
+                "retired/CVE-bad",
+                "WARN: retired/CVE-bad parse error: invalid Candidate: 'CVE-bad'",
+            ),
         ]
 
         for fn, expErr in tsts:
