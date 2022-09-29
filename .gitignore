@@ -4,3 +4,4 @@ ignored
 *.swp
 __pycache__
 .coverage
+venv
