@@ -10,7 +10,7 @@ case "$1" in
     black)
         exe="$1"
         # for now, only check
-        args="--diff --quiet"
+        args="--check --diff --quiet"
         ;;
     pylint3|pylint)
         exe="$1"
