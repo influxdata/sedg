@@ -65,7 +65,7 @@ rePatterns: Dict[str, Pattern[str]] = {
         % ({"software_len": _patLengths["pkg-software"]})
     ),
     # we can do 'ubuntu', 'suse', 'debian', etc for this for other distros
-    "pkg-product": re.compile(r"^(git|snap|oci|upstream|ubuntu|debian|suse)$"),
+    "pkg-product": re.compile(r"^(git|snap|oci|upstream|alpine|debian|suse|ubuntu)$"),
     "pkg-product-ubuntu": re.compile(
         r"^[a-z0-9+.-]{1,%(product_len)d}$"
         % ({"product_len": _patLengths["pkg-product-ubuntu"]})
@@ -78,7 +78,7 @@ rePatterns: Dict[str, Pattern[str]] = {
     ),
     # the string form
     "pkg-full": re.compile(
-        r"^(git|snap|oci|upstream|ubuntu|debian|suse)(/[a-z0-9+.-]{1,%(where_len)d})?_[a-zA-Z0-9+._-]{1,%(software_len)d}(/[a-z0-9+.-]{1,%(modifier_len)d})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,%(when_len)d}\))?$"
+        r"^(git|snap|oci|upstream|alpine|debian|suse|ubuntu)(/[a-z0-9+.-]{1,%(where_len)d})?_[a-zA-Z0-9+._-]{1,%(software_len)d}(/[a-z0-9+.-]{1,%(modifier_len)d})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,%(when_len)d}\))?$"
         % (
             {
                 "where_len": _patLengths["pkg-where"],
@@ -171,7 +171,7 @@ rePatterns: Dict[str, Pattern[str]] = {
     ),
     # The above, plus some Ubuntu-specific (eg, older releases)
     "pkg-patch-ubuntu": re.compile(
-        r"^((distro|other|upstream|vendor|debdiff|diff|fork|merge|proposed|unknown|android|debian|fedora|opensuse|redhat|dapper|hardy|jaunty|karmic|lucid|maverick): I?[a-z0-9+.-].*|break-fix: +((-|I?[0-9a-f]+) +(-|I?[0-9a-f]+)|(-|I?[0-9a-f|]+|(I?[0-9a-f|]+)?local[a-zA-X0-9|-]+)? +(-|I?[0-9a-f|]+|(I?[0-9a-f|]+)?local[a-zA-X0-9|-]+)|(-|(cvs|ftp|git|https?|sftp|shttp|svn)://[^ ]+) (-|(cvs|ftp|git|https?|sftp|shttp|svn)://[^ ]+))$)"
+        r"^((distro|other|upstream|vendor|debdiff|diff|fork|merge|proposed|unknown|alpine|android|debian|fedora|opensuse|redhat|dapper|hardy|jaunty|karmic|lucid|maverick): I?[a-z0-9+.-].*|break-fix: +((-|I?[0-9a-f]+) +(-|I?[0-9a-f]+)|(-|I?[0-9a-f|]+|(I?[0-9a-f|]+)?local[a-zA-X0-9|-]+)? +(-|I?[0-9a-f|]+|(I?[0-9a-f|]+)?local[a-zA-X0-9|-]+)|(-|(cvs|ftp|git|https?|sftp|shttp|svn)://[^ ]+) (-|(cvs|ftp|git|https?|sftp|shttp|svn)://[^ ]+))$)"
     ),
     # TODO: break out Ubuntu-specific tags
     "pkg-patch-key": re.compile(
