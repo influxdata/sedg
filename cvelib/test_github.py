@@ -568,6 +568,16 @@ class TestGitHubCommon(TestCase):
    baz: norf""",
                 "invalid GHAS document: unknown GHAS type 'other'",
             ),
+            (
+                """ - type: dependabot
+   dependency: @foo/bar
+   detectedIn: path/to/thing
+   advisory: https://github.com/advisories/GHSA-a
+   severity: moderate
+   status: needed
+   url: https://github.com/bar/baz/security/dependabot/1""",
+                "invalid yaml: uses unquoted 'dependency: @...'",
+            ),
         ]
 
         for s, expErr in tsts:

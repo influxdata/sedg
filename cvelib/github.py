@@ -205,6 +205,8 @@ def parse(s: str) -> List[Union[GHDependabot, GHSecret]]:
         # yml = yaml.load(s, Loader=yaml.CSafeLoader)
         yml = load(s, Loader=CSafeLoader)
     except Exception:
+        if s is not None and " - type: dependabot\n   dependency: @" in s:
+            raise CveException("invalid yaml: uses unquoted 'dependency: @...'")
         raise CveException("invalid yaml:\n'%s'" % s)
 
     ghas: List[Union[GHDependabot, GHSecret]] = []
