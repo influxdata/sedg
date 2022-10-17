@@ -465,18 +465,22 @@ Description:
     )
     for n in alert:
         s: str = """ - type: dependabot
-   dependency: %s
-   detectedIn: %s
-   severity: %s
-   advisory: %s
+   dependency: %(dependency)s
+   detectedIn: %(detected)s
+   severity: %(severity)s
+   advisory: %(advisory)s
    status: needs-triage
-   url: %s/%d""" % (
-            n["pkg"],
-            n["path"],
-            n["severity"],
-            n["ghsa"],
-            url,
-            n["number"],
+   url: %(url)s/%(urln)d""" % (
+            {
+                "dependency": '"%s"' % n["pkg"]
+                if n["pkg"].startswith("@")
+                else n["pkg"],
+                "detected": n["path"],
+                "severity": n["severity"],
+                "advisory": n["ghsa"],
+                "url": url,
+                "urln": n["number"],
+            }
         )
         print(s)
     print(

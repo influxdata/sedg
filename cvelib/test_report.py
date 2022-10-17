@@ -467,7 +467,7 @@ def mocked_requests_post_getGHAlertsUpdatedReport(*args, **kwargs):
                                     "number": 5,
                                     "securityVulnerability": {
                                         "package": {
-                                            "name": "norf",
+                                            "name": "@norf/quz",
                                         },
                                         "severity": "unknown",
                                     },
@@ -930,6 +930,13 @@ Updated issues:
         self.assertEqual("", error.getvalue().strip())
         exp = """Vulnerability alerts:
 valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabot)
+  @norf/quz
+    - severity: unknown
+    - created: 2022-07-05T18:27:30Z
+    - path/yarn.lock
+    - advisory: https://github.com/advisories/GHSA-d
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/5
+
   baz
     - severity: moderate
     - created: 2022-07-03T18:27:30Z
@@ -943,13 +950,6 @@ valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabo
     - path/yarn.lock
     - advisory: https://github.com/advisories/GHSA-c
     - url: https://github.com/valid-org/valid-repo/security/dependabot/4
-
-  norf
-    - severity: unknown
-    - created: 2022-07-05T18:27:30Z
-    - path/yarn.lock
-    - advisory: https://github.com/advisories/GHSA-d
-    - url: https://github.com/valid-org/valid-repo/security/dependabot/5
 
 Dismissed vulnerability alerts:
 
@@ -991,6 +991,13 @@ valid-repo dismissed alerts: 1 (https://github.com/valid-org/valid-repo/security
         self.assertEqual("", error.getvalue().strip())
         exp = """Vulnerability alerts:
 valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabot)
+  @norf/quz
+    - severity: unknown
+    - created: 2022-07-05T18:27:30Z
+    - path/yarn.lock
+    - advisory: https://github.com/advisories/GHSA-d
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/5
+
   baz
     - severity: moderate
     - created: 2022-07-03T18:27:30Z
@@ -1004,13 +1011,6 @@ valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabo
     - path/yarn.lock
     - advisory: https://github.com/advisories/GHSA-c
     - url: https://github.com/valid-org/valid-repo/security/dependabot/4
-
-  norf
-    - severity: unknown
-    - created: 2022-07-05T18:27:30Z
-    - path/yarn.lock
-    - advisory: https://github.com/advisories/GHSA-d
-    - url: https://github.com/valid-org/valid-repo/security/dependabot/5
 
 Dismissed vulnerability alerts:
 
@@ -1039,9 +1039,9 @@ valid-repo dismissed alerts: 1 (https://github.com/valid-org/valid-repo/security
 Please update dependabot flagged dependencies in valid-repo
 
 https://github.com/valid-org/valid-repo/security/dependabot lists the following updates:
+- [ ] [@norf/quz](https://github.com/valid-org/valid-repo/security/dependabot/5) (unknown)
 - [ ] [baz](https://github.com/valid-org/valid-repo/security/dependabot/3) (moderate)
 - [ ] [baz](https://github.com/valid-org/valid-repo/security/dependabot/4) (moderate)
-- [ ] [norf](https://github.com/valid-org/valid-repo/security/dependabot/5) (unknown)
 
 Since a 'moderate' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
 
@@ -1064,11 +1064,11 @@ References:
  https://github.com/valid-org/valid-repo/security/dependabot/5
  https://github.com/advisories/GHSA-b (baz)
  https://github.com/advisories/GHSA-c (baz)
- https://github.com/advisories/GHSA-d (norf)
+ https://github.com/advisories/GHSA-d (@norf/quz)
 Description:
  Please update dependabot flagged dependencies in valid-repo
+ - [ ] @norf/quz (unknown)
  - [ ] baz (2 moderate)
- - [ ] norf (unknown)
 GitHub-Advanced-Security:
  - type: dependabot
    dependency: baz
@@ -1085,7 +1085,7 @@ GitHub-Advanced-Security:
    status: needs-triage
    url: https://github.com/valid-org/valid-repo/security/dependabot/4
  - type: dependabot
-   dependency: norf
+   dependency: "@norf/quz"
    detectedIn: path/yarn.lock
    severity: unknown
    advisory: https://github.com/advisories/GHSA-d
@@ -1104,6 +1104,13 @@ git/valid-org_valid-repo: needs-triage
 ## end CVE template
 
 valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabot)
+  @norf/quz
+    - severity: unknown
+    - created: 2022-07-05T18:27:30Z
+    - path/yarn.lock
+    - advisory: https://github.com/advisories/GHSA-d
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/5
+
   baz
     - severity: moderate
     - created: 2022-07-03T18:27:30Z
@@ -1117,13 +1124,6 @@ valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabo
     - path/yarn.lock
     - advisory: https://github.com/advisories/GHSA-c
     - url: https://github.com/valid-org/valid-repo/security/dependabot/4
-
-  norf
-    - severity: unknown
-    - created: 2022-07-05T18:27:30Z
-    - path/yarn.lock
-    - advisory: https://github.com/advisories/GHSA-d
-    - url: https://github.com/valid-org/valid-repo/security/dependabot/5
 
 Dismissed vulnerability alerts:
 
@@ -1197,6 +1197,13 @@ valid-repo dismissed alerts: 1 (https://github.com/valid-org/valid-repo/security
         self.assertEqual("", error.getvalue().strip())
         exp = """Vulnerability alerts:
 valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabot)
+  @norf/quz
+    - severity: unknown
+    - created: 2022-07-05T18:27:30Z
+    - path/yarn.lock
+    - advisory: https://github.com/advisories/GHSA-d
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/5
+
   baz
     - severity: moderate
     - created: 2022-07-03T18:27:30Z
@@ -1209,14 +1216,7 @@ valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabo
     - created: 2022-07-04T18:27:30Z
     - path/yarn.lock
     - advisory: https://github.com/advisories/GHSA-c
-    - url: https://github.com/valid-org/valid-repo/security/dependabot/4
-
-  norf
-    - severity: unknown
-    - created: 2022-07-05T18:27:30Z
-    - path/yarn.lock
-    - advisory: https://github.com/advisories/GHSA-d
-    - url: https://github.com/valid-org/valid-repo/security/dependabot/5"""
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/4"""
         self.assertEqual(exp, output.getvalue().strip())
 
         # none updated since 1657224398 (2022-07-07)
