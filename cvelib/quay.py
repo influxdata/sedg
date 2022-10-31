@@ -154,8 +154,16 @@ def _getQuaySecurityManifest(repo_full: str) -> str:
         return ""
 
     resj = r.json()
+    if "status" not in resj:
+        error("Cound not find 'status' in response: %s" % resj)
+    elif resj["status"] != "scanned":
+        error("Could not process report due to status: %s" % resj["status"])
+
     if "data" not in resj:
         error("Could not find 'data' in %s" % resj)
+    elif resj["data"] is None:
+        error("Could not process report due to no data in %s" % resj)
+
     if "Layer" not in resj["data"]:
         error("Could not find 'Layer' in %s" % resj["data"])
     if "Features" not in resj["data"]["Layer"]:
