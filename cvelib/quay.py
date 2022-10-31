@@ -2,6 +2,7 @@
 
 import copy
 from datetime import datetime
+import json
 import os
 import requests
 from typing import Dict, List, Optional
@@ -128,7 +129,7 @@ def _getQuayRepo(namespace: str, name: str, tagsearch: str = "") -> str:
 
 
 # TODO: document the format
-def _getQuaySecurityManifest(repo_full: str) -> str:
+def _getQuaySecurityManifest(repo_full: str, raw: Optional[bool] = False) -> str:
     """Obtain the security manifest for the spcified repo@sha256:..."""
     repo: str
     sha256: str
@@ -154,6 +155,9 @@ def _getQuaySecurityManifest(repo_full: str) -> str:
         return ""
 
     resj = r.json()
+    if raw:
+        return json.dumps(resj)
+
     if "status" not in resj:
         error("Cound not find 'status' in response: %s" % resj)
     elif resj["status"] != "scanned":

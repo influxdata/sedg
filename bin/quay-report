@@ -43,7 +43,14 @@ $ quay-report
         "--get-security-manifest",
         dest="get_security_manifest",
         type=str,
-        help="output quay.io repo digest for REPO@sha256:SHA256",
+        help="output quay.io security report for REPO@sha256:SHA256",
+        default=None,
+    )
+    parser.add_argument(
+        "--get-security-manifest-raw",
+        dest="get_security_manifest_raw",
+        type=str,
+        help="output quay.io raw security report for REPO@sha256:SHA256",
         default=None,
     )
     args: argparse.Namespace = parser.parse_args()
@@ -65,6 +72,9 @@ $ quay-report
     elif args.get_security_manifest:
         s: str = _getQuaySecurityManifest(args.get_security_manifest)
         print("# %s report" % args.get_security_manifest)
+        print(s)
+    elif args.get_security_manifest_raw:
+        s: str = _getQuaySecurityManifest(args.get_security_manifest_raw, raw=True)
         print(s)
 
 
