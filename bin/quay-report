@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+
+import argparse
+import sys
+import textwrap
+from typing import List
+
+from cvelib.quay import (
+    _getQuayRepos,
+    _getQuayRepo,
+    _getQuaySecurityManifest,
+)
+
+
+def main():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
+        prog="quay-report",
+        description="Generate reports on security issues",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=textwrap.dedent(
+            """\
+Example usage:
+
+$ quay-report
+...
+        """
+        ),
+    )
+    parser.add_argument(
+        "--list-repos",
+        dest="list_repos",
+        help="output quay.io repos",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--get-repo-latest-digest",
+        dest="get_repo_latest_digest",
+        type=str,
+        help="output quay.io repo digest for REPO",
+        default=None,
+    )
+    parser.add_argument(
+        "--get-security-manifest",
+        dest="get_security_manifest",
+        type=str,
+        help="output quay.io repo digest for REPO@sha256:SHA256",
+        default=None,
+    )
+    args: argparse.Namespace = parser.parse_args()
+
+    # send to a report
+    if args.list_repos:
+        repos: List[str] = _getQuayRepos("influxdb")
+        for r in sorted(repos):
+            print(r)
+    elif args.get_repo_latest_digest:
+        ns: str = ""
+        name: str = ""
+        tag: str = ""
+        ns, name = args.get_repo_latest_digest.split("/", 2)
+        if ":" in name:
+            name, tag = name.split(":", 2)
+        digest: str = _getQuayRepo(ns, name, tagsearch=tag)
+        print(digest)
+    elif args.get_security_manifest:
+        s: str = _getQuaySecurityManifest(args.get_security_manifest)
+        print("# %s report" % args.get_security_manifest)
+        print(s)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("Aborted.")
+        sys.exit(1)
