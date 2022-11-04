@@ -9,7 +9,7 @@ import shutil
 import sys
 import tempfile
 import time
-from typing import Dict, List, Optional, Pattern, Tuple, Union
+from typing import Dict, List, Optional, Pattern, Set, Tuple, Union
 
 from email.message import Message
 from email.parser import HeaderParser, Parser
@@ -351,6 +351,24 @@ def epochToISO8601(since: int) -> str:
     if not isinstance(since, int) or since < 0:
         raise ValueError
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(since))
+
+
+def readFile(fn: str) -> Optional[Set[str]]:
+    """Read lines from file"""
+    # Use a relative filename for warnings and errors
+    rel_fn: str = os.path.basename(fn)
+    parent: str = os.path.basename(os.path.dirname(fn))
+    if parent in cve_reldirs:
+        rel_fn = "%s/%s" % (parent, rel_fn)
+
+    if not os.path.isfile(fn):
+        error("'%s' is not a regular file" % rel_fn)
+        return None
+
+    # Encode to to utf-8 since we might want to do isprintable() checks
+    # elsewhere
+    with open(fn, "r", encoding="utf-8", errors="backslashreplace") as fp:
+        return copy.deepcopy(set(fp.read().splitlines()))
 
 
 def readCve(fn: str) -> Dict[str, str]:
