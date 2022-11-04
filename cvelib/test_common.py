@@ -375,3 +375,35 @@ compat-ubuntu = %s
             else:
                 self.assertEqual("", output.getvalue().strip())
                 self.assertEqual("", error.getvalue().strip())
+
+    def test_readFile(self):
+        """Test readFile()"""
+        self.tmpdir = cvelib.testutil._createTmpDir()
+
+        fn = os.path.join(self.tmpdir, "test")
+        with open(fn, "w") as f:
+            f.write("data")
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            res = cvelib.common.readFile(fn)
+        os.unlink(fn)
+        self.assertTrue(res == {"data"})
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual("", error.getvalue().strip())
+
+        fn_non = os.path.join(self.tmpdir, "active", "test")
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with cvelib.testutil.capturedOutput() as (output, error):
+                res = cvelib.common.readFile(fn_non)
+            self.assertTrue(res is None)
+            self.assertEqual("", output.getvalue().strip())
+            self.assertTrue(
+                "'active/test' is not a regular file" in error.getvalue().strip()
+            )

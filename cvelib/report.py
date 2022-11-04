@@ -3,7 +3,6 @@
 import copy
 import datetime
 from enum import Enum
-import os
 import requests
 import time
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, TypedDict, Union
@@ -14,6 +13,7 @@ from cvelib.common import (
     cve_priorities,
     error,
     epochToISO8601,
+    readFile,
     rePatterns,
     updateProgress,
     warn,
@@ -929,12 +929,9 @@ def getHumanSoftwareInfo(
 
 def _readPackagesFile(pkg_fn: str) -> Optional[Set[str]]:
     """Read the 'packages file' (a list of packages, one per line)"""
-    pkgs = None
+    pkgs: Optional[Set[str]] = None
     if pkg_fn:
-        if not os.path.isfile(pkg_fn):
-            error("'%s' is not a regular file" % pkg_fn)
-        with open(pkg_fn, "r") as fh:
-            pkgs = set(fh.read().splitlines())
+        pkgs = readFile(pkg_fn)
 
     return pkgs
 
