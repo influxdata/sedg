@@ -10,7 +10,14 @@ import shutil
 import tempfile
 from typing import Any, Dict, List, Optional, Pattern, Set, Tuple, Union
 
-from cvelib.common import CveException, rePatterns, cve_priorities, cve_statuses
+from cvelib.common import (
+    CveException,
+    cve_priorities,
+    cve_statuses,
+    error,
+    rePatterns,
+    readFile,
+)
 import cvelib.common
 from cvelib.pkg import CvePkg, parse
 import cvelib.github
@@ -1056,6 +1063,26 @@ def _findNextPlaceholder(cveDirs: Dict[str, str]) -> str:
     return next
 
 
+def _cveExists(cveDirs: Dict[str, str], cand: str) -> str:
+    """Check existence of CVE"""
+    cves: List[str] = _getCVEPaths(cveDirs)
+    for cve in sorted(cves):
+        bn: str = os.path.basename(cve)
+        dn: str = os.path.basename(os.path.dirname(cve))
+        if cand == bn:
+            return "%s/%s" % (dn, bn)
+
+    nfu_fn: str = os.path.join(cveDirs["ignored"], "not-for-us.txt")
+    if os.path.exists(nfu_fn):
+        lines: Optional[Set[str]] = readFile(nfu_fn)
+        if lines is not None:
+            for line in lines:
+                if line.startswith("%s:" % cand):
+                    return "ignored/not-for-us.txt"
+
+    return ""
+
+
 def addCve(
     cveDirs: Dict[str, str],
     compatUbuntu: bool,
@@ -1086,6 +1113,12 @@ def addCve(
         cve_fn = os.path.join(cveDirs["retired"], cand)
     else:
         cve_fn = os.path.join(cveDirs["active"], cand)
+
+    # check if the CVE exists in somewhere other than where we specified
+    found: str = _cveExists(cveDirs, cand)
+    if found != "" and found not in cve_fn:
+        error("%s already exists in %s" % (cand, found))
+        return
 
     exists: bool = os.path.exists(cve_fn)
 

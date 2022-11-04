@@ -1,6 +1,6 @@
 """test_cve.py: tests for cve.py module"""
 
-from unittest import TestCase
+from unittest import TestCase, mock
 from unittest.mock import MagicMock
 import copy
 import datetime
@@ -2593,6 +2593,69 @@ CVSS:
         self.assertTrue("Candidate" in res)
         self.assertEqual(os.path.basename(exp_cve_fn), res["Candidate"])
 
+    def test_addCveExistsInOther(self):
+        """Test addCve() - exists in other"""
+        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        content = (
+            """[Location]
+cve-data = %s
+"""
+            % self.tmpdir
+        )
+        self.orig_xdg_config_home, self.tmpdir = cvelib.testutil._newConfigFile(
+            content, self.tmpdir
+        )
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
+
+        boiler_fn = os.path.join(cveDirs["active"], "00boilerplate")
+        boiler_content = """Candidate:
+PublicDate:
+References:
+Description:
+Notes:
+Mitigation:
+Bugs:
+Priority: untriaged
+Discovered-by:
+Assigned-to:
+CVSS:
+
+#Patches_PKG:
+#upstream_PKG:
+"""
+        with open(boiler_fn, "w") as fp:
+            fp.write("%s" % boiler_content)
+
+        nfu_fn = "ignored/not-for-us.txt"
+        with open(os.path.join(self.tmpdir, nfu_fn), "w") as fp:
+            fp.write("CVE-2022-2345: foo")
+
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with cvelib.testutil.capturedOutput() as (output, error):
+                cvelib.cve.addCve(
+                    cveDirs,
+                    False,
+                    "CVE-2022-2345",
+                    ["git/github_foo"],
+                    boiler=None,
+                    retired=False,
+                )
+                self.assertEqual("", output.getvalue().strip())
+                self.assertEqual(
+                    "ERROR: CVE-2022-2345 already exists in ignored/not-for-us.txt",
+                    error.getvalue().strip(),
+                )
+
     def test__findNextPlaceholder(self):
         """Test _findNextPlaceholder"""
         self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
@@ -2657,6 +2720,38 @@ cve-data = %s
             if len(cveFns) > 0:
                 for cve in cveFns:
                     os.unlink(os.path.join(self.tmpdir, cve))
+
+    def test__cveExists(self):
+        """Test _cveExists"""
+        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        content = (
+            """[Location]
+cve-data = %s
+"""
+            % self.tmpdir
+        )
+        self.orig_xdg_config_home, self.tmpdir = cvelib.testutil._newConfigFile(
+            content, self.tmpdir
+        )
+
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
+
+        cve_fn = "active/CVE-2022-1234"
+        with open(os.path.join(self.tmpdir, cve_fn), "w") as fp:
+            fp.write("content")
+        nfu_fn = "ignored/not-for-us.txt"
+        with open(os.path.join(self.tmpdir, nfu_fn), "w") as fp:
+            fp.write("CVE-2022-2345: foo")
+
+        res = cvelib.cve._cveExists(cveDirs, os.path.basename(cve_fn))
+        self.assertEqual(cve_fn, res)
+        res = cvelib.cve._cveExists(cveDirs, os.path.basename("nonexistent"))
+        self.assertEqual("", res)
+        res = cvelib.cve._cveExists(cveDirs, "CVE-2022-2345")
+        self.assertEqual(nfu_fn, res)
 
     def test__getCVEPaths(self):
         """Test _getCVEPaths"""
