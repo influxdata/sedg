@@ -1123,13 +1123,11 @@ def addCve(
     exists: bool = os.path.exists(cve_fn)
 
     # For a new CVE (where the path doesn't already exist), if we can determine
-    # a pkg from the candidate, then add it to the front of the list, removing
-    # it from the pkgs if it is already there
+    # a pkg from the candidate, then add it to the list if we haven't specified
+    # any packages with --package already
     p: Optional[str] = pkgFromCandidate(cand, where)
-    if not exists and p:
-        if p in pkgs:
-            pkgs.remove(p)
-        pkgs.insert(0, p)
+    if not exists and p and len(pkgs) == 0:
+        pkgs.append(p)
     if not pkgs:
         raise CveException("could not find usable packages for '%s'" % orig_cve)
 
