@@ -392,6 +392,9 @@ suitable for sending to InfluxDB. Eg:
 $ cve-report --output-influxdb
 cveLog,priority=medium,status=needed,product=git id="CVE-2020-1234",software="foo",modifier="" 1633040641675003246
 ...
+
+# or pipe into 'influx write':
+$ cve-report --output-influxdb | influx write --host $URL --org-id $ORGID --bucket-id $BUCKETID --token $TOKEN
 ```
 
 For now, paste this into 'Add Data/Line Protocol' whenever you make relevant
