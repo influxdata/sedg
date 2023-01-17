@@ -1054,7 +1054,7 @@ References:
 ## end template
 
 ## valid-repo CVE template
-Candidate: CVE-2022-NNNN
+Candidate: CVE-%s-NNNN
 OpenDate: %s
 PublicDate:
 CRD:
@@ -1144,7 +1144,7 @@ References:
 ## end template
 
 ## valid-repo CVE template
-Candidate: CVE-2022-NNNN
+Candidate: CVE-%s-NNNN
 OpenDate: %s
 PublicDate:
 CRD:
@@ -1184,7 +1184,9 @@ valid-repo dismissed alerts: 1 (https://github.com/valid-org/valid-repo/security
     - go.sum
     - advisory: https://github.com/advisories/GHSA-a
     - url: https://github.com/valid-org/valid-repo/security/dependabot/1""" % (
+            "%d" % (now.year),
             "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
+            "%d" % (now.year),
             "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
         )
         self.assertEqual(exp, output.getvalue().strip())
