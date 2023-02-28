@@ -1,7 +1,7 @@
 pyyaml
 requests
 # syntax
-black
+black==22.12.0
 coverage
 flake8
 pylint
