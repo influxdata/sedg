@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# EXPERIMENTAL: this script and APIs subject to change
+
 import copy
 from datetime import datetime
 import json

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
+# EXPERIMENTAL: this script subject to change
+
 import argparse
 import sys
 import textwrap
 from typing import List
 
-from cvelib.common import (
-    error
-)
+from cvelib.common import error
 from cvelib.quay import (
     _getQuayRepos,
     _getQuayRepo,
