@@ -767,6 +767,8 @@ def checkSyntaxFile(
         ok = False
         cvelib.common.warn("%s has missing references" % rel)
 
+    cve_pkgs_only_pending_or_closed: bool = True
+
     # ensure pkgs is populated
     if len(cve.pkgs) == 0:
         ok = False
@@ -794,8 +796,9 @@ def checkSyntaxFile(
                     )
 
             if p.status.startswith("need") or p.status.startswith("pend"):
+                if p.status.startswith("need"):
+                    cve_pkgs_only_pending_or_closed = False
                 open = True
-                break
         if open and "retired" in rel:
             ok = False
             cvelib.common.warn("%s is retired but has software with open status" % rel)
@@ -835,7 +838,17 @@ def checkSyntaxFile(
         cvelib.common.warn(
             "%s is retired but has open GitHub Advanced Security entries" % rel
         )
-    elif len(cve.ghas) > 0 and not open_ghas and "active" in rel:
+    elif (
+        len(cve.ghas) > 0
+        and not open_ghas
+        and "active" in rel
+        and not cve_pkgs_only_pending_or_closed
+    ):
+        # We only alert on this if all the alerts are closed, it's still and
+        # active and if at least one package is not closed or pending. We don't
+        # alert with pending to account for times when the alert is staged in a
+        # branch but not yet in a release (ie, the alert is closed, but the
+        # issue is still open)
         ok = False
         cvelib.common.warn(
             "%s is active but has only closed GitHub Advanced Security entries" % rel

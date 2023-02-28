@@ -1873,6 +1873,36 @@ cve-data = %s
             error.getvalue().strip(),
         )
 
+        # active has closed and pending GHAS
+        tmpl = self._cve_template()
+        tmpl["Candidate"] = "CVE-1234-5678"
+        tmpl["git/github_pkg1"] = "released"
+        tmpl["git/github_pkg1"] = "pending"
+        tmpl["Discovered-by"] = "gh-dependabot"
+        tmpl[
+            "GitHub-Advanced-Security"
+        ] = """
+ - type: dependabot
+   dependency: foo
+   detectedIn: yarn.lock
+   advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
+   severity: moderate
+   status: released
+   url: https://github.com/influxdata/foo/security/dependabot/1
+"""
+        content = cvelib.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            res = cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertTrue(res)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual("", error.getvalue().strip())
+
     def test_checkSyntaxCrossChecks(self):
         """Test checkSyntax() - cross checks"""
         self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
