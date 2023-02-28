@@ -25,7 +25,8 @@ esac
 
 echo "= $exe ="
 for i in ./cvelib/*py \
-         ./bin/cve-* ; do
+         ./bin/cve-* \
+         ./bin/quay-report ; do
     # this is a bash script
     if [ "$i" = "./bin/cve-edit" ] || [ "$i" = "./bin/cve-nfu" ]; then
         continue
