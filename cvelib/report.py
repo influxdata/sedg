@@ -4,6 +4,7 @@ import copy
 import datetime
 from enum import Enum
 import requests
+import sys
 import time
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, TypedDict, Union
 
@@ -38,11 +39,16 @@ class ReportOutput(Enum):
     BOTH = 3
 
 
+def _repoArchived(repo: str) -> bool:
+    return repo.endswith(":archived")
+
+
 def _getGHReposAll(org: str) -> List[str]:
     """Obtain the list of GitHub repos for the specified org"""
     global repos_all
     if len(repos_all) > 0:
-        print("Using previously fetched list of repos")
+        if sys.stdout.isatty():
+            print("Using previously fetched list of repos")
         return copy.deepcopy(repos_all)
 
     url: str = "https://api.github.com/orgs/%s/repos" % org
@@ -51,21 +57,28 @@ def _getGHReposAll(org: str) -> List[str]:
         "per_page": 100,
     }
 
-    print("Fetching list of repos: ", end="", flush=True)
+    if sys.stdout.isatty():
+        print("Fetching list of repos: ", end="", flush=True)
+
     count: int = 0
     while True:
         count += 1
-        print(".", end="", flush=True)
+        if sys.stdout.isatty():
+            print(".", end="", flush=True)
         params["page"] = count
 
         resj = requestGet(url, params=params)
         if len(resj) == 0:
-            print(" done!")
+            if sys.stdout.isatty():
+                print(" done!")
             break
 
         for repo in resj:
             if "name" in repo:
-                repos_all.append(repo["name"])
+                name: str = repo["name"]
+                if "archived" in repo and repo["archived"]:
+                    name = repo["name"] + ":archived"  # see _repoArchived()
+                repos_all.append(name)
 
     return copy.deepcopy(repos_all)
 
@@ -209,6 +222,8 @@ def getMissingReport(
     for repo in sorted(fetch_repos):
         if repo in excluded_repos:
             continue
+        if _repoArchived(repo):
+            continue
 
         url: str
         for url in _getGHIssuesForRepo(
@@ -246,6 +261,8 @@ def _getGHAlertsEnabled(
     count: int = 0
     for repo in sorted(fetch_repos):
         if repo in excluded_repos:
+            continue
+        if _repoArchived(repo):
             continue
 
         count += 1
@@ -1333,3 +1350,16 @@ def getHumanSummaryGHAS(
             ghas_filter_status=["released", "dismissed"],
         )
         _output(stats_closed, "closed")
+
+
+#
+# gh-report
+#
+def getReposReport(org: str, archived: Optional[bool] = False) -> None:
+    """Show list of active and archived repos"""
+    repos: List[str] = _getGHReposAll(org)
+    for repo in sorted(repos):
+        if archived and _repoArchived(repo):
+            print(repo.split(":")[0])
+        elif not archived and not _repoArchived(repo):
+            print(repo)

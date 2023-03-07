@@ -641,3 +641,28 @@ Eg, to bootstrap and then just use the stamp file, use:
         --gh-org foo \
         --since-stamp /path/to/stamp
 ```
+
+The `gh-report` script can be used to show a few things about GitHub repos. Eg,
+to show archived repos:
+
+```
+$ gh-report --gh-org foo --output-archived-repos
+norf
+```
+
+To show active repos:
+```
+$ gh-report --gh-org foo --output-repos
+bar
+baz
+```
+
+This can, for example, by used to manage a file of active repos that can be fed
+into other tools. Eg:
+```
+# for private repos
+$  export GHUSER=...
+$  export GHTOKEN=...
+$ gh-report --gh-org foo --output-repos | sort -f > foo-repos.txt
+$ cve-report --output-summary="foo-repos.txt"
+```
