@@ -653,15 +653,52 @@ cve-data = %s
         r = cvelib.report._getGHReposAll("valid-org")
         self.assertEqual(3, len(r))
         self.assertTrue("foo" in r)
-        self.assertTrue("bar" in r)
+        self.assertTrue("bar:archived" in r)
         self.assertTrue("baz" in r)
 
         # do it a second time to use repos_all
         r = cvelib.report._getGHReposAll("valid-org")
         self.assertEqual(3, len(r))
         self.assertTrue("foo" in r)
-        self.assertTrue("bar" in r)
+        self.assertTrue("bar:archived" in r)
         self.assertTrue("baz" in r)
+
+    #
+    # _repoArchived() tests
+    #
+    def test__repoArchived(self):
+        """Test _repoArchived()"""
+        self.assertFalse(cvelib.report._repoArchived("foo"))
+        self.assertTrue(cvelib.report._repoArchived("bar:archived"))
+
+    #
+    # getReposReport()
+    #
+    @mock.patch("requests.get", side_effect=mocked_requests_get__getGHReposAll)
+    def test_getReposReport(self, _):  # 2nd arg is 'mock_get'
+        """Test test_getReposReport - active"""
+        # default args
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getReposReport("valid-org")
+        self.assertEqual("", error.getvalue().strip())
+        exp = """baz
+foo"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        # explicit active
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getReposReport("valid-org", archived=False)
+        self.assertEqual("", error.getvalue().strip())
+        exp = """baz
+foo"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        # default args
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getReposReport("valid-org", archived=True)
+        self.assertEqual("", error.getvalue().strip())
+        exp = """bar"""
+        self.assertEqual(exp, output.getvalue().strip())
 
     #
     # _getGHIssuesForRepo() tests
