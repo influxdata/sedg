@@ -1,0 +1,148 @@
+#!/usr/bin/env python3
+
+# EXPERIMENTAL: this script and APIs subject to change
+
+import copy
+from datetime import datetime
+import os
+import requests
+import sys
+from typing import Dict, List, Optional
+
+from cvelib.common import (
+    error,
+    warn,
+)
+from cvelib.net import requestGetRaw
+
+
+def _createGARHeaders() -> Dict[str, str]:
+    """Create request headers for a GAR request"""
+    if "GCLOUD_TOKEN" not in os.environ:
+        error(
+            "Please export either GCLOUD_TOKEN (eg: export GCLOUD_TOKEN=$(gcloud auth print-access-token)"
+        )
+
+    headers: Dict[str, str] = {}
+    if "GCLOUD_TOKEN" in os.environ:
+        headers["Authorization"] = "Bearer %s" % os.environ["GCLOUD_TOKEN"]
+
+    return copy.deepcopy(headers)
+
+
+# https://cloud.google.com/artifact-registry/docs/reference/rest
+# https://cloud.google.com/artifact-registry/docs/reference/rest/v1/projects.locations.repositories/list
+def _getGARRepos(project: str, location: str) -> List[str]:
+    """Obtain the list of GAR repos for the specified project and location"""
+    url: str = (
+        "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories"
+        % (project, location)
+    )
+    headers: Dict[str, str] = _createGARHeaders()
+    params: Dict[str, str] = {"pageSize": "100"}
+
+    repos: List[str] = []
+
+    if sys.stdout.isatty():
+        print("Fetching list of repos: ", end="", flush=True)
+    while True:
+        if sys.stdout.isatty():
+            print(".", end="", flush=True)
+
+        try:
+            r: requests.Response = requestGetRaw(url, headers=headers, params=params)
+        except requests.exceptions.RequestException as e:
+            warn("Skipping %s (request error: %s)" % (url, str(e)))
+            return []
+
+        if r.status_code >= 300:
+            warn("Could not fetch %s (%d)" % (url, r.status_code))
+            return []
+
+        resj = r.json()
+        if "repositories" not in resj:
+            warn("Could not find 'repositories' in response: %s" % resj)
+            return []
+
+        for repo in resj["repositories"]:
+            if "name" not in repo:
+                warn("Could not find 'name' in response for repo: %s" % repo)
+                continue
+
+            name: str = repo["name"]
+            if name not in repos:
+                repos.append(repo["name"])
+
+        if "nextPageToken" not in resj:
+            if sys.stdout.isatty():
+                print(" done!")
+            break
+
+        params["pageToken"] = resj["nextPageToken"]
+        # time.sleep(2)  # in case nextPageToken isn't valid yet
+
+    return copy.deepcopy(repos)
+
+
+# https://cloud.google.com/artifact-registry/docs/reference/rest/v1/projects.locations.repositories.dockerImages
+def _getGARRepo(
+    project: str, location: str, repo: str, name: str, tagsearch: str = ""
+) -> str:
+    """Obtain the list of GAR repos for the specified namespace"""
+    url: str = (
+        "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories/%s/dockerImages"
+        % (project, location, repo)
+    )
+    headers: Dict[str, str] = _createGARHeaders()
+    params: Dict[str, str] = {"pageSize": "100"}
+
+    digest: str = ""
+    latest_d: Optional[datetime] = None
+    while True:
+        try:
+            r: requests.Response = requestGetRaw(url, headers=headers, params=params)
+        except requests.exceptions.RequestException as e:
+            warn("Skipping %s (request error: %s)" % (url, str(e)))
+            return ""
+
+        if r.status_code >= 300:
+            warn("Could not fetch %s" % url)
+            return ""
+
+        resj = r.json()
+        if "dockerImages" not in resj:
+            warn("Could not find 'dockerImages' in response: %s" % resj)
+            return ""
+
+        for img in resj["dockerImages"]:
+            if "tags" not in img or len(img["tags"]) == 0:
+                continue
+
+            if "name" not in img or not img["name"].split("/")[-1].startswith(
+                "%s@" % name
+            ):
+                continue
+
+            # if searching by tag, just return the first one
+            if tagsearch != "":
+                for t in img["tags"]:
+                    if tagsearch in t:
+                        return img["name"]
+            elif "updateTime" in img:
+                # 2022-10-24T19:09:15.357727Z. Discard 'Z' since %Z doesn't
+                # work reliably, so just strip it off (it is in UTC anyway)
+                # https://bugs.python.org/issue22377
+                cur: datetime = datetime.strptime(
+                    img["updateTime"][:-1], "%Y-%m-%dT%H:%M:%S.%f"
+                )
+                if latest_d is None or cur > latest_d:
+                    latest_d = cur
+                    digest = img["name"]
+
+        if "nextPageToken" not in resj:
+            break
+
+        params["pageToken"] = resj["nextPageToken"]
+        # time.sleep(2)  # in case nextPageToken isn't valid yet
+
+    return digest
