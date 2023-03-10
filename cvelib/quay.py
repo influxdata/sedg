@@ -7,6 +7,7 @@ from datetime import datetime
 import json
 import os
 import requests
+import sys
 from typing import Dict, List, Optional
 
 from cvelib.common import (
@@ -44,9 +45,11 @@ def _getQuayRepos(namespace: str) -> List[str]:
 
     repos: List[str] = []
 
-    print("Fetching list of repos: ", end="", flush=True)
+    if sys.stdout.isatty():
+        print("Fetching list of repos: ", end="", flush=True)
     while True:
-        print(".", end="", flush=True)
+        if sys.stdout.isatty():
+            print(".", end="", flush=True)
 
         try:
             r: requests.Response = requestGetRaw(url, headers=headers, params=params)
@@ -73,7 +76,8 @@ def _getQuayRepos(namespace: str) -> List[str]:
                 repos.append(repo["name"])
 
         if "next_page" not in resj:
-            print(" done!")
+            if sys.stdout.isatty():
+                print(" done!")
             break
 
         params["next_page"] = resj["next_page"]
