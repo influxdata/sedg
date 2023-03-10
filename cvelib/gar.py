@@ -39,7 +39,7 @@ def _getGARRepos(project: str, location: str) -> List[str]:
         % (project, location)
     )
     headers: Dict[str, str] = _createGARHeaders()
-    params: Dict[str, str] = {"pageSize": "100"}
+    params: Dict[str, str] = {"pageSize": "1000"}
 
     repos: List[str] = []
 
@@ -85,16 +85,73 @@ def _getGARRepos(project: str, location: str) -> List[str]:
 
 
 # https://cloud.google.com/artifact-registry/docs/reference/rest/v1/projects.locations.repositories.dockerImages
-def _getGARRepo(
-    project: str, location: str, repo: str, name: str, tagsearch: str = ""
-) -> str:
-    """Obtain the list of GAR repos for the specified namespace"""
+def _getGAROCIs(project: str, location: str) -> List[str]:
+    """Obtain the list of GAR OCIs for the specified project and location"""
+    repos: List[str] = _getGARRepos(project, location)
+    ocis: List[str] = []
+    for repo in repos:
+        tmp: List[str] = _getGAROCIForRepo(project, location, repo.split("/")[-1])
+        oci: str = ""
+        for oci in tmp:
+            ocis.append("%s/%s" % (repo, oci))
+
+    return sorted(ocis)
+
+
+def _getGAROCIForRepo(project: str, location: str, repo: str) -> List[str]:
+    """Obtain the list of GAR OCIs for the specified project, location and repo"""
     url: str = (
         "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories/%s/dockerImages"
         % (project, location, repo)
     )
     headers: Dict[str, str] = _createGARHeaders()
-    params: Dict[str, str] = {"pageSize": "100"}
+    params: Dict[str, str] = {"pageSize": "1000"}
+
+    ocis: List[str] = []
+    while True:
+        try:
+            r: requests.Response = requestGetRaw(url, headers=headers, params=params)
+        except requests.exceptions.RequestException as e:
+            warn("Skipping %s (request error: %s)" % (url, str(e)))
+            return []
+
+        if r.status_code >= 300:
+            warn("Could not fetch %s (%d)" % (url, r.status_code))
+            return []
+
+        resj = r.json()
+        if "dockerImages" not in resj:
+            warn("Could not find 'dockerImages' in response: %s" % resj)
+            return []
+
+        for img in resj["dockerImages"]:
+            if "name" not in img:
+                continue
+
+            name: str = img["name"].split("/")[-1].split("@")[0]
+            if name not in ocis:
+                ocis.append(name)
+
+        if "nextPageToken" not in resj:
+            break
+
+        params["pageToken"] = resj["nextPageToken"]
+        # time.sleep(2)  # in case nextPageToken isn't valid yet
+
+    return ocis
+
+
+# https://cloud.google.com/artifact-registry/docs/reference/rest/v1/projects.locations.repositories.dockerImages
+def _getGARRepo(
+    project: str, location: str, repo: str, name: str, tagsearch: str = ""
+) -> str:
+    """Obtain the GAR digest for the specified project, location and repo"""
+    url: str = (
+        "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories/%s/dockerImages"
+        % (project, location, repo)
+    )
+    headers: Dict[str, str] = _createGARHeaders()
+    params: Dict[str, str] = {"pageSize": "1000"}
 
     digest: str = ""
     latest_d: Optional[datetime] = None
@@ -106,7 +163,7 @@ def _getGARRepo(
             return ""
 
         if r.status_code >= 300:
-            warn("Could not fetch %s" % url)
+            warn("Could not fetch %s (%d)" % (url, r.status_code))
             return ""
 
         resj = r.json()

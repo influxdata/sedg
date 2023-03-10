@@ -10,6 +10,7 @@ from typing import List
 from cvelib.common import error
 from cvelib.gar import (
     _getGARRepos,
+    _getGAROCIs,
     _getGARRepo,
     #    _getGARSecurityManifest,
 )
@@ -28,6 +29,11 @@ $ gar-report --list-repos foo/us
 bar
 baz
 
+$ gar-report --list-ocis foo/us
+bar/norf
+bar/corge
+baz/qux
+
 $ gar-report --get-repo-latest-digest foo/us/bar/norf
 norf@sha256:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03
         """
@@ -38,6 +44,13 @@ norf@sha256:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03
         dest="list_repos",
         type=str,
         help="output GAR repos for PROJECT/LOCATION",
+        default=None,
+    )
+    parser.add_argument(
+        "--list-ocis",
+        dest="list_ocis",
+        type=str,
+        help="output GAR OCIs for PROJECT/LOCATION",
         default=None,
     )
     parser.add_argument(
@@ -72,6 +85,14 @@ norf@sha256:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03
         repos: List[str] = _getGARRepos(proj, loc)
         for r in sorted(repos):
             print(r.split("/")[-1])  # trim off the proj/loc
+    elif args.list_ocis:
+        if "/" not in args.list_ocis:
+            error("please use PROJECT/LOCATION")
+
+        proj, loc = args.list_ocis.split("/", 2)
+        repos: List[str] = _getGAROCIs(proj, loc)
+        for r in sorted(repos):
+            print(r.split("/", maxsplit=5)[-1])  # trim off the proj/loc
     elif args.get_repo_latest_digest:
         proj: str = ""
         loc: str = ""
