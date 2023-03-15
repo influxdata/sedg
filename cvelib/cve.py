@@ -469,6 +469,9 @@ CVSS:%(cvss)s
                             priorities[pkg.software][pkgKey],
                         )
 
+            if not last_software and not pre_s:
+                pre_s = "\n"
+
             last_software = pkg.software
 
             s += "%s%s\n" % (pre_s, pkg)
