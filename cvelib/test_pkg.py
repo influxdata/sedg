@@ -138,8 +138,14 @@ class TestPkg(TestCase):
         tsts = [
             # valid
             ("git", False, True),
-            ("snap", False, True),
             ("oci", False, True),
+            ("snap", False, True),
+            ("alpine", False, True),
+            ("centos", False, True),
+            ("debian", False, True),
+            ("opensuse", False, True),
+            ("rhel", False, True),
+            ("suse", False, True),
             ("ubuntu", False, True),
             ("upstream", False, True),
             # valid compatUbuntu

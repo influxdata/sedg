@@ -64,8 +64,8 @@ rePatterns: Dict[str, Pattern[str]] = {
         r"^[a-z0-9+.-]{1,%(software_len)d}$"
         % ({"software_len": _patLengths["pkg-software"]})
     ),
-    # we can do 'ubuntu', 'suse', 'debian', etc for this for other distros
-    "pkg-product": re.compile(r"^(git|snap|oci|upstream|alpine|debian|suse|ubuntu)$"),
+    # add others distros and build artifacts (oci, etc) as desired
+    "pkg-product": re.compile(r"^(git|snap|oci|upstream|alpine|centos|debian|opensuse|rhel|suse|ubuntu)$"),
     "pkg-product-ubuntu": re.compile(
         r"^[a-z0-9+.-]{1,%(product_len)d}$"
         % ({"product_len": _patLengths["pkg-product-ubuntu"]})
