@@ -744,3 +744,72 @@ class TestPkg(TestCase):
                 if "\n" in s:
                     errS = "invalid package entry '%s' (expected single line)" % s
                 self.assertEqual(errS, str(context.exception))
+
+    def test_cmp_pkgs(self):
+        """Test cmp_pkgs()"""
+        tsts = [
+            # pkg1, pkg2, expected
+            # compare software
+            (
+                cvelib.pkg.CvePkg("git", "a", "needed", where="a"),
+                cvelib.pkg.CvePkg("git", "b", "needed", where="a"),
+                -1,
+            ),
+            (
+                cvelib.pkg.CvePkg("git", "b", "needed", where="a"),
+                cvelib.pkg.CvePkg("git", "a", "needed", where="a"),
+                1,
+            ),
+            # compare product build artifacts (oci always last)
+            (
+                cvelib.pkg.CvePkg("ubuntu", "a", "needed", where="a"),
+                cvelib.pkg.CvePkg("oci", "a", "needed", where="a"),
+                -1,
+            ),
+            (
+                cvelib.pkg.CvePkg("oci", "a", "needed", where="a"),
+                cvelib.pkg.CvePkg("ubuntu", "a", "needed", where="a"),
+                1,
+            ),
+            # compare product upstream (upstream always first)
+            (
+                cvelib.pkg.CvePkg("upstream", "a", "needed", where="a"),
+                cvelib.pkg.CvePkg("ubuntu", "a", "needed", where="a"),
+                -1,
+            ),
+            (
+                cvelib.pkg.CvePkg("ubuntu", "a", "needed", where="a"),
+                cvelib.pkg.CvePkg("upstream", "a", "needed", where="a"),
+                1,
+            ),
+            # compare product
+            (
+                cvelib.pkg.CvePkg("debian", "a", "needed", where="a"),
+                cvelib.pkg.CvePkg("ubuntu", "a", "needed", where="a"),
+                -1,
+            ),
+            (
+                cvelib.pkg.CvePkg("ubuntu", "a", "needed", where="a"),
+                cvelib.pkg.CvePkg("debian", "a", "needed", where="a"),
+                1,
+            ),
+            # compare where
+            (
+                cvelib.pkg.CvePkg("git", "a", "needed", where="a"),
+                cvelib.pkg.CvePkg("git", "a", "needed", where="b"),
+                -1,
+            ),
+            (
+                cvelib.pkg.CvePkg("git", "a", "needed", where="b"),
+                cvelib.pkg.CvePkg("git", "a", "needed", where="a"),
+                1,
+            ),
+            # compare equality
+            (
+                cvelib.pkg.CvePkg("git", "a", "needed", where="a"),
+                cvelib.pkg.CvePkg("git", "a", "needed", where="a"),
+                0,
+            ),
+        ]
+        for p1, p2, ex in tsts:
+            self.assertEqual(cvelib.pkg.cmp_pkgs(p1, p2), ex)

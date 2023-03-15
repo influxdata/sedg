@@ -229,3 +229,40 @@ def parse(s: str, compatUbuntu: bool = False) -> CvePkg:
         when=when,
         compatUbuntu=compatUbuntu,
     )
+
+
+def cmp_pkgs(a: CvePkg, b: CvePkg) -> int:
+    """cmp_pkgs() takes 'a' and 'b' and compares by software, then product,
+    then where. When comparing product, put build artifacts after others and
+    put 'upstream' before others.
+    """
+    if a.software < b.software:
+        return -1
+    elif a.software > b.software:
+        return 1
+    # a.software == b.software
+    # put build artifacts after others
+    elif not rePatterns["pkg-product-build-artifact"].search(a.product) and rePatterns[
+        "pkg-product-build-artifact"
+    ].search(b.product):
+        return -1
+    elif rePatterns["pkg-product-build-artifact"].search(a.product) and not rePatterns[
+        "pkg-product-build-artifact"
+    ].search(b.product):
+        return 1
+    # put upstream before others
+    elif a.product == "upstream" and b.product != "upstream":
+        return -1
+    elif a.product != "upstream" and b.product == "upstream":
+        return 1
+    elif a.product < b.product:
+        return -1
+    elif a.product > b.product:
+        return 1
+    # a.software == b.software && a.product == b.product
+    elif a.where < b.where:
+        return -1
+    elif a.where > b.where:
+        return 1
+
+    return 0

@@ -2,8 +2,8 @@
 
 import copy
 import datetime
+import functools
 import glob
-from operator import attrgetter
 import os
 import re
 import shutil
@@ -19,7 +19,7 @@ from cvelib.common import (
     readFile,
 )
 import cvelib.common
-from cvelib.pkg import CvePkg, parse
+from cvelib.pkg import CvePkg, parse, cmp_pkgs
 import cvelib.github
 
 
@@ -318,6 +318,11 @@ class CVE(object):
         def _collectPatches(pkgs: List[CvePkg]) -> Dict[str, List[str]]:
             patches: Dict[str, List[str]] = {}
             for pkg in pkgs:
+                # build artifacts come from projects and shouldn't have their
+                # own Patches_... entries
+                if rePatterns["pkg-product-build-artifact"].search(pkg.product):
+                    continue
+
                 if pkg.software not in patches:
                     patches[pkg.software] = []
                 for p in pkg.patches:
@@ -440,31 +445,33 @@ CVSS:%(cvss)s
         priorities = _collectPriorities(self.pkgs)
 
         last_software: str = ""
-        # Sort the list by software, then product, then where so everything
-        # looks pretty. XXX: Ubuntu likes to have 'upstream' first, should we
-        # consider that with compatUbuntu?
-        for pkg in sorted(self.pkgs, key=attrgetter("software", "product", "where")):
+        for pkg in sorted(self.pkgs, key=functools.cmp_to_key(cmp_pkgs)):
             # since we are sorted, can add these once, unconditionally at the
             # start of the software stanza
+            pre_s: str = ""
             if last_software != pkg.software:
-                s += "\nPatches_%s:\n" % pkg.software
-                if pkg.software in patches and patches[pkg.software]:
-                    s += " " + "\n ".join(patches[pkg.software]) + "\n"
+                if pkg.software in patches:
+                    pre_s += "\nPatches_%s:\n" % pkg.software
+                    if patches[pkg.software]:
+                        pre_s += " " + "\n ".join(patches[pkg.software]) + "\n"
                 if pkg.software in tags and tags[pkg.software]:
                     for pkgKey in sorted(tags[pkg.software]):
-                        s += "Tags_%s: %s\n" % (
+                        pre_s += "%sTags_%s: %s\n" % (
+                            "" if pre_s else "\n",
                             pkgKey,
                             " ".join(sorted(tags[pkg.software][pkgKey])),
                         )
                 if pkg.software in priorities and priorities[pkg.software]:
                     for pkgKey in sorted(priorities[pkg.software]):
-                        s += "Priority_%s: %s\n" % (
+                        pre_s += "%sPriority_%s: %s\n" % (
+                            "" if pre_s else "\n",
                             pkgKey,
                             priorities[pkg.software][pkgKey],
                         )
+
             last_software = pkg.software
 
-            s += "%s\n" % pkg
+            s += "%s%s\n" % (pre_s, pkg)
 
         return s
 
@@ -1047,7 +1054,9 @@ def _createCve(
     if assigned_to is not None:
         cveObj.setAssignedTo(assigned_to)
 
-    # now write it out
+    # Now write it out. Note, cveObj.onDiskFormat() sorts and loses the
+    # formatting of the package boilerplate (if this is a problem, consider
+    # may not using onDiskFormat() with package boilers)
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
         f.write(cveObj.onDiskFormat())
         f.flush()

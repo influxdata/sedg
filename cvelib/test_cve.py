@@ -101,7 +101,7 @@ class TestCve(TestCase):
 
     def test_onDiskFormat(self):
         """Test onDiskFormat()"""
-        self.maxDiff = 1024
+        self.maxDiff = 2048
         tmpl = self._cve_template()
         tmpl[
             "GitHub-Advanced-Security"
@@ -166,10 +166,13 @@ CVSS: ...
 
         # (unsorted) patches for these
         pkg2a = CvePkg("snap", "pkg2", "needed", "pub", "", "123-4")
-        pkg2a.setPatches(["upstream: http://a", "other: http://b"], False)
+        pkg2a.setPatches(
+            ["other: http://dont-display"], False
+        )  # not for build artifacts
         pkgs.append(pkg2a)
 
         pkg2b = CvePkg("git", "pkg2", "released", "", "inky", "5678")
+        pkg2b.setPatches(["upstream: http://a", "other: http://b"], False)
         pkgs.append(pkg2b)
 
         pkg3 = CvePkg("snap", "pkg3", "needed")
@@ -204,6 +207,12 @@ CVSS: ...
             ]
         )
 
+        pkg5a = CvePkg("oci", "pkg5", "needed", "pub", "", "deadbeef")
+        pkgs.append(pkg5a)
+
+        pkg5b = CvePkg("ubuntu", "pkg5", "needed", where="focal")
+        pkgs.append(pkg5b)
+
         cve.setPackages(pkgs)
 
         exp2 = (
@@ -235,6 +244,10 @@ debian/buster_pkg4: needed
 debian/sid_pkg4: needed
 debian/squeeze_pkg4: needed
 debian/wheezy_pkg4: needed
+
+Patches_pkg5:
+ubuntu/focal_pkg5: needed
+oci/pub_pkg5: needed (deadbeef)
 """
         )
         res = cve.onDiskFormat()
@@ -242,7 +255,7 @@ debian/wheezy_pkg4: needed
 
     def test_onDiskFormatSorted(self):
         """Test onDiskFormat() - sorted"""
-        self.maxDiff = 1024
+        self.maxDiff = 2048
         self._mock_readCve(self._cve_template())
         exp = """Candidate: CVE-2020-1234
 OpenDate: 2020-06-29
@@ -268,12 +281,12 @@ Assigned-to: John Doe (johnny)
 CVSS: ...
 
 Patches_bar:
+upstream_bar: needed
 debian/buster_bar: needed
 debian/squeeze_bar: needed
 git/github_bar: needs-triage
 ubuntu/bionic_bar: needed
 ubuntu/focal_bar: needed
-upstream_bar: needed
 
 Patches_baz:
 git/github_baz: needs-triage
