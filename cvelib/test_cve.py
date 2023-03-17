@@ -2175,6 +2175,24 @@ CVSS:
         res4 = cvelib.common.readCve(cve_fn)
         self.assertEqual("foo", res4["Assigned-to"])
 
+        # CloseDate
+        cve_fn = os.path.join(cveDirs["retired"], "CVE-2021-1000000")
+        cvelib.cve._createCve(
+            cveDirs,
+            cve_fn,
+            os.path.basename(cve_fn),
+            ["git/github_foo"],
+            False,
+            False,
+            True,  # retired
+        )
+        res5 = cvelib.common.readCve(cve_fn)
+        print(res5)
+        now = datetime.datetime.now()
+        t = "%d-%0.2d-%0.2d" % (now.year, now.month, now.day)
+        self.assertEqual(t, res5["CloseDate"])
+
+
     def test_addCve(self):
         """Test addCve()"""
         self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")

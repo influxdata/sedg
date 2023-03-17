@@ -1010,6 +1010,7 @@ def _createCve(
     args_pkgs: List[str],
     compatUbuntu: bool,
     withReferences: bool = False,
+    retired: bool = False,
     discovered_by: Optional[str] = None,
     assigned_to: Optional[str] = None,
 ) -> None:
@@ -1069,7 +1070,13 @@ def _createCve(
         data["OpenDate"] = "%d-%0.2d-%0.2d" % (now.year, now.month, now.day)
 
     if not append or "CloseDate" not in data:
+        # set empty CloseDate if not appending
         data["CloseDate"] = ""
+
+    if retired and not append and data["CloseDate"] == "":
+        # set CloseDate if retired and not appending
+        now: datetime.datetime = datetime.datetime.now()
+        data["CloseDate"] = "%d-%0.2d-%0.2d" % (now.year, now.month, now.day)
 
     pkgObjs: List[CvePkg] = []
     for p in args_pkgs:
@@ -1215,6 +1222,7 @@ def addCve(
         pkgs,
         compatUbuntu,
         fromPkgTemplate,
+        retired,
         discovered_by,
         assigned_to,
     )
