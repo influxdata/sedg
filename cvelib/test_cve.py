@@ -1683,6 +1683,28 @@ cve-data = %s
             error.getvalue().strip(),
         )
 
+        # retired but CloseDate not set
+        tmpl = self._cve_template()
+        tmpl["Candidate"] = "CVE-1234-5678"
+        tmpl["git/github_pkg1"] = "released"
+        tmpl["OpenDate"] = "2023-03-17"
+        tmpl["CloseDate"] = "2023-03-16"
+        content = cvelib.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["retired"], "CVE-1234-5678")
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            res = cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertFalse(res)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: retired/CVE-1234-5678 CloseDate is before OpenDate (2023-03-16 < 2023-03-17)",
+            error.getvalue().strip(),
+        )
+
         # multiple
         tmpl = self._cve_template()
         tmpl["git/github_pkg1"] = "needed"

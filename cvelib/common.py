@@ -523,7 +523,7 @@ def getConfigCompatUbuntu() -> bool:
 
 def verifyDate(
     key: str, date: str, required: bool = False, compatUbuntu: Optional[bool] = False
-) -> None:
+) -> Optional[datetime.date]:
     """Verify a date"""
     unspecified: str = ""
     if not required:
@@ -536,6 +536,8 @@ def verifyDate(
         date,
         unspecified,
     )
+
+    dObj: Optional[datetime.date] = None
     # quick and dirty
     if not rePatterns["date-full"].search(date):
         raise CveException(err)
@@ -543,17 +545,17 @@ def verifyDate(
     # Use datetime.datetime.strptime to avoid external dependencies
     if rePatterns["date-only"].search(date):
         try:
-            datetime.datetime.strptime(date, "%Y-%m-%d")
+            dObj = datetime.datetime.strptime(date, "%Y-%m-%d")
         except ValueError:
             raise CveException(err)
     if rePatterns["date-time"].search(date):
         try:
-            datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+            dObj = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
         except ValueError:
             raise CveException(err)
     if rePatterns["date-full-offset"].search(date):
         try:
-            datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S %z")
+            dObj = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S %z")
         except ValueError:
             raise CveException(err)
     if rePatterns["date-full-tz"].search(date):
@@ -561,9 +563,13 @@ def verifyDate(
             # Unfortunately, %Z doesn't work reliably, so just strip it off
             # https://bugs.python.org/issue22377
             # datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S %Z")
-            datetime.datetime.strptime(" ".join(date.split()[:-1]), "%Y-%m-%d %H:%M:%S")
+            dObj = datetime.datetime.strptime(
+                " ".join(date.split()[:-1]), "%Y-%m-%d %H:%M:%S"
+            )
         except ValueError:  # pragma: nocover
             raise CveException(err)
+
+    return dObj
 
 
 #

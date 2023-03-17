@@ -847,6 +847,17 @@ def checkSyntaxFile(
         ok = False
         cvelib.common.warn("%s is retired but CloseDate is not set" % rel)
 
+    # make sure CloseDate is same or after OpenDate
+    if cve.openDate != "" and cve.closeDate != "":
+        d1 = verifyDate("OpenDate", cve.openDate)
+        d2 = verifyDate("CloseDate", cve.closeDate)
+        if d1 and d2 and d2 < d1:
+            ok = False
+            cvelib.common.warn(
+                "%s CloseDate is before OpenDate (%s < %s)"
+                % (rel, cve.closeDate, cve.openDate)
+            )
+
     # make sure Discovered-by is populated if specified GitHub-Advanced-Security
     seen: List[str] = []
     open_ghas = False
