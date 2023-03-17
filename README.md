@@ -148,6 +148,8 @@ Items within `[]` are optional.
 
     Patches_<software1>:
      upstream | vendor | distro | other: <url>
+    [CloseDate_<software1>: YYYY-MM-DD [ HH:MM:SS [ TZ|+-N ] ]
+    [CloseDate_<software1>[/modifier]: YYYY-MM-DD [ HH:MM:SS [ TZ|+-N ] ]
     [Tags_<software1>: <tag1> <tag2>]
     [Tags_<software1>[/<modifier>]: <tag1> <tag2>]
     [Priority_<software1>: negligible | low | medium | high | critical]
@@ -157,6 +159,8 @@ Items within `[]` are optional.
 
     Patches_<software2>:
      upstream | vendor | distro | other: <url>
+    [CloseDate_<software2>: YYYY-MM-DD [ HH:MM:SS [ TZ|+-N ] ]
+    [CloseDate_<software2>[/modifier]: YYYY-MM-DD [ HH:MM:SS [ TZ|+-N ] ]
     [Tags_<software2>: <tag1> <tag2>]
     [Tags_<software2>[/modifier]: <tag1> <tag2>]
     [Priority_<software2>: negligible | low | medium | high | critical]
@@ -197,7 +201,8 @@ For each field in the global section:
      for organizations with lots of repositories.
  * `OpenDate` is the date the CVE was created
  * `CloseDate` is the date the CVE was closed (nothing 'need-triage', 'needed'
-   or 'pending')
+   or 'pending'). Per-software close date overrides are possible in the
+   software section (below).
  * `PublicDate` is the date that a private CVE was made public
  * `CRD` is the Coordinated Release Date. This can be used for coordinating
    with other parties to make a CVE public at a specific time
@@ -242,6 +247,9 @@ normally used since it makes the CVE easier to read.
 For each field in the software section:
  * `Patches_<softwareN>` (eg, `Patches_foo` or `Patches_bar`) contains a list
    of patch URLs, one per line, with provenance prefixed
+ * `CloseDate_<softwareN>[/modifier]` (eg, `CloseDate_foo` or
+   `CloseDate_bar/v1`) is optional and when specified contains a close date
+   override for `<softwareN>[/modifier]`
  * `Tags_<softwareN>[/modifier]` (eg, `Tags_foo` or `Tags_bar/v1`) is optional
    and when specified contains a comma-separated list of tags. Tags have
    historically been used to describe a mitigating factor provided by the OS

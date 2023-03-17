@@ -128,6 +128,7 @@ class CVE(object):
         patches: Dict[str, str] = {}
         tags: Dict[str, str] = {}
         priorities: Dict[str, str] = {}
+        closeDates: Dict[str, str] = {}
         for k in data:
             if k not in self.data:  # copy raw data for later
                 self.data[k] = data[k]
@@ -159,11 +160,24 @@ class CVE(object):
                 # both Priority_foo and Priority_foo_bar
                 pkg = k.split("_", 1)[1]
                 priorities[pkg] = data[k]
+            elif k.startswith("CloseDate_"):
+                self._verifySingleline(k, data[k])
+                if not self.compatUbuntu or data[k] != "unknown":
+                    verifyDate(k, data[k], compatUbuntu=self.compatUbuntu)
+                # both CloseDate_foo and CloseDate_foo_bar
+                pkg = k.split("_", 1)[1]
+                closeDates[pkg] = data[k]
             else:
                 s: str = "%s: %s" % (k, data[k])
                 pkgs.append(parse(s, compatUbuntu=self.compatUbuntu))
 
-        self.setPackages(pkgs, patches=patches, tags=tags, priorities=priorities)
+        self.setPackages(
+            pkgs,
+            patches=patches,
+            tags=tags,
+            priorities=priorities,
+            closeDates=closeDates,
+        )
 
     def setCandidate(self, s: str) -> None:
         """Set candidate"""
@@ -276,6 +290,7 @@ class CVE(object):
         patches: Dict[str, str] = {},
         tags: Dict[str, str] = {},
         priorities: Dict[str, str] = {},
+        closeDates: Dict[str, str] = {},
         append: bool = False,
     ):
         """Set pkgs"""
@@ -314,6 +329,14 @@ class CVE(object):
             if pkgPriorities:
                 # XXX: Priority_foo_trusty
                 p.setPriorities(pkgPriorities)
+
+            pkgCloseDates: List[Tuple[str, str]] = [
+                (x, closeDates[x])
+                for x in closeDates
+                if (x == p.software or x.startswith("%s_" % p.software))
+            ]
+            if pkgCloseDates:
+                p.setCloseDates(pkgCloseDates)
 
             self.pkgs.append(p)
             self._pkgs_list.append(what)
@@ -379,6 +402,23 @@ class CVE(object):
                 for pkgKey in pkg.priorities:
                     priorities[pkg.software][pkgKey] = pkg.priorities[pkgKey]
             return priorities
+
+        # Do the same with closeDates, where the CloseDate is a string. Eg:
+        #   closeDates = {
+        #     pkg.software: {
+        #       "CloseDate_foo": <date>,
+        #       "CloseDate_foo_bar": <date>,
+        #     },
+        #     ...
+        #   }
+        def _collectCloseDates(pkgs) -> Dict[str, Dict[str, List[str]]]:
+            closeDates: Dict[str, Dict[str, List[str]]] = {}
+            for pkg in pkgs:
+                if pkg.software not in closeDates:
+                    closeDates[pkg.software] = {}
+                for pkgKey in pkg.closeDates:
+                    closeDates[pkg.software][pkgKey] = pkg.closeDates[pkgKey]
+            return closeDates
 
         def _collectGHAS(ghas) -> List[str]:
             s = []
@@ -455,6 +495,7 @@ CVSS:%(cvss)s
         patches = _collectPatches(self.pkgs)
         tags = _collectTags(self.pkgs)
         priorities = _collectPriorities(self.pkgs)
+        closeDates = _collectCloseDates(self.pkgs)
 
         last_software: str = ""
         for pkg in sorted(self.pkgs, key=functools.cmp_to_key(cmp_pkgs)):
@@ -466,6 +507,13 @@ CVSS:%(cvss)s
                     pre_s += "\nPatches_%s:\n" % pkg.software
                     if patches[pkg.software]:
                         pre_s += " " + "\n ".join(patches[pkg.software]) + "\n"
+                if pkg.software in closeDates and closeDates[pkg.software]:
+                    for pkgKey in sorted(closeDates[pkg.software]):
+                        pre_s += "%sCloseDate_%s: %s\n" % (
+                            "" if pre_s else "\n",
+                            pkgKey,
+                            closeDates[pkg.software][pkgKey],
+                        )
                 if pkg.software in tags and tags[pkg.software]:
                     for pkgKey in sorted(tags[pkg.software]):
                         pre_s += "%sTags_%s: %s\n" % (

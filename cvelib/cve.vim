@@ -1,5 +1,5 @@
 " Vim syntax file for CVE entries
-" Latest Revision: Feb 23 2023
+" Latest Revision: Mar 17 2023
 "
 " To use:
 " $ mkdir -p ~/.vim/syntax
@@ -34,12 +34,18 @@ syn match cveStatus contained "\(needs\-triage\|needed\|deferred\|pending\|relea
 syn match cveStatusExtra contained " (.\+)"
 
 " Standard keys
-syn match cveKey "^\%(Candidate\|OpenDate\|CloseDate\|PublicDate\|CRD\|References\|Description\|GitHub-Advanced-Security\|Notes\|Mitigation\|CVSS\|Bugs\|Discovered-by\|Assigned-to\|Patches_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\): *"
+syn match cveKey "^\%(Candidate\|OpenDate\|PublicDate\|CRD\|References\|Description\|GitHub-Advanced-Security\|Notes\|Mitigation\|CVSS\|Bugs\|Discovered-by\|Assigned-to\|Patches_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\): *"
 
 " TODO: reuse the above definitions here
 " Release/status key
 " <release>_<srcpkg>: <status>
 syn match cveKeyRelease "^\%(git\|snap\|oci\|upstream\|alpine\|debian\|suse\|ubuntu\)\(/[a-z0-9+.-]\+\)\?_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+.-]\+\)\?: *"
+"
+" TODO: reuse the above definitions here
+" CloseDates key
+" CloseDate[_<srcpkg>[_<release>]]: <date>
+syn match cveCloseDateValue contained "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\( [0-2][0-9]:[0-5][0-9]:[0-5][0-9] \([A-Z][A-Z][A-Z]\|[+-][01][0-9][0-9][0-9]\)\)\?"
+syn match cveCloseDateKey "^CloseDate\(_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(_\(upstream\|snap\)\)\?\)\?: *"
 
 " TODO: reuse the above definitions here
 " Priorities key
@@ -54,15 +60,17 @@ syn match cveTagValue contained "\(apparmor\|fortify-source\|hardlink-restrictio
 syn match cveTagKey "^Tags_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(_\(upstream\|snap\)\)\?: *"
 
 " Fields where we do strict syntax checking
+syn region cveStrictField start="^CloseDate" end="$" contains=cveCloseDateKey,cveCloseDateValue oneline
 syn region cveStrictField start="^Priority" end="$" contains=cvePriorityKey,cvePriorityValue oneline
 syn region cveStrictField start="^Tags" end="$" contains=cveTagKey,cveTagValue oneline
 syn region cveStrictField start="^Candidate" end="$" contains=cveKey,cveId
-syn region cveStrictField start="^\(OpenDate\|CloseDate\|PublicDate\|CRD\)" end="$" contains=cveKey,cveDate
+syn region cveStrictField start="^\(OpenDate\|PublicDate\|CRD\)" end="$" contains=cveKey,cveDate
 syn region cveStrictField start="^Patches_" end=":$" contains=cveKey,cveSrcPkg oneline
 syn region cveStrictField start="^[a-z/-]\+_" end="$" contains=cveKeyRelease,cveStatus,cveStatusExtra oneline
 
 " set the highlights
 hi def link cveKey                 Keyword
+hi def link cveCloseDateKey        Keyword
 hi def link cvePriorityKey         Keyword
 hi def link cveTagKey              Keyword
 hi def link cveKeyRelease          Keyword

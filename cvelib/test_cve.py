@@ -82,6 +82,7 @@ class TestCve(TestCase):
         t = self._cve_template()
         t["Tags_foo"] = "pie"
         t["Patches_foo"] = ""
+        t["CloseDate_foo"] = "2023-03-17"
         t["snap/pub_foo/mod"] = "released (123-4)"
         exp = self._mock_readCve(t)
         cve = cvelib.cve.CVE(fn="fake")
@@ -208,12 +209,24 @@ CVSS: ...
                 ("pkg4/wheezy", "fortify-source"),
             ]
         )
+        pkg4.setCloseDates(
+            [
+                ("pkg4/sid", "2023-03-16"),
+                ("pkg4/buster", "2023-03-17"),
+            ]
+        )
 
         pkg5a = CvePkg("oci", "pkg5", "needed", "pub", "", "deadbeef")
         pkgs.append(pkg5a)
 
         pkg5b = CvePkg("ubuntu", "pkg5", "needed", where="focal")
         pkgs.append(pkg5b)
+
+        pkg6 = CvePkg("oci", "pkg6", "needed", "pub", "", "deadbeef")
+        pkgs.append(pkg6)
+        pkg6b = CvePkg("git", "pkg6", "needed")
+        pkgs.append(pkg6b)
+        pkg6.setCloseDates([("pkg6", "2023-03-17")])
 
         cve.setPackages(pkgs)
 
@@ -236,6 +249,8 @@ git_pkg3: needed
 snap_pkg3: needed
 
 Patches_pkg4:
+CloseDate_pkg4/buster: 2023-03-17
+CloseDate_pkg4/sid: 2023-03-16
 Tags_pkg4/buster: pie
 Tags_pkg4/sid: apparmor pie
 Tags_pkg4/wheezy: fortify-source
@@ -250,6 +265,11 @@ debian/wheezy_pkg4: needed
 Patches_pkg5:
 ubuntu/focal_pkg5: needed
 oci/pub_pkg5: needed (deadbeef)
+
+Patches_pkg6:
+CloseDate_pkg6: 2023-03-17
+git_pkg6: needed
+oci/pub_pkg6: needed (deadbeef)
 """
         )
         res = cve.onDiskFormat()

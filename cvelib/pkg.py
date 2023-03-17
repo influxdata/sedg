@@ -2,7 +2,7 @@
 
 from typing import Dict, List, Tuple
 
-from cvelib.common import CveException, rePatterns, _patLengths
+from cvelib.common import CveException, rePatterns, _patLengths, verifyDate
 
 
 # <product>[/<where or who>]_SOFTWARE[/<modifier>]: <status> [(<when>)]
@@ -46,6 +46,7 @@ class CvePkg(object):
         self.patches: List[str] = []
         self.tags: Dict[str, List[str]] = {}
         self.priorities: Dict[str, str] = {}
+        self.closeDates: Dict[str, str] = {}
 
         self.setProduct(product)
         self.setWhere(where)
@@ -180,6 +181,13 @@ class CvePkg(object):
                 raise CveException("invalid package priority '%s'" % priVal)
 
             self.priorities[priKey] = priVal
+
+    def setCloseDates(self, closeDatesList: List[Tuple[str, str]]) -> None:
+        """Set closeDates"""
+        self.closeDates = {}
+        for closeDateKey, closeDateVal in closeDatesList:
+            verifyDate(closeDateKey, closeDateVal)
+            self.closeDates[closeDateKey] = closeDateVal
 
 
 def parse(s: str, compatUbuntu: bool = False) -> CvePkg:
