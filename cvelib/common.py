@@ -236,7 +236,7 @@ rePatterns: Dict[str, Pattern[str]] = {
 }
 
 # Subdirectories of CVEs in config["Locations"]["cve-data"]
-cve_reldirs: List[str] = ["active", "retired", "ignored"]
+cve_reldirs: List[str] = ["active", "retired", "ignored", "templates"]
 
 
 #

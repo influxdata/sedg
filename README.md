@@ -33,8 +33,8 @@
     $ cve-add --cve https://github.com/...
 
     # create a GitHub placeholder CVE with a particular id and package
-    # boilerplate
-    $ cve-add -c CVE-2020-GH1234#foo -p git/foo-org_foo --package-boiler=bar
+    # template
+    $ cve-add -c CVE-2020-GH1234#foo -p git/foo-org_foo --package-template=bar
 
     $ <work on CVEs in .../influx-security-tools-cve-data>
     $ cve-check-syntax
