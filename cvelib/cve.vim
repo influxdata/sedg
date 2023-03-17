@@ -34,7 +34,7 @@ syn match cveStatus contained "\(needs\-triage\|needed\|deferred\|pending\|relea
 syn match cveStatusExtra contained " (.\+)"
 
 " Standard keys
-syn match cveKey "^\%(Candidate\|OpenDate\|PublicDate\|CRD\|References\|Description\|GitHub-Advanced-Security\|Notes\|Mitigation\|CVSS\|Bugs\|Discovered-by\|Assigned-to\|Patches_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\): *"
+syn match cveKey "^\%(Candidate\|OpenDate\|CloseDate\|PublicDate\|CRD\|References\|Description\|GitHub-Advanced-Security\|Notes\|Mitigation\|CVSS\|Bugs\|Discovered-by\|Assigned-to\|Patches_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\): *"
 
 " TODO: reuse the above definitions here
 " Release/status key
@@ -57,7 +57,7 @@ syn match cveTagKey "^Tags_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(_\(upstream\|snap\)\)\?
 syn region cveStrictField start="^Priority" end="$" contains=cvePriorityKey,cvePriorityValue oneline
 syn region cveStrictField start="^Tags" end="$" contains=cveTagKey,cveTagValue oneline
 syn region cveStrictField start="^Candidate" end="$" contains=cveKey,cveId
-syn region cveStrictField start="^\(OpenDate\|PublicDate\|CRD\)" end="$" contains=cveKey,cveDate
+syn region cveStrictField start="^\(OpenDate\|CloseDate\|PublicDate\|CRD\)" end="$" contains=cveKey,cveDate
 syn region cveStrictField start="^Patches_" end=":$" contains=cveKey,cveSrcPkg oneline
 syn region cveStrictField start="^[a-z/-]\+_" end="$" contains=cveKeyRelease,cveStatus,cveStatusExtra oneline
 

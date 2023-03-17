@@ -103,6 +103,7 @@ Items within `[]` are optional.
 ```
     Candidate: CVE-<year>-<number> | CVE-<year>-GH<issue/pull>#<project> | CVE-<year>-NNNX
     OpenDate: YYYY-MM-DD [ HH:MM:SS [ TZ|+-N ] ]
+    CloseDate: YYYY-MM-DD [ HH:MM:SS [ TZ|+-N ] ]
     PublicDate: YYYY-MM-DD [ HH:MM:SS [ TZ|+-N ] ]
     CRD: YYYY-MM-DD [ HH:MM:SS [ TZ|+-N ] ]
     References:
@@ -195,6 +196,8 @@ For each field in the global section:
      https://github.com/<yourorg>/foo/issues/1234. This is particularly useful
      for organizations with lots of repositories.
  * `OpenDate` is the date the CVE was created
+ * `CloseDate` is the date the CVE was closed (nothing 'need-triage', 'needed'
+   or 'pending')
  * `PublicDate` is the date that a private CVE was made public
  * `CRD` is the Coordinated Release Date. This can be used for coordinating
    with other parties to make a CVE public at a specific time

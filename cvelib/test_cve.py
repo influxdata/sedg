@@ -55,6 +55,7 @@ class TestCve(TestCase):
             {
                 "Candidate": cand,
                 "OpenDate": "2020-06-29",
+                "CloseDate": "",
                 "PublicDate": "2020-06-30",
                 "CRD": "2020-06-30 01:02:03 -0700",
                 "References": "\n http://example.com",
@@ -122,6 +123,7 @@ class TestCve(TestCase):
         self._mock_readCve(tmpl)
         exp = """Candidate: CVE-2020-1234
 OpenDate: 2020-06-29
+CloseDate:
 PublicDate: 2020-06-30
 CRD: 2020-06-30 01:02:03 -0700
 References:
@@ -259,6 +261,7 @@ oci/pub_pkg5: needed (deadbeef)
         self._mock_readCve(self._cve_template())
         exp = """Candidate: CVE-2020-1234
 OpenDate: 2020-06-29
+CloseDate:
 PublicDate: 2020-06-30
 CRD: 2020-06-30 01:02:03 -0700
 References:
@@ -1008,8 +1011,8 @@ git/github_norf: needs-triage
                     str(context.exception),
                 )
 
-    def test__verifyPublicDateAndCRD(self):
-        """Test _verifyPublicDate() and _verifyCRD()"""
+    def test__verifyCloseDateAndPublicDateAndCRD(self):
+        """Test _verifyCloseDate, _verifyPublicDate() and _verifyCRD()"""
         tsts = [
             # valid
             ("", False, None),
@@ -1040,7 +1043,7 @@ git/github_norf: needs-triage
                 "invalid %(key)s: 'bad' (use 'unknown' or YYYY-MM-DD [HH:MM:SS [TIMEZONE]])",
             ),
         ]
-        for tstType in ["PublicDate", "CRD"]:
+        for tstType in ["CloseDate", "PublicDate", "CRD"]:
             for val, compat, err in tsts:
                 fn = None
                 cve = cvelib.cve.CVE(compatUbuntu=compat)
@@ -2062,6 +2065,7 @@ cve-data = %s
             fields = [
                 "Candidate",
                 "OpenDate",
+                "CloseDate",
                 "PublicDate",
                 "CRD",
                 "References",
@@ -2444,7 +2448,7 @@ CVSS:
         )
 
         res = cvelib.common.readCve(cve_fn)
-        self.assertEqual(15, len(res))
+        self.assertEqual(16, len(res))
         self.assertTrue("Candidate" in res)
         self.assertEqual(os.path.basename(cve_fn), res["Candidate"])
 
@@ -2452,7 +2456,8 @@ CVSS:
         t = "%d-%0.2d-%0.2d" % (now.year, now.month, now.day)
         self.assertTrue("OpenDate" in res)
         self.assertEqual(t, res["OpenDate"])
-
+        self.assertTrue("CloseDate" in res)
+        self.assertEqual("", res["CloseDate"])
         self.assertTrue("PublicDate" in res)
         self.assertEqual("", res["PublicDate"])
         self.assertTrue("CRD" in res)
@@ -2503,9 +2508,11 @@ CVSS:
         )
 
         res = cvelib.common.readCve(cve_fn)
-        self.assertEqual(17, len(res))
+        self.assertEqual(18, len(res))
         self.assertTrue("OpenDate" in res)
         self.assertEqual(past, res["OpenDate"])
+        self.assertTrue("CloseDate" in res)
+        self.assertEqual("", res["CloseDate"])
         self.assertTrue("PublicDate" in res)
         self.assertEqual(past, res["PublicDate"])
         self.assertTrue("Patches_bar" in res)
@@ -2525,6 +2532,7 @@ CVSS:
         template_fn = os.path.join(cveDirs["templates"], "foo")
         template_content = """Candidate:
 OpenDate:
+CloseDate:
 PublicDate:
 References:
  https://foo.com

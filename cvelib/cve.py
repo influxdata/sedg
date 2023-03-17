@@ -27,6 +27,7 @@ class CVE(object):
     cve_required: List[str] = [
         "Candidate",
         "OpenDate",
+        "CloseDate",
         "PublicDate",
         "References",
         "Description",
@@ -40,8 +41,8 @@ class CVE(object):
     # Tags_*, Patches_* and software are handled special
     cve_optional: List[str] = [
         "CRD",
-        "Mitigation",
         "GitHub-Advanced-Security",
+        "Mitigation",
     ]
 
     def __str__(self) -> str:
@@ -62,6 +63,7 @@ class CVE(object):
         # types and defaults
         self.candidate: str = ""
         self.openDate: str = ""
+        self.closeDate: str = ""
         self.publicDate: str = ""
         self.crd: str = ""
         self.references: List[str] = []
@@ -95,6 +97,7 @@ class CVE(object):
         # members
         self.setCandidate(data["Candidate"])
         self.setOpenDate(data["OpenDate"])
+        self.setCloseDate(data["CloseDate"])
         self.setPublicDate(data["PublicDate"])
         self.setReferences(data["References"])
         self.setDescription(data["Description"])
@@ -184,6 +187,12 @@ class CVE(object):
         self._verifyOpenDate("OpenDate", s)
         self.openDate = s
         self.data["OpenDate"] = self.openDate
+
+    def setCloseDate(self, s: str) -> None:
+        """Set CloseDate"""
+        self._verifyCloseDate("CloseDate", s)
+        self.closeDate = s
+        self.data["CloseDate"] = self.closeDate
 
     def setReferences(self, s: str) -> None:
         """Set References"""
@@ -378,6 +387,7 @@ class CVE(object):
 
         s: str = """Candidate:%(candidate)s
 OpenDate:%(openDate)s
+CloseDate:%(closeDate)s
 PublicDate:%(publicDate)s
 CRD:%(crd)s
 References:%(references)s
@@ -393,6 +403,7 @@ CVSS:%(cvss)s
             {
                 "candidate": " %s" % self.candidate if self.candidate else "",
                 "openDate": " %s" % self.openDate if self.openDate else "",
+                "closeDate": " %s" % self.closeDate if self.closeDate else "",
                 "publicDate": " %s" % self.publicDate if self.publicDate else "",
                 "crd": " %s" % self.crd if self.crd else "",
                 "references": "\n %s" % "\n ".join(self.references)
@@ -681,6 +692,14 @@ CVSS:%(cvss)s
         self._verifySingleline(key, val)
         if not self.compatUbuntu or val != "unknown":
             self._verifyDate(key, val, required=True)
+
+    def _verifyCloseDate(self, key: str, val: str) -> None:
+        """Verify CVE CloseDate"""
+        self._verifySingleline(key, val)
+        # empty is ok unless self.compatUbuntu is set (then use 'unknown')
+        if val != "":
+            if not self.compatUbuntu or val != "unknown":
+                self._verifyDate(key, val, required=True)
 
     def _verifyUrl(self, key: str, url: str) -> None:
         """Verify url"""
@@ -1043,6 +1062,9 @@ def _createCve(
     if not append or "OpenDate" not in data or data["OpenDate"] == "":
         now: datetime.datetime = datetime.datetime.now()
         data["OpenDate"] = "%d-%0.2d-%0.2d" % (now.year, now.month, now.day)
+
+    if not append or "CloseDate" not in data:
+        data["CloseDate"] = ""
 
     pkgObjs: List[CvePkg] = []
     for p in args_pkgs:
