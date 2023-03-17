@@ -842,6 +842,11 @@ def checkSyntaxFile(
                 "%s is active but has software with only closed status" % rel
             )
 
+    # make sure CloseDate is set if retired
+    if "retired" in rel and cve.closeDate == "":
+        ok = False
+        cvelib.common.warn("%s is retired but CloseDate is not set" % rel)
+
     # make sure Discovered-by is populated if specified GitHub-Advanced-Security
     seen: List[str] = []
     open_ghas = False

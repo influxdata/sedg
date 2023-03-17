@@ -1484,6 +1484,9 @@ cve-data = %s
             cveDirs[d] = os.path.join(self.tmpdir, d)
             os.mkdir(cveDirs[d], 0o0700)
 
+        now = datetime.datetime.now()
+        today = "%d-%0.2d-%0.2d" % (now.year, now.month, now.day)
+
         tsts = [
             # valid
             ("active/CVE-2021-9999", None),
@@ -1502,6 +1505,7 @@ cve-data = %s
             tmpl["Candidate"] = cand
             if fn.startswith("retired"):
                 tmpl["git/github_pkg1"] = "released"
+                tmpl["CloseDate"] = today
             else:
                 tmpl["git/github_pkg1"] = "needed"
             content = cvelib.testutil.cveContentFromDict(tmpl)
@@ -1622,6 +1626,7 @@ cve-data = %s
         tmpl = self._cve_template()
         tmpl["Candidate"] = "CVE-1234-5678"
         tmpl["git/github_pkg1"] = "needed"
+        tmpl["CloseDate"] = today
         content = cvelib.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["retired"], "CVE-1234-5678")
         with open(cve_fn, "w") as fp:
@@ -1658,6 +1663,26 @@ cve-data = %s
             error.getvalue().strip(),
         )
 
+        # retired but CloseDate not set
+        tmpl = self._cve_template()
+        tmpl["Candidate"] = "CVE-1234-5678"
+        tmpl["git/github_pkg1"] = "released"
+        content = cvelib.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["retired"], "CVE-1234-5678")
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            res = cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertFalse(res)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: retired/CVE-1234-5678 is retired but CloseDate is not set",
+            error.getvalue().strip(),
+        )
+
         # multiple
         tmpl = self._cve_template()
         tmpl["git/github_pkg1"] = "needed"
@@ -1668,6 +1693,7 @@ cve-data = %s
 
         cve_retired_fn = os.path.join(cveDirs["retired"], tmpl["Candidate"])
         tmpl["git/github_pkg1"] = "released"
+        tmpl["CloseDate"] = today
         content = cvelib.testutil.cveContentFromDict(tmpl)
         with open(cve_retired_fn, "w") as fp:
             fp.write("%s" % content)
@@ -1707,6 +1733,7 @@ cve-data = %s
         # when should use 'code not used'
         tmpl = self._cve_template()
         tmpl["git/github_pkg1"] = "not-affected (code not used)"
+        tmpl["CloseDate"] = today
         content = cvelib.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["retired"], tmpl["Candidate"])
         with open(cve_fn, "w") as fp:
@@ -1799,6 +1826,7 @@ cve-data = %s
         # retired has open GHAS
         tmpl = self._cve_template()
         tmpl["Candidate"] = "CVE-1234-5678"
+        tmpl["CloseDate"] = today
         tmpl["git/github_pkg1"] = "released"
         tmpl["Discovered-by"] = "gh-dependabot"
         tmpl[
@@ -2187,11 +2215,9 @@ CVSS:
             True,  # retired
         )
         res5 = cvelib.common.readCve(cve_fn)
-        print(res5)
         now = datetime.datetime.now()
         t = "%d-%0.2d-%0.2d" % (now.year, now.month, now.day)
         self.assertEqual(t, res5["CloseDate"])
-
 
     def test_addCve(self):
         """Test addCve()"""
