@@ -997,17 +997,19 @@ def _createCve(
         append = True
         data = cvelib.common.readCve(cve_path)
     else:
-        # find generic boiler
-        boiler: str = os.path.join(cveDirs["active"], "00boilerplate")
-        ubuntuBoiler: str = os.path.join(cveDirs["active"], "00boilerplate.ubuntu")
+        # find generic template
+        template: str = os.path.join(cveDirs["templates"], "_base")
+        ubuntuTemplate: str = os.path.join(cveDirs["templates"], "_base.ubuntu")
         if compatUbuntu:
-            boiler = ubuntuBoiler
-        if not os.path.isfile(boiler):
-            raise CveException("could not find 'active/%s'" % os.path.basename(boiler))
-        data = cvelib.common.readCve(boiler)
+            template = ubuntuTemplate
+        if not os.path.isfile(template):
+            raise CveException(
+                "could not find 'templates/%s'" % os.path.basename(template)
+            )
+        data = cvelib.common.readCve(template)
 
-        if boiler == ubuntuBoiler:
-            # update args_pkgs using Ubuntu's boiler format
+        if template == ubuntuTemplate:
+            # update args_pkgs using Ubuntu's template format
             tmp: List[str] = copy.deepcopy(args_pkgs)
             pat: Pattern = re.compile(r"^#(.*_)PKG$")
             for k in data:
@@ -1023,7 +1025,7 @@ def _createCve(
             for p in tmp:
                 args_pkgs.remove(p)
 
-        # unconditionally add references when generating from boiler
+        # unconditionally add references when generating from template
         withReferences = True
 
     if withReferences:
@@ -1034,7 +1036,7 @@ def _createCve(
         data["References"] += "\n %s" % " ".join(refs)
         data["Bugs"] += "\n %s" % " ".join(bugs) if bugs else ""
 
-    # fill in the CVE candidate (needed with new and per-package boiler, but
+    # fill in the CVE candidate (needed with new and per-package template, but
     # re-setting it for existing is harmless and makes the logic simpler)
     data["Candidate"] = os.path.basename(cve_path)
 
@@ -1058,8 +1060,8 @@ def _createCve(
         cveObj.setAssignedTo(assigned_to)
 
     # Now write it out. Note, cveObj.onDiskFormat() sorts and loses the
-    # formatting of the package boilerplate (if this is a problem, consider
-    # may not using onDiskFormat() with package boilers)
+    # formatting of the package template (if this is a problem, consider
+    # may not using onDiskFormat() with package templates)
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
         f.write(cveObj.onDiskFormat())
         f.flush()
@@ -1113,7 +1115,7 @@ def addCve(
     compatUbuntu: bool,
     orig_cve: str,
     orig_pkgs: List[str],
-    boiler: Optional[str] = None,
+    template: Optional[str] = None,
     retired: bool = False,
     discovered_by: Optional[str] = None,
     assigned_to: Optional[str] = None,
@@ -1156,28 +1158,28 @@ def addCve(
     if not pkgs:
         raise CveException("could not find usable packages for '%s'" % orig_cve)
 
-    # Find boilerplate if we have one
-    pkgBoiler: Optional[str] = None
-    if boiler is not None:
-        pkgBoiler = boiler
+    # Find template if we have one
+    pkgTemplate: Optional[str] = None
+    if template is not None:
+        pkgTemplate = template
     elif "_" in pkgs[0]:  # product/where_software/modifer
-        pkgBoiler = pkgs[0].split("_")[1].split("/")[0]
+        pkgTemplate = pkgs[0].split("_")[1].split("/")[0]
     elif compatUbuntu:  # software/modifier
-        pkgBoiler = pkgs[0].split("/")[0]
+        pkgTemplate = pkgs[0].split("/")[0]
 
-    if pkgBoiler is not None:
-        pkgBoiler = os.path.join(cveDirs["active"], "00boilerplate.%s" % pkgBoiler)
+    if pkgTemplate is not None:
+        pkgTemplate = os.path.join(cveDirs["templates"], pkgTemplate)
 
-    # if we have a per-package boiler but don't have the cve, then copy
-    # the boiler into place as the CVE
-    fromPkgBoiler: bool = False
+    # if we have a per-package template but don't have the cve, then copy
+    # the template into place as the CVE
+    fromPkgTemplate: bool = False
     if (
-        pkgBoiler is not None
-        and os.path.isfile(pkgBoiler)
+        pkgTemplate is not None
+        and os.path.isfile(pkgTemplate)
         and not os.path.isfile(cve_fn)
     ):
-        shutil.copyfile(pkgBoiler, cve_fn, follow_symlinks=False)
-        fromPkgBoiler = True
+        shutil.copyfile(pkgTemplate, cve_fn, follow_symlinks=False)
+        fromPkgTemplate = True
 
     _createCve(
         cveDirs,
@@ -1185,7 +1187,7 @@ def addCve(
         orig_cve,
         pkgs,
         compatUbuntu,
-        fromPkgBoiler,
+        fromPkgTemplate,
         discovered_by,
         assigned_to,
     )

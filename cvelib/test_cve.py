@@ -2106,19 +2106,19 @@ cve-data = %s
 
         cve_fn = os.path.join(cveDirs["active"], "CVE-2021-999999")
 
-        # missing boiler
+        # missing template
         with self.assertRaises(cvelib.common.CveException) as context:
             cvelib.cve._createCve(
                 cveDirs, cve_fn, os.path.basename(cve_fn), ["git/github_foo"], False
             )
         self.assertEqual(
-            "could not find 'active/00boilerplate'",
+            "could not find 'templates/_base'",
             str(context.exception),
         )
 
-        # standard boiler
-        boiler_fn = os.path.join(cveDirs["active"], "00boilerplate")
-        boiler_content = """Candidate:
+        # standard template
+        template_fn = os.path.join(cveDirs["templates"], "_base")
+        template_content = """Candidate:
 PublicDate:
 References:
 Description:
@@ -2133,8 +2133,8 @@ CVSS:
 #Patches_PKG:
 #upstream_PKG:
 """
-        with open(boiler_fn, "w") as fp:
-            fp.write("%s" % boiler_content)
+        with open(template_fn, "w") as fp:
+            fp.write("%s" % template_content)
 
         res = createAndVerify(
             cveDirs, cve_fn, os.path.basename(cve_fn), ["git/github_foo"]
@@ -2208,8 +2208,8 @@ CVSS:
             cveDirs[d] = os.path.join(self.tmpdir, d)
             os.mkdir(cveDirs[d], 0o0700)
 
-        boiler_fn = os.path.join(cveDirs["active"], "00boilerplate")
-        boiler_content = """Candidate:
+        template_fn = os.path.join(cveDirs["templates"], "_base")
+        template_content = """Candidate:
 PublicDate:
 References:
 Description:
@@ -2224,23 +2224,23 @@ CVSS:
 #Patches_PKG:
 #upstream_PKG:
 """
-        with open(boiler_fn, "w") as fp:
-            fp.write("%s" % boiler_content)
+        with open(template_fn, "w") as fp:
+            fp.write("%s" % template_content)
 
-        boiler_baz_fn = "%s.baz" % boiler_fn
-        with open(boiler_baz_fn, "w") as fp:
+        template_baz_fn = os.path.join(cveDirs["templates"], "baz")
+        with open(template_baz_fn, "w") as fp:
             fp.write(
-                "%s" % boiler_content
+                "%s" % template_content
                 + """
 Patches_baz:
 upstream_baz: needed
 """
             )
 
-        boiler_ubuntu_fn = "%s.ubuntu" % boiler_fn
-        with open(boiler_ubuntu_fn, "w") as fp:
+        template_ubuntu_fn = "%s.ubuntu" % template_fn
+        with open(template_ubuntu_fn, "w") as fp:
             fp.write(
-                "%s" % boiler_content
+                "%s" % template_content
                 + """
 #precise/esm_PKG:
 #trusty_PKG:
@@ -2343,12 +2343,12 @@ upstream_baz: needed
             ),
         ]
 
-        for cve, pkgs, compat, boiler, retired, expFail in tsts:
+        for cve, pkgs, compat, template, retired, expFail in tsts:
 
             if expFail is not None:
                 with self.assertRaises(cvelib.common.CveException) as context:
                     cvelib.cve.addCve(
-                        cveDirs, compat, cve, pkgs, boiler=boiler, retired=retired
+                        cveDirs, compat, cve, pkgs, template=template, retired=retired
                     )
                 self.assertEqual(expFail, str(context.exception))
                 continue
@@ -2363,7 +2363,7 @@ upstream_baz: needed
 
             with cvelib.testutil.capturedOutput() as (output, error):
                 cvelib.cve.addCve(
-                    cveDirs, compat, cve, pkgs, boiler=boiler, retired=retired
+                    cveDirs, compat, cve, pkgs, template=template, retired=retired
                 )
             self.assertTrue(os.path.exists(cve_fn))
 
@@ -2401,7 +2401,7 @@ upstream_baz: needed
                         self.assertFalse(p in res)
                         self.assertEqual("needs-triage", res[uPkg])
 
-            if boiler is not None:
+            if template is not None:
                 self.assertTrue("upstream_baz" in res)
                 self.assertEqual("needed", res["upstream_baz"])
 
@@ -2413,8 +2413,8 @@ upstream_baz: needed
             cveDirs[d] = os.path.join(self.tmpdir, d)
             os.mkdir(cveDirs[d], 0o0700)
 
-        boiler_fn = os.path.join(cveDirs["active"], "00boilerplate")
-        boiler_content = """Candidate:
+        template_fn = os.path.join(cveDirs["templates"], "_base")
+        template_content = """Candidate:
 PublicDate:
 References:
 Description:
@@ -2429,8 +2429,8 @@ CVSS:
 #Patches_PKG:
 #upstream_PKG:
 """
-        with open(boiler_fn, "w") as fp:
-            fp.write("%s" % boiler_content)
+        with open(template_fn, "w") as fp:
+            fp.write("%s" % template_content)
 
         # add the first CVE
         cve_fn = os.path.join(cveDirs["active"], "CVE-2021-777777")
@@ -2439,7 +2439,7 @@ CVSS:
             False,
             os.path.basename(cve_fn),
             ["git/github_foo"],
-            boiler=None,
+            template=None,
             retired=False,
         )
 
@@ -2498,7 +2498,7 @@ CVSS:
             False,
             os.path.basename(cve_fn),
             ["git/github_bar"],
-            boiler=None,
+            template=None,
             retired=False,
         )
 
@@ -2512,7 +2512,7 @@ CVSS:
         self.assertTrue("git/github_bar" in res)
         self.assertEqual("needs-triage", res["git/github_bar"])
 
-    def test_addCvePackageBoiler(self):
+    def test_addCvePackageTemplate(self):
         """Test addCve()"""
         self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
         cveDirs = {}
@@ -2520,10 +2520,10 @@ CVSS:
             cveDirs[d] = os.path.join(self.tmpdir, d)
             os.mkdir(cveDirs[d], 0o0700)
 
-        # populated boiler
+        # populated template
         cve_fn = os.path.join(cveDirs["active"], "CVE-2021-888888")
-        boiler_fn = os.path.join(cveDirs["active"], "00boilerplate.foo")
-        boiler_content = """Candidate:
+        template_fn = os.path.join(cveDirs["templates"], "foo")
+        template_content = """Candidate:
 OpenDate:
 PublicDate:
 References:
@@ -2547,15 +2547,15 @@ upstream_foo: needed
 oci/bar_foo: pending
 git/bar_foo: ignored
 """
-        with open(boiler_fn, "w") as fp:
-            fp.write("%s" % boiler_content)
+        with open(template_fn, "w") as fp:
+            fp.write("%s" % template_content)
 
         cvelib.cve.addCve(
             cveDirs,
             False,
             os.path.basename(cve_fn),
             ["git/github_foo"],
-            boiler=None,
+            template=None,
             retired=False,
         )
 
@@ -2601,8 +2601,8 @@ git/bar_foo: ignored
             cveDirs[d] = os.path.join(self.tmpdir, d)
             os.mkdir(cveDirs[d], 0o0700)
 
-        boiler_fn = os.path.join(cveDirs["active"], "00boilerplate")
-        boiler_content = """Candidate:
+        template_fn = os.path.join(cveDirs["templates"], "_base")
+        template_content = """Candidate:
 PublicDate:
 References:
 Description:
@@ -2617,8 +2617,8 @@ CVSS:
 #Patches_PKG:
 #upstream_PKG:
 """
-        with open(boiler_fn, "w") as fp:
-            fp.write("%s" % boiler_content)
+        with open(template_fn, "w") as fp:
+            fp.write("%s" % template_content)
 
         year = datetime.datetime.now().year
         cvelib.cve.addCve(
@@ -2626,7 +2626,7 @@ CVSS:
             False,
             "next",
             ["git/github_foo"],
-            boiler=None,
+            template=None,
             retired=False,
         )
 
@@ -2653,8 +2653,8 @@ cve-data = %s
             cveDirs[d] = os.path.join(self.tmpdir, d)
             os.mkdir(cveDirs[d], 0o0700)
 
-        boiler_fn = os.path.join(cveDirs["active"], "00boilerplate")
-        boiler_content = """Candidate:
+        template_fn = os.path.join(cveDirs["templates"], "_base")
+        template_content = """Candidate:
 PublicDate:
 References:
 Description:
@@ -2669,8 +2669,8 @@ CVSS:
 #Patches_PKG:
 #upstream_PKG:
 """
-        with open(boiler_fn, "w") as fp:
-            fp.write("%s" % boiler_content)
+        with open(template_fn, "w") as fp:
+            fp.write("%s" % template_content)
 
         nfu_fn = "ignored/not-for-us.txt"
         with open(os.path.join(self.tmpdir, nfu_fn), "w") as fp:
@@ -2690,7 +2690,7 @@ CVSS:
                     False,
                     "CVE-2022-2345",
                     ["git/github_foo"],
-                    boiler=None,
+                    template=None,
                     retired=False,
                 )
                 self.assertEqual("", output.getvalue().strip())
