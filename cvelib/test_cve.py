@@ -2173,7 +2173,7 @@ CVSS:
             assigned_to="foo",
         )
         res4 = cvelib.common.readCve(cve_fn)
-        self.assertEqual("foo", res4["Discovered-by"])
+        self.assertEqual("foo", res4["Assigned-to"])
 
     def test_addCve(self):
         """Test addCve()"""
