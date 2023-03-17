@@ -17,6 +17,7 @@ from cvelib.common import (
     error,
     rePatterns,
     readFile,
+    verifyDate,
 )
 import cvelib.common
 from cvelib.pkg import CvePkg, parse, cmp_pkgs
@@ -27,6 +28,7 @@ class CVE(object):
     cve_required: List[str] = [
         "Candidate",
         "OpenDate",
+        "CloseDate",
         "PublicDate",
         "References",
         "Description",
@@ -40,8 +42,8 @@ class CVE(object):
     # Tags_*, Patches_* and software are handled special
     cve_optional: List[str] = [
         "CRD",
-        "Mitigation",
         "GitHub-Advanced-Security",
+        "Mitigation",
     ]
 
     def __str__(self) -> str:
@@ -62,6 +64,7 @@ class CVE(object):
         # types and defaults
         self.candidate: str = ""
         self.openDate: str = ""
+        self.closeDate: str = ""
         self.publicDate: str = ""
         self.crd: str = ""
         self.references: List[str] = []
@@ -95,6 +98,7 @@ class CVE(object):
         # members
         self.setCandidate(data["Candidate"])
         self.setOpenDate(data["OpenDate"])
+        self.setCloseDate(data["CloseDate"])
         self.setPublicDate(data["PublicDate"])
         self.setReferences(data["References"])
         self.setDescription(data["Description"])
@@ -124,6 +128,7 @@ class CVE(object):
         patches: Dict[str, str] = {}
         tags: Dict[str, str] = {}
         priorities: Dict[str, str] = {}
+        closeDates: Dict[str, str] = {}
         for k in data:
             if k not in self.data:  # copy raw data for later
                 self.data[k] = data[k]
@@ -155,11 +160,24 @@ class CVE(object):
                 # both Priority_foo and Priority_foo_bar
                 pkg = k.split("_", 1)[1]
                 priorities[pkg] = data[k]
+            elif k.startswith("CloseDate_"):
+                self._verifySingleline(k, data[k])
+                if not self.compatUbuntu or data[k] != "unknown":
+                    verifyDate(k, data[k], compatUbuntu=self.compatUbuntu)
+                # both CloseDate_foo and CloseDate_foo_bar
+                pkg = k.split("_", 1)[1]
+                closeDates[pkg] = data[k]
             else:
                 s: str = "%s: %s" % (k, data[k])
                 pkgs.append(parse(s, compatUbuntu=self.compatUbuntu))
 
-        self.setPackages(pkgs, patches=patches, tags=tags, priorities=priorities)
+        self.setPackages(
+            pkgs,
+            patches=patches,
+            tags=tags,
+            priorities=priorities,
+            closeDates=closeDates,
+        )
 
     def setCandidate(self, s: str) -> None:
         """Set candidate"""
@@ -184,6 +202,12 @@ class CVE(object):
         self._verifyOpenDate("OpenDate", s)
         self.openDate = s
         self.data["OpenDate"] = self.openDate
+
+    def setCloseDate(self, s: str) -> None:
+        """Set CloseDate"""
+        self._verifyCloseDate("CloseDate", s)
+        self.closeDate = s
+        self.data["CloseDate"] = self.closeDate
 
     def setReferences(self, s: str) -> None:
         """Set References"""
@@ -266,6 +290,7 @@ class CVE(object):
         patches: Dict[str, str] = {},
         tags: Dict[str, str] = {},
         priorities: Dict[str, str] = {},
+        closeDates: Dict[str, str] = {},
         append: bool = False,
     ):
         """Set pkgs"""
@@ -304,6 +329,14 @@ class CVE(object):
             if pkgPriorities:
                 # XXX: Priority_foo_trusty
                 p.setPriorities(pkgPriorities)
+
+            pkgCloseDates: List[Tuple[str, str]] = [
+                (x, closeDates[x])
+                for x in closeDates
+                if (x == p.software or x.startswith("%s_" % p.software))
+            ]
+            if pkgCloseDates:
+                p.setCloseDates(pkgCloseDates)
 
             self.pkgs.append(p)
             self._pkgs_list.append(what)
@@ -370,6 +403,23 @@ class CVE(object):
                     priorities[pkg.software][pkgKey] = pkg.priorities[pkgKey]
             return priorities
 
+        # Do the same with closeDates, where the CloseDate is a string. Eg:
+        #   closeDates = {
+        #     pkg.software: {
+        #       "CloseDate_foo": <date>,
+        #       "CloseDate_foo_bar": <date>,
+        #     },
+        #     ...
+        #   }
+        def _collectCloseDates(pkgs) -> Dict[str, Dict[str, List[str]]]:
+            closeDates: Dict[str, Dict[str, List[str]]] = {}
+            for pkg in pkgs:
+                if pkg.software not in closeDates:
+                    closeDates[pkg.software] = {}
+                for pkgKey in pkg.closeDates:
+                    closeDates[pkg.software][pkgKey] = pkg.closeDates[pkgKey]
+            return closeDates
+
         def _collectGHAS(ghas) -> List[str]:
             s = []
             for g in ghas:
@@ -378,6 +428,7 @@ class CVE(object):
 
         s: str = """Candidate:%(candidate)s
 OpenDate:%(openDate)s
+CloseDate:%(closeDate)s
 PublicDate:%(publicDate)s
 CRD:%(crd)s
 References:%(references)s
@@ -393,6 +444,7 @@ CVSS:%(cvss)s
             {
                 "candidate": " %s" % self.candidate if self.candidate else "",
                 "openDate": " %s" % self.openDate if self.openDate else "",
+                "closeDate": " %s" % self.closeDate if self.closeDate else "",
                 "publicDate": " %s" % self.publicDate if self.publicDate else "",
                 "crd": " %s" % self.crd if self.crd else "",
                 "references": "\n %s" % "\n ".join(self.references)
@@ -443,6 +495,7 @@ CVSS:%(cvss)s
         patches = _collectPatches(self.pkgs)
         tags = _collectTags(self.pkgs)
         priorities = _collectPriorities(self.pkgs)
+        closeDates = _collectCloseDates(self.pkgs)
 
         last_software: str = ""
         for pkg in sorted(self.pkgs, key=functools.cmp_to_key(cmp_pkgs)):
@@ -454,6 +507,13 @@ CVSS:%(cvss)s
                     pre_s += "\nPatches_%s:\n" % pkg.software
                     if patches[pkg.software]:
                         pre_s += " " + "\n ".join(patches[pkg.software]) + "\n"
+                if pkg.software in closeDates and closeDates[pkg.software]:
+                    for pkgKey in sorted(closeDates[pkg.software]):
+                        pre_s += "%sCloseDate_%s: %s\n" % (
+                            "" if pre_s else "\n",
+                            pkgKey,
+                            closeDates[pkg.software][pkgKey],
+                        )
                 if pkg.software in tags and tags[pkg.software]:
                     for pkgKey in sorted(tags[pkg.software]):
                         pre_s += "%sTags_%s: %s\n" % (
@@ -616,57 +676,13 @@ CVSS:%(cvss)s
         if not rePatterns["CVE"].search(val):
             raise CveException("invalid %s: '%s'" % (key, val))
 
-    def _verifyDate(self, key: str, date: str, required: bool = False) -> None:
-        """Verify a date"""
-        unspecified: str = ""
-        if not required:
-            unspecified = "empty or "
-            if self.compatUbuntu:
-                unspecified = "'unknown' or "
-
-        err: str = "invalid %s: '%s' (use %sYYYY-MM-DD [HH:MM:SS [TIMEZONE]])" % (
-            key,
-            date,
-            unspecified,
-        )
-        # quick and dirty
-        if not rePatterns["date-full"].search(date):
-            raise CveException(err)
-
-        # Use datetime.datetime.strptime to avoid external dependencies
-        if rePatterns["date-only"].search(date):
-            try:
-                datetime.datetime.strptime(date, "%Y-%m-%d")
-            except ValueError:
-                raise CveException(err)
-        if rePatterns["date-time"].search(date):
-            try:
-                datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-            except ValueError:
-                raise CveException(err)
-        if rePatterns["date-full-offset"].search(date):
-            try:
-                datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S %z")
-            except ValueError:
-                raise CveException(err)
-        if rePatterns["date-full-tz"].search(date):
-            try:
-                # Unfortunately, %Z doesn't work reliably, so just strip it off
-                # https://bugs.python.org/issue22377
-                # datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S %Z")
-                datetime.datetime.strptime(
-                    " ".join(date.split()[:-1]), "%Y-%m-%d %H:%M:%S"
-                )
-            except ValueError:  # pragma: nocover
-                raise CveException(err)
-
     def _verifyPublicDate(self, key: str, val: str) -> None:
         """Verify CVE public date"""
         self._verifySingleline(key, val)
         # empty is ok unless self.compatUbuntu is set (then use 'unknown')
         if val != "":
             if not self.compatUbuntu or val != "unknown":
-                self._verifyDate(key, val)
+                verifyDate(key, val, compatUbuntu=self.compatUbuntu)
 
     def _verifyCRD(self, key: str, val: str) -> None:
         """Verify CVE CRD"""
@@ -674,13 +690,21 @@ CVSS:%(cvss)s
         # empty is ok unless self.compatUbuntu is set (then use 'unknown')
         if val != "":
             if not self.compatUbuntu or val != "unknown":
-                self._verifyDate(key, val)
+                verifyDate(key, val, compatUbuntu=self.compatUbuntu)
 
     def _verifyOpenDate(self, key: str, val: str) -> None:
         """Verify CVE OpenDate"""
         self._verifySingleline(key, val)
         if not self.compatUbuntu or val != "unknown":
-            self._verifyDate(key, val, required=True)
+            verifyDate(key, val, required=True, compatUbuntu=self.compatUbuntu)
+
+    def _verifyCloseDate(self, key: str, val: str) -> None:
+        """Verify CVE CloseDate"""
+        self._verifySingleline(key, val)
+        # empty is ok unless self.compatUbuntu is set (then use 'unknown')
+        if val != "":
+            if not self.compatUbuntu or val != "unknown":
+                verifyDate(key, val, compatUbuntu=self.compatUbuntu)
 
     def _verifyUrl(self, key: str, url: str) -> None:
         """Verify url"""
@@ -1043,6 +1067,9 @@ def _createCve(
     if not append or "OpenDate" not in data or data["OpenDate"] == "":
         now: datetime.datetime = datetime.datetime.now()
         data["OpenDate"] = "%d-%0.2d-%0.2d" % (now.year, now.month, now.day)
+
+    if not append or "CloseDate" not in data:
+        data["CloseDate"] = ""
 
     pkgObjs: List[CvePkg] = []
     for p in args_pkgs:

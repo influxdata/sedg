@@ -463,6 +463,7 @@ References:
     print(
         """Candidate: %s
 OpenDate: %s
+CloseDate:
 PublicDate:
 CRD:
 References:

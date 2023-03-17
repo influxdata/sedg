@@ -407,3 +407,62 @@ compat-ubuntu = %s
             self.assertTrue(
                 "'active/test' is not a regular file" in error.getvalue().strip()
             )
+
+    def test__verifyDate(self):
+        """Test _verifyDate()"""
+        tsts = [
+            # valid
+            ("2020-01-01", False, False, True),
+            ("2020-02-29", False, False, True),
+            ("2020-12-31", False, False, True),
+            ("2020-01-01 00:00:00", False, False, True),
+            ("2020-12-31 23:59:59", False, False, True),
+            ("2020-12-01 12:34:56 UTC", False, False, True),
+            ("2020-12-01 12:34:56 -0500", False, False, True),
+            ("2019-02-25 09:00:00 CEST", False, False, True),
+            ("2020-01-01", True, False, True),
+            ("2020-01-01", False, True, True),
+            ("2020-01-01", True, True, True),
+            # https://bugs.python.org/issue22377
+            ("2020-12-14 07:08:09 BADTZ", False, False, True),
+            # invalid
+            ("bad", False, False, False),
+            ("2020-bad", False, False, False),
+            ("2020-12-bad", False, False, False),
+            ("2020-12-14bad", False, False, False),
+            ("2020-12-14 bad", False, False, False),
+            ("2020-12-14 07:bad", False, False, False),
+            ("2020-12-14 07:08:bad", False, False, False),
+            ("2020-12-14 07:08:09bad", False, False, False),
+            ("2020-12-14 07:08:09 bad", False, False, False),
+            ("2020-12-14 07:08:09 +bad", False, False, False),
+            ("2020-12-14 07:08:09 -bad", False, False, False),
+            ("2020-12-14 07:08:09 -03bad", False, False, False),
+            ("2020-12-14 07:08:09 -0999999", False, False, False),
+            ("2020-12-32", False, False, False),
+            ("2021-02-29", False, False, False),
+            ("2020-06-31", False, False, False),
+            ("-2020-12-01", False, False, False),
+            ("2020-12-01 30:01:02", False, False, False),
+            ("2020-12-01 24:01:02", False, False, False),
+            ("2020-12-01 07:60:02", False, False, False),
+            ("2020-12-01 07:59:60", False, False, False),
+            ("bad", True, False, False),
+            ("bad", False, True, False),
+            ("bad", True, True, False),
+        ]
+        for (date, req, compat, valid) in tsts:
+            if valid:
+                cvelib.common.verifyDate("TestKey", date, req, compatUbuntu=compat)
+            else:
+                suffix = "(use empty or YYYY-MM-DD [HH:MM:SS [TIMEZONE]])"
+                if req:
+                    suffix = "(use YYYY-MM-DD [HH:MM:SS [TIMEZONE]])"
+                elif compat:
+                    suffix = "(use 'unknown' or YYYY-MM-DD [HH:MM:SS [TIMEZONE]])"
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    cvelib.common.verifyDate("TestKey", date, req, compatUbuntu=compat)
+                self.assertEqual(
+                    "invalid TestKey: '%s' %s" % (date, suffix),
+                    str(context.exception),
+                )

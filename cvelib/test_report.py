@@ -530,6 +530,7 @@ class TestReport(TestCase):
         d = {
             "Candidate": cand,
             "OpenDate": "2020-06-29",
+            "CloseDate": "",
             "PublicDate": "",
             "References": "\n %s" % " \n".join(references)
             if len(references) > 0
@@ -1093,6 +1094,7 @@ References:
 ## valid-repo CVE template
 Candidate: CVE-%s-NNNN
 OpenDate: %s
+CloseDate:
 PublicDate:
 CRD:
 References:
@@ -1183,6 +1185,7 @@ References:
 ## valid-repo CVE template
 Candidate: CVE-%s-NNNN
 OpenDate: %s
+CloseDate:
 PublicDate:
 CRD:
 References:
