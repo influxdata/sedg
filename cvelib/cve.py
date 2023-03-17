@@ -17,6 +17,7 @@ from cvelib.common import (
     error,
     rePatterns,
     readFile,
+    verifyDate,
 )
 import cvelib.common
 from cvelib.pkg import CvePkg, parse, cmp_pkgs
@@ -627,57 +628,13 @@ CVSS:%(cvss)s
         if not rePatterns["CVE"].search(val):
             raise CveException("invalid %s: '%s'" % (key, val))
 
-    def _verifyDate(self, key: str, date: str, required: bool = False) -> None:
-        """Verify a date"""
-        unspecified: str = ""
-        if not required:
-            unspecified = "empty or "
-            if self.compatUbuntu:
-                unspecified = "'unknown' or "
-
-        err: str = "invalid %s: '%s' (use %sYYYY-MM-DD [HH:MM:SS [TIMEZONE]])" % (
-            key,
-            date,
-            unspecified,
-        )
-        # quick and dirty
-        if not rePatterns["date-full"].search(date):
-            raise CveException(err)
-
-        # Use datetime.datetime.strptime to avoid external dependencies
-        if rePatterns["date-only"].search(date):
-            try:
-                datetime.datetime.strptime(date, "%Y-%m-%d")
-            except ValueError:
-                raise CveException(err)
-        if rePatterns["date-time"].search(date):
-            try:
-                datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-            except ValueError:
-                raise CveException(err)
-        if rePatterns["date-full-offset"].search(date):
-            try:
-                datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S %z")
-            except ValueError:
-                raise CveException(err)
-        if rePatterns["date-full-tz"].search(date):
-            try:
-                # Unfortunately, %Z doesn't work reliably, so just strip it off
-                # https://bugs.python.org/issue22377
-                # datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S %Z")
-                datetime.datetime.strptime(
-                    " ".join(date.split()[:-1]), "%Y-%m-%d %H:%M:%S"
-                )
-            except ValueError:  # pragma: nocover
-                raise CveException(err)
-
     def _verifyPublicDate(self, key: str, val: str) -> None:
         """Verify CVE public date"""
         self._verifySingleline(key, val)
         # empty is ok unless self.compatUbuntu is set (then use 'unknown')
         if val != "":
             if not self.compatUbuntu or val != "unknown":
-                self._verifyDate(key, val)
+                verifyDate(key, val, compatUbuntu=self.compatUbuntu)
 
     def _verifyCRD(self, key: str, val: str) -> None:
         """Verify CVE CRD"""
@@ -685,13 +642,13 @@ CVSS:%(cvss)s
         # empty is ok unless self.compatUbuntu is set (then use 'unknown')
         if val != "":
             if not self.compatUbuntu or val != "unknown":
-                self._verifyDate(key, val)
+                verifyDate(key, val, compatUbuntu=self.compatUbuntu)
 
     def _verifyOpenDate(self, key: str, val: str) -> None:
         """Verify CVE OpenDate"""
         self._verifySingleline(key, val)
         if not self.compatUbuntu or val != "unknown":
-            self._verifyDate(key, val, required=True)
+            verifyDate(key, val, required=True, compatUbuntu=self.compatUbuntu)
 
     def _verifyCloseDate(self, key: str, val: str) -> None:
         """Verify CVE CloseDate"""
@@ -699,7 +656,7 @@ CVSS:%(cvss)s
         # empty is ok unless self.compatUbuntu is set (then use 'unknown')
         if val != "":
             if not self.compatUbuntu or val != "unknown":
-                self._verifyDate(key, val, required=True)
+                verifyDate(key, val, compatUbuntu=self.compatUbuntu)
 
     def _verifyUrl(self, key: str, url: str) -> None:
         """Verify url"""

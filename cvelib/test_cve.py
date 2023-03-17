@@ -962,55 +962,6 @@ git/github_norf: needs-triage
                     "invalid Candidate: '%s'" % cand, str(context.exception)
                 )
 
-    def test__verifyDate(self):
-        """Test _verifyDate()"""
-        tsts = [
-            # valid
-            ("2020-01-01", True),
-            ("2020-02-29", True),
-            ("2020-12-31", True),
-            ("2020-01-01 00:00:00", True),
-            ("2020-12-31 23:59:59", True),
-            ("2020-12-01 12:34:56 UTC", True),
-            ("2020-12-01 12:34:56 -0500", True),
-            ("2019-02-25 09:00:00 CEST", True),
-            # https://bugs.python.org/issue22377
-            ("2020-12-14 07:08:09 BADTZ", True),
-            # invalid
-            ("bad", False),
-            ("2020-bad", False),
-            ("2020-12-bad", False),
-            ("2020-12-14bad", False),
-            ("2020-12-14 bad", False),
-            ("2020-12-14 07:bad", False),
-            ("2020-12-14 07:08:bad", False),
-            ("2020-12-14 07:08:09bad", False),
-            ("2020-12-14 07:08:09 bad", False),
-            ("2020-12-14 07:08:09 +bad", False),
-            ("2020-12-14 07:08:09 -bad", False),
-            ("2020-12-14 07:08:09 -03bad", False),
-            ("2020-12-14 07:08:09 -0999999", False),
-            ("2020-12-32", False),
-            ("2021-02-29", False),
-            ("2020-06-31", False),
-            ("-2020-12-01", False),
-            ("2020-12-01 30:01:02", False),
-            ("2020-12-01 24:01:02", False),
-            ("2020-12-01 07:60:02", False),
-            ("2020-12-01 07:59:60", False),
-        ]
-        for (date, valid) in tsts:
-            if valid:
-                cvelib.cve.CVE()._verifyDate("TestKey", date)
-            else:
-                suffix = "(use empty or YYYY-MM-DD [HH:MM:SS [TIMEZONE]])"
-                with self.assertRaises(cvelib.common.CveException) as context:
-                    cvelib.cve.CVE()._verifyDate("TestKey", date)
-                self.assertEqual(
-                    "invalid TestKey: '%s' %s" % (date, suffix),
-                    str(context.exception),
-                )
-
     def test__verifyCloseDateAndPublicDateAndCRD(self):
         """Test _verifyCloseDate, _verifyPublicDate() and _verifyCRD()"""
         tsts = [
