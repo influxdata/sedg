@@ -1,21 +1,21 @@
 # Using
 
- 1. Clone this repo (https://github.com/influxdata/influx-security-tools)
+ 1. Clone this repo (https://github.com/influxdata/sedg)
 
- 2. Clone CVE data (https://github.com/influxdata/influx-security-tools-cve-data)
+ 2. Clone CVE data into /path/to/cve-data
 
- 3. Create ~/.config/influx-security-tools.conf to have:
+ 3. Create ~/.config/sedg/sedg.conf to have:
 
     ```
     [Locations]
-    cve-data = /path/to/influx-security-tools-cve-data
+    cve-data = /path/to/cve-data
     ```
 
  4. Do stuff
 
     ```
-    $ export PYTHONPATH=/path/to/influx-security-tools
-    $ export PATH=$PATH:/path/to/influx-security-tools/bin
+    $ export PYTHONPATH=/path/to/sedg
+    $ export PATH=$PATH:/path/to/sedg/bin
 
     # create a CVE against a particular package
     $ cve-add --cve CVE-2020-1234 -p git/foo-org_foo
@@ -36,7 +36,7 @@
     # template
     $ cve-add -c CVE-2020-GH1234#foo -p git/foo-org_foo --package-template=bar
 
-    $ <work on CVEs in .../influx-security-tools-cve-data>
+    $ <work on CVEs in .../<cve-data>
     $ cve-check-syntax
 
     # various reports for humans
@@ -366,7 +366,7 @@ The file format was initially defined in Ubuntu and the syntax above is largely
 compatible with the Ubuntu CVE tracker (UCT) and a longer term goal of this
 project is to push this tooling to UCT. The above format is more generalized,
 strict and applicable to other projects. If using this tooling with UCT data,
-then adjust `~/.config/influx-security-tools_ubuntu.conf` to contain:
+then adjust `~/.config/sedg_ubuntu.conf` to contain:
 
 ```
     [Behavior] compat-ubuntu = yes

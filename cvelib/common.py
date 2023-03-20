@@ -425,14 +425,10 @@ def setCveHeader(headers: Message, key: str, val: Optional[str]) -> None:
 
 
 def getConfigFilePath() -> str:
-    """Return the path to influx-security-tools.conf"""
+    """Return the path to sedg.conf"""
     if "XDG_CONFIG_HOME" in os.environ:
-        return os.path.expandvars(
-            "$XDG_CONFIG_HOME/influx-security-tools/influx-security-tools.conf"
-        )
-    return os.path.expandvars(
-        "$HOME/.config/influx-security-tools/influx-security-tools.conf"
-    )
+        return os.path.expandvars("$XDG_CONFIG_HOME/sedg/sedg.conf")
+    return os.path.expandvars("$HOME/.config/sedg/sedg.conf")
 
 
 def readConfig() -> Tuple[configparser.ConfigParser, str]:
@@ -455,7 +451,7 @@ def readConfig() -> Tuple[configparser.ConfigParser, str]:
             if not os.path.isdir(parent):
                 os.mkdir(parent, 0o0700)
             config["Locations"] = {
-                "cve-data": "/set/to/path/for/influx-security-tools-cve-data",
+                "cve-data": "/set/to/path/for/sedg-cve-data",
             }
             config["Behavior"] = {
                 "compat-ubuntu": "no",

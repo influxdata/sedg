@@ -9,7 +9,7 @@ import tempfile
 
 def _createTmpDir():
     """Create a temporary directory"""
-    d = tempfile.mkdtemp(prefix="influx-security-tools-")
+    d = tempfile.mkdtemp(prefix="sedg-")
     return d
 
 
@@ -24,12 +24,8 @@ def _newConfigFile(content, tmpdir=None):
 
     os.environ["XDG_CONFIG_HOME"] = os.path.join(tmpdir, ".config")
     os.mkdir(os.environ["XDG_CONFIG_HOME"], 0o0700)
-    os.mkdir(
-        os.path.join(os.environ["XDG_CONFIG_HOME"], "influx-security-tools"), 0o0700
-    )
-    fn = os.path.expandvars(
-        "$XDG_CONFIG_HOME/influx-security-tools/influx-security-tools.conf"
-    )
+    os.mkdir(os.path.join(os.environ["XDG_CONFIG_HOME"], "sedg"), 0o0700)
+    fn = os.path.expandvars("$XDG_CONFIG_HOME/sedg/sedg.conf")
 
     with open(fn, "w") as fp:
         fp.write("%s" % content)
