@@ -1468,7 +1468,7 @@ git/github_norf: needs-triage
 
     def test_checkSyntax(self):
         """Test checkSyntax"""
-        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         content = (
             """[Location]
 cve-data = %s
@@ -1942,7 +1942,7 @@ cve-data = %s
 
     def test_checkSyntaxCrossChecks(self):
         """Test checkSyntax() - cross checks"""
-        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         content = (
             """[Location]
 cve-data = %s
@@ -2123,7 +2123,7 @@ cve-data = %s
                     self.assertEqual("", res[k])
             return res
 
-        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         cveDirs = {}
         for d in cvelib.common.cve_reldirs:
             cveDirs[d] = os.path.join(self.tmpdir, d)
@@ -2243,7 +2243,7 @@ CVSS:
 
     def test_addCve(self):
         """Test addCve()"""
-        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         cveDirs = {}
         for d in cvelib.common.cve_reldirs:
             cveDirs[d] = os.path.join(self.tmpdir, d)
@@ -2448,7 +2448,7 @@ upstream_baz: needed
 
     def test_addCveAppend(self):
         """Test addCve() - append"""
-        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         cveDirs = {}
         for d in cvelib.common.cve_reldirs:
             cveDirs[d] = os.path.join(self.tmpdir, d)
@@ -2558,7 +2558,7 @@ CVSS:
 
     def test_addCvePackageTemplate(self):
         """Test addCve()"""
-        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         cveDirs = {}
         for d in cvelib.common.cve_reldirs:
             cveDirs[d] = os.path.join(self.tmpdir, d)
@@ -2640,7 +2640,7 @@ git/bar_foo: ignored
 
     def test_addCveNextPlaceholder(self):
         """Test addCve() - next"""
-        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         cveDirs = {}
         for d in cvelib.common.cve_reldirs:
             cveDirs[d] = os.path.join(self.tmpdir, d)
@@ -2683,7 +2683,7 @@ CVSS:
 
     def test_addCveExistsInOther(self):
         """Test addCve() - exists in other"""
-        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         content = (
             """[Location]
 cve-data = %s
@@ -2746,7 +2746,7 @@ CVSS:
 
     def test__findNextPlaceholder(self):
         """Test _findNextPlaceholder"""
-        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         content = (
             """[Location]
 cve-data = %s
@@ -2811,7 +2811,7 @@ cve-data = %s
 
     def test__cveExists(self):
         """Test _cveExists"""
-        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         content = (
             """[Location]
 cve-data = %s
@@ -2843,7 +2843,7 @@ cve-data = %s
 
     def test__getCVEPaths(self):
         """Test _getCVEPaths"""
-        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         content = (
             """[Location]
 cve-data = %s
@@ -3045,7 +3045,7 @@ cve-data = %s
 
     def test_collectCVEDataSimple(self):
         """Test collectCVEData()"""
-        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         content = (
             """[Location]
 cve-data = %s
@@ -3108,7 +3108,7 @@ cve-data = %s
             with open(cve_fn, "w") as fp:
                 fp.write("%s" % content)
 
-        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         content = (
             """[Location]
 cve-data = %s

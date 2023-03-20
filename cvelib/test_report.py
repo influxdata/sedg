@@ -567,7 +567,7 @@ class TestReport(TestCase):
             with open(cve_fn, "w") as fp:
                 fp.write("%s" % content)
 
-        self.tmpdir = tempfile.mkdtemp(prefix="influx-security-tools-")
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         content = (
             """[Location]
 cve-data = %s
