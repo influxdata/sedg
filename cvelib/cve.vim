@@ -1,5 +1,5 @@
 " Vim syntax file for CVE entries
-" Latest Revision: Mar 17 2023
+" Latest Revision: Mar 21 2023
 "
 " To use:
 " $ mkdir -p ~/.vim/syntax
@@ -38,26 +38,26 @@ syn match cveKey "^\%(Candidate\|OpenDate\|PublicDate\|CRD\|References\|Descript
 
 " TODO: reuse the above definitions here
 " Release/status key
-" <release>_<srcpkg>: <status>
+" <release>_<software>[/<modifier>]: <status>
 syn match cveKeyRelease "^\%(git\|snap\|oci\|upstream\|alpine\|debian\|suse\|ubuntu\)\(/[a-z0-9+.-]\+\)\?_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+.-]\+\)\?: *"
 "
 " TODO: reuse the above definitions here
 " CloseDates key
-" CloseDate[_<srcpkg>[_<release>]]: <date>
+" CloseDate[_<software>[/<modifier>]]: <date>
 syn match cveCloseDateValue contained "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\( [0-2][0-9]:[0-5][0-9]:[0-5][0-9] \([A-Z][A-Z][A-Z]\|[+-][01][0-9][0-9][0-9]\)\)\?"
-syn match cveCloseDateKey "^CloseDate\(_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(_\(upstream\|snap\)\)\?\)\?: *"
+syn match cveCloseDateKey "^CloseDate\(_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+.-]\+\)\?\)\?: *"
 
 " TODO: reuse the above definitions here
 " Priorities key
-" Priority[_<srcpkg>[_<release>]]: <priority>
+" Priority[_<software>[/<modifier>]]: <priority>
 syn match cvePriorityValue contained "\(negligible\|low\|medium\|high\|critical\)"
-syn match cvePriorityKey "^Priority\(_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(_\(upstream\|snap\)\)\?\)\?: *"
+syn match cvePriorityKey "^Priority\(_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+.-]\+\)\?\)\?: *"
 
 " TODO: reuse the above definitions here
 " Tags key
-" Tags_<srcpkg>[_<release>]: <tag>
+" Tags_<software>[/<modifier>]: <tag>
 syn match cveTagValue contained "\(apparmor\|fortify-source\|hardlink-restriction\|heap-protector\|limit-report\|pie\|stack-protector\|symlink-restriction\) *"
-syn match cveTagKey "^Tags_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(_\(upstream\|snap\)\)\?: *"
+syn match cveTagKey "^Tags_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+.-]\+\)\?: *"
 
 " Fields where we do strict syntax checking
 syn region cveStrictField start="^CloseDate" end="$" contains=cveCloseDateKey,cveCloseDateValue oneline
