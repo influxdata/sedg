@@ -1277,6 +1277,113 @@ valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabo
             )
 
     #
+    # _printGHAlertsUpdatedTemplates()
+    #
+    def test__printGHAlertsUpdatedTemplates(self):
+        """Test _printGHAlertsUpdatedTemplates()"""
+        alerts = [
+            {
+                "pkg": "foo",
+                "severity": "moderate",
+                "path": "a/b/c",
+                "ghsa": "https://github.com/advisories/GHSA-bbb",
+                "created": "2022-07-01T18:27:30Z",
+                "number": 1,
+            },
+            {
+                "pkg": "foo",
+                "severity": "high",
+                "path": "a/b/c",
+                "ghsa": "https://github.com/advisories/GHSA-aaa",
+                "created": "2022-07-02T18:27:30Z",
+                "number": 2,
+            },
+            {
+                "pkg": "foo",
+                "severity": "moderate",
+                "path": "d/e/f",
+                "ghsa": "https://github.com/advisories/GHSA-bbb",
+                "created": "2022-07-03T18:27:30Z",
+                "number": 3,
+            },
+        ]
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report._printGHAlertsUpdatedTemplates(
+                "valid-org", "valid-repo", alerts
+            )
+        self.assertEqual("", error.getvalue().strip())
+        exp = """## valid-repo template
+Please update dependabot flagged dependencies in valid-repo
+
+https://github.com/valid-org/valid-repo/security/dependabot lists the following updates:
+- [ ] [foo](https://github.com/valid-org/valid-repo/security/dependabot/1) (moderate)
+- [ ] [foo](https://github.com/valid-org/valid-repo/security/dependabot/2) (high)
+- [ ] [foo](https://github.com/valid-org/valid-repo/security/dependabot/3) (moderate)
+
+Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
+
+Thanks!
+
+References:
+ * https://docs.influxdata.io/development/security/issue_handling/
+ * https://docs.influxdata.io/development/security/issue_response/#developers
+
+## end template
+
+## valid-repo CVE template
+Candidate: CVE-2023-NNNN
+OpenDate: 2023-03-24
+CloseDate:
+PublicDate:
+CRD:
+References:
+ https://github.com/valid-org/valid-repo/security/dependabot/1
+ https://github.com/valid-org/valid-repo/security/dependabot/2
+ https://github.com/valid-org/valid-repo/security/dependabot/3
+ https://github.com/advisories/GHSA-aaa (foo)
+ https://github.com/advisories/GHSA-bbb (foo)
+Description:
+ Please update dependabot flagged dependencies in valid-repo
+ - [ ] foo (high)
+ - [ ] foo (2 moderate)
+GitHub-Advanced-Security:
+ - type: dependabot
+   dependency: foo
+   detectedIn: a/b/c
+   severity: moderate
+   advisory: https://github.com/advisories/GHSA-bbb
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/dependabot/1
+ - type: dependabot
+   dependency: foo
+   detectedIn: a/b/c
+   severity: high
+   advisory: https://github.com/advisories/GHSA-aaa
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/dependabot/2
+ - type: dependabot
+   dependency: foo
+   detectedIn: d/e/f
+   severity: moderate
+   advisory: https://github.com/advisories/GHSA-bbb
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/dependabot/3
+Notes:
+Mitigation:
+Bugs:
+Priority: high
+Discovered-by: gh-dependabot
+Assigned-to:
+CVSS:
+
+Patches_valid-repo:
+git/valid-org_valid-repo: needs-triage
+## end CVE template"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+    #
+
+    #
     # getHumanSummary()
     #
     def test_getHumanSummary(self):

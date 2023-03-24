@@ -398,7 +398,10 @@ def _printGHAlertsUpdatedTemplates(
         ref = "%s/%d" % (url, n["number"])
         if ref not in references:
             references.append(ref)
-        advisories.append("%s (%s)" % (n["ghsa"], n["pkg"]))
+        adv: str = "%s (%s)" % (n["ghsa"], n["pkg"])
+        if adv not in advisories:
+            advisories.append("%s (%s)" % (n["ghsa"], n["pkg"]))
+
         s: str = "- [ ] [%s](%s) (%s)" % (n["pkg"], ref, n["severity"])
 
         if s not in html_items:
@@ -476,7 +479,7 @@ Description:
             "CVE-%d-NNNN" % now.year,
             "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
             "\n ".join(references),
-            "\n ".join(advisories),
+            "\n ".join(sorted(advisories)),
             repo,
             checklist,
         )
