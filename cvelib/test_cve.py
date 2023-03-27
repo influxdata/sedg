@@ -1643,6 +1643,27 @@ cve-data = %s
             error.getvalue().strip(),
         )
 
+        # retired has deferred (date)
+        tmpl = self._cve_template()
+        tmpl["Candidate"] = "CVE-1234-5678"
+        tmpl["git/github_pkg1"] = "deferred (2023-03-27)"
+        tmpl["CloseDate"] = today
+        content = cvelib.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["retired"], "CVE-1234-5678")
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            res = cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertFalse(res)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: retired/CVE-1234-5678 is retired but has software with open status",
+            error.getvalue().strip(),
+        )
+
         # active has closed
         tmpl = self._cve_template()
         tmpl["Candidate"] = "CVE-1234-5678"

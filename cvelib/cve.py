@@ -829,7 +829,7 @@ def checkSyntaxFile(
                         % (rel, p.when, p.when.replace(" ", "-"))
                     )
 
-            if p.status.startswith("need") or p.status.startswith("pend"):
+            if p.status.split()[0] in ["needed", "needs-triage", "pending", "deferred"]:
                 if p.status.startswith("need"):
                     cve_pkgs_only_pending_or_closed = False
                 open = True
