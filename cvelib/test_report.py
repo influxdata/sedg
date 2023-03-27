@@ -1312,6 +1312,7 @@ valid-repo alerts: 3 (https://github.com/valid-org/valid-repo/security/dependabo
                 "valid-org", "valid-repo", alerts
             )
         self.assertEqual("", error.getvalue().strip())
+        now: datetime.datetime = datetime.datetime.now()
         exp = """## valid-repo template
 Please update dependabot flagged dependencies in valid-repo
 
@@ -1331,8 +1332,8 @@ References:
 ## end template
 
 ## valid-repo CVE template
-Candidate: CVE-2023-NNNN
-OpenDate: 2023-03-24
+Candidate: CVE-%s-NNNN
+OpenDate: %s
 CloseDate:
 PublicDate:
 CRD:
@@ -1378,7 +1379,10 @@ CVSS:
 
 Patches_valid-repo:
 git/valid-org_valid-repo: needs-triage
-## end CVE template"""
+## end CVE template""" % (
+            "%d" % (now.year),
+            "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
+        )
         self.assertEqual(exp, output.getvalue().strip())
 
     #
