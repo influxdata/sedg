@@ -290,7 +290,7 @@ For each field in the software section:
    'v1' for the project's `v1` branch, `v2`, etc)
  * `<status>` indicates the status of fixing the issue for this software (eg,
    `needs-triage`, `needed`, `pending`, `released`, `not-affected` and
-   `deferred`.
+   `deferred`).
  * `<when>` is optional and when specified occurs within parentheses and
    indicates when the software will be/was fixed when used with the `pending`,
    `released` or `not-affected` status. When may be a version number (for
@@ -303,6 +303,8 @@ For each field in the software section:
      * code not compiled: project does not compile the vulnerable code path
      * code not imported: project does not import the vulnerable code path
      * code not used: project contains/imports/etc the code but does use it
+     * YYYY-MM-DD with deferred: date when entry was put into the deferred
+       status
    * `not-affected` and `released` are similar but convey different things. Eg
      `not-affected (1.2.3)` vs `released (1.2.1+patch1)` is saying that `1.2.3`
      wasn't ever affected (ie, didn't require anything to be done) but
