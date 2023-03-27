@@ -828,6 +828,17 @@ def checkSyntaxFile(
                         "%s specifies '%s' (should use '%s')"
                         % (rel, p.when, p.when.replace(" ", "-"))
                     )
+                elif p.status == "deferred" and not rePatterns["date-only"].match(
+                    p.when
+                ):
+                    ok = False
+                    cvelib.common.warn(
+                        "%s specifies non-date with '%s' (should be unspecified or YYYY-MM-DD))"
+                        % (rel, p.status)
+                    )
+                elif p.status != "deferred" and rePatterns["date-only"].match(p.when):
+                    ok = False
+                    cvelib.common.warn("%s specifies date with '%s')" % (rel, p.status))
 
             if p.status.split()[0] in ["needed", "needs-triage", "pending", "deferred"]:
                 if p.status.startswith("need"):

@@ -1664,6 +1664,45 @@ cve-data = %s
             error.getvalue().strip(),
         )
 
+        # should use deferred or deferred (date)
+        tmpl = self._cve_template()
+        tmpl["git/github_pkg1"] = "deferred"
+        tmpl["git/github_pkg2"] = "deferred (not-valid)"
+        content = cvelib.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            res = cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertFalse(res)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: active/CVE-2020-1234 specifies non-date with 'deferred' (should be unspecified or YYYY-MM-DD))",
+            error.getvalue().strip(),
+        )
+
+        # should not use date for when without deferred
+        tmpl = self._cve_template()
+        tmpl["git/github_pkg1"] = "needed (2023-03-27)"
+        content = cvelib.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with cvelib.testutil.capturedOutput() as (output, error):
+            res = cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertFalse(res)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: active/CVE-2020-1234 specifies date with 'needed')",
+            error.getvalue().strip(),
+        )
+
         # active has closed
         tmpl = self._cve_template()
         tmpl["Candidate"] = "CVE-1234-5678"
