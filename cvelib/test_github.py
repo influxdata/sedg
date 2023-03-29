@@ -1,7 +1,6 @@
 """test_github.py: tests for github.py module"""
 #
-# Copyright (c) 2023 InfluxData
-# Author: Jamie Strandboge <jamie@influxdata.com>
+# Copyright (c) 2021-2023 InfluxData
 #
 # Permission is hereby granted, free of charge, to any
 # person obtaining a copy of this software and associated
