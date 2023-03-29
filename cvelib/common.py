@@ -253,7 +253,7 @@ rePatterns: Dict[str, Pattern[str]] = {
     # Another Náme (someone-handle)
     # Another Náme (someone-handle), Some One Else
     "attribution": re.compile(
-        r"^[^()@]+( \(@?[a-zA-Z0-9._-]+\))?(, [^()@]+( \(@?[a-zA-Z0-9._-]+\))?)*$"
+        r"^[^()@]+( \(@?[a-zA-Z0-9._-]+\))?(, [^()@]+( \(@?[a-zA-Z0-9._-]+\))?){0,10}$"
     ),
     # http://www.unicode.org/Public/security/revision-03/confusablesSummary.txt
     # patterns for subset of confusable quotes and dashes which pass
