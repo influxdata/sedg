@@ -217,7 +217,7 @@ def _getKnownIssues(
             url: str = u.split()[0]
             if _collectable(url, filter_url):
                 # strip off GH comments
-                if url.startswith("https://github.com") and "#" in url:
+                if url.startswith("https://github.com/") and "#" in url:
                     url = url.split("#")[0]
                 if url not in urls:
                     urls[url] = []
