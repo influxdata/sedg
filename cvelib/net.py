@@ -15,9 +15,12 @@ def requestGetRaw(
 ) -> requests.Response:
     """Wrapper around requests.get()"""
     hdrs: Dict[str, str] = copy.deepcopy(headers)
-    if len(hdrs) == 0:
-        if "GHTOKEN" in os.environ:
-            hdrs["Authorization"] = "token %s" % os.getenv("GHTOKEN")
+    if (
+        url.startswith("https://api.github.com/")
+        and "Authorization" not in hdrs
+        and "GHTOKEN" in os.environ
+    ):
+        hdrs["Authorization"] = "token %s" % os.getenv("GHTOKEN")
 
     # print("DEBUG: url=%s, headers=%s, params=%s" % (url, hdrs, params))
     return requests.get(url, headers=hdrs, params=params)
@@ -40,9 +43,8 @@ def queryGHGraphQL(query: str, headers: Dict[str, str] = {}):
     """Wrapper around requests.post() for graphql"""
     url = "https://api.github.com/graphql"
     hdrs: Dict[str, str] = copy.deepcopy(headers)
-    if len(hdrs) == 0:
-        if "GHTOKEN" in os.environ:
-            hdrs["Authorization"] = "token %s" % os.getenv("GHTOKEN")
+    if "Authorization" not in hdrs and "GHTOKEN" in os.environ:
+        hdrs["Authorization"] = "token %s" % os.getenv("GHTOKEN")
 
     # TODO: handle rate limits:
     # https://docs.github.com/en/graphql/overview/resource-limitations
