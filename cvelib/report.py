@@ -45,6 +45,7 @@ def _repoArchived(repo: str) -> bool:
     return repo.endswith(":archived")
 
 
+# https://docs.github.com/en/rest/orgs?apiVersion=2022-11-28
 def _getGHReposAll(org: str) -> List[str]:
     """Obtain the list of GitHub repos for the specified org"""
     global repos_all
@@ -54,6 +55,10 @@ def _getGHReposAll(org: str) -> List[str]:
         return copy.deepcopy(repos_all)
 
     url: str = "https://api.github.com/orgs/%s/repos" % org
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
     params: Dict[str, Union[str, int]] = {
         "accept": "application/vnd.github.v3+json",
         "per_page": 100,
@@ -69,7 +74,7 @@ def _getGHReposAll(org: str) -> List[str]:
             print(".", end="", flush=True)
         params["page"] = count
 
-        resj = requestGet(url, params=params)
+        resj = requestGet(url, headers=headers, params=params)
         if len(resj) == 0:
             if sys.stdout.isatty():
                 print(" done!")
@@ -85,6 +90,7 @@ def _getGHReposAll(org: str) -> List[str]:
     return copy.deepcopy(repos_all)
 
 
+# https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28
 def _getGHIssuesForRepo(
     repo: str,
     org: str,
@@ -94,6 +100,10 @@ def _getGHIssuesForRepo(
 ) -> List[str]:
     """Obtain the list of GitHub issues for the specified repo and org"""
     url: str = "https://api.github.com/repos/%s/%s/issues" % (org, repo)
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
     params: Dict[str, Union[str, int]] = {
         "accept": "application/vnd.github.v3+json",
         "per_page": 100,
@@ -127,7 +137,9 @@ def _getGHIssuesForRepo(
                 params["labels"] = query_label
 
             try:
-                r: requests.Response = requestGetRaw(url, params=params)
+                r: requests.Response = requestGetRaw(
+                    url, headers=headers, params=params
+                )
             except requests.exceptions.RequestException as e:
                 warn("Skipping %s (request error: %s)" % (url, str(e)))
                 return []
@@ -246,6 +258,7 @@ def getMissingReport(
             print(" %s" % url)
 
 
+# https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28
 def _getGHAlertsEnabled(
     org: str, repos: List[str] = [], excluded_repos: List[str] = []
 ) -> Tuple[List[str], List[str]]:
@@ -274,11 +287,15 @@ def _getGHAlertsEnabled(
             org,
             repo,
         )
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
         params: Dict[str, Union[str, int]] = {
             "accept": "application/vnd.github.v3+json"
         }
 
-        res: requests.Response = requestGetRaw(url, params=params)
+        res: requests.Response = requestGetRaw(url, headers=headers, params=params)
         if res.status_code == 204:
             # enabled
             enabled.append(repo)
