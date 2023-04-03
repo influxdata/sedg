@@ -21,7 +21,7 @@ from cvelib.common import (
     updateProgress,
     warn,
 )
-from cvelib.net import requestGetRaw, requestGet, queryGraphQL
+from cvelib.net import requestGetRaw, requestGet, queryGHGraphQL
 
 
 #
@@ -634,7 +634,7 @@ def getGHAlertsUpdatedReport(
                 org,
                 cursorAfter,
             )
-            res: Dict[str, Any] = queryGraphQL(query)
+            res: Dict[str, Any] = queryGHGraphQL(query)
             # import json
             # print(json.dumps(res, indent=2))
             n: Dict[str, Any]

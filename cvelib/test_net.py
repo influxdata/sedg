@@ -90,6 +90,6 @@ class TestNet(TestCase):
         mr = self._mock_response(json_data={"foo": "bar"})
         mock_post.return_value = mr
 
-        rjson = cvelib.net.queryGraphQL("foo", headers={})
+        rjson = cvelib.net.queryGHGraphQL("foo", headers={})
         self.assertTrue("foo" in rjson)
         self.assertEqual("bar", rjson["foo"])

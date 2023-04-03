@@ -36,7 +36,7 @@ def requestGet(
 
 
 # TODO: type hint the return value (it's tricky)
-def queryGraphQL(query: str, headers: Dict[str, str] = {}):
+def queryGHGraphQL(query: str, headers: Dict[str, str] = {}):
     """Wrapper around requests.post() for graphql"""
     url = "https://api.github.com/graphql"
     hdrs: Dict[str, str] = copy.deepcopy(headers)
