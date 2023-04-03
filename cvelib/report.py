@@ -60,7 +60,6 @@ def _getGHReposAll(org: str) -> List[str]:
         "X-GitHub-Api-Version": "2022-11-28",
     }
     params: Dict[str, Union[str, int]] = {
-        "accept": "application/vnd.github.v3+json",
         "per_page": 100,
     }
 
@@ -105,7 +104,6 @@ def _getGHIssuesForRepo(
         "X-GitHub-Api-Version": "2022-11-28",
     }
     params: Dict[str, Union[str, int]] = {
-        "accept": "application/vnd.github.v3+json",
         "per_page": 100,
         "state": "all",
     }
@@ -291,9 +289,7 @@ def _getGHAlertsEnabled(
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
         }
-        params: Dict[str, Union[str, int]] = {
-            "accept": "application/vnd.github.v3+json"
-        }
+        params: Dict[str, Union[str, int]] = {}
 
         res: requests.Response = requestGetRaw(url, headers=headers, params=params)
         if res.status_code == 204:
