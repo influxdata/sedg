@@ -29,7 +29,7 @@ from cvelib.net import requestGetRaw, requestGet, queryGHGraphQL
 #
 
 # TODO: pass these around
-repos_all: List[str] = []  # list of repos
+repos_all: Dict[str, Dict[str, Union[str, bool]]] = {}  # keys is list of repos
 issues_ind: Dict[
     str, Mapping[str, Any]
 ] = {}  # keys are 'repo/num', values are arbitrary json docs from GitHub
@@ -41,12 +41,20 @@ class ReportOutput(Enum):
     BOTH = 3
 
 
-def _repoArchived(repo: str) -> bool:
-    return repo.endswith(":archived")
+def _repoArchived(repo: Dict[str, Union[bool, str]]) -> bool:
+    if "archived" in repo:
+        return bool(repo["archived"])
+    return False
+
+
+def _repoSecretsScanning(repo: Dict[str, Union[bool, str]]) -> bool:
+    if "secret_scanning" in repo and repo["secret_scanning"]:
+        return True
+    return False
 
 
 # https://docs.github.com/en/rest/orgs?apiVersion=2022-11-28
-def _getGHReposAll(org: str) -> List[str]:
+def _getGHReposAll(org: str) -> Dict[str, Dict[str, Union[bool, str]]]:
     """Obtain the list of GitHub repos for the specified org"""
     global repos_all
     if len(repos_all) > 0:
@@ -80,11 +88,31 @@ def _getGHReposAll(org: str) -> List[str]:
             break
 
         for repo in resj:
-            if "name" in repo:
-                name: str = repo["name"]
-                if "archived" in repo and repo["archived"]:
-                    name = repo["name"] + ":archived"  # see _repoArchived()
-                repos_all.append(name)
+            if "name" not in repo:
+                error(
+                    "could not find name in response json: '%s'" % repo
+                )  # pragma: nocover
+            name: str = repo["name"]
+
+            # Collect interesting info for later use
+            repos_all[name] = {}
+            if "archived" in repo:
+                repos_all[name]["archived"] = repo["archived"]
+
+            if "security_and_analysis" not in repo:
+                error(
+                    "could not find 'security_and_analysis' for '%s'. Do you have the right permissions?"
+                    % (name)
+                )  # pragma: nocover
+            if (
+                "secret_scanning" in repo["security_and_analysis"]
+                and "status" in repo["security_and_analysis"]["secret_scanning"]
+                and repo["security_and_analysis"]["secret_scanning"]["status"]
+                == "enabled"
+            ):
+                repos_all[name]["secret_scanning"] = True
+            else:
+                repos_all[name]["secret_scanning"] = False
 
     return copy.deepcopy(repos_all)
 
@@ -225,21 +253,25 @@ def getMissingReport(
     """Compare list of issues in issue trackers against our CVE data"""
     known_urls: Dict[str, List[str]] = _getKnownIssues(cves, filter_url=org)
 
+    repo_info: Dict[str, Dict[str, Union[bool, str]]] = {}
     fetch_repos: List[str] = repos
-    if len(fetch_repos) == 0:
-        fetch_repos = _getGHReposAll(org)
 
+    if len(fetch_repos) == 0:
+        repo_info = _getGHReposAll(org)
+        fetch_repos = list(repo_info.keys())
+
+    name: str = ""
     gh_urls: List[str] = []
     print("Fetching list of issues for:")
-    for repo in sorted(fetch_repos):
-        if repo in excluded_repos:
+    for name in sorted(fetch_repos):
+        if name in excluded_repos:
             continue
-        if _repoArchived(repo):
+        if name in repo_info and _repoArchived(repo_info[name]):
             continue
 
         url: str
         for url in _getGHIssuesForRepo(
-            repo,
+            name,
             org,
             labels=labels,
             skip_labels=skip_labels,
@@ -261,21 +293,23 @@ def _getGHAlertsEnabled(
     org: str, repos: List[str] = [], excluded_repos: List[str] = []
 ) -> Tuple[List[str], List[str]]:
     """Obtain list of GitHub repositories with alerts enabled"""
+    repo_info: Dict[str, Dict[str, Union[bool, str]]] = {}
     fetch_repos: List[str] = repos
+
     if len(fetch_repos) == 0:
-        fetch_repos = _getGHReposAll(org)
+        repo_info = _getGHReposAll(org)
+        fetch_repos = list(repo_info.keys())
 
     enabled: List[str] = []
     disabled: List[str] = []
 
-    # Unfortunately there doesn't seem to be an API to tell us all the repos
-    # with dependabot alerts, so get a list of URLs and then see if enabled or
-    # not
+    # Unfortunately there isn't an API to tell us all the repos with dependabot
+    # alerts, so get a list of URLs and then see if enabled or not
     count: int = 0
-    for repo in sorted(fetch_repos):
-        if repo in excluded_repos:
+    for name in sorted(fetch_repos):
+        if name in excluded_repos:
             continue
-        if _repoArchived(repo):
+        if name in repo_info and _repoArchived(repo_info[name]):
             continue
 
         count += 1
@@ -283,7 +317,7 @@ def _getGHAlertsEnabled(
 
         url: str = "https://api.github.com/repos/%s/%s/vulnerability-alerts" % (
             org,
-            repo,
+            name,
         )
         headers = {
             "Accept": "application/vnd.github+json",
@@ -294,25 +328,69 @@ def _getGHAlertsEnabled(
         res: requests.Response = requestGetRaw(url, headers=headers, params=params)
         if res.status_code == 204:
             # enabled
-            enabled.append(repo)
+            enabled.append(name)
         elif res.status_code == 404:
             # disabled
-            disabled.append(repo)
+            disabled.append(name)
         else:  # pragma: nocover
             error("Problem fetching %s:\n%d - %s" % (url, res.status_code, res))
 
     return enabled, disabled
 
 
+# https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28
+def _getGHSecretsScanningEnabled(
+    org: str, repos: List[str] = [], excluded_repos: List[str] = []
+) -> Tuple[List[str], List[str]]:
+    """Obtain list of GitHub repositories with secret scanning enabled"""
+    enabled: List[str] = []
+    disabled: List[str] = []
+
+    # secret_scanning is under security_and_analysis in
+    # https://api.github.com/orgs/ORG/repos, which _getGHReposAll() fetches so
+    # just need to look through repo_info
+    repo_info: Dict[str, Dict[str, Union[bool, str]]] = _getGHReposAll(org)
+    for name in sorted(repo_info.keys()):
+        if name in excluded_repos or len(repos) != 0 and name not in repos:
+            continue
+        elif len(repos) == 0 and _repoArchived(repo_info[name]):
+            continue
+
+        if _repoSecretsScanning(repo_info[name]):
+            enabled.append(name)
+        else:
+            disabled.append(name)
+
+    return enabled, disabled
+
+
+# https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28
+#
+# Perhaps more efficient to look at security_and_analysis from
+# https://docs.github.com/en/rest/secret-scanning?apiVersion=2022-11-28 when
+
+
 def getGHAlertsStatusReport(
     org: str, repos: List[str] = [], excluded_repos: List[str] = []
 ) -> None:
     """Obtain list of repos that have vulnerability alerts enabled/disabled"""
-    enabled: List[str]
-    disabled: List[str]
-    enabled, disabled = _getGHAlertsEnabled(org, repos, excluded_repos=excluded_repos)
-    print("Enabled:\n%s" % "\n".join(" %s" % r for r in enabled))
-    print("Disabled:\n%s" % "\n".join(" %s" % r for r in disabled))
+    enabled_d: List[str]
+    disabled_d: List[str]
+    enabled_s: List[str]
+    disabled_s: List[str]
+    enabled_d, disabled_d = _getGHAlertsEnabled(
+        org, repos, excluded_repos=excluded_repos
+    )
+    enabled_s, disabled_s = _getGHSecretsScanningEnabled(
+        org, repos, excluded_repos=excluded_repos
+    )
+    print("Dependabot:")
+    print(" Enabled:\n%s" % "\n".join("  %s" % r for r in enabled_d))
+    print(" Disabled:\n%s" % "\n".join("  %s" % r for r in disabled_d))
+
+    print("\nSecret Scanning:")
+    print(" Enabled:\n%s" % "\n".join("  %s" % r for r in enabled_s))
+    print(" Disabled:\n%s" % "\n".join("  %s" % r for r in disabled_s))
 
 
 def getUpdatedReport(
@@ -1376,9 +1454,9 @@ def getHumanSummaryGHAS(
 #
 def getReposReport(org: str, archived: Optional[bool] = False) -> None:
     """Show list of active and archived repos"""
-    repos: List[str] = _getGHReposAll(org)
-    for repo in sorted(repos):
-        if archived and _repoArchived(repo):
-            print(repo.split(":")[0])
-        elif not archived and not _repoArchived(repo):
-            print(repo)
+    repos: Dict[str, Dict[str, Union[bool, str]]] = _getGHReposAll(org)
+    for name in sorted(repos.keys()):
+        if archived and _repoArchived(repos[name]):
+            print(name)
+        elif not archived and not _repoArchived(repos[name]):
+            print(name)
