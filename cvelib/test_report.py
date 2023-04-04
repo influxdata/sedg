@@ -40,6 +40,13 @@ def mocked_requests_get__getGHReposAll(*args, **kwargs):
     #       "mirror_url": None,
     #       "name": "<name1>",
     #       ...
+    #       "security_and_analysis": {
+    #         "secret_scanning": {
+    #           "status": "disabled"
+    #         },
+    #         ...
+    #       },
+    #       ...
     #       "topics": [
     #         "<topic1>",
     #         "<topic2>"
@@ -49,8 +56,8 @@ def mocked_requests_get__getGHReposAll(*args, **kwargs):
     #     ...
     #   ]
     #
-    # but _getGHReposAll() only cares about "name". We mock up a subset of the
-    # GitHub response.
+    # but _getGHReposAll() only cares about "name" and "archived". We mock up a
+    # subset of the GitHub response.
     #
     # _getGHReposAll() iterates through page=N parameters until it gets an
     # empty response. Mock that by putting two repos in page=1, one in page=2
@@ -66,6 +73,9 @@ def mocked_requests_get__getGHReposAll(*args, **kwargs):
                         "license": {"key": "mit"},
                         "mirror_url": False,
                         "topics": ["topic1", "topic2"],
+                        "security_and_analysis": {
+                            "secret_scanning": {"status": "enabled"}
+                        },
                     },
                     {
                         "archived": True,
@@ -74,6 +84,9 @@ def mocked_requests_get__getGHReposAll(*args, **kwargs):
                         "license": {"key": "mit"},
                         "mirror_url": False,
                         "topics": ["topic2"],
+                        "security_and_analysis": {
+                            "secret_scanning": {"status": "disabled"}
+                        },
                     },
                 ],
                 200,
@@ -88,6 +101,9 @@ def mocked_requests_get__getGHReposAll(*args, **kwargs):
                         "license": {"key": "mit"},
                         "mirror_url": False,
                         "topics": ["topic1"],
+                        "security_and_analysis": {
+                            "secret_scanning": {"status": "disabled"}
+                        },
                     },
                 ],
                 200,
@@ -159,6 +175,38 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
         return MockResponse(None, 400)
     elif args[0] == "https://api.github.com/repos/valid-org/empty-repo/issues":
         return MockResponse([], 200)
+    elif args[0] == "https://api.github.com/orgs/valid-org/repos":
+        # this is for the _getGHReposAll(org) call when not specifying repos
+        if "page" not in kwargs["params"] or kwargs["params"]["page"] == 1:
+            return MockResponse(
+                [
+                    {
+                        "archived": False,
+                        "name": "valid-repo",
+                        "id": 1000,
+                        "license": {"key": "mit"},
+                        "mirror_url": False,
+                        "topics": ["topic1", "topic2"],
+                        "security_and_analysis": {
+                            "secret_scanning": {"status": "enabled"}
+                        },
+                    },
+                    {
+                        "archived": True,
+                        "name": "other-repo",
+                        "id": 1001,
+                        "license": {"key": "mit"},
+                        "mirror_url": False,
+                        "topics": ["topic2"],
+                        "security_and_analysis": {
+                            "secret_scanning": {"status": "disabled"}
+                        },
+                    },
+                ],
+                200,
+            )
+        else:
+            return MockResponse([], 200)
     elif args[0] == "https://api.github.com/repos/valid-org/other-repo/issues":
         if "page" not in kwargs["params"] or kwargs["params"]["page"] == 1:
             return MockResponse(
@@ -373,19 +421,50 @@ def mocked_requests_get__getGHAlertsEnabled(*args, **kwargs):
         def json(self):  # pragma: nocover
             return self.json_data
 
-    # https://docs.github.com/en/rest/issues/issues#get-an-issue
-    # The GitHub json for https://api.github.com/repos/ORG/REPO/issues/NUM is:
-
     if (
         args[0]
         == "https://api.github.com/repos/valid-org/valid-repo/vulnerability-alerts"
     ):
+        # this is for dependabot alerts
         return MockResponse(None, 204)
     elif (
         args[0]
         == "https://api.github.com/repos/valid-org/disabled-repo/vulnerability-alerts"
     ):
+        # this is for dependabot alerts
         return MockResponse(None, 404)
+    elif args[0] == "https://api.github.com/orgs/valid-org/repos":
+        # this is for the _getGHReposAll(org) for secret_scanning
+        if "page" not in kwargs["params"] or kwargs["params"]["page"] == 1:
+            return MockResponse(
+                [
+                    {
+                        "archived": False,
+                        "name": "valid-repo",
+                        "id": 1000,
+                        "license": {"key": "mit"},
+                        "mirror_url": False,
+                        "topics": ["topic1", "topic2"],
+                        "security_and_analysis": {
+                            "secret_scanning": {"status": "enabled"}
+                        },
+                    },
+                    {
+                        "archived": True,
+                        "name": "disabled-repo",
+                        "id": 1001,
+                        "license": {"key": "mit"},
+                        "mirror_url": False,
+                        "topics": ["topic2"],
+                        "security_and_analysis": {
+                            "secret_scanning": {"status": "disabled"}
+                        },
+                    },
+                ],
+                200,
+            )
+        else:
+            return MockResponse([], 200)
 
     # catch-all
     print(
@@ -519,7 +598,7 @@ class TestReport(TestCase):
             self.orig_ghtoken = None
 
         # TODO: when pass these around, can remove this
-        cvelib.report.repos_all = []
+        cvelib.report.repos_all = {}
         cvelib.report.issues_ind = {}
         if "TEST_UPDATE_PROGRESS" in os.environ:
             del os.environ["TEST_UPDATE_PROGRESS"]
@@ -655,24 +734,64 @@ cve-data = %s
         """Test _getGHReposAll()"""
         r = cvelib.report._getGHReposAll("valid-org")
         self.assertEqual(3, len(r))
+
         self.assertTrue("foo" in r)
-        self.assertTrue("bar:archived" in r)
+        self.assertTrue("archived" in r["foo"])
+        self.assertFalse(r["foo"]["archived"])
+        self.assertTrue("secret_scanning" in r["foo"])
+        self.assertTrue(r["foo"]["secret_scanning"])
+
+        self.assertTrue("bar" in r)
+        self.assertTrue("archived" in r["bar"])
+        self.assertTrue(r["bar"]["archived"])
+        self.assertTrue("secret_scanning" in r["bar"])
+        self.assertFalse(r["bar"]["secret_scanning"])
+
         self.assertTrue("baz" in r)
+        self.assertTrue("archived" in r["baz"])
+        self.assertFalse(r["baz"]["archived"])
+        self.assertTrue("secret_scanning" in r["baz"])
+        self.assertFalse(r["baz"]["secret_scanning"])
 
         # do it a second time to use repos_all
         r = cvelib.report._getGHReposAll("valid-org")
         self.assertEqual(3, len(r))
+
         self.assertTrue("foo" in r)
-        self.assertTrue("bar:archived" in r)
+        self.assertTrue("archived" in r["foo"])
+        self.assertFalse(r["foo"]["archived"])
+        self.assertTrue("secret_scanning" in r["foo"])
+        self.assertTrue(r["foo"]["secret_scanning"])
+
+        self.assertTrue("bar" in r)
+        self.assertTrue("archived" in r["bar"])
+        self.assertTrue(r["bar"]["archived"])
+        self.assertTrue("secret_scanning" in r["bar"])
+        self.assertFalse(r["bar"]["secret_scanning"])
+
         self.assertTrue("baz" in r)
+        self.assertTrue("archived" in r["baz"])
+        self.assertFalse(r["baz"]["archived"])
+        self.assertTrue("secret_scanning" in r["baz"])
+        self.assertFalse(r["baz"]["secret_scanning"])
 
     #
     # _repoArchived() tests
     #
     def test__repoArchived(self):
         """Test _repoArchived()"""
-        self.assertFalse(cvelib.report._repoArchived("foo"))
-        self.assertTrue(cvelib.report._repoArchived("bar:archived"))
+        self.assertFalse(cvelib.report._repoArchived({"archived": False}))
+        self.assertFalse(cvelib.report._repoArchived({}))
+        self.assertTrue(cvelib.report._repoArchived({"archived": True}))
+
+    #
+    # _repoSecretsScanning() tests
+    #
+    def test__repoSecretsScanning(self):
+        """Test _repoSecretsScanning()"""
+        self.assertFalse(cvelib.report._repoSecretsScanning({"secret_scanning": False}))
+        self.assertFalse(cvelib.report._repoSecretsScanning({}))
+        self.assertTrue(cvelib.report._repoSecretsScanning({"secret_scanning": True}))
 
     #
     # getReposReport()
@@ -820,6 +939,16 @@ Issues missing from CVE data:
 No missing issues for the specified repos."""
         self.assertEqual(exp, output.getvalue().strip())
 
+        # archived
+        cves = self._mock_cve_list_basic()
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getMissingReport(cves, "valid-org")
+        self.assertEqual("", error.getvalue().strip())
+        exp = """Fetching list of issues for:
+Issues missing from CVE data:
+ https://github.com/valid-org/valid-repo/issues/4"""
+        self.assertEqual(exp, output.getvalue().strip())
+
     #
     # _getGHAlertsEnabled()
     #
@@ -852,6 +981,48 @@ No missing issues for the specified repos."""
         self.assertEqual(1, len(disabled))
         self.assertTrue("disabled-repo" in disabled)
 
+        enabled, disabled = cvelib.report._getGHAlertsEnabled("valid-org")
+        self.assertEqual(1, len(enabled))
+        self.assertTrue("valid-repo" in enabled)
+        self.assertEqual(0, len(disabled))
+
+    #
+    # _getGHSecretsScanningEnabled()
+    #
+    @mock.patch("requests.get", side_effect=mocked_requests_get__getGHAlertsEnabled)
+    def test_getGHSecretsScanningEnabled(self, _):  # 2nd arg is mock_get
+        """Test _getGHSecretsScanningEnabled()"""
+        enabled, disabled = cvelib.report._getGHSecretsScanningEnabled(
+            "valid-org", repos=["valid-repo", "disabled-repo"]
+        )
+        self.assertEqual(1, len(enabled))
+        self.assertTrue("valid-repo" in enabled)
+        self.assertEqual(1, len(disabled))
+        self.assertTrue("disabled-repo" in disabled)
+
+        enabled, disabled = cvelib.report._getGHSecretsScanningEnabled(
+            "valid-org",
+            repos=["valid-repo", "disabled-repo"],
+            excluded_repos=["disabled-repo"],
+        )
+        self.assertEqual(1, len(enabled))
+        self.assertTrue("valid-repo" in enabled)
+        self.assertEqual(0, len(disabled))
+
+        enabled, disabled = cvelib.report._getGHSecretsScanningEnabled(
+            "valid-org",
+            repos=["valid-repo", "disabled-repo"],
+            excluded_repos=["valid-repo"],
+        )
+        self.assertEqual(0, len(enabled))
+        self.assertEqual(1, len(disabled))
+        self.assertTrue("disabled-repo" in disabled)
+
+        enabled, disabled = cvelib.report._getGHSecretsScanningEnabled("valid-org")
+        self.assertEqual(1, len(enabled))
+        self.assertTrue("valid-repo" in enabled)
+        self.assertEqual(0, len(disabled))
+
     #
     # getGHAlertsStatusReport()
     #
@@ -863,10 +1034,17 @@ No missing issues for the specified repos."""
                 "valid-org", repos=["valid-repo", "disabled-repo"]
             )
         self.assertEqual("", error.getvalue().strip())
-        exp = """Enabled:
- valid-repo
-Disabled:
- disabled-repo"""
+        exp = """Dependabot:
+ Enabled:
+  valid-repo
+ Disabled:
+  disabled-repo
+
+Secret Scanning:
+ Enabled:
+  valid-repo
+ Disabled:
+  disabled-repo"""
         self.assertEqual(exp, output.getvalue().strip())
 
     #
