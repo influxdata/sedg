@@ -39,23 +39,6 @@ def requestGet(
     return r.json()
 
 
-# TODO: type hint the return value (it's tricky)
-def queryGHGraphQL(query: str, headers: Dict[str, str] = {}):
-    """Wrapper around requests.post() for graphql"""
-    url = "https://api.github.com/graphql"
-    hdrs: Dict[str, str] = copy.deepcopy(headers)
-    if "Authorization" not in hdrs and "GHTOKEN" in os.environ:
-        hdrs["Authorization"] = "token %s" % os.getenv("GHTOKEN")
-
-    # TODO: handle rate limits:
-    # https://docs.github.com/en/graphql/overview/resource-limitations
-    r: requests.Response = requests.post(url, json={"query": query}, headers=hdrs)
-    if r.status_code != 200:  # pragma: nocover
-        error("Problem querying %s. %d - %s" % (url, r.status_code, query))
-
-    return r.json()
-
-
 # https://docs.github.com/en/rest/guides/using-pagination-in-the-rest-api?apiVersion=2022-11-28#using-link-headers
 def ghAPIGetList(
     url: str,
