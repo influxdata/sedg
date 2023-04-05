@@ -130,14 +130,10 @@ def _getGHIssuesForRepo(
         jsons: List[Any] = []
         rc, jsons = ghAPIGetList(url, params=params, progress=False, do_exit=False)
 
-        if rc == 1:
-            return []
-        elif rc == 410:
-            return []
-        elif rc == 404:
+        if rc == 404:
             warn("Skipping %s (%d)" % (url, rc))
             return []
-        elif rc >= 400:
+        elif rc == 1 or rc == 410 or rc >= 400:
             return []
 
         issue: Dict[str, Any]
@@ -394,72 +390,103 @@ def getUpdatedReport(
             print(" %s (%s)" % (url, ", ".join(urls[url])))
 
 
-def _printGHAlertsUpdatedSummary(
-    org: str, repo: str, alert: List[Dict[str, str]]
+def _printGHAlertsSummary(
+    org: str, repo: str, alert: List[Dict[str, str]], status: str
 ) -> None:
     """Print out the alert summary"""
-    url: str = "https://github.com/%s/%s/security/dependabot" % (org, repo)
-    print("%s alerts: %d (%s)" % (repo, len(alert), url))
+    if status not in ["dismissed", "resolved", "updated"]:
+        error("Unsupported alert status: %s" % status)
+        return
+
+    urls: List[str] = []
+    print("%s %s alerts: %d" % (repo, status, len(alert)))
+
+    sec_sort: str = "created_at"
+    if status == "dismissed":
+        sec_sort = "dismissed_at"
+    elif status == "resolved":
+        sec_sort = "resolved_at"
 
     # for n in alert:
-    for n in sorted(alert, key=lambda i: (i["pkg"], i["created"])):
-        print("  %s" % n["pkg"])
+    for n in sorted(alert, key=lambda i: (i["html_url"], i[sec_sort])):
+        url: str = "https://github.com/%s/%s/security/%s" % (org, repo, n["alert_type"])
+        if url not in urls:
+            urls.append(url)
+
+        if n["alert_type"] == "dependabot":
+            print("  %s" % n["dependabot_package_name"])
+        elif n["alert_type"] == "code-scanning":
+            print("  %s" % n["code_description"])
+        elif n["alert_type"] == "secret-scanning":
+            print("  %s" % n["secret_type_display_name"])
+
         print("    - severity: %s" % n["severity"])
-        print("    - created: %s" % n["created"])
-        print("    - %s" % n["path"])
-        print("    - advisory: %s" % n["ghsa"])
-        print("    - url: %s/%d" % (url, n["number"]))
+        print("    - created: %s" % n["created_at"])
+
+        if status == "dismissed":
+            print("    - dismissed: %s" % n["dismissed_at"])
+            print("    - reason: %s" % n["dismissed_reason"])
+            print("    - comment: %s" % n["dismissed_comment"])
+            if n["dismissed_by"] is not None:
+                print("    - by: %s" % n["dismissed_by"])
+        elif status == "resolved":
+            print("    - resolved: %s" % n["resolved_at"])
+            print("    - reason: %s" % n["resolution"])
+            print("    - comment: %s" % n["resolution_comment"])
+            if n["resolved_by"] is not None:
+                print("    - by: %s" % n["resolved_by"])
+
+        if n["alert_type"] == "dependabot":
+            print("    - %s" % n["dependabot_manifest_path"])
+            print("    - advisory: %s" % n["security_advisory_ghsa_url"])
+
+        print("    - url: %s" % (n["html_url"]))
+        print("")
+
+    if len(urls) > 0:
+        print("  References:\n  - %s" % "\n  - ".join(sorted(urls)))
         print("")
 
 
-def _printGHAlertsDismissedSummary(
-    org: str, repo: str, alert: List[Dict[str, str]]
-) -> None:
-    """Print out the alert summary"""
-    url: str = "https://github.com/%s/%s/security/dependabot" % (org, repo)
-    print("%s dismissed alerts: %d (%s)" % (repo, len(alert), url))
-
-    # for n in alert:
-    for n in sorted(alert, key=lambda i: (i["pkg"], i["dismissed"])):
-        print("  %s" % n["pkg"])
-        print("    - severity: %s" % n["severity"])
-        print("    - created: %s" % n["created"])
-        print("    - dismissed: %s" % n["dismissed"])
-        print("    - reason: %s" % n["reason"])
-        if n["name"] is not None:
-            print("    - by: %s" % n["name"])
-        print("    - %s" % n["path"])
-        print("    - advisory: %s" % n["ghsa"])
-        print("    - url: %s/%d" % (url, n["number"]))
-        print("")
-
-
-def _printGHAlertsUpdatedTemplates(
-    org: str, repo: str, alert: List[Dict[str, str]]
-) -> None:
-    """Print out the updated alerts issue templates"""
+def _printGHAlertsTemplates(org: str, repo: str, alert: List[Dict[str, str]]) -> None:
+    """Print out the alerts issue templates"""
     sev: List[str] = ["unknown", "low", "moderate", "high", "critical"]
-    url: str = "https://github.com/%s/%s/security/dependabot" % (org, repo)
+    urls: List[str] = []
     highest: int = 0
 
     references: List[str] = []
     advisories: List[str] = []
     html_items: List[str] = []
     txt_items: Dict[str, int] = {}
-    for n in alert:
-        ref = "%s/%d" % (url, n["number"])
+    for n in sorted(alert, key=lambda i: i["html_url"]):
+        url: str = "https://github.com/%s/%s/security/%s" % (org, repo, n["alert_type"])
+        if url not in urls:
+            urls.append(url)
+
+        ref = "%s" % (n["html_url"])
         if ref not in references:
             references.append(ref)
-        adv: str = "%s (%s)" % (n["ghsa"], n["pkg"])
-        if adv not in advisories:
-            advisories.append("%s (%s)" % (n["ghsa"], n["pkg"]))
+        if n["alert_type"] == "dependabot":
+            adv: str = "%s (%s)" % (
+                n["security_advisory_ghsa_url"],
+                n["dependabot_package_name"],
+            )
+            if adv not in advisories:
+                advisories.append(adv)
 
-        s: str = "- [ ] [%s](%s) (%s)" % (n["pkg"], ref, n["severity"])
+        display_name: str = ""
+        if n["alert_type"] == "dependabot":
+            display_name = n["dependabot_package_name"]
+        elif n["alert_type"] == "code-scanning":
+            display_name = n["code_description"]
+        elif n["alert_type"] == "secret-scanning":
+            display_name = n["secret_type_display_name"]
 
+        s: str = "- [ ] [%s](%s) (%s)" % (display_name, ref, n["severity"])
         if s not in html_items:
             html_items.append(s)
 
-        t: str = "- [ ] %s (%s)" % (n["pkg"], n["severity"])
+        t: str = "- [ ] %s (%s)" % (display_name, n["severity"])
         if t not in txt_items:
             txt_items[t] = 1
         else:
@@ -486,7 +513,7 @@ def _printGHAlertsUpdatedTemplates(
     print("## %s template" % repo)
     template: str = """Please update dependabot flagged dependencies in %s
 
-%s lists the following updates:
+The following alerts were issued:
 %s
 Since a '%s' severity issue is present, tentatively adding the 'security/%s' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
 
@@ -495,12 +522,13 @@ Thanks!
 References:
  * https://docs.influxdata.io/development/security/issue_handling/
  * https://docs.influxdata.io/development/security/issue_response/#developers
+ * %s
 """ % (
         repo,
-        url,
         checklist,
         sev[highest],
         priority,
+        "\n * ".join(sorted(urls)),
     )
 
     print(template)
@@ -523,38 +551,37 @@ PublicDate:
 CRD:
 References:
  %s
- %s
 Description:
  Please update dependabot flagged dependencies in %s
 %sGitHub-Advanced-Security:"""
         % (
             "CVE-%d-NNNN" % now.year,
             "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
-            "\n ".join(references),
-            "\n ".join(sorted(advisories)),
+            "\n ".join(references + sorted(advisories)),
             repo,
             checklist,
         )
     )
-    for n in alert:
-        s: str = """ - type: dependabot
-   dependency: %(dependency)s
-   detectedIn: %(detected)s
-   severity: %(severity)s
-   advisory: %(advisory)s
-   status: needs-triage
-   url: %(url)s/%(urln)d""" % (
-            {
-                "dependency": '"%s"' % n["pkg"]
-                if n["pkg"].startswith("@")
-                else n["pkg"],
-                "detected": n["path"],
-                "severity": n["severity"],
-                "advisory": n["ghsa"],
-                "url": url,
-                "urln": n["number"],
-            }
-        )
+    for n in sorted(alert, key=lambda i: i["html_url"]):
+        s: str = " - type: %s\n" % n["alert_type"]
+
+        if n["alert_type"] == "dependabot":
+            if n["dependabot_package_name"].startswith("@"):
+                s += '   dependency: "%s"\n' % n["dependabot_package_name"]
+            else:
+                s += "   dependency: %s\n" % n["dependabot_package_name"]
+            s += "   detectedIn: %s\n" % n["dependabot_manifest_path"]
+        elif n["alert_type"] == "code-scanning":
+            s += "   description: %s\n" % n["code_description"]
+        elif n["alert_type"] == "secret-scanning":
+            s += "   secret: %s\n" % n["secret_type_display_name"]
+            s += "   detectedIn: tbd\n"
+
+        s += "   severity: %s\n" % n["severity"]
+        if n["alert_type"] == "dependabot":
+            s += "   advisory: %s\n" % n["security_advisory_ghsa_url"]
+        s += "   status: needs-triage\n"
+        s += "   url: %s" % n["html_url"]
         print(s)
     print(
         """Notes:
@@ -616,7 +643,7 @@ git/%s_%s: needs-triage"""
 #   }
 # }
 # ''' % (repo, org)
-def getGHAlertsUpdatedReport(
+def getGHAlertsUpdatedReportOld(
     cves: List[CVE],
     org: str,
     since: int = 0,
@@ -751,18 +778,193 @@ def getGHAlertsUpdatedReport(
         print("Vulnerability alerts:")
         for repo in sorted(updated.keys()):
             if with_templates:
-                _printGHAlertsUpdatedTemplates(org, repo, updated[repo])
+                _printGHAlertsTemplates(org, repo, updated[repo])
                 print("")
-            _printGHAlertsUpdatedSummary(org, repo, updated[repo])
+            _printGHAlertsSummary(org, repo, updated[repo], "updated")
 
     if len(dismissed) > 0:
         print("Dismissed vulnerability alerts:")
         for repo in sorted(dismissed.keys()):
             print("")
             if with_templates:
-                _printGHAlertsUpdatedTemplates(org, repo, dismissed[repo])
+                _printGHAlertsTemplates(org, repo, dismissed[repo])
                 print("")
-            _printGHAlertsDismissedSummary(org, repo, dismissed[repo])
+            _printGHAlertsSummary(org, repo, dismissed[repo], "dismissed")
+
+
+def _parseAlert(alert: Dict[str, Any]) -> Tuple[str, Dict[str, str]]:
+    """Parse alert json into common format"""
+    a: Dict[str, str] = {}
+
+    # common dicts
+    repo: str = alert["repository"]["name"]
+    for k in ["dismissed_by", "resolved_by"]:
+        if k in alert and alert[k] is not None:
+            a[k] = alert[k]["login"]
+
+    # simple key/value
+    for k in [
+        "created_at",
+        "dismissed_at",
+        "dismissed_comment",
+        "dismissed_reason",
+        "fixed_at",
+        "html_url",
+        "published_at",
+        "resolution",
+        "resolved_at",
+        "resolution_comment",
+        "state",
+        "updated_at",
+        "withdrawn_at",
+    ]:
+        if k in alert:
+            a[k] = alert[k]
+
+    # codeql specific
+    if "rule" in alert:
+        a["alert_type"] = "code-scanning"
+        a["severity"] = alert["rule"]["security_severity_level"]
+        a["code_description"] = alert["rule"]["description"]
+
+    # dependabot specific
+    if "dependency" in alert:
+        a["alert_type"] = "dependabot"
+        a["dependabot_package_name"] = alert["dependency"]["package"]["name"]
+        a["dependabot_manifest_path"] = alert["dependency"]["manifest_path"]
+    if "security_advisory" in alert:
+        a["severity"] = alert["security_advisory"]["severity"]
+        a["security_advisory_ghsa_url"] = (
+            "https://github.com/advisories/%s" % alert["security_advisory"]["ghsa_id"]
+        )
+
+    # secret scanning specific
+    # NOTE: the location of the secret needs another API call. For now, skip
+    if "secret_type_display_name" in alert:
+        a["severity"] = "high"  # default to 'high'
+        a["alert_type"] = "secret-scanning"
+        a["secret_type_display_name"] = alert["secret_type_display_name"]
+
+    return repo, copy.deepcopy(a)
+
+
+# As of the 2022-11-28 API, alerts have a predictable json format so we can
+# largely share alert fetching code
+# https://docs.github.com/en/rest/dependabot/alerts?apiVersion=2022-11-28
+# https://docs.github.com/en/rest/secret-scanning?apiVersion=2022-11-28
+# https://docs.github.com/en/rest/code-scanning?apiVersion=2022-11-28
+def _getGHAlertsAll(org: str) -> Dict[str, List[Dict[str, str]]]:
+    """Obtain the list of GitHub alerts for the specified org"""
+    # { "repo": [{ <alert1> }, { <alert2> }] }
+    alerts: Dict[str, List[Dict[str, str]]] = {}
+
+    # jsons is a single list of res.json()s that are alerts for these URLs
+    jsons: List[Dict[str, str]] = []
+    for alert_type in ["code-scanning", "dependabot", "secret-scanning"]:
+        _, tmp = ghAPIGetList(
+            "https://api.github.com/orgs/%s/%s/alerts" % (org, alert_type)
+        )
+        jsons += copy.deepcopy(tmp)
+
+    alert: Dict[str, Any] = {}
+    for alert in jsons:
+        repo: str = ""
+        a: Dict[str, str] = {}
+        repo, a = _parseAlert(alert)
+
+        if repo not in alerts:
+            alerts[repo] = []
+        alerts[repo].append(a)
+
+    return copy.deepcopy(alerts)
+
+
+def getGHAlertsUpdatedReport(
+    cves: List[CVE],
+    org: str,
+    since: int = 0,
+    repos: List[str] = [],
+    excluded_repos: List[str] = [],
+    with_templates: bool = False,
+) -> None:
+    """Show GitHub alerts alerts"""
+    since_str: str = epochToISO8601(since)
+
+    # find updates
+    updated: Dict[str, List[Dict[str, str]]] = {}
+    dismissed: Dict[str, List[Dict[str, str]]] = {}
+    resolved: Dict[str, List[Dict[str, str]]] = {}
+
+    # collect the alerts we know about
+    knownAlerts: Set[str]
+    knownAlerts, _ = collectGHAlertUrls(cves)
+
+    alerts: Dict[str, List[Dict[str, str]]] = _getGHAlertsAll(org)
+
+    repo: str
+    for repo in alerts:
+        if len(repos) > 0 and repo not in repos:
+            continue
+        if len(excluded_repos) > 0 and repo in excluded_repos:
+            continue
+
+        for alert in alerts[repo]:
+            if (
+                "dismissed_at" in alert
+                and alert["dismissed_at"] is not None
+                and alert["dismissed_at"] > since_str
+            ):
+                if repo not in dismissed:
+                    dismissed[repo] = []
+                dismissed[repo].append(alert)
+            elif (
+                "resolved_at" in alert
+                and alert["resolved_at"] is not None
+                and alert["resolved_at"] > since_str
+            ):
+                if repo not in resolved:
+                    resolved[repo] = []
+                resolved[repo].append(alert)
+            elif "created_at" in alert and alert["created_at"] > since_str:
+                if alert["html_url"] in knownAlerts:
+                    warn(
+                        "found previously known url with newer createdAt: %s (skipping)"
+                        % alert["html_url"]
+                    )
+                    continue
+
+                if repo not in updated:
+                    updated[repo] = []
+
+                updated[repo].append(alert)
+
+    if len(updated) == 0:
+        print("No alerts for the specified repos.")
+    else:
+        print("Alerts:")
+        for repo in sorted(updated.keys()):
+            if with_templates:
+                _printGHAlertsTemplates(org, repo, updated[repo])
+                print("")
+            _printGHAlertsSummary(org, repo, updated[repo], "updated")
+
+    if len(resolved) > 0:
+        print("Resolved alerts:")
+        for repo in sorted(resolved.keys()):
+            print("")
+            if with_templates:
+                _printGHAlertsTemplates(org, repo, resolved[repo])
+                print("")
+            _printGHAlertsSummary(org, repo, resolved[repo], "resolved")
+
+    if len(dismissed) > 0:
+        print("Dismissed alerts:")
+        for repo in sorted(dismissed.keys()):
+            print("")
+            if with_templates:
+                _printGHAlertsTemplates(org, repo, dismissed[repo])
+                print("")
+            _printGHAlertsSummary(org, repo, dismissed[repo], "dismissed")
 
 
 #

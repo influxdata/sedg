@@ -129,7 +129,7 @@ class GHSecret(object):
 
     def __str__(self) -> str:
         # the prefixed spacing is currently important for onDiskFormat()
-        s: str = " - type: secret\n"
+        s: str = " - type: secret-scanning\n"
         s += "   secret: %s\n" % self.secret
         s += "   detectedIn: %s\n" % self.detectedIn
         s += "   status: %s\n" % self.status
@@ -218,7 +218,7 @@ def parse(s: str) -> List[Union[GHDependabot, GHSecret]]:
 
         if item["type"] == "dependabot":
             ghas.append(GHDependabot(item))
-        elif item["type"] == "secret":
+        elif item["type"] == "secret-scanning":
             ghas.append(GHSecret(item))
         else:
             raise CveException(
