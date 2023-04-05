@@ -21,7 +21,7 @@ from cvelib.common import (
     updateProgress,
     warn,
 )
-from cvelib.net import requestGetRaw, requestGet, queryGHGraphQL, ghAPIGetList
+from cvelib.net import requestGetRaw, queryGHGraphQL, ghAPIGetList
 
 
 #

@@ -174,9 +174,7 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
                     "license": {"key": "mit"},
                     "mirror_url": False,
                     "topics": ["topic1", "topic2"],
-                    "security_and_analysis": {
-                        "secret_scanning": {"status": "enabled"}
-                    },
+                    "security_and_analysis": {"secret_scanning": {"status": "enabled"}},
                 },
                 {
                     "archived": True,
@@ -410,9 +408,7 @@ def mocked_requests_get__getGHAlertsEnabled(*args, **kwargs):
                     "license": {"key": "mit"},
                     "mirror_url": False,
                     "topics": ["topic1", "topic2"],
-                    "security_and_analysis": {
-                        "secret_scanning": {"status": "enabled"}
-                    },
+                    "security_and_analysis": {"secret_scanning": {"status": "enabled"}},
                 },
                 {
                     "archived": True,
