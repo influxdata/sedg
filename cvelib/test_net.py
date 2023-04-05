@@ -91,16 +91,6 @@ class TestNet(TestCase):
         self.assertTrue("foo" in rjson)
         self.assertEqual("bar", rjson["foo"])
 
-    @mock.patch("requests.post")
-    def test_graphQL(self, mock_post):
-        """Test requestGet()"""
-        mr = self._mock_response(json_data={"foo": "bar"})
-        mock_post.return_value = mr
-
-        rjson = cvelib.net.queryGHGraphQL("foo", headers={})
-        self.assertTrue("foo" in rjson)
-        self.assertEqual("bar", rjson["foo"])
-
     @mock.patch("requests.get")
     def test_ghAPIGetList(self, mock_get):
         """Test ghAPIGetList()"""

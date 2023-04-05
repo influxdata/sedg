@@ -117,7 +117,7 @@ class TestCve(TestCase):
    severity: moderate
    status: dismissed (inaccurate; who)
    url: https://github.com/bar/baz/security/dependabot/1
- - type: secret
+ - type: secret-scanning
    secret: Slack Incoming Webhook URL
    detectedIn: /path/to/file
    status: dismissed (revoked; who)
@@ -142,7 +142,7 @@ GitHub-Advanced-Security:
    severity: moderate
    status: dismissed (inaccurate; who)
    url: https://github.com/bar/baz/security/dependabot/1
- - type: secret
+ - type: secret-scanning
    secret: Slack Incoming Webhook URL
    detectedIn: /path/to/file
    status: dismissed (revoked; who)
@@ -1882,7 +1882,7 @@ cve-data = %s
    severity: moderate
    status: needed
    url: https://github.com/bar/baz/security/dependabot/1
- - type: secret
+ - type: secret-scanning
    secret: Slack Incoming Webhook URL
    detectedIn: /path/to/file
    status: needed
@@ -3546,7 +3546,7 @@ cve-data = %s
    severity: moderate
    status: dismissed (inaccurate; who)
    url: https://github.com/bar/baz/security/dependabot/1
- - type: secret
+ - type: secret-scanning
    secret: Slack Incoming Webhook URL
    detectedIn: /path/to/file
    status: dismissed (revoked; who)
@@ -3565,7 +3565,7 @@ cve-data = %s
         )
         cve3 = cvelib.cve.CVE(fn="fake")
         cve3.setGHAS(
-            """ - type: secret
+            """ - type: secret-scanning
    secret: Slack Incoming Webhook URL
    detectedIn: /path/to/file
    status: dismissed (revoked; who)

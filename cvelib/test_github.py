@@ -348,7 +348,7 @@ class TestGitHubSecret(TestCase):
     def test___repr__(self):
         """Test __repr__()"""
         data = self._getValid()
-        exp = """ - type: secret
+        exp = """ - type: secret-scanning
    secret: foo
    detectedIn: path/to/file
    status: needed
@@ -360,7 +360,7 @@ class TestGitHubSecret(TestCase):
     def test___str__(self):
         """Test __str__()"""
         data = self._getValid()
-        exp = """ - type: secret
+        exp = """ - type: secret-scanning
    secret: foo
    detectedIn: path/to/file
    status: needed
@@ -549,7 +549,7 @@ class TestGitHubCommon(TestCase):
    severity: moderate
    status: needed
    url: https://github.com/bar/baz/security/dependabot/1
- - type: secret
+ - type: secret-scanning
    secret: bar
    detectedIn: path/to/files
    status: needed

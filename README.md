@@ -65,11 +65,11 @@ Run unittests:
 
 or a single test file:
 
-    $ PYTHONPATH=$PWD python3 -m unittest cvelib.tests.cve_test
+    $ PYTHONPATH=$PWD python3 -m unittest cvelib.cve_foo
 
 or a single test:
 
-    $ PYTHONPATH=$PWD python3 -m unittest cvelib.tests.cve_test.TestCve.test_parse_headers
+    $ PYTHONPATH=$PWD python3 -m unittest cvelib.cve_foo.TestFoo.test_bar
 
 or in a venv:
 
