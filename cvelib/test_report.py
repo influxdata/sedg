@@ -20,6 +20,7 @@ def mocked_requests_get__getGHReposAll(*args, **kwargs):
         def __init__(self, json_data, status_code):
             self.json_data = json_data
             self.status_code = status_code
+            self.headers = {}
 
         def json(self):
             return self.json_data
@@ -59,57 +60,45 @@ def mocked_requests_get__getGHReposAll(*args, **kwargs):
     # but _getGHReposAll() only cares about "name" and "archived". We mock up a
     # subset of the GitHub response.
     #
-    # _getGHReposAll() iterates through page=N parameters until it gets an
-    # empty response. Mock that by putting two repos in page=1, one in page=2
-    # and none in page=3.
+    # _getGHReposAll() uses ghAPIGetList() which has tests for pagination. For
+    # simplicity, return only single pages here
     if args[0] == "https://api.github.com/orgs/valid-org/repos":
-        if "page" not in kwargs["params"] or kwargs["params"]["page"] == 1:
-            return MockResponse(
-                [
-                    {
-                        "archived": False,
-                        "name": "foo",
-                        "id": 1000,
-                        "license": {"key": "mit"},
-                        "mirror_url": False,
-                        "topics": ["topic1", "topic2"],
-                        "security_and_analysis": {
-                            "secret_scanning": {"status": "enabled"}
-                        },
+        return MockResponse(
+            [
+                {
+                    "archived": False,
+                    "name": "foo",
+                    "id": 1000,
+                    "license": {"key": "mit"},
+                    "mirror_url": False,
+                    "topics": ["topic1", "topic2"],
+                    "security_and_analysis": {"secret_scanning": {"status": "enabled"}},
+                },
+                {
+                    "archived": True,
+                    "name": "bar",
+                    "id": 1001,
+                    "license": {"key": "mit"},
+                    "mirror_url": False,
+                    "topics": ["topic2"],
+                    "security_and_analysis": {
+                        "secret_scanning": {"status": "disabled"}
                     },
-                    {
-                        "archived": True,
-                        "name": "bar",
-                        "id": 1001,
-                        "license": {"key": "mit"},
-                        "mirror_url": False,
-                        "topics": ["topic2"],
-                        "security_and_analysis": {
-                            "secret_scanning": {"status": "disabled"}
-                        },
+                },
+                {
+                    "archived": False,
+                    "name": "baz",
+                    "id": 1002,
+                    "license": {"key": "mit"},
+                    "mirror_url": False,
+                    "topics": ["topic1"],
+                    "security_and_analysis": {
+                        "secret_scanning": {"status": "disabled"}
                     },
-                ],
-                200,
-            )
-        elif kwargs["params"]["page"] == 2:
-            return MockResponse(
-                [
-                    {
-                        "archived": False,
-                        "name": "baz",
-                        "id": 1002,
-                        "license": {"key": "mit"},
-                        "mirror_url": False,
-                        "topics": ["topic1"],
-                        "security_and_analysis": {
-                            "secret_scanning": {"status": "disabled"}
-                        },
-                    },
-                ],
-                200,
-            )
-        else:
-            return MockResponse([], 200)
+                },
+            ],
+            200,
+        )
 
     # catch-all
     print(
@@ -123,6 +112,7 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
         def __init__(self, json_data, status_code):
             self.json_data = json_data
             self.status_code = status_code
+            self.headers = {}
 
         def json(self):
             return self.json_data
@@ -163,10 +153,9 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
     #     "pull_request": {...},
     #   }
     #
-    # _getGHIssuesForRepo() iterates through page=N parameters until it gets an
-    # empty response. Mock that by putting two repos in page=1, one in page=2
-    # and none in page=3.
-    # The GitHub json for https://api.github.com/repos/ORG/REPO/issues is:
+    # _getGHIssuesForRepo() uses _getGHReposAll() to fetch issues and it
+    # handles pagination (and is tested elsewhere), so keep these mocks simple
+    # and return only a single page.
     if args[0] == "https://api.github.com/repos/valid-org/410-repo/issues":
         return MockResponse(None, 410)
     elif args[0] == "https://api.github.com/repos/valid-org/404-repo/issues":
@@ -176,143 +165,52 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
     elif args[0] == "https://api.github.com/repos/valid-org/empty-repo/issues":
         return MockResponse([], 200)
     elif args[0] == "https://api.github.com/orgs/valid-org/repos":
-        # this is for the _getGHReposAll(org) call when not specifying repos
-        if "page" not in kwargs["params"] or kwargs["params"]["page"] == 1:
-            return MockResponse(
-                [
-                    {
-                        "archived": False,
-                        "name": "valid-repo",
-                        "id": 1000,
-                        "license": {"key": "mit"},
-                        "mirror_url": False,
-                        "topics": ["topic1", "topic2"],
-                        "security_and_analysis": {
-                            "secret_scanning": {"status": "enabled"}
-                        },
+        return MockResponse(
+            [
+                {
+                    "archived": False,
+                    "name": "valid-repo",
+                    "id": 1000,
+                    "license": {"key": "mit"},
+                    "mirror_url": False,
+                    "topics": ["topic1", "topic2"],
+                    "security_and_analysis": {"secret_scanning": {"status": "enabled"}},
+                },
+                {
+                    "archived": True,
+                    "name": "other-repo",
+                    "id": 1001,
+                    "license": {"key": "mit"},
+                    "mirror_url": False,
+                    "topics": ["topic2"],
+                    "security_and_analysis": {
+                        "secret_scanning": {"status": "disabled"}
                     },
-                    {
-                        "archived": True,
-                        "name": "other-repo",
-                        "id": 1001,
-                        "license": {"key": "mit"},
-                        "mirror_url": False,
-                        "topics": ["topic2"],
-                        "security_and_analysis": {
-                            "secret_scanning": {"status": "disabled"}
-                        },
-                    },
-                ],
-                200,
-            )
-        else:
-            return MockResponse([], 200)
+                },
+            ],
+            200,
+        )
     elif args[0] == "https://api.github.com/repos/valid-org/other-repo/issues":
-        if "page" not in kwargs["params"] or kwargs["params"]["page"] == 1:
-            return MockResponse(
-                [
-                    {
-                        "html_url": "https://github.com/valid-org/other-repo/issues/77",
-                        "labels": [
-                            {"name": "label1", "id": 5001},
-                            {"name": "label2", "id": 5002},
-                        ],
-                        "locked": False,
-                        "id": 77,
-                        "state_reason": None,
-                        "user": {"login": "user1", "id": 3000},
-                        "updated_at": "2022-07-03T18:27:30Z",
-                    },
-                ],
-                200,
-            )
-        else:
-            return MockResponse([], 200)
+        return MockResponse(
+            [
+                {
+                    "html_url": "https://github.com/valid-org/other-repo/issues/77",
+                    "labels": [
+                        {"name": "label1", "id": 5001},
+                        {"name": "label2", "id": 5002},
+                    ],
+                    "locked": False,
+                    "id": 77,
+                    "state_reason": None,
+                    "user": {"login": "user1", "id": 3000},
+                    "updated_at": "2022-07-03T18:27:30Z",
+                },
+            ],
+            200,
+        )
     elif args[0] == "https://api.github.com/repos/valid-org/valid-repo/issues":
         if "since" in kwargs["params"]:
             if kwargs["params"]["since"] == "2022-06-22T12:33:47Z":
-                if "page" not in kwargs["params"] or kwargs["params"]["page"] == 1:
-                    return MockResponse(
-                        [
-                            {
-                                "html_url": "https://github.com/valid-org/valid-repo/issues/1",
-                                "labels": [{"name": "label1", "id": 2001}],
-                                "locked": False,
-                                "id": 1,
-                                "state_reason": None,
-                                "user": {"login": "user1", "id": 3000},
-                                "updated_at": "2022-07-01T18:27:30Z",
-                            },
-                            {
-                                "html_url": "https://github.com/valid-org/valid-repo/issues/2",
-                                "labels": [{"name": "label2", "id": 2002}],
-                                "locked": False,
-                                "id": 2,
-                                "state_reason": None,
-                                "user": {"login": "user1", "id": 3000},
-                                "updated_at": "2022-07-02T18:27:30Z",
-                            },
-                            {
-                                "html_url": "https://github.com/valid-org/valid-repo/issues/3",
-                                "labels": [
-                                    {"name": "label1", "id": 2001},
-                                    {"name": "label2", "id": 2002},
-                                ],
-                                "locked": False,
-                                "id": 3,
-                                "state_reason": None,
-                                "user": {"login": "user1", "id": 3000},
-                                "updated_at": "2022-07-03T18:27:30Z",
-                            },
-                            {
-                                "html_url": "https://github.com/valid-org/valid-repo/issues/4",
-                                "labels": [],
-                                "locked": False,
-                                "id": 4,
-                                "state_reason": None,
-                                "user": {"login": "user1", "id": 3000},
-                                "updated_at": "2022-07-04T18:27:30Z",
-                            },
-                        ],
-                        200,
-                    )
-                else:
-                    return MockResponse([], 200)
-            elif kwargs["params"]["since"] == "2022-07-02T20:04:31Z":
-                if "page" not in kwargs["params"] or kwargs["params"]["page"] == 1:
-                    return MockResponse(
-                        [
-                            {
-                                "html_url": "https://github.com/valid-org/valid-repo/issues/3",
-                                "labels": [
-                                    {"name": "label1", "id": 2001},
-                                    {"name": "label2", "id": 2002},
-                                ],
-                                "locked": False,
-                                "id": 3,
-                                "state_reason": None,
-                                "user": {"login": "user1", "id": 3000},
-                                "updated_at": "2022-07-03T18:27:30Z",
-                            },
-                            {
-                                "html_url": "https://github.com/valid-org/valid-repo/issues/4",
-                                "labels": [],
-                                "locked": False,
-                                "id": 4,
-                                "state_reason": None,
-                                "user": {"login": "user1", "id": 3000},
-                                "updated_at": "2022-07-04T18:27:30Z",
-                            },
-                        ],
-                        200,
-                    )
-                else:
-                    return MockResponse([], 200)
-            elif kwargs["params"]["since"] == "2022-07-07T20:06:38Z":
-                return MockResponse([], 200)
-        elif "labels" in kwargs["params"] and kwargs["params"]["labels"] == "label1":
-            # return things with only 'label1'
-            if "page" not in kwargs["params"] or kwargs["params"]["page"] == 1:
                 return MockResponse(
                     [
                         {
@@ -323,6 +221,15 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
                             "state_reason": None,
                             "user": {"login": "user1", "id": 3000},
                             "updated_at": "2022-07-01T18:27:30Z",
+                        },
+                        {
+                            "html_url": "https://github.com/valid-org/valid-repo/issues/2",
+                            "labels": [{"name": "label2", "id": 2002}],
+                            "locked": False,
+                            "id": 2,
+                            "state_reason": None,
+                            "user": {"login": "user1", "id": 3000},
+                            "updated_at": "2022-07-02T18:27:30Z",
                         },
                         {
                             "html_url": "https://github.com/valid-org/valid-repo/issues/3",
@@ -336,12 +243,76 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
                             "user": {"login": "user1", "id": 3000},
                             "updated_at": "2022-07-03T18:27:30Z",
                         },
+                        {
+                            "html_url": "https://github.com/valid-org/valid-repo/issues/4",
+                            "labels": [],
+                            "locked": False,
+                            "id": 4,
+                            "state_reason": None,
+                            "user": {"login": "user1", "id": 3000},
+                            "updated_at": "2022-07-04T18:27:30Z",
+                        },
                     ],
                     200,
                 )
-            else:
+            elif kwargs["params"]["since"] == "2022-07-02T20:04:31Z":
+                return MockResponse(
+                    [
+                        {
+                            "html_url": "https://github.com/valid-org/valid-repo/issues/3",
+                            "labels": [
+                                {"name": "label1", "id": 2001},
+                                {"name": "label2", "id": 2002},
+                            ],
+                            "locked": False,
+                            "id": 3,
+                            "state_reason": None,
+                            "user": {"login": "user1", "id": 3000},
+                            "updated_at": "2022-07-03T18:27:30Z",
+                        },
+                        {
+                            "html_url": "https://github.com/valid-org/valid-repo/issues/4",
+                            "labels": [],
+                            "locked": False,
+                            "id": 4,
+                            "state_reason": None,
+                            "user": {"login": "user1", "id": 3000},
+                            "updated_at": "2022-07-04T18:27:30Z",
+                        },
+                    ],
+                    200,
+                )
+            elif kwargs["params"]["since"] == "2022-07-07T20:06:38Z":
                 return MockResponse([], 200)
-        elif "page" not in kwargs["params"] or kwargs["params"]["page"] == 1:
+        elif "labels" in kwargs["params"] and kwargs["params"]["labels"] == "label1":
+            # return things with only 'label1'
+            return MockResponse(
+                [
+                    {
+                        "html_url": "https://github.com/valid-org/valid-repo/issues/1",
+                        "labels": [{"name": "label1", "id": 2001}],
+                        "locked": False,
+                        "id": 1,
+                        "state_reason": None,
+                        "user": {"login": "user1", "id": 3000},
+                        "updated_at": "2022-07-01T18:27:30Z",
+                    },
+                    {
+                        "html_url": "https://github.com/valid-org/valid-repo/issues/3",
+                        "labels": [
+                            {"name": "label1", "id": 2001},
+                            {"name": "label2", "id": 2002},
+                        ],
+                        "locked": False,
+                        "id": 3,
+                        "state_reason": None,
+                        "user": {"login": "user1", "id": 3000},
+                        "updated_at": "2022-07-03T18:27:30Z",
+                    },
+                ],
+                200,
+            )
+        else:
             return MockResponse(
                 [
                     {
@@ -374,12 +345,6 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
                         "user": {"login": "user1", "id": 3000},
                         "updated_at": "2022-07-03T18:27:30Z",
                     },
-                ],
-                200,
-            )
-        elif kwargs["params"]["page"] == 2:
-            return MockResponse(
-                [
                     {
                         "html_url": "https://github.com/valid-org/valid-repo/issues/4",
                         "labels": [],
@@ -402,8 +367,6 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
                 ],
                 200,
             )
-        else:
-            return MockResponse([], 200)
 
     # catch-all
     print(
@@ -417,6 +380,7 @@ def mocked_requests_get__getGHAlertsEnabled(*args, **kwargs):
         def __init__(self, json_data, status_code):
             self.json_data = json_data
             self.status_code = status_code
+            self.headers = {}
 
         def json(self):  # pragma: nocover
             return self.json_data
@@ -435,36 +399,31 @@ def mocked_requests_get__getGHAlertsEnabled(*args, **kwargs):
         return MockResponse(None, 404)
     elif args[0] == "https://api.github.com/orgs/valid-org/repos":
         # this is for the _getGHReposAll(org) for secret_scanning
-        if "page" not in kwargs["params"] or kwargs["params"]["page"] == 1:
-            return MockResponse(
-                [
-                    {
-                        "archived": False,
-                        "name": "valid-repo",
-                        "id": 1000,
-                        "license": {"key": "mit"},
-                        "mirror_url": False,
-                        "topics": ["topic1", "topic2"],
-                        "security_and_analysis": {
-                            "secret_scanning": {"status": "enabled"}
-                        },
+        return MockResponse(
+            [
+                {
+                    "archived": False,
+                    "name": "valid-repo",
+                    "id": 1000,
+                    "license": {"key": "mit"},
+                    "mirror_url": False,
+                    "topics": ["topic1", "topic2"],
+                    "security_and_analysis": {"secret_scanning": {"status": "enabled"}},
+                },
+                {
+                    "archived": True,
+                    "name": "disabled-repo",
+                    "id": 1001,
+                    "license": {"key": "mit"},
+                    "mirror_url": False,
+                    "topics": ["topic2"],
+                    "security_and_analysis": {
+                        "secret_scanning": {"status": "disabled"}
                     },
-                    {
-                        "archived": True,
-                        "name": "disabled-repo",
-                        "id": 1001,
-                        "license": {"key": "mit"},
-                        "mirror_url": False,
-                        "topics": ["topic2"],
-                        "security_and_analysis": {
-                            "secret_scanning": {"status": "disabled"}
-                        },
-                    },
-                ],
-                200,
-            )
-        else:
-            return MockResponse([], 200)
+                },
+            ],
+            200,
+        )
 
     # catch-all
     print(
@@ -478,6 +437,7 @@ def mocked_requests_post_getGHAlertsUpdatedReport(*args, **kwargs):
         def __init__(self, json_data, status_code):
             self.json_data = json_data
             self.status_code = status_code
+            self.headers = {}
 
         def json(self):
             return self.json_data
@@ -924,8 +884,7 @@ foo"""
         with cvelib.testutil.capturedOutput() as (output, error):
             cvelib.report.getMissingReport(cves, "valid-org", repos=["valid-repo"])
         self.assertEqual("", error.getvalue().strip())
-        exp = """Fetching list of issues for:
-Issues missing from CVE data:
+        exp = """Issues missing from CVE data:
  https://github.com/valid-org/valid-repo/issues/4"""
         self.assertEqual(exp, output.getvalue().strip())
 
@@ -935,8 +894,7 @@ Issues missing from CVE data:
                 cves, "valid-org", repos=["valid-repo"], excluded_repos=["valid-repo"]
             )
         self.assertEqual("", error.getvalue().strip())
-        exp = """Fetching list of issues for:
-No missing issues for the specified repos."""
+        exp = """No missing issues for the specified repos."""
         self.assertEqual(exp, output.getvalue().strip())
 
         # archived
@@ -944,8 +902,7 @@ No missing issues for the specified repos."""
         with cvelib.testutil.capturedOutput() as (output, error):
             cvelib.report.getMissingReport(cves, "valid-org")
         self.assertEqual("", error.getvalue().strip())
-        exp = """Fetching list of issues for:
-Issues missing from CVE data:
+        exp = """Issues missing from CVE data:
  https://github.com/valid-org/valid-repo/issues/4"""
         self.assertEqual(exp, output.getvalue().strip())
 

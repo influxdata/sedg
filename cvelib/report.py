@@ -21,7 +21,7 @@ from cvelib.common import (
     updateProgress,
     warn,
 )
-from cvelib.net import requestGetRaw, requestGet, queryGHGraphQL
+from cvelib.net import requestGetRaw, queryGHGraphQL, ghAPIGetList
 
 
 #
@@ -62,57 +62,35 @@ def _getGHReposAll(org: str) -> Dict[str, Dict[str, Union[bool, str]]]:
             print("Using previously fetched list of repos")
         return copy.deepcopy(repos_all)
 
-    url: str = "https://api.github.com/orgs/%s/repos" % org
-    headers = {
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-    }
-    params: Dict[str, Union[str, int]] = {
-        "per_page": 100,
-    }
+    # jsons is a single list of res.json()s that are alerts for these URLs
+    jsons: List[Dict[str, Any]] = []
+    _, jsons = ghAPIGetList("https://api.github.com/orgs/%s/repos" % org)
 
-    if sys.stdout.isatty():
-        print("Fetching list of repos: ", end="", flush=True)
+    for repo in jsons:
+        if "name" not in repo:
+            error(
+                "could not find name in response json: '%s'" % repo
+            )  # pragma: nocover
+        name: str = repo["name"]
 
-    count: int = 0
-    while True:
-        count += 1
-        if sys.stdout.isatty():
-            print(".", end="", flush=True)
-        params["page"] = count
+        # Collect interesting info for later use
+        repos_all[name] = {}
+        if "archived" in repo:
+            repos_all[name]["archived"] = repo["archived"]
 
-        resj = requestGet(url, headers=headers, params=params)
-        if len(resj) == 0:
-            if sys.stdout.isatty():
-                print(" done!")
-            break
-
-        for repo in resj:
-            if "name" not in repo:
-                error(
-                    "could not find name in response json: '%s'" % repo
-                )  # pragma: nocover
-            name: str = repo["name"]
-
-            # Collect interesting info for later use
-            repos_all[name] = {}
-            if "archived" in repo:
-                repos_all[name]["archived"] = repo["archived"]
-
-            if "security_and_analysis" not in repo:
-                error(
-                    "could not find 'security_and_analysis' for '%s'. Do you have the right permissions?"
-                    % (name)
-                )  # pragma: nocover
-            if (
-                "secret_scanning" in repo["security_and_analysis"]
-                and "status" in repo["security_and_analysis"]["secret_scanning"]
-                and repo["security_and_analysis"]["secret_scanning"]["status"]
-                == "enabled"
-            ):
-                repos_all[name]["secret_scanning"] = True
-            else:
-                repos_all[name]["secret_scanning"] = False
+        if "security_and_analysis" not in repo:
+            error(
+                "could not find 'security_and_analysis' for '%s'. Do you have the right permissions?"
+                % (name)
+            )  # pragma: nocover
+        if (
+            "secret_scanning" in repo["security_and_analysis"]
+            and "status" in repo["security_and_analysis"]["secret_scanning"]
+            and repo["security_and_analysis"]["secret_scanning"]["status"] == "enabled"
+        ):
+            repos_all[name]["secret_scanning"] = True
+        else:
+            repos_all[name]["secret_scanning"] = False
 
     return copy.deepcopy(repos_all)
 
@@ -127,10 +105,6 @@ def _getGHIssuesForRepo(
 ) -> List[str]:
     """Obtain the list of GitHub issues for the specified repo and org"""
     url: str = "https://api.github.com/repos/%s/%s/issues" % (org, repo)
-    headers = {
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-    }
     params: Dict[str, Union[str, int]] = {
         "per_page": 100,
         "state": "all",
@@ -140,74 +114,53 @@ def _getGHIssuesForRepo(
         params["since"] = epochToISO8601(since)
 
     # Unfortunately, we have to do a separate query per label because sending
-    # params["labels"] = ",".join(labels) doesn't work (the labels are ANDed)
+    # params["labels"] = ",".join(labels) doesn't work (the labels are ANDed).
     query_labels: List[str] = [""]
-    total: int = 1
     if len(labels) > 0:
         query_labels = labels
-        total = len(labels)
 
     issues: Dict[str, List[str]] = {}  # keys are repos, values are lists of issue urls
     query_label: str
-    label_count: int = 0
     for query_label in query_labels:
-        updateProgress(label_count / total, prefix=" %s/%s: " % (org, repo))
-        label_count += 1
+        # get a list of issues for each label
+        if query_label != "":
+            params["labels"] = query_label
 
-        count: int = 0
-        while True:
-            count += 1
-            params["page"] = count
+        rc: int = 0
+        jsons: List[Any] = []
+        rc, jsons = ghAPIGetList(url, params=params, progress=False, do_exit=False)
 
-            if query_label != "":
-                params["labels"] = query_label
+        if rc == 1:
+            return []
+        elif rc == 410:
+            return []
+        elif rc == 404:
+            warn("Skipping %s (%d)" % (url, rc))
+            return []
+        elif rc >= 400:
+            return []
 
-            try:
-                r: requests.Response = requestGetRaw(
-                    url, headers=headers, params=params
-                )
-            except requests.exceptions.RequestException as e:
-                warn("Skipping %s (request error: %s)" % (url, str(e)))
-                return []
+        issue: Dict[str, Any]
+        for issue in jsons:
+            # check if issue has any of the labels that we designated if
+            # present, we should skip
+            if len(skip_labels) > 0 and "labels" in issue:
+                found: bool = False
+                i: Dict[str, Any]
+                for i in issue["labels"]:
+                    if "name" in i and i["name"] in skip_labels:
+                        found = True
+                if found:
+                    continue
 
-            if r.status_code == 410:  # repo turned off issues
-                # warn("Skipping %s (%d) - issues turned off" % (url, r.status_code))
-                return []
-            elif r.status_code == 404:
-                warn("Skipping %s (%d)" % (url, r.status_code))
-                return []
-            elif r.status_code >= 400:
-                error(
-                    "Problem fetching %s:\n%d - %s" % (url, r.status_code, r.json()),
-                    do_exit=False,
-                )
-                return []
+            if "pull_request" in issue and len(issue["pull_request"]) > 0:
+                continue  # skip pull requests
 
-            resj = r.json()
-            if len(resj) == 0:
-                break
-
-            issue: Dict[str, Any]
-            for issue in resj:
-                # check if issue has any of the labels that we designated if
-                # present, we should skip
-                if len(skip_labels) > 0 and "labels" in issue:
-                    found: bool = False
-                    i: Dict[str, Any]
-                    for i in issue["labels"]:
-                        if "name" in i and i["name"] in skip_labels:
-                            found = True
-                    if found:
-                        continue
-
-                if "pull_request" in issue and len(issue["pull_request"]) > 0:
-                    continue  # skip pull requests
-                if "html_url" in issue:
-                    if repo not in issues:
-                        issues[repo] = []
-                    if issue["html_url"] not in issues[repo]:
-                        issues[repo].append(issue["html_url"])
-    updateProgress(label_count / total, prefix=" %s/%s: " % (org, repo))
+            if "html_url" in issue:
+                if repo not in issues:
+                    issues[repo] = []
+                if issue["html_url"] not in issues[repo]:
+                    issues[repo].append(issue["html_url"])
 
     if repo in issues:
         return sorted(copy.deepcopy(issues[repo]))
@@ -259,15 +212,21 @@ def getMissingReport(
     if len(fetch_repos) == 0:
         repo_info = _getGHReposAll(org)
         fetch_repos = list(repo_info.keys())
+    total: int = 1
+    if len(fetch_repos) > 0:
+        total = len(fetch_repos)
 
     name: str = ""
     gh_urls: List[str] = []
-    print("Fetching list of issues for:")
+
+    count: int = 1
     for name in sorted(fetch_repos):
         if name in excluded_repos:
             continue
         if name in repo_info and _repoArchived(repo_info[name]):
             continue
+        updateProgress(count / total, prefix="Collecting issues: ")
+        count += 1
 
         url: str
         for url in _getGHIssuesForRepo(

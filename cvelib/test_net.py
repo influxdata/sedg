@@ -6,6 +6,8 @@ from unittest import TestCase, mock
 import os
 
 import cvelib.net
+import cvelib.testutil
+import cvelib.common
 
 debug: bool = True
 
@@ -27,7 +29,7 @@ class TestNet(TestCase):
             os.environ["GHTOKEN"] = self.orig_ghtoken
             self.orig_ghtoken = None
 
-    def _mock_response(self, status=200, json_data=None):
+    def _mock_response(self, status=200, json_data=None, resp_headers=None):
         """Build a mocked requests response
 
         Example:
@@ -50,6 +52,11 @@ class TestNet(TestCase):
         mr.status_code = status
         if json_data:
             mr.json = mock.Mock(return_value=json_data)
+
+        mr.headers = {}
+        if resp_headers:
+            mr.headers = resp_headers
+
         return mr
 
     @mock.patch("requests.get")
@@ -93,3 +100,37 @@ class TestNet(TestCase):
         rjson = cvelib.net.queryGHGraphQL("foo", headers={})
         self.assertTrue("foo" in rjson)
         self.assertEqual("bar", rjson["foo"])
+
+    @mock.patch("requests.get")
+    def test_ghAPIGetList(self, mock_get):
+        """Test ghAPIGetList()"""
+        url = "https://api.github.com/orgs/valid-org/dependabot/alerts"
+        link1 = '<%s?after=blah1>; rel="next", <%s>; rel="prev"' % (url, url)
+        link2 = '<%s?after=blah2>; rel="prev", <%s>; rel="first"' % (url, url)
+
+        # link with next
+        resp_headers = {"Link": link1}
+        mr = self._mock_response(json_data=[{"foo": "bar"}], resp_headers=resp_headers)
+        mock_get.return_value = mr
+        rc, rjson = cvelib.net.ghAPIGetList(url)
+        self.assertEqual(0, rc)
+        self.assertTrue("foo" in rjson[0])
+        self.assertEqual("bar", rjson[0]["foo"])
+
+        # link without next
+        resp_headers = {"Link": link2}
+        mr = self._mock_response(json_data=[{"foo": "bar"}], resp_headers=resp_headers)
+        mock_get.return_value = mr
+        rc, rjson = cvelib.net.ghAPIGetList(url)
+        self.assertEqual(0, rc)
+        self.assertTrue("foo" in rjson[0])
+        self.assertEqual("bar", rjson[0]["foo"])
+
+        # bad link
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.net.ghAPIGetList("https://bad.link", do_exit=False)
+            self.assertEqual("", output.getvalue().strip())
+            self.assertEqual(
+                "ERROR: ghAPIGet() only supports https://api.github.com/ URLs",
+                error.getvalue().strip(),
+            )
