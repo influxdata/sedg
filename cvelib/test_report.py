@@ -20,6 +20,7 @@ def mocked_requests_get__getGHReposAll(*args, **kwargs):
         def __init__(self, json_data, status_code):
             self.json_data = json_data
             self.status_code = status_code
+            self.headers = {}
 
         def json(self):
             return self.json_data
@@ -59,57 +60,47 @@ def mocked_requests_get__getGHReposAll(*args, **kwargs):
     # but _getGHReposAll() only cares about "name" and "archived". We mock up a
     # subset of the GitHub response.
     #
-    # _getGHReposAll() iterates through page=N parameters until it gets an
+    # _getGHReposAll() uses ghAPIGetList() which has tests for pagination. For
+    # simplicity, return only single pages here
     # empty response. Mock that by putting two repos in page=1, one in page=2
     # and none in page=3.
     if args[0] == "https://api.github.com/orgs/valid-org/repos":
-        if "page" not in kwargs["params"] or kwargs["params"]["page"] == 1:
-            return MockResponse(
-                [
-                    {
-                        "archived": False,
-                        "name": "foo",
-                        "id": 1000,
-                        "license": {"key": "mit"},
-                        "mirror_url": False,
-                        "topics": ["topic1", "topic2"],
-                        "security_and_analysis": {
-                            "secret_scanning": {"status": "enabled"}
-                        },
+        return MockResponse(
+            [
+                {
+                    "archived": False,
+                    "name": "foo",
+                    "id": 1000,
+                    "license": {"key": "mit"},
+                    "mirror_url": False,
+                    "topics": ["topic1", "topic2"],
+                    "security_and_analysis": {"secret_scanning": {"status": "enabled"}},
+                },
+                {
+                    "archived": True,
+                    "name": "bar",
+                    "id": 1001,
+                    "license": {"key": "mit"},
+                    "mirror_url": False,
+                    "topics": ["topic2"],
+                    "security_and_analysis": {
+                        "secret_scanning": {"status": "disabled"}
                     },
-                    {
-                        "archived": True,
-                        "name": "bar",
-                        "id": 1001,
-                        "license": {"key": "mit"},
-                        "mirror_url": False,
-                        "topics": ["topic2"],
-                        "security_and_analysis": {
-                            "secret_scanning": {"status": "disabled"}
-                        },
+                },
+                {
+                    "archived": False,
+                    "name": "baz",
+                    "id": 1002,
+                    "license": {"key": "mit"},
+                    "mirror_url": False,
+                    "topics": ["topic1"],
+                    "security_and_analysis": {
+                        "secret_scanning": {"status": "disabled"}
                     },
-                ],
-                200,
-            )
-        elif kwargs["params"]["page"] == 2:
-            return MockResponse(
-                [
-                    {
-                        "archived": False,
-                        "name": "baz",
-                        "id": 1002,
-                        "license": {"key": "mit"},
-                        "mirror_url": False,
-                        "topics": ["topic1"],
-                        "security_and_analysis": {
-                            "secret_scanning": {"status": "disabled"}
-                        },
-                    },
-                ],
-                200,
-            )
-        else:
-            return MockResponse([], 200)
+                },
+            ],
+            200,
+        )
 
     # catch-all
     print(
@@ -123,6 +114,7 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
         def __init__(self, json_data, status_code):
             self.json_data = json_data
             self.status_code = status_code
+            self.headers = {}
 
         def json(self):
             return self.json_data
@@ -417,6 +409,7 @@ def mocked_requests_get__getGHAlertsEnabled(*args, **kwargs):
         def __init__(self, json_data, status_code):
             self.json_data = json_data
             self.status_code = status_code
+            self.headers = {}
 
         def json(self):  # pragma: nocover
             return self.json_data
@@ -435,36 +428,33 @@ def mocked_requests_get__getGHAlertsEnabled(*args, **kwargs):
         return MockResponse(None, 404)
     elif args[0] == "https://api.github.com/orgs/valid-org/repos":
         # this is for the _getGHReposAll(org) for secret_scanning
-        if "page" not in kwargs["params"] or kwargs["params"]["page"] == 1:
-            return MockResponse(
-                [
-                    {
-                        "archived": False,
-                        "name": "valid-repo",
-                        "id": 1000,
-                        "license": {"key": "mit"},
-                        "mirror_url": False,
-                        "topics": ["topic1", "topic2"],
-                        "security_and_analysis": {
-                            "secret_scanning": {"status": "enabled"}
-                        },
+        return MockResponse(
+            [
+                {
+                    "archived": False,
+                    "name": "valid-repo",
+                    "id": 1000,
+                    "license": {"key": "mit"},
+                    "mirror_url": False,
+                    "topics": ["topic1", "topic2"],
+                    "security_and_analysis": {
+                        "secret_scanning": {"status": "enabled"}
                     },
-                    {
-                        "archived": True,
-                        "name": "disabled-repo",
-                        "id": 1001,
-                        "license": {"key": "mit"},
-                        "mirror_url": False,
-                        "topics": ["topic2"],
-                        "security_and_analysis": {
-                            "secret_scanning": {"status": "disabled"}
-                        },
+                },
+                {
+                    "archived": True,
+                    "name": "disabled-repo",
+                    "id": 1001,
+                    "license": {"key": "mit"},
+                    "mirror_url": False,
+                    "topics": ["topic2"],
+                    "security_and_analysis": {
+                        "secret_scanning": {"status": "disabled"}
                     },
-                ],
-                200,
-            )
-        else:
-            return MockResponse([], 200)
+                },
+            ],
+            200,
+        )
 
     # catch-all
     print(
@@ -478,6 +468,7 @@ def mocked_requests_post_getGHAlertsUpdatedReport(*args, **kwargs):
         def __init__(self, json_data, status_code):
             self.json_data = json_data
             self.status_code = status_code
+            self.headers = {}
 
         def json(self):
             return self.json_data

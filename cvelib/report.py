@@ -21,7 +21,7 @@ from cvelib.common import (
     updateProgress,
     warn,
 )
-from cvelib.net import requestGetRaw, requestGet, queryGHGraphQL
+from cvelib.net import requestGetRaw, requestGet, queryGHGraphQL, ghAPIGetList
 
 
 #
@@ -62,57 +62,35 @@ def _getGHReposAll(org: str) -> Dict[str, Dict[str, Union[bool, str]]]:
             print("Using previously fetched list of repos")
         return copy.deepcopy(repos_all)
 
-    url: str = "https://api.github.com/orgs/%s/repos" % org
-    headers = {
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-    }
-    params: Dict[str, Union[str, int]] = {
-        "per_page": 100,
-    }
+    # jsons is a single list of res.json()s that are alerts for these URLs
+    jsons: List[Dict[str, Any]] = []
+    _, jsons = ghAPIGetList("https://api.github.com/orgs/%s/repos" % org)
 
-    if sys.stdout.isatty():
-        print("Fetching list of repos: ", end="", flush=True)
+    for repo in jsons:
+        if "name" not in repo:
+            error(
+                "could not find name in response json: '%s'" % repo
+            )  # pragma: nocover
+        name: str = repo["name"]
 
-    count: int = 0
-    while True:
-        count += 1
-        if sys.stdout.isatty():
-            print(".", end="", flush=True)
-        params["page"] = count
+        # Collect interesting info for later use
+        repos_all[name] = {}
+        if "archived" in repo:
+            repos_all[name]["archived"] = repo["archived"]
 
-        resj = requestGet(url, headers=headers, params=params)
-        if len(resj) == 0:
-            if sys.stdout.isatty():
-                print(" done!")
-            break
-
-        for repo in resj:
-            if "name" not in repo:
-                error(
-                    "could not find name in response json: '%s'" % repo
-                )  # pragma: nocover
-            name: str = repo["name"]
-
-            # Collect interesting info for later use
-            repos_all[name] = {}
-            if "archived" in repo:
-                repos_all[name]["archived"] = repo["archived"]
-
-            if "security_and_analysis" not in repo:
-                error(
-                    "could not find 'security_and_analysis' for '%s'. Do you have the right permissions?"
-                    % (name)
-                )  # pragma: nocover
-            if (
-                "secret_scanning" in repo["security_and_analysis"]
-                and "status" in repo["security_and_analysis"]["secret_scanning"]
-                and repo["security_and_analysis"]["secret_scanning"]["status"]
-                == "enabled"
-            ):
-                repos_all[name]["secret_scanning"] = True
-            else:
-                repos_all[name]["secret_scanning"] = False
+        if "security_and_analysis" not in repo:
+            error(
+                "could not find 'security_and_analysis' for '%s'. Do you have the right permissions?"
+                % (name)
+            )  # pragma: nocover
+        if (
+            "secret_scanning" in repo["security_and_analysis"]
+            and "status" in repo["security_and_analysis"]["secret_scanning"]
+            and repo["security_and_analysis"]["secret_scanning"]["status"] == "enabled"
+        ):
+            repos_all[name]["secret_scanning"] = True
+        else:
+            repos_all[name]["secret_scanning"] = False
 
     return copy.deepcopy(repos_all)
 
