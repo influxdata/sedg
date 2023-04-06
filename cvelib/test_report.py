@@ -459,7 +459,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "dismissed_comment": "some comment",
             "dismissed_reason": "tolerable",
             "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/1",
-            "repository": {"name": "valid-repo"},
+            "repository": {"name": "valid-repo", "private": False},
             "security_advisory": {
                 "ghsa_id": "GHSA-a",
                 "severity": "low",
@@ -478,7 +478,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "dismissed_comment": None,
             "dismissed_reason": None,
             "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/3",
-            "repository": {"name": "valid-repo"},
+            "repository": {"name": "valid-repo", "private": False},
             "security_advisory": {
                 "ghsa_id": "GHSA-b",
                 "severity": "moderate",
@@ -497,7 +497,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "dismissed_comment": None,
             "dismissed_reason": None,
             "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/4",
-            "repository": {"name": "valid-repo"},
+            "repository": {"name": "valid-repo", "private": False},
             "security_advisory": {
                 "ghsa_id": "GHSA-c",
                 "severity": "moderate",
@@ -516,7 +516,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "dismissed_comment": None,
             "dismissed_reason": None,
             "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/5",
-            "repository": {"name": "valid-repo"},
+            "repository": {"name": "valid-repo", "private": False},
             "security_advisory": {
                 "ghsa_id": "GHSA-d",
                 "severity": "unknown",
@@ -533,7 +533,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "resolution_comment": "some secret comment",
             "resolution": "revoked",
             "html_url": "https://github.com/valid-org/valid-repo/security/secret-scanning/20",
-            "repository": {"name": "valid-repo"},
+            "repository": {"name": "valid-repo", "private": False},
         },
         {
             "created_at": "2022-07-05T18:15:30Z",
@@ -543,7 +543,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "resolution_comment": None,
             "resolution": None,
             "html_url": "https://github.com/valid-org/valid-repo/security/secret-scanning/21",
-            "repository": {"name": "valid-repo"},
+            "repository": {"name": "valid-repo", "private": False},
         },
     ]
 
@@ -555,7 +555,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "dismissed_comment": "some code comment",
             "dismissed_reason": "false positive",
             "html_url": "https://github.com/valid-org/valid-repo/security/code-scanning/30",
-            "repository": {"name": "valid-repo"},
+            "repository": {"name": "valid-repo", "private": False},
             "rule": {
                 "description": "Some Code Finding",
                 "security_severity_level": "high",
@@ -568,7 +568,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "dismissed_comment": None,
             "dismissed_reason": None,
             "html_url": "https://github.com/valid-org/valid-repo/security/code-scanning/31",
-            "repository": {"name": "valid-repo"},
+            "repository": {"name": "valid-repo", "private": False},
             "rule": {
                 "description": "Some Other Code Finding",
                 "security_severity_level": "moderate",
