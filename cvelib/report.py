@@ -674,7 +674,11 @@ def _parseAlert(alert: Dict[str, Any]) -> Tuple[str, Dict[str, str]]:
     # secret scanning specific
     # NOTE: the location of the secret needs another API call. For now, skip
     if "secret_type_display_name" in alert:
-        a["severity"] = "high"  # default to 'high'
+        # if repo is public, suggest high priority, otherwise medium
+        a["severity"] = "high"
+        if a["private"].lower() == "true":
+            a["severity"] = "medium"
+
         a["alert_type"] = "secret-scanning"
         a["secret_type_display_name"] = alert["secret_type_display_name"]
 
