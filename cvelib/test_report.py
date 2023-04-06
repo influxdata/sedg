@@ -1315,14 +1315,6 @@ Updated issues:
         exp = "valid-repo resolved alerts: 0"
         self.assertEqual(exp, output.getvalue().strip())
 
-        with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report._printGHAlertsSummary(
-                "valid-org", "valid-repo", [], "dismissed"
-            )
-        self.assertEqual("", error.getvalue().strip())
-        exp = "valid-repo dismissed alerts: 0"
-        self.assertEqual(exp, output.getvalue().strip())
-
         with mock.patch.object(
             cvelib.common.error,
             "__defaults__",
@@ -1391,22 +1383,7 @@ valid-repo updated alerts: 5
 
 Resolved alerts:
 
-valid-repo resolved alerts: 1
-  Some Leaked Secret
-    - severity: high
-    - created: 2022-07-01T18:15:30Z
-    - resolved: 2022-07-02T18:15:30Z
-    - reason: revoked
-    - comment: some secret comment
-    - by: ghuser2
-    - url: https://github.com/valid-org/valid-repo/security/secret-scanning/20
-
-  References:
-  - https://github.com/valid-org/valid-repo/security/secret-scanning
-
-Dismissed alerts:
-
-valid-repo dismissed alerts: 2
+valid-repo resolved alerts: 3
   Some Code Finding
     - severity: high
     - created: 2022-07-01T17:15:30Z
@@ -1427,9 +1404,19 @@ valid-repo dismissed alerts: 2
     - advisory: https://github.com/advisories/GHSA-a
     - url: https://github.com/valid-org/valid-repo/security/dependabot/1
 
+  Some Leaked Secret
+    - severity: high
+    - created: 2022-07-01T18:15:30Z
+    - resolved: 2022-07-02T18:15:30Z
+    - reason: revoked
+    - comment: some secret comment
+    - by: ghuser2
+    - url: https://github.com/valid-org/valid-repo/security/secret-scanning/20
+
   References:
   - https://github.com/valid-org/valid-repo/security/code-scanning
-  - https://github.com/valid-org/valid-repo/security/dependabot"""
+  - https://github.com/valid-org/valid-repo/security/dependabot
+  - https://github.com/valid-org/valid-repo/security/secret-scanning"""
         self.assertEqual(exp, output.getvalue().strip())
 
         # with_templates = false and one known CVE
@@ -1494,22 +1481,7 @@ valid-repo updated alerts: 5
 
 Resolved alerts:
 
-valid-repo resolved alerts: 1
-  Some Leaked Secret
-    - severity: high
-    - created: 2022-07-01T18:15:30Z
-    - resolved: 2022-07-02T18:15:30Z
-    - reason: revoked
-    - comment: some secret comment
-    - by: ghuser2
-    - url: https://github.com/valid-org/valid-repo/security/secret-scanning/20
-
-  References:
-  - https://github.com/valid-org/valid-repo/security/secret-scanning
-
-Dismissed alerts:
-
-valid-repo dismissed alerts: 2
+valid-repo resolved alerts: 3
   Some Code Finding
     - severity: high
     - created: 2022-07-01T17:15:30Z
@@ -1530,9 +1502,19 @@ valid-repo dismissed alerts: 2
     - advisory: https://github.com/advisories/GHSA-a
     - url: https://github.com/valid-org/valid-repo/security/dependabot/1
 
+  Some Leaked Secret
+    - severity: high
+    - created: 2022-07-01T18:15:30Z
+    - resolved: 2022-07-02T18:15:30Z
+    - reason: revoked
+    - comment: some secret comment
+    - by: ghuser2
+    - url: https://github.com/valid-org/valid-repo/security/secret-scanning/20
+
   References:
   - https://github.com/valid-org/valid-repo/security/code-scanning
-  - https://github.com/valid-org/valid-repo/security/dependabot"""
+  - https://github.com/valid-org/valid-repo/security/dependabot
+  - https://github.com/valid-org/valid-repo/security/secret-scanning"""
         self.assertEqual(exp, output.getvalue().strip())
 
         # with_templates = true
@@ -1676,7 +1658,9 @@ Resolved alerts:
 Please update dependabot flagged dependencies in valid-repo
 
 The following alerts were issued:
+- [ ] [Some Code Finding](https://github.com/valid-org/valid-repo/security/code-scanning/30) (high)
 - [ ] [Some Leaked Secret](https://github.com/valid-org/valid-repo/security/secret-scanning/20) (high)
+- [ ] [github.com/foo/bar](https://github.com/valid-org/valid-repo/security/dependabot/1) (low)
 
 Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
 
@@ -1685,6 +1669,8 @@ Thanks!
 References:
  * https://docs.influxdata.io/development/security/issue_handling/
  * https://docs.influxdata.io/development/security/issue_response/#developers
+ * https://github.com/valid-org/valid-repo/security/code-scanning
+ * https://github.com/valid-org/valid-repo/security/dependabot
  * https://github.com/valid-org/valid-repo/security/secret-scanning
 
 ## end template
@@ -1696,11 +1682,28 @@ CloseDate:
 PublicDate:
 CRD:
 References:
+ https://github.com/valid-org/valid-repo/security/code-scanning/30
+ https://github.com/valid-org/valid-repo/security/dependabot/1
  https://github.com/valid-org/valid-repo/security/secret-scanning/20
+ https://github.com/advisories/GHSA-a (github.com/foo/bar)
 Description:
  Please update dependabot flagged dependencies in valid-repo
+ - [ ] Some Code Finding (high)
  - [ ] Some Leaked Secret (high)
+ - [ ] github.com/foo/bar (low)
 GitHub-Advanced-Security:
+ - type: code-scanning
+   description: Some Code Finding
+   severity: high
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/code-scanning/30
+ - type: dependabot
+   dependency: github.com/foo/bar
+   detectedIn: go.sum
+   severity: low
+   advisory: https://github.com/advisories/GHSA-a
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/dependabot/1
  - type: secret-scanning
    secret: Some Leaked Secret
    detectedIn: tbd
@@ -1719,80 +1722,7 @@ Patches_valid-repo:
 git/valid-org_valid-repo: needs-triage
 ## end CVE template
 
-valid-repo resolved alerts: 1
-  Some Leaked Secret
-    - severity: high
-    - created: 2022-07-01T18:15:30Z
-    - resolved: 2022-07-02T18:15:30Z
-    - reason: revoked
-    - comment: some secret comment
-    - by: ghuser2
-    - url: https://github.com/valid-org/valid-repo/security/secret-scanning/20
-
-  References:
-  - https://github.com/valid-org/valid-repo/security/secret-scanning
-
-Dismissed alerts:
-
-## valid-repo template
-Please update dependabot flagged dependencies in valid-repo
-
-The following alerts were issued:
-- [ ] [Some Code Finding](https://github.com/valid-org/valid-repo/security/code-scanning/30) (high)
-- [ ] [github.com/foo/bar](https://github.com/valid-org/valid-repo/security/dependabot/1) (low)
-
-Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
-
-Thanks!
-
-References:
- * https://docs.influxdata.io/development/security/issue_handling/
- * https://docs.influxdata.io/development/security/issue_response/#developers
- * https://github.com/valid-org/valid-repo/security/code-scanning
- * https://github.com/valid-org/valid-repo/security/dependabot
-
-## end template
-
-## valid-repo CVE template
-Candidate: CVE-%s-NNNN
-OpenDate: %s
-CloseDate:
-PublicDate:
-CRD:
-References:
- https://github.com/valid-org/valid-repo/security/code-scanning/30
- https://github.com/valid-org/valid-repo/security/dependabot/1
- https://github.com/advisories/GHSA-a (github.com/foo/bar)
-Description:
- Please update dependabot flagged dependencies in valid-repo
- - [ ] Some Code Finding (high)
- - [ ] github.com/foo/bar (low)
-GitHub-Advanced-Security:
- - type: code-scanning
-   description: Some Code Finding
-   severity: high
-   status: needs-triage
-   url: https://github.com/valid-org/valid-repo/security/code-scanning/30
- - type: dependabot
-   dependency: github.com/foo/bar
-   detectedIn: go.sum
-   severity: low
-   advisory: https://github.com/advisories/GHSA-a
-   status: needs-triage
-   url: https://github.com/valid-org/valid-repo/security/dependabot/1
-Notes:
-Mitigation:
-Bugs:
-Priority: high
-Discovered-by: gh-dependabot
-Assigned-to:
-CVSS:
-
-Patches_valid-repo:
-git/valid-org_valid-repo: needs-triage
-## end CVE template
-
-valid-repo dismissed alerts: 2
+valid-repo resolved alerts: 3
   Some Code Finding
     - severity: high
     - created: 2022-07-01T17:15:30Z
@@ -1813,11 +1743,19 @@ valid-repo dismissed alerts: 2
     - advisory: https://github.com/advisories/GHSA-a
     - url: https://github.com/valid-org/valid-repo/security/dependabot/1
 
+  Some Leaked Secret
+    - severity: high
+    - created: 2022-07-01T18:15:30Z
+    - resolved: 2022-07-02T18:15:30Z
+    - reason: revoked
+    - comment: some secret comment
+    - by: ghuser2
+    - url: https://github.com/valid-org/valid-repo/security/secret-scanning/20
+
   References:
   - https://github.com/valid-org/valid-repo/security/code-scanning
-  - https://github.com/valid-org/valid-repo/security/dependabot""" % (
-            "%d" % (now.year),
-            "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
+  - https://github.com/valid-org/valid-repo/security/dependabot
+  - https://github.com/valid-org/valid-repo/security/secret-scanning""" % (
             "%d" % (now.year),
             "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
             "%d" % (now.year),
@@ -1924,9 +1862,9 @@ valid-repo updated alerts: 3
   References:
   - https://github.com/valid-org/valid-repo/security/dependabot
 
-Dismissed alerts:
+Resolved alerts:
 
-valid-repo dismissed alerts: 1
+valid-repo resolved alerts: 1
   github.com/foo/bar
     - severity: low
     - created: 2022-07-01T18:27:30Z
@@ -2050,7 +1988,7 @@ valid-repo updated alerts: 3
   References:
   - https://github.com/valid-org/valid-repo/security/dependabot
 
-Dismissed alerts:
+Resolved alerts:
 
 ## valid-repo template
 Please update dependabot flagged dependencies in valid-repo
@@ -2101,7 +2039,7 @@ Patches_valid-repo:
 git/valid-org_valid-repo: needs-triage
 ## end CVE template
 
-valid-repo dismissed alerts: 1
+valid-repo resolved alerts: 1
   github.com/foo/bar
     - severity: low
     - created: 2022-07-01T18:27:30Z
@@ -2143,9 +2081,9 @@ valid-repo updated alerts: 1
   References:
   - https://github.com/valid-org/valid-repo/security/code-scanning
 
-Dismissed alerts:
+Resolved alerts:
 
-valid-repo dismissed alerts: 1
+valid-repo resolved alerts: 1
   Some Code Finding
     - severity: high
     - created: 2022-07-01T17:15:30Z
@@ -2227,7 +2165,7 @@ valid-repo updated alerts: 1
   References:
   - https://github.com/valid-org/valid-repo/security/code-scanning
 
-Dismissed alerts:
+Resolved alerts:
 
 ## valid-repo template
 Please update dependabot flagged dependencies in valid-repo
@@ -2275,7 +2213,7 @@ Patches_valid-repo:
 git/valid-org_valid-repo: needs-triage
 ## end CVE template
 
-valid-repo dismissed alerts: 1
+valid-repo resolved alerts: 1
   Some Code Finding
     - severity: high
     - created: 2022-07-01T17:15:30Z
