@@ -78,6 +78,9 @@ def _getGHReposAll(org: str) -> Dict[str, Dict[str, Union[bool, str]]]:
         if "archived" in repo:
             repos_all[name]["archived"] = repo["archived"]
 
+        if "private" in repo:
+            repos_all[name]["private"] = repo["private"]
+
         if "security_and_analysis" not in repo:
             error(
                 "could not find 'security_and_analysis' for '%s'. Do you have the right permissions?"
@@ -625,9 +628,12 @@ def _parseAlert(alert: Dict[str, Any]) -> Tuple[str, Dict[str, str]]:
 
     # common dicts
     repo: str = alert["repository"]["name"]
+
     for k in ["dismissed_by", "resolved_by"]:
         if k in alert and alert[k] is not None:
             a[k] = alert[k]["login"]
+
+    a["private"] = str(alert["repository"]["private"])
 
     # simple key/value
     for k in [
@@ -668,7 +674,11 @@ def _parseAlert(alert: Dict[str, Any]) -> Tuple[str, Dict[str, str]]:
     # secret scanning specific
     # NOTE: the location of the secret needs another API call. For now, skip
     if "secret_type_display_name" in alert:
-        a["severity"] = "high"  # default to 'high'
+        # if repo is public, suggest high priority, otherwise medium
+        a["severity"] = "high"
+        if a["private"].lower() == "true":
+            a["severity"] = "medium"
+
         a["alert_type"] = "secret-scanning"
         a["secret_type_display_name"] = alert["secret_type_display_name"]
 

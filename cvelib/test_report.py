@@ -459,7 +459,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "dismissed_comment": "some comment",
             "dismissed_reason": "tolerable",
             "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/1",
-            "repository": {"name": "valid-repo"},
+            "repository": {"name": "valid-repo", "private": False},
             "security_advisory": {
                 "ghsa_id": "GHSA-a",
                 "severity": "low",
@@ -478,7 +478,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "dismissed_comment": None,
             "dismissed_reason": None,
             "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/3",
-            "repository": {"name": "valid-repo"},
+            "repository": {"name": "valid-repo", "private": False},
             "security_advisory": {
                 "ghsa_id": "GHSA-b",
                 "severity": "moderate",
@@ -497,7 +497,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "dismissed_comment": None,
             "dismissed_reason": None,
             "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/4",
-            "repository": {"name": "valid-repo"},
+            "repository": {"name": "valid-repo", "private": False},
             "security_advisory": {
                 "ghsa_id": "GHSA-c",
                 "severity": "moderate",
@@ -516,7 +516,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "dismissed_comment": None,
             "dismissed_reason": None,
             "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/5",
-            "repository": {"name": "valid-repo"},
+            "repository": {"name": "valid-repo", "private": False},
             "security_advisory": {
                 "ghsa_id": "GHSA-d",
                 "severity": "unknown",
@@ -533,7 +533,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "resolution_comment": "some secret comment",
             "resolution": "revoked",
             "html_url": "https://github.com/valid-org/valid-repo/security/secret-scanning/20",
-            "repository": {"name": "valid-repo"},
+            "repository": {"name": "valid-repo", "private": False},
         },
         {
             "created_at": "2022-07-05T18:15:30Z",
@@ -543,7 +543,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "resolution_comment": None,
             "resolution": None,
             "html_url": "https://github.com/valid-org/valid-repo/security/secret-scanning/21",
-            "repository": {"name": "valid-repo"},
+            "repository": {"name": "valid-repo", "private": False},
         },
     ]
 
@@ -555,7 +555,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "dismissed_comment": "some code comment",
             "dismissed_reason": "false positive",
             "html_url": "https://github.com/valid-org/valid-repo/security/code-scanning/30",
-            "repository": {"name": "valid-repo"},
+            "repository": {"name": "valid-repo", "private": False},
             "rule": {
                 "description": "Some Code Finding",
                 "security_severity_level": "high",
@@ -568,7 +568,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "dismissed_comment": None,
             "dismissed_reason": None,
             "html_url": "https://github.com/valid-org/valid-repo/security/code-scanning/31",
-            "repository": {"name": "valid-repo"},
+            "repository": {"name": "valid-repo", "private": False},
             "rule": {
                 "description": "Some Other Code Finding",
                 "security_severity_level": "moderate",
@@ -580,6 +580,11 @@ def _getMockedAlertsJSON(alert_type="all"):
         return dependabot
     if alert_type == "secret-scanning":
         return secret
+    if alert_type == "secret-scanning-private":
+        tmp = copy.deepcopy(secret)
+        tmp[0]["repository"]["private"] = True
+        tmp[1]["repository"]["private"] = True
+        return tmp
     if alert_type == "code-scanning":
         return code
     return dependabot + secret + code
@@ -671,6 +676,30 @@ def mocked_requests_get__getGHAlertsAllSecret(*args, **kwargs):
         return MockResponse([], 200)
     elif args[0] == "https://api.github.com/orgs/valid-org/secret-scanning/alerts":
         return MockResponse(_getMockedAlertsJSON("secret-scanning"), 200)
+    elif args[0] == "https://api.github.com/orgs/valid-org/code-scanning/alerts":
+        return MockResponse([], 200)
+
+    # catch-all
+    print(
+        "DEBUG: should be unreachable: args='%s', kwargs='%s'" % (args, kwargs)
+    )  # pragma: nocover
+    assert False  # pragma: nocover
+
+
+def mocked_requests_get__getGHAlertsAllSecretPrivate(*args, **kwargs):
+    class MockResponse:
+        def __init__(self, json_data, status_code):
+            self.json_data = json_data
+            self.status_code = status_code
+            self.headers = {}
+
+        def json(self):  # pragma: no cover
+            return self.json_data
+
+    if args[0] == "https://api.github.com/orgs/valid-org/dependabot/alerts":
+        return MockResponse([], 200)
+    elif args[0] == "https://api.github.com/orgs/valid-org/secret-scanning/alerts":
+        return MockResponse(_getMockedAlertsJSON("secret-scanning-private"), 200)
     elif args[0] == "https://api.github.com/orgs/valid-org/code-scanning/alerts":
         return MockResponse([], 200)
 
@@ -2437,6 +2466,45 @@ valid-repo resolved alerts: 1
             "%d" % (now.year),
             "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
         )
+        self.assertEqual(exp, output.getvalue().strip())
+
+    @mock.patch(
+        "requests.get", side_effect=mocked_requests_get__getGHAlertsAllSecretPrivate
+    )
+    def test_getGHAlertsReportSecretPrivate(self, _):  # 2nd arg is mock_get
+        """Test getGHAlertsReport() - secret-scanning (private repo)"""
+        self.maxDiff = 16384
+
+        # with_templates = false
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getGHAlertsReport(
+                [], "valid-org", repos=["valid-repo"], alert_types=["secret-scanning"]
+            )
+        self.assertEqual("", error.getvalue().strip())
+        exp = """Alerts:
+valid-repo updated alerts: 1
+  Some Other Leaked Secret
+    - severity: medium
+    - created: 2022-07-05T18:15:30Z
+    - url: https://github.com/valid-org/valid-repo/security/secret-scanning/21
+
+  References:
+  - https://github.com/valid-org/valid-repo/security/secret-scanning
+
+Resolved alerts:
+
+valid-repo resolved alerts: 1
+  Some Leaked Secret
+    - severity: medium
+    - created: 2022-07-01T18:15:30Z
+    - resolved: 2022-07-02T18:15:30Z
+    - reason: revoked
+    - comment: some secret comment
+    - by: ghuser2
+    - url: https://github.com/valid-org/valid-repo/security/secret-scanning/20
+
+  References:
+  - https://github.com/valid-org/valid-repo/security/secret-scanning"""
         self.assertEqual(exp, output.getvalue().strip())
 
     #
