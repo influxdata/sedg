@@ -72,7 +72,11 @@ class CVE(object):
         self.references: List[str] = []
         self.description: List[str] = []
         self.notes: List[str] = []
-        self.ghas: List[Union[cvelib.github.GHDependabot, cvelib.github.GHSecret]] = []
+        self.ghas: List[
+            Union[
+                cvelib.github.GHDependabot, cvelib.github.GHSecret, cvelib.github.GHCode
+            ]
+        ] = []
         self.mitigation: List[str] = []
         self.bugs: List[str] = []
         self.priority: str = ""
@@ -882,6 +886,8 @@ def checkSyntaxFile(
             needle = "gh-dependabot"
         elif isinstance(item, cvelib.github.GHSecret):
             needle = "gh-secret"
+        elif isinstance(item, cvelib.github.GHCode):
+            needle = "gh-code"
 
         if needle not in seen:
             if (
@@ -1450,7 +1456,9 @@ def collectGHAlertUrls(cves: List[CVE]) -> Tuple[Set[str], Set[str]]:
     urls: List[str] = []
     dupes: List[str] = []
     for cve in cves:
-        a: Union[cvelib.github.GHDependabot, cvelib.github.GHSecret]
+        a: Union[
+            cvelib.github.GHDependabot, cvelib.github.GHSecret, cvelib.github.GHCode
+        ]
         for a in cve.ghas:
             if a.url not in urls:
                 urls.append(a.url)

@@ -11,7 +11,7 @@ import time
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, TypedDict, Union
 
 from cvelib.cve import CVE, collectGHAlertUrls
-from cvelib.github import GHDependabot, GHSecret
+from cvelib.github import GHDependabot, GHSecret, GHCode
 from cvelib.common import (
     cve_priorities,
     error,
@@ -245,7 +245,7 @@ def getMissingReport(
 
 # https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28
 def _getGHAlertsEnabled(
-    org: str, repos: List[str] = [], excluded_repos: List[str] = []
+    org: str, alert_type: str, repos: List[str] = [], excluded_repos: List[str] = []
 ) -> Tuple[List[str], List[str]]:
     """Obtain list of GitHub repositories with alerts enabled"""
     repo_info: Dict[str, Dict[str, Union[bool, str]]] = {}
@@ -259,7 +259,12 @@ def _getGHAlertsEnabled(
     disabled: List[str] = []
 
     # Unfortunately there isn't an API to tell us all the repos with dependabot
-    # alerts, so get a list of URLs and then see if enabled or not
+    # or code-scanning alerts, so get a list of URLs and then see if enabled or
+    # not
+    suffix: str = "vulnerability-alerts"
+    if alert_type == "code-scanning":
+        suffix = "code-scanning/alerts"
+
     count: int = 0
     for name in sorted(fetch_repos):
         if name in excluded_repos:
@@ -270,9 +275,10 @@ def _getGHAlertsEnabled(
         count += 1
         updateProgress(count / len(fetch_repos), prefix="Collecting repo status: ")
 
-        url: str = "https://api.github.com/repos/%s/%s/vulnerability-alerts" % (
+        url: str = "https://api.github.com/repos/%s/%s/%s" % (
             org,
             name,
+            suffix,
         )
         headers = {
             "Accept": "application/vnd.github+json",
@@ -281,11 +287,14 @@ def _getGHAlertsEnabled(
         params: Dict[str, Union[str, int]] = {}
 
         res: requests.Response = requestGetRaw(url, headers=headers, params=params)
-        if res.status_code == 204:
+        if res.status_code == 204 or res.status_code == 200:
             # enabled
             enabled.append(name)
-        elif res.status_code == 404:
-            # disabled
+        elif res.status_code == 404 or (
+            res.status_code == 403 and alert_type == "code-scanning"
+        ):
+            # 404 is disabled and 403 is disabled due to GitHub Advanced
+            # Security not enabled
             disabled.append(name)
         else:  # pragma: nocover
             error("Problem fetching %s:\n%d - %s" % (url, res.status_code, res))
@@ -329,23 +338,29 @@ def getGHAlertsStatusReport(
     org: str, repos: List[str] = [], excluded_repos: List[str] = []
 ) -> None:
     """Obtain list of repos that have vulnerability alerts enabled/disabled"""
-    enabled_d: List[str]
-    disabled_d: List[str]
-    enabled_s: List[str]
-    disabled_s: List[str]
-    enabled_d, disabled_d = _getGHAlertsEnabled(
-        org, repos, excluded_repos=excluded_repos
-    )
-    enabled_s, disabled_s = _getGHSecretsScanningEnabled(
-        org, repos, excluded_repos=excluded_repos
+    enabled: List[str]
+    disabled: List[str]
+
+    enabled, disabled = _getGHAlertsEnabled(
+        org, "dependabot", repos, excluded_repos=excluded_repos
     )
     print("Dependabot:")
-    print(" Enabled:\n%s" % "\n".join("  %s" % r for r in enabled_d))
-    print(" Disabled:\n%s" % "\n".join("  %s" % r for r in disabled_d))
+    print(" Enabled:\n%s" % "\n".join("  %s" % r for r in enabled))
+    print(" Disabled:\n%s" % "\n".join("  %s" % r for r in disabled))
 
+    enabled, disabled = _getGHSecretsScanningEnabled(
+        org, repos, excluded_repos=excluded_repos
+    )
     print("\nSecret Scanning:")
-    print(" Enabled:\n%s" % "\n".join("  %s" % r for r in enabled_s))
-    print(" Disabled:\n%s" % "\n".join("  %s" % r for r in disabled_s))
+    print(" Enabled:\n%s" % "\n".join("  %s" % r for r in enabled))
+    print(" Disabled:\n%s" % "\n".join("  %s" % r for r in disabled))
+
+    enabled, disabled = _getGHAlertsEnabled(
+        org, "code-scanning", repos, excluded_repos=excluded_repos
+    )
+    print("\nCode Scanning:")
+    print(" Enabled:\n%s" % "\n".join("  %s" % r for r in enabled))
+    print(" Disabled:\n%s" % "\n".join("  %s" % r for r in disabled))
 
 
 def getUpdatedReport(
@@ -1250,7 +1265,7 @@ def _readStatsGHAS(
     # TODO: type hint
     stats = {}
     for cve in cves:
-        alert: Union[GHDependabot, GHSecret]
+        alert: Union[GHDependabot, GHSecret, GHCode]
         for alert in cve.ghas:
             for pkg in cve.pkgs:
                 if (
@@ -1282,7 +1297,9 @@ def _readStatsGHAS(
 
                 alert_type = "dependabot"
                 if isinstance(alert, GHSecret):
-                    alert_type = "secret"
+                    alert_type = "secret-scanning"
+                elif isinstance(alert, GHCode):
+                    alert_type = "code-scanning"
 
                 if alert_type not in stats[sw]:
                     stats[sw][alert_type] = {}
@@ -1290,6 +1307,8 @@ def _readStatsGHAS(
                 what: str
                 if isinstance(alert, GHSecret):
                     what = alert.secret
+                elif isinstance(alert, GHCode):
+                    what = alert.description
                 else:
                     what = alert.dependency
                 if what not in stats[sw][alert_type]:

@@ -531,6 +531,218 @@ class TestGitHubSecret(TestCase):
                 self.assertEqual(expErr, str(context.exception))
 
 
+class TestGitHubCode(TestCase):
+    """Tests for the GitHub code data and functions"""
+
+    def setUp(self):
+        """Setup functions common for all tests"""
+
+    def tearDown(self):
+        """Teardown functions common for all tests"""
+
+    def _getValid(self):
+        """Returns a valid data structure"""
+        return {
+            "description": "foo",
+            "detectedIn": "path/to/file",
+            "status": "needed",
+            "url": "https://github.com/bar/baz/security/code-scanning/1",
+        }
+
+    def test___init__valid(self):
+        """Test __init__()"""
+        data = self._getValid()
+        cvelib.github.GHCode(data)
+
+    def test___repr__(self):
+        """Test __repr__()"""
+        data = self._getValid()
+        exp = """ - type: code-scanning
+   description: foo
+   detectedIn: path/to/file
+   status: needed
+   url: https://github.com/bar/baz/security/code-scanning/1"""
+
+        ghs = cvelib.github.GHCode(data)
+        self.assertEqual(exp, ghs.__repr__())
+
+    def test___str__(self):
+        """Test __str__()"""
+        data = self._getValid()
+        exp = """ - type: code-scanning
+   description: foo
+   detectedIn: path/to/file
+   status: needed
+   url: https://github.com/bar/baz/security/code-scanning/1"""
+
+        ghs = cvelib.github.GHCode(data)
+        self.assertEqual(exp, ghs.__str__())
+
+    def test__verifyRequired(self):
+        """Test _verifyRequired()"""
+        tsts = [
+            # valid
+            (self._getValid(), None),
+            # invalid
+            (
+                {
+                    "scret": "foo",
+                    "detectedIn": "/path/to/file",
+                    "status": "needed",
+                    "url": "https://github.com/bar/baz/security/code-scanning/1",
+                },
+                "missing required field 'description'",
+            ),
+            (
+                {
+                    "description": "",
+                    "detectedIn": "/path/to/file",
+                    "status": "needed",
+                    "url": "https://github.com/bar/baz/security/code-scanning/1",
+                },
+                "empty required field 'description'",
+            ),
+            (
+                {
+                    "description": "foo\nbar",
+                    "detectedIn": "/path/to/file",
+                    "status": "needed",
+                    "url": "https://github.com/bar/baz/security/code-scanning/1",
+                },
+                "field 'description' should be single line",
+            ),
+            (
+                {
+                    "detectedIn": "/path/to/file",
+                    "status": "needed",
+                    "url": "https://github.com/bar/baz/security/code-scanning/1",
+                },
+                "missing required field 'description'",
+            ),
+            (
+                {
+                    "description": "foo",
+                    "status": "needed",
+                    "url": "https://github.com/bar/baz/security/code-scanning/1",
+                },
+                "missing required field 'detectedIn'",
+            ),
+            (
+                {
+                    "description": "foo",
+                    "detectedIn": "/path/to/file",
+                },
+                "missing required field 'status'",
+            ),
+            (
+                {
+                    "description": "foo",
+                    "detectedIn": "/path/to/file",
+                    "status": "needed",
+                },
+                "missing required field 'url'",
+            ),
+        ]
+
+        for data, expErr in tsts:
+            ghs = cvelib.github.GHCode(self._getValid())
+            if expErr is None:
+                ghs._verifyRequired(data)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    ghs._verifyRequired(data)
+                self.assertEqual(expErr, str(context.exception))
+
+    def test_setCode(self):
+        """Test setCode()"""
+        tsts = [
+            # valid
+            ("foo", None),
+            ("foo bar", None),
+        ]
+
+        for s, expErr in tsts:
+            ghs = cvelib.github.GHCode(self._getValid())
+            ghs.setDescription(s)
+
+    def test_setDetectedIn(self):
+        """Test setDetectedIn()"""
+        tsts = [
+            # valid
+            ("foo", None),
+            ("path/to/bar", None),
+        ]
+
+        for s, expErr in tsts:
+            ghs = cvelib.github.GHCode(self._getValid())
+            ghs.setDetectedIn(s)
+
+    def test_setStatus(self):
+        """Test setStatus()"""
+        tsts = [
+            # valid
+            ("needs-triage", None),
+            ("needed", None),
+            ("released", None),
+            ("dismissed (false-positive; username)", None),
+            ("dismissed (used-in-tests; username)", None),
+            ("dismissed (wont-fix; username)", None),
+            # invalid
+            (
+                "fixed",
+                "invalid code status: fixed. Use 'needs-triage|needed|released|dismissed (...)'",
+            ),
+            (
+                "dismissed",
+                "invalid code status: dismissed. Use 'dismissed (false-positive|used-in-tests|wont-fix; <github username>)",
+            ),
+            (
+                "dismissed (false-positive)",
+                "invalid code status: dismissed (false-positive). Use 'dismissed (false-positive|used-in-tests|wont-fix; <github username>)",
+            ),
+            (
+                "dismissed (false-positive; Jane Doe)",
+                "invalid code status: dismissed (false-positive; Jane Doe). Use 'dismissed (false-positive|used-in-tests|wont-fix; <github username>)",
+            ),
+            (
+                "dismissed (revoked; ghuser1)",
+                "invalid code status: dismissed (revoked; ghuser1). Use 'dismissed (false-positive|used-in-tests|wont-fix; <github username>)",
+            ),
+        ]
+
+        for s, expErr in tsts:
+            ghs = cvelib.github.GHCode(self._getValid())
+            if expErr is None:
+                ghs.setStatus(s)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    ghs.setStatus(s)
+                self.assertEqual(expErr, str(context.exception))
+
+    def test_setUrl(self):
+        """Test setUrl()"""
+        tsts = [
+            # valid
+            ("https://github.com/bar/baz/security/code-scanning/1", None),
+            ("unavailable", None),
+            # invalid
+            ("foo", "invalid code alert url: foo"),
+            (
+                "https://github.com/bar/baz/security/dependabot/1",
+                "invalid code alert url: https://github.com/bar/baz/security/dependabot/1",
+            ),
+        ]
+
+        for s, expErr in tsts:
+            ghs = cvelib.github.GHCode(self._getValid())
+            if expErr is None:
+                ghs.setUrl(s)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    ghs.setUrl(s)
+                self.assertEqual(expErr, str(context.exception))
+
+
 class TestGitHubCommon(TestCase):
     """Tests for the GitHub common functions"""
 
@@ -553,7 +765,12 @@ class TestGitHubCommon(TestCase):
    secret: bar
    detectedIn: path/to/files
    status: needed
-   url: https://github.com/bar/baz/security/secret-scanning/1"""
+   url: https://github.com/bar/baz/security/secret-scanning/1
+ - type: code-scanning
+   description: baz
+   detectedIn: path/to/files
+   status: needed
+   url: https://github.com/bar/baz/security/code-scanning/1"""
 
     def test_parse(self):
         """Test parse()"""
@@ -588,7 +805,7 @@ class TestGitHubCommon(TestCase):
                 if s == "":
                     self.assertEqual(0, len(res))
                 else:
-                    self.assertEqual(2, len(res))
+                    self.assertEqual(3, len(res))
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
                     cvelib.github.parse(s)
