@@ -693,7 +693,7 @@ def _getGHAlertsAll(
     return copy.deepcopy(alerts)
 
 
-def getGHAlertsUpdatedReport(
+def getGHAlertsReport(
     cves: List[CVE],
     org: str,
     since: int = 0,

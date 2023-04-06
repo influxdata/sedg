@@ -1253,18 +1253,16 @@ Updated issues:
             self.assertEqual(exp, error.getvalue().strip())
 
     #
-    # getGHAlertsUpdatedReport()
+    # getGHAlertsReport()
     #
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHAlertsAllFull)
-    def test_getGHAlertsUpdatedReport(self, _):  # 2nd arg is mock_get
-        """Test getGHAlertsUpdatedReport()"""
+    def test_getGHAlertsReport(self, _):  # 2nd arg is mock_get
+        """Test getGHAlertsReport()"""
         self.maxDiff = 16384
 
         # with_templates = false
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getGHAlertsUpdatedReport(
-                [], "valid-org", repos=["valid-repo"]
-            )
+            cvelib.report.getGHAlertsReport([], "valid-org", repos=["valid-repo"])
         self.assertEqual("", error.getvalue().strip())
         exp = """Alerts:
 valid-repo updated alerts: 5
@@ -1367,9 +1365,7 @@ valid-repo dismissed alerts: 2
         cve.setData(c)
         cves.append(cve)
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getGHAlertsUpdatedReport(
-                cves, "valid-org", repos=["valid-repo"]
-            )
+            cvelib.report.getGHAlertsReport(cves, "valid-org", repos=["valid-repo"])
         self.assertEqual("", error.getvalue().strip())
         exp = """Alerts:
 valid-repo updated alerts: 5
@@ -1454,7 +1450,7 @@ valid-repo dismissed alerts: 2
 
         # with_templates = true
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getGHAlertsUpdatedReport(
+            cvelib.report.getGHAlertsReport(
                 [], "valid-org", repos=["valid-repo"], with_templates=True
             )
         self.assertEqual("", error.getvalue().strip())
@@ -1744,7 +1740,7 @@ valid-repo dismissed alerts: 2
 
         # some updated since 1656792271 (2022-07-02)
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getGHAlertsUpdatedReport(
+            cvelib.report.getGHAlertsReport(
                 [], "valid-org", repos=["valid-repo"], since=1656792271
             )
         self.assertEqual("", error.getvalue().strip())
@@ -1789,7 +1785,7 @@ valid-repo updated alerts: 5
 
         # none updated since 1657224398 (2022-07-07)
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getGHAlertsUpdatedReport(
+            cvelib.report.getGHAlertsReport(
                 [], "valid-org", repos=["valid-repo"], since=1657224398
             )
         self.assertEqual("", error.getvalue().strip())
@@ -1798,22 +1794,20 @@ valid-repo updated alerts: 5
 
         # error
         with self.assertRaises(ValueError):
-            cvelib.report.getGHAlertsUpdatedReport(
+            cvelib.report.getGHAlertsReport(
                 [], "valid-org", repos=["valid-repo"], since=-1
             )
 
     @mock.patch(
         "requests.get", side_effect=mocked_requests_get__getGHAlertsAllDependabot
     )
-    def test_getGHAlertsUpdatedReportDependabot(self, _):  # 2nd arg is mock_get
-        """Test getGHAlertsUpdatedReport() - dependabot"""
+    def test_getGHAlertsReportDependabot(self, _):  # 2nd arg is mock_get
+        """Test getGHAlertsReport() - dependabot"""
         self.maxDiff = 16384
 
         # with_templates = false
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getGHAlertsUpdatedReport(
-                [], "valid-org", repos=["valid-repo"]
-            )
+            cvelib.report.getGHAlertsReport([], "valid-org", repos=["valid-repo"])
         self.assertEqual("", error.getvalue().strip())
         exp = """Alerts:
 valid-repo updated alerts: 3
@@ -1861,7 +1855,7 @@ valid-repo dismissed alerts: 1
 
         # with_templates = true
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getGHAlertsUpdatedReport(
+            cvelib.report.getGHAlertsReport(
                 [], "valid-org", repos=["valid-repo"], with_templates=True
             )
         self.assertEqual("", error.getvalue().strip())
@@ -2036,15 +2030,13 @@ valid-repo dismissed alerts: 1
         self.assertEqual(exp, output.getvalue().strip())
 
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHAlertsAllCode)
-    def test_getGHAlertsUpdatedReportCode(self, _):  # 2nd arg is mock_get
-        """Test getGHAlertsUpdatedReport() - code-scanning"""
+    def test_getGHAlertsReportCode(self, _):  # 2nd arg is mock_get
+        """Test getGHAlertsReport() - code-scanning"""
         self.maxDiff = 16384
 
         # with_templates = false
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getGHAlertsUpdatedReport(
-                [], "valid-org", repos=["valid-repo"]
-            )
+            cvelib.report.getGHAlertsReport([], "valid-org", repos=["valid-repo"])
         self.assertEqual("", error.getvalue().strip())
         exp = """Alerts:
 valid-repo updated alerts: 1
@@ -2074,7 +2066,7 @@ valid-repo dismissed alerts: 1
 
         # with_templates = true
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getGHAlertsUpdatedReport(
+            cvelib.report.getGHAlertsReport(
                 [], "valid-org", repos=["valid-repo"], with_templates=True
             )
         self.assertEqual("", error.getvalue().strip())
@@ -2204,15 +2196,13 @@ valid-repo dismissed alerts: 1
         self.assertEqual(exp, output.getvalue().strip())
 
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHAlertsAllSecret)
-    def test_getGHAlertsUpdatedReportSecret(self, _):  # 2nd arg is mock_get
-        """Test getGHAlertsUpdatedReport() - secret-scanning"""
+    def test_getGHAlertsReportSecret(self, _):  # 2nd arg is mock_get
+        """Test getGHAlertsReport() - secret-scanning"""
         self.maxDiff = 16384
 
         # with_templates = false
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getGHAlertsUpdatedReport(
-                [], "valid-org", repos=["valid-repo"]
-            )
+            cvelib.report.getGHAlertsReport([], "valid-org", repos=["valid-repo"])
         self.assertEqual("", error.getvalue().strip())
         exp = """Alerts:
 valid-repo updated alerts: 1
@@ -2242,7 +2232,7 @@ valid-repo resolved alerts: 1
 
         # with_templates = true
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getGHAlertsUpdatedReport(
+            cvelib.report.getGHAlertsReport(
                 [], "valid-org", repos=["valid-repo"], with_templates=True
             )
         self.assertEqual("", error.getvalue().strip())
