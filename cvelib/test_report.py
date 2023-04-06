@@ -432,7 +432,148 @@ def mocked_requests_get__getGHAlertsEnabled(*args, **kwargs):
     assert False  # pragma: nocover
 
 
-def mocked_requests_get__getGHAlertsAll(*args, **kwargs):
+def _getMockedAlertsJSON(alert_type="all"):
+    dependabot = [
+        {
+            "created_at": "2022-07-01T18:27:30Z",
+            "dependency": {
+                "manifest_path": "go.sum",
+                "package": {
+                    "name": "github.com/foo/bar",
+                },
+            },
+            "dismissed_at": "2022-07-02T18:27:30Z",
+            "dismissed_by": {"login": "ghuser1"},
+            "dismissed_comment": "some comment",
+            "dismissed_reason": "tolerable",
+            "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/1",
+            "repository": {"name": "valid-repo"},
+            "security_advisory": {
+                "ghsa_id": "GHSA-a",
+                "severity": "low",
+            },
+        },
+        {
+            "created_at": "2022-07-03T18:27:30Z",
+            "dependency": {
+                "manifest_path": "path/yarn.lock",
+                "package": {
+                    "name": "baz",
+                },
+            },
+            "dismissed_at": None,
+            "dismissed_by": None,
+            "dismissed_comment": None,
+            "dismissed_reason": None,
+            "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/3",
+            "repository": {"name": "valid-repo"},
+            "security_advisory": {
+                "ghsa_id": "GHSA-b",
+                "severity": "moderate",
+            },
+        },
+        {
+            "created_at": "2022-07-04T18:27:30Z",
+            "dependency": {
+                "manifest_path": "path/yarn.lock",
+                "package": {
+                    "name": "baz",
+                },
+            },
+            "dismissed_at": None,
+            "dismissed_by": None,
+            "dismissed_comment": None,
+            "dismissed_reason": None,
+            "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/4",
+            "repository": {"name": "valid-repo"},
+            "security_advisory": {
+                "ghsa_id": "GHSA-c",
+                "severity": "moderate",
+            },
+        },
+        {
+            "created_at": "2022-07-05T18:27:30Z",
+            "dependency": {
+                "manifest_path": "path/yarn.lock",
+                "package": {
+                    "name": "@norf/quz",
+                },
+            },
+            "dismissed_at": None,
+            "dismissed_by": None,
+            "dismissed_comment": None,
+            "dismissed_reason": None,
+            "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/5",
+            "repository": {"name": "valid-repo"},
+            "security_advisory": {
+                "ghsa_id": "GHSA-d",
+                "severity": "unknown",
+            },
+        },
+    ]
+
+    secret = [
+        {
+            "created_at": "2022-07-01T18:15:30Z",
+            "secret_type_display_name": "Some Leaked Secret",
+            "resolved_at": "2022-07-02T18:15:30Z",
+            "resolved_by": {"login": "ghuser2"},
+            "resolution_comment": "some secret comment",
+            "resolution": "revoked",
+            "html_url": "https://github.com/valid-org/valid-repo/security/secret-scanning/20",
+            "repository": {"name": "valid-repo"},
+        },
+        {
+            "created_at": "2022-07-05T18:15:30Z",
+            "secret_type_display_name": "Some Other Leaked Secret",
+            "resolved_at": None,
+            "resolved_by": None,
+            "resolution_comment": None,
+            "resolution": None,
+            "html_url": "https://github.com/valid-org/valid-repo/security/secret-scanning/21",
+            "repository": {"name": "valid-repo"},
+        },
+    ]
+
+    code = [
+        {
+            "created_at": "2022-07-01T17:15:30Z",
+            "dismissed_at": "2022-07-02T17:15:30Z",
+            "dismissed_by": {"login": "ghuser3"},
+            "dismissed_comment": "some code comment",
+            "dismissed_reason": "false positive",
+            "html_url": "https://github.com/valid-org/valid-repo/security/code-scanning/30",
+            "repository": {"name": "valid-repo"},
+            "rule": {
+                "description": "Some Code Finding",
+                "security_severity_level": "high",
+            },
+        },
+        {
+            "created_at": "2022-07-05T17:15:30Z",
+            "dismissed_at": None,
+            "dismissed_by": None,
+            "dismissed_comment": None,
+            "dismissed_reason": None,
+            "html_url": "https://github.com/valid-org/valid-repo/security/code-scanning/31",
+            "repository": {"name": "valid-repo"},
+            "rule": {
+                "description": "Some Other Code Finding",
+                "security_severity_level": "moderate",
+            },
+        },
+    ]
+
+    if alert_type == "dependabot":
+        return dependabot
+    if alert_type == "secret-scanning":
+        return secret
+    if alert_type == "code-scanning":
+        return code
+    return dependabot + secret + code
+
+
+def mocked_requests_get__getGHAlertsAllFull(*args, **kwargs):
     class MockResponse:
         def __init__(self, json_data, status_code):
             self.json_data = json_data
@@ -443,148 +584,83 @@ def mocked_requests_get__getGHAlertsAll(*args, **kwargs):
             return self.json_data
 
     if args[0] == "https://api.github.com/orgs/valid-org/dependabot/alerts":
-        # this is for dependabot alerts
-        return MockResponse(
-            [
-                {
-                    "created_at": "2022-07-01T18:27:30Z",
-                    "dependency": {
-                        "manifest_path": "go.sum",
-                        "package": {
-                            "name": "github.com/foo/bar",
-                        },
-                    },
-                    "dismissed_at": "2022-07-02T18:27:30Z",
-                    "dismissed_by": {"login": "ghuser1"},
-                    "dismissed_comment": "some comment",
-                    "dismissed_reason": "tolerable",
-                    "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/1",
-                    "repository": {"name": "valid-repo"},
-                    "security_advisory": {
-                        "ghsa_id": "GHSA-a",
-                        "severity": "low",
-                    },
-                },
-                {
-                    "created_at": "2022-07-03T18:27:30Z",
-                    "dependency": {
-                        "manifest_path": "path/yarn.lock",
-                        "package": {
-                            "name": "baz",
-                        },
-                    },
-                    "dismissed_at": None,
-                    "dismissed_by": None,
-                    "dismissed_comment": None,
-                    "dismissed_reason": None,
-                    "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/3",
-                    "repository": {"name": "valid-repo"},
-                    "security_advisory": {
-                        "ghsa_id": "GHSA-b",
-                        "severity": "moderate",
-                    },
-                },
-                {
-                    "created_at": "2022-07-04T18:27:30Z",
-                    "dependency": {
-                        "manifest_path": "path/yarn.lock",
-                        "package": {
-                            "name": "baz",
-                        },
-                    },
-                    "dismissed_at": None,
-                    "dismissed_by": None,
-                    "dismissed_comment": None,
-                    "dismissed_reason": None,
-                    "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/4",
-                    "repository": {"name": "valid-repo"},
-                    "security_advisory": {
-                        "ghsa_id": "GHSA-c",
-                        "severity": "moderate",
-                    },
-                },
-                {
-                    "created_at": "2022-07-05T18:27:30Z",
-                    "dependency": {
-                        "manifest_path": "path/yarn.lock",
-                        "package": {
-                            "name": "@norf/quz",
-                        },
-                    },
-                    "dismissed_at": None,
-                    "dismissed_by": None,
-                    "dismissed_comment": None,
-                    "dismissed_reason": None,
-                    "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/5",
-                    "repository": {"name": "valid-repo"},
-                    "security_advisory": {
-                        "ghsa_id": "GHSA-d",
-                        "severity": "unknown",
-                    },
-                },
-            ],
-            200,
-        )
+        return MockResponse(_getMockedAlertsJSON("dependabot"), 200)
     elif args[0] == "https://api.github.com/orgs/valid-org/secret-scanning/alerts":
-        # this is for secret-scanning alerts
-        return MockResponse(
-            [
-                {
-                    "created_at": "2022-07-01T18:15:30Z",
-                    "secret_type_display_name": "Some Leaked Secret",
-                    "resolved_at": "2022-07-02T18:15:30Z",
-                    "resolved_by": {"login": "ghuser2"},
-                    "resolution_comment": "some secret comment",
-                    "resolution": "revoked",
-                    "html_url": "https://github.com/valid-org/valid-repo/security/secret-scanning/20",
-                    "repository": {"name": "valid-repo"},
-                },
-                {
-                    "created_at": "2022-07-05T18:15:30Z",
-                    "secret_type_display_name": "Some Other Leaked Secret",
-                    "resolved_at": None,
-                    "resolved_by": None,
-                    "resolution_comment": None,
-                    "resolution": None,
-                    "html_url": "https://github.com/valid-org/valid-repo/security/secret-scanning/21",
-                    "repository": {"name": "valid-repo"},
-                },
-            ],
-            200,
-        )
+        return MockResponse(_getMockedAlertsJSON("secret-scanning"), 200)
     elif args[0] == "https://api.github.com/orgs/valid-org/code-scanning/alerts":
-        # this is for code-scanning alerts
-        return MockResponse(
-            [
-                {
-                    "created_at": "2022-07-01T17:15:30Z",
-                    "dismissed_at": "2022-07-02T17:15:30Z",
-                    "dismissed_by": {"login": "ghuser3"},
-                    "dismissed_comment": "some code comment",
-                    "dismissed_reason": "false positive",
-                    "html_url": "https://github.com/valid-org/valid-repo/security/code-scanning/30",
-                    "repository": {"name": "valid-repo"},
-                    "rule": {
-                        "description": "Some Code Finding",
-                        "security_severity_level": "high",
-                    },
-                },
-                {
-                    "created_at": "2022-07-05T17:15:30Z",
-                    "dismissed_at": None,
-                    "dismissed_by": None,
-                    "dismissed_comment": None,
-                    "dismissed_reason": None,
-                    "html_url": "https://github.com/valid-org/valid-repo/security/code-scanning/31",
-                    "repository": {"name": "valid-repo"},
-                    "rule": {
-                        "description": "Some Other Code Finding",
-                        "security_severity_level": "moderate",
-                    },
-                },
-            ],
-            200,
-        )
+        return MockResponse(_getMockedAlertsJSON("code-scanning"), 200)
+
+    # catch-all
+    print(
+        "DEBUG: should be unreachable: args='%s', kwargs='%s'" % (args, kwargs)
+    )  # pragma: nocover
+    assert False  # pragma: nocover
+
+
+def mocked_requests_get__getGHAlertsAllCode(*args, **kwargs):
+    class MockResponse:
+        def __init__(self, json_data, status_code):
+            self.json_data = json_data
+            self.status_code = status_code
+            self.headers = {}
+
+        def json(self):  # pragma: no cover
+            return self.json_data
+
+    if args[0] == "https://api.github.com/orgs/valid-org/dependabot/alerts":
+        return MockResponse([], 200)
+    elif args[0] == "https://api.github.com/orgs/valid-org/secret-scanning/alerts":
+        return MockResponse([], 200)
+    elif args[0] == "https://api.github.com/orgs/valid-org/code-scanning/alerts":
+        return MockResponse(_getMockedAlertsJSON("code-scanning"), 200)
+
+    # catch-all
+    print(
+        "DEBUG: should be unreachable: args='%s', kwargs='%s'" % (args, kwargs)
+    )  # pragma: nocover
+    assert False  # pragma: nocover
+
+
+def mocked_requests_get__getGHAlertsAllDependabot(*args, **kwargs):
+    class MockResponse:
+        def __init__(self, json_data, status_code):
+            self.json_data = json_data
+            self.status_code = status_code
+            self.headers = {}
+
+        def json(self):  # pragma: no cover
+            return self.json_data
+
+    if args[0] == "https://api.github.com/orgs/valid-org/dependabot/alerts":
+        return MockResponse(_getMockedAlertsJSON("dependabot"), 200)
+    elif args[0] == "https://api.github.com/orgs/valid-org/secret-scanning/alerts":
+        return MockResponse([], 200)
+    elif args[0] == "https://api.github.com/orgs/valid-org/code-scanning/alerts":
+        return MockResponse([], 200)
+
+    # catch-all
+    print(
+        "DEBUG: should be unreachable: args='%s', kwargs='%s'" % (args, kwargs)
+    )  # pragma: nocover
+    assert False  # pragma: nocover
+
+
+def mocked_requests_get__getGHAlertsAllSecret(*args, **kwargs):
+    class MockResponse:
+        def __init__(self, json_data, status_code):
+            self.json_data = json_data
+            self.status_code = status_code
+            self.headers = {}
+
+        def json(self):  # pragma: no cover
+            return self.json_data
+
+    if args[0] == "https://api.github.com/orgs/valid-org/dependabot/alerts":
+        return MockResponse([], 200)
+    elif args[0] == "https://api.github.com/orgs/valid-org/secret-scanning/alerts":
+        return MockResponse(_getMockedAlertsJSON("secret-scanning"), 200)
+    elif args[0] == "https://api.github.com/orgs/valid-org/code-scanning/alerts":
+        return MockResponse([], 200)
 
     # catch-all
     print(
@@ -1179,7 +1255,7 @@ Updated issues:
     #
     # getGHAlertsUpdatedReport()
     #
-    @mock.patch("requests.get", side_effect=mocked_requests_get__getGHAlertsAll)
+    @mock.patch("requests.get", side_effect=mocked_requests_get__getGHAlertsAllFull)
     def test_getGHAlertsUpdatedReport(self, _):  # 2nd arg is mock_get
         """Test getGHAlertsUpdatedReport()"""
         self.maxDiff = 16384
@@ -1531,8 +1607,8 @@ References:
 ## end template
 
 ## valid-repo CVE template
-Candidate: CVE-2023-NNNN
-OpenDate: 2023-04-05
+Candidate: CVE-%s-NNNN
+OpenDate: %s
 CloseDate:
 PublicDate:
 CRD:
@@ -1661,6 +1737,8 @@ valid-repo dismissed alerts: 2
             "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
             "%d" % (now.year),
             "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
+            "%d" % (now.year),
+            "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
         )
         self.assertEqual(exp, output.getvalue().strip())
 
@@ -1723,6 +1801,577 @@ valid-repo updated alerts: 5
             cvelib.report.getGHAlertsUpdatedReport(
                 [], "valid-org", repos=["valid-repo"], since=-1
             )
+
+    @mock.patch(
+        "requests.get", side_effect=mocked_requests_get__getGHAlertsAllDependabot
+    )
+    def test_getGHAlertsUpdatedReportDependabot(self, _):  # 2nd arg is mock_get
+        """Test getGHAlertsUpdatedReport() - dependabot"""
+        self.maxDiff = 16384
+
+        # with_templates = false
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getGHAlertsUpdatedReport(
+                [], "valid-org", repos=["valid-repo"]
+            )
+        self.assertEqual("", error.getvalue().strip())
+        exp = """Alerts:
+valid-repo updated alerts: 3
+  baz
+    - severity: moderate
+    - created: 2022-07-03T18:27:30Z
+    - path/yarn.lock
+    - advisory: https://github.com/advisories/GHSA-b
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/3
+
+  baz
+    - severity: moderate
+    - created: 2022-07-04T18:27:30Z
+    - path/yarn.lock
+    - advisory: https://github.com/advisories/GHSA-c
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/4
+
+  @norf/quz
+    - severity: unknown
+    - created: 2022-07-05T18:27:30Z
+    - path/yarn.lock
+    - advisory: https://github.com/advisories/GHSA-d
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/5
+
+  References:
+  - https://github.com/valid-org/valid-repo/security/dependabot
+
+Dismissed alerts:
+
+valid-repo dismissed alerts: 1
+  github.com/foo/bar
+    - severity: low
+    - created: 2022-07-01T18:27:30Z
+    - dismissed: 2022-07-02T18:27:30Z
+    - reason: tolerable
+    - comment: some comment
+    - by: ghuser1
+    - go.sum
+    - advisory: https://github.com/advisories/GHSA-a
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/1
+
+  References:
+  - https://github.com/valid-org/valid-repo/security/dependabot"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        # with_templates = true
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getGHAlertsUpdatedReport(
+                [], "valid-org", repos=["valid-repo"], with_templates=True
+            )
+        self.assertEqual("", error.getvalue().strip())
+
+        now: datetime.datetime = datetime.datetime.now()
+        exp = """Alerts:
+## valid-repo template
+Please update dependabot flagged dependencies in valid-repo
+
+The following alerts were issued:
+- [ ] [@norf/quz](https://github.com/valid-org/valid-repo/security/dependabot/5) (unknown)
+- [ ] [baz](https://github.com/valid-org/valid-repo/security/dependabot/3) (moderate)
+- [ ] [baz](https://github.com/valid-org/valid-repo/security/dependabot/4) (moderate)
+
+Since a 'moderate' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
+
+Thanks!
+
+References:
+ * https://docs.influxdata.io/development/security/issue_handling/
+ * https://docs.influxdata.io/development/security/issue_response/#developers
+ * https://github.com/valid-org/valid-repo/security/dependabot
+
+## end template
+
+## valid-repo CVE template
+Candidate: CVE-%s-NNNN
+OpenDate: %s
+CloseDate:
+PublicDate:
+CRD:
+References:
+ https://github.com/valid-org/valid-repo/security/dependabot/3
+ https://github.com/valid-org/valid-repo/security/dependabot/4
+ https://github.com/valid-org/valid-repo/security/dependabot/5
+ https://github.com/advisories/GHSA-b (baz)
+ https://github.com/advisories/GHSA-c (baz)
+ https://github.com/advisories/GHSA-d (@norf/quz)
+Description:
+ Please update dependabot flagged dependencies in valid-repo
+ - [ ] @norf/quz (unknown)
+ - [ ] baz (2 moderate)
+GitHub-Advanced-Security:
+ - type: dependabot
+   dependency: baz
+   detectedIn: path/yarn.lock
+   severity: moderate
+   advisory: https://github.com/advisories/GHSA-b
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/dependabot/3
+ - type: dependabot
+   dependency: baz
+   detectedIn: path/yarn.lock
+   severity: moderate
+   advisory: https://github.com/advisories/GHSA-c
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/dependabot/4
+ - type: dependabot
+   dependency: "@norf/quz"
+   detectedIn: path/yarn.lock
+   severity: unknown
+   advisory: https://github.com/advisories/GHSA-d
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/dependabot/5
+Notes:
+Mitigation:
+Bugs:
+Priority: medium
+Discovered-by: gh-dependabot
+Assigned-to:
+CVSS:
+
+Patches_valid-repo:
+git/valid-org_valid-repo: needs-triage
+## end CVE template
+
+valid-repo updated alerts: 3
+  baz
+    - severity: moderate
+    - created: 2022-07-03T18:27:30Z
+    - path/yarn.lock
+    - advisory: https://github.com/advisories/GHSA-b
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/3
+
+  baz
+    - severity: moderate
+    - created: 2022-07-04T18:27:30Z
+    - path/yarn.lock
+    - advisory: https://github.com/advisories/GHSA-c
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/4
+
+  @norf/quz
+    - severity: unknown
+    - created: 2022-07-05T18:27:30Z
+    - path/yarn.lock
+    - advisory: https://github.com/advisories/GHSA-d
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/5
+
+  References:
+  - https://github.com/valid-org/valid-repo/security/dependabot
+
+Dismissed alerts:
+
+## valid-repo template
+Please update dependabot flagged dependencies in valid-repo
+
+The following alerts were issued:
+- [ ] [github.com/foo/bar](https://github.com/valid-org/valid-repo/security/dependabot/1) (low)
+
+Since a 'low' severity issue is present, tentatively adding the 'security/low' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
+
+Thanks!
+
+References:
+ * https://docs.influxdata.io/development/security/issue_handling/
+ * https://docs.influxdata.io/development/security/issue_response/#developers
+ * https://github.com/valid-org/valid-repo/security/dependabot
+
+## end template
+
+## valid-repo CVE template
+Candidate: CVE-%s-NNNN
+OpenDate: %s
+CloseDate:
+PublicDate:
+CRD:
+References:
+ https://github.com/valid-org/valid-repo/security/dependabot/1
+ https://github.com/advisories/GHSA-a (github.com/foo/bar)
+Description:
+ Please update dependabot flagged dependencies in valid-repo
+ - [ ] github.com/foo/bar (low)
+GitHub-Advanced-Security:
+ - type: dependabot
+   dependency: github.com/foo/bar
+   detectedIn: go.sum
+   severity: low
+   advisory: https://github.com/advisories/GHSA-a
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/dependabot/1
+Notes:
+Mitigation:
+Bugs:
+Priority: low
+Discovered-by: gh-dependabot
+Assigned-to:
+CVSS:
+
+Patches_valid-repo:
+git/valid-org_valid-repo: needs-triage
+## end CVE template
+
+valid-repo dismissed alerts: 1
+  github.com/foo/bar
+    - severity: low
+    - created: 2022-07-01T18:27:30Z
+    - dismissed: 2022-07-02T18:27:30Z
+    - reason: tolerable
+    - comment: some comment
+    - by: ghuser1
+    - go.sum
+    - advisory: https://github.com/advisories/GHSA-a
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/1
+
+  References:
+  - https://github.com/valid-org/valid-repo/security/dependabot""" % (
+            "%d" % (now.year),
+            "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
+            "%d" % (now.year),
+            "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
+        )
+        self.assertEqual(exp, output.getvalue().strip())
+
+    @mock.patch("requests.get", side_effect=mocked_requests_get__getGHAlertsAllCode)
+    def test_getGHAlertsUpdatedReportCode(self, _):  # 2nd arg is mock_get
+        """Test getGHAlertsUpdatedReport() - code-scanning"""
+        self.maxDiff = 16384
+
+        # with_templates = false
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getGHAlertsUpdatedReport(
+                [], "valid-org", repos=["valid-repo"]
+            )
+        self.assertEqual("", error.getvalue().strip())
+        exp = """Alerts:
+valid-repo updated alerts: 1
+  Some Other Code Finding
+    - severity: moderate
+    - created: 2022-07-05T17:15:30Z
+    - url: https://github.com/valid-org/valid-repo/security/code-scanning/31
+
+  References:
+  - https://github.com/valid-org/valid-repo/security/code-scanning
+
+Dismissed alerts:
+
+valid-repo dismissed alerts: 1
+  Some Code Finding
+    - severity: high
+    - created: 2022-07-01T17:15:30Z
+    - dismissed: 2022-07-02T17:15:30Z
+    - reason: false positive
+    - comment: some code comment
+    - by: ghuser3
+    - url: https://github.com/valid-org/valid-repo/security/code-scanning/30
+
+  References:
+  - https://github.com/valid-org/valid-repo/security/code-scanning"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        # with_templates = true
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getGHAlertsUpdatedReport(
+                [], "valid-org", repos=["valid-repo"], with_templates=True
+            )
+        self.assertEqual("", error.getvalue().strip())
+
+        now: datetime.datetime = datetime.datetime.now()
+        exp = """Alerts:
+## valid-repo template
+Please update dependabot flagged dependencies in valid-repo
+
+The following alerts were issued:
+- [ ] [Some Other Code Finding](https://github.com/valid-org/valid-repo/security/code-scanning/31) (moderate)
+
+Since a 'moderate' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
+
+Thanks!
+
+References:
+ * https://docs.influxdata.io/development/security/issue_handling/
+ * https://docs.influxdata.io/development/security/issue_response/#developers
+ * https://github.com/valid-org/valid-repo/security/code-scanning
+
+## end template
+
+## valid-repo CVE template
+Candidate: CVE-%s-NNNN
+OpenDate: %s
+CloseDate:
+PublicDate:
+CRD:
+References:
+ https://github.com/valid-org/valid-repo/security/code-scanning/31
+Description:
+ Please update dependabot flagged dependencies in valid-repo
+ - [ ] Some Other Code Finding (moderate)
+GitHub-Advanced-Security:
+ - type: code-scanning
+   description: Some Other Code Finding
+   severity: moderate
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/code-scanning/31
+Notes:
+Mitigation:
+Bugs:
+Priority: medium
+Discovered-by: gh-dependabot
+Assigned-to:
+CVSS:
+
+Patches_valid-repo:
+git/valid-org_valid-repo: needs-triage
+## end CVE template
+
+valid-repo updated alerts: 1
+  Some Other Code Finding
+    - severity: moderate
+    - created: 2022-07-05T17:15:30Z
+    - url: https://github.com/valid-org/valid-repo/security/code-scanning/31
+
+  References:
+  - https://github.com/valid-org/valid-repo/security/code-scanning
+
+Dismissed alerts:
+
+## valid-repo template
+Please update dependabot flagged dependencies in valid-repo
+
+The following alerts were issued:
+- [ ] [Some Code Finding](https://github.com/valid-org/valid-repo/security/code-scanning/30) (high)
+
+Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
+
+Thanks!
+
+References:
+ * https://docs.influxdata.io/development/security/issue_handling/
+ * https://docs.influxdata.io/development/security/issue_response/#developers
+ * https://github.com/valid-org/valid-repo/security/code-scanning
+
+## end template
+
+## valid-repo CVE template
+Candidate: CVE-%s-NNNN
+OpenDate: %s
+CloseDate:
+PublicDate:
+CRD:
+References:
+ https://github.com/valid-org/valid-repo/security/code-scanning/30
+Description:
+ Please update dependabot flagged dependencies in valid-repo
+ - [ ] Some Code Finding (high)
+GitHub-Advanced-Security:
+ - type: code-scanning
+   description: Some Code Finding
+   severity: high
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/code-scanning/30
+Notes:
+Mitigation:
+Bugs:
+Priority: high
+Discovered-by: gh-dependabot
+Assigned-to:
+CVSS:
+
+Patches_valid-repo:
+git/valid-org_valid-repo: needs-triage
+## end CVE template
+
+valid-repo dismissed alerts: 1
+  Some Code Finding
+    - severity: high
+    - created: 2022-07-01T17:15:30Z
+    - dismissed: 2022-07-02T17:15:30Z
+    - reason: false positive
+    - comment: some code comment
+    - by: ghuser3
+    - url: https://github.com/valid-org/valid-repo/security/code-scanning/30
+
+  References:
+  - https://github.com/valid-org/valid-repo/security/code-scanning""" % (
+            "%d" % (now.year),
+            "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
+            "%d" % (now.year),
+            "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
+        )
+        self.assertEqual(exp, output.getvalue().strip())
+
+    @mock.patch("requests.get", side_effect=mocked_requests_get__getGHAlertsAllSecret)
+    def test_getGHAlertsUpdatedReportSecret(self, _):  # 2nd arg is mock_get
+        """Test getGHAlertsUpdatedReport() - secret-scanning"""
+        self.maxDiff = 16384
+
+        # with_templates = false
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getGHAlertsUpdatedReport(
+                [], "valid-org", repos=["valid-repo"]
+            )
+        self.assertEqual("", error.getvalue().strip())
+        exp = """Alerts:
+valid-repo updated alerts: 1
+  Some Other Leaked Secret
+    - severity: high
+    - created: 2022-07-05T18:15:30Z
+    - url: https://github.com/valid-org/valid-repo/security/secret-scanning/21
+
+  References:
+  - https://github.com/valid-org/valid-repo/security/secret-scanning
+
+Resolved alerts:
+
+valid-repo resolved alerts: 1
+  Some Leaked Secret
+    - severity: high
+    - created: 2022-07-01T18:15:30Z
+    - resolved: 2022-07-02T18:15:30Z
+    - reason: revoked
+    - comment: some secret comment
+    - by: ghuser2
+    - url: https://github.com/valid-org/valid-repo/security/secret-scanning/20
+
+  References:
+  - https://github.com/valid-org/valid-repo/security/secret-scanning"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        # with_templates = true
+        with cvelib.testutil.capturedOutput() as (output, error):
+            cvelib.report.getGHAlertsUpdatedReport(
+                [], "valid-org", repos=["valid-repo"], with_templates=True
+            )
+        self.assertEqual("", error.getvalue().strip())
+
+        now: datetime.datetime = datetime.datetime.now()
+        exp = """Alerts:
+## valid-repo template
+Please update dependabot flagged dependencies in valid-repo
+
+The following alerts were issued:
+- [ ] [Some Other Leaked Secret](https://github.com/valid-org/valid-repo/security/secret-scanning/21) (high)
+
+Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
+
+Thanks!
+
+References:
+ * https://docs.influxdata.io/development/security/issue_handling/
+ * https://docs.influxdata.io/development/security/issue_response/#developers
+ * https://github.com/valid-org/valid-repo/security/secret-scanning
+
+## end template
+
+## valid-repo CVE template
+Candidate: CVE-%s-NNNN
+OpenDate: %s
+CloseDate:
+PublicDate:
+CRD:
+References:
+ https://github.com/valid-org/valid-repo/security/secret-scanning/21
+Description:
+ Please update dependabot flagged dependencies in valid-repo
+ - [ ] Some Other Leaked Secret (high)
+GitHub-Advanced-Security:
+ - type: secret-scanning
+   secret: Some Other Leaked Secret
+   detectedIn: tbd
+   severity: high
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/secret-scanning/21
+Notes:
+Mitigation:
+Bugs:
+Priority: high
+Discovered-by: gh-dependabot
+Assigned-to:
+CVSS:
+
+Patches_valid-repo:
+git/valid-org_valid-repo: needs-triage
+## end CVE template
+
+valid-repo updated alerts: 1
+  Some Other Leaked Secret
+    - severity: high
+    - created: 2022-07-05T18:15:30Z
+    - url: https://github.com/valid-org/valid-repo/security/secret-scanning/21
+
+  References:
+  - https://github.com/valid-org/valid-repo/security/secret-scanning
+
+Resolved alerts:
+
+## valid-repo template
+Please update dependabot flagged dependencies in valid-repo
+
+The following alerts were issued:
+- [ ] [Some Leaked Secret](https://github.com/valid-org/valid-repo/security/secret-scanning/20) (high)
+
+Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
+
+Thanks!
+
+References:
+ * https://docs.influxdata.io/development/security/issue_handling/
+ * https://docs.influxdata.io/development/security/issue_response/#developers
+ * https://github.com/valid-org/valid-repo/security/secret-scanning
+
+## end template
+
+## valid-repo CVE template
+Candidate: CVE-%s-NNNN
+OpenDate: %s
+CloseDate:
+PublicDate:
+CRD:
+References:
+ https://github.com/valid-org/valid-repo/security/secret-scanning/20
+Description:
+ Please update dependabot flagged dependencies in valid-repo
+ - [ ] Some Leaked Secret (high)
+GitHub-Advanced-Security:
+ - type: secret-scanning
+   secret: Some Leaked Secret
+   detectedIn: tbd
+   severity: high
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/secret-scanning/20
+Notes:
+Mitigation:
+Bugs:
+Priority: high
+Discovered-by: gh-dependabot
+Assigned-to:
+CVSS:
+
+Patches_valid-repo:
+git/valid-org_valid-repo: needs-triage
+## end CVE template
+
+valid-repo resolved alerts: 1
+  Some Leaked Secret
+    - severity: high
+    - created: 2022-07-01T18:15:30Z
+    - resolved: 2022-07-02T18:15:30Z
+    - reason: revoked
+    - comment: some secret comment
+    - by: ghuser2
+    - url: https://github.com/valid-org/valid-repo/security/secret-scanning/20
+
+  References:
+  - https://github.com/valid-org/valid-repo/security/secret-scanning""" % (
+            "%d" % (now.year),
+            "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
+            "%d" % (now.year),
+            "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
+        )
+        self.assertEqual(exp, output.getvalue().strip())
 
     #
     # _printGHAlertsTemplates()
@@ -1834,8 +2483,6 @@ git/valid-org_valid-repo: needs-triage
             "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
         )
         self.assertEqual(exp, output.getvalue().strip())
-
-    #
 
     #
     # getHumanSummary()
