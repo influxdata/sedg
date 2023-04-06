@@ -665,14 +665,20 @@ def _parseAlert(alert: Dict[str, Any]) -> Tuple[str, Dict[str, str]]:
 # https://docs.github.com/en/rest/dependabot/alerts?apiVersion=2022-11-28
 # https://docs.github.com/en/rest/secret-scanning?apiVersion=2022-11-28
 # https://docs.github.com/en/rest/code-scanning?apiVersion=2022-11-28
-def _getGHAlertsAll(org: str) -> Dict[str, List[Dict[str, str]]]:
+def _getGHAlertsAll(
+    org: str, alert_types=["code-scanning", "dependabot", "secret-scanning"]
+) -> Dict[str, List[Dict[str, str]]]:
     """Obtain the list of GitHub alerts for the specified org"""
+    for a in alert_types:
+        if a not in ["code-scanning", "dependabot", "secret-scanning"]:
+            error("Unsupported alert type: %s" % a)
+
     # { "repo": [{ <alert1> }, { <alert2> }] }
     alerts: Dict[str, List[Dict[str, str]]] = {}
 
     # jsons is a single list of res.json()s that are alerts for these URLs
     jsons: List[Dict[str, str]] = []
-    for alert_type in ["code-scanning", "dependabot", "secret-scanning"]:
+    for alert_type in alert_types:
         _, tmp = ghAPIGetList(
             "https://api.github.com/orgs/%s/%s/alerts" % (org, alert_type)
         )
@@ -691,13 +697,14 @@ def _getGHAlertsAll(org: str) -> Dict[str, List[Dict[str, str]]]:
     return copy.deepcopy(alerts)
 
 
-def getGHAlertsUpdatedReport(
+def getGHAlertsReport(
     cves: List[CVE],
     org: str,
     since: int = 0,
     repos: List[str] = [],
     excluded_repos: List[str] = [],
     with_templates: bool = False,
+    alert_types: List[str] = [],
 ) -> None:
     """Show GitHub alerts alerts"""
     since_str: str = epochToISO8601(since)
@@ -711,7 +718,11 @@ def getGHAlertsUpdatedReport(
     knownAlerts: Set[str]
     knownAlerts, _ = collectGHAlertUrls(cves)
 
-    alerts: Dict[str, List[Dict[str, str]]] = _getGHAlertsAll(org)
+    alerts: Dict[str, List[Dict[str, str]]] = {}
+    if len(alert_types) > 0:
+        alerts = _getGHAlertsAll(org, alert_types=alert_types)
+    else:
+        alerts = _getGHAlertsAll(org)
 
     repo: str
     for repo in alerts:
