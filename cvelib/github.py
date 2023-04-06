@@ -190,13 +190,87 @@ class GHSecret(object):
         self.url = s
 
 
+class GHCode(object):
+    required: List[str] = [
+        "description",
+        "detectedIn",
+        "status",
+        "url",
+    ]
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
+    def __str__(self) -> str:
+        # the prefixed spacing is currently important for onDiskFormat()
+        s: str = " - type: code-scanning\n"
+        s += "   description: %s\n" % self.description
+        s += "   detectedIn: %s\n" % self.detectedIn
+        s += "   status: %s\n" % self.status
+        s += "   url: %s" % self.url
+        return s
+
+    def __init__(self, data: Dict[str, str]) -> None:
+        self.description: str = ""
+        self.detectedIn: str = ""
+        self.status: str = ""
+        self.url: str = ""
+
+        self._verifyRequired(data)
+
+        self.setDescription(data["description"])
+        self.setDetectedIn(data["detectedIn"])
+        self.setStatus(data["status"])
+        self.setUrl(data["url"])
+
+    # verify methods
+    def _verifyRequired(self, data: Dict[str, str]) -> None:
+        """Verify have all required fields"""
+        for field in self.required:
+            if field not in data:
+                raise CveException("missing required field '%s'" % field)
+            if not _isNonEmptyStr(data[field]):
+                raise CveException("empty required field '%s'" % field)
+            if "\n" in data[field]:
+                raise CveException("field '%s' should be single line" % field)
+
+    # set methods
+    def setDescription(self, s: str) -> None:
+        """Set description"""
+        self.description = s
+
+    def setDetectedIn(self, s: str) -> None:
+        """Set detectedIn"""
+        self.detectedIn = s
+
+    def setStatus(self, s: str) -> None:
+        """Set status"""
+        if not rePatterns["github-code-status"].search(s):
+            if "dismissed" in s:
+                raise CveException(
+                    "invalid code status: %s. Use 'dismissed (false-positive|used-in-tests|wont-fix; <github username>)"
+                    % s
+                )
+            raise CveException(
+                "invalid code status: %s. Use 'needs-triage|needed|released|dismissed (...)'"
+                % s
+            )
+        self.status = s
+
+    def setUrl(self, s: str) -> None:
+        """Set url"""
+        if not rePatterns["github-code-alert"].search(s):
+            raise CveException("invalid code alert url: %s" % s)
+        self.url = s
+
+
 def _isNonEmptyStr(s: str) -> bool:
     """Check if string is non-empty"""
     return s != ""
 
 
-def parse(s: str) -> List[Union[GHDependabot, GHSecret]]:
-    """Parse a string and return a list of GHDependabots and/or GHSecrets"""
+def parse(s: str) -> List[Union[GHDependabot, GHSecret, GHCode]]:
+    """Parse a string and return a list of GHDependabots, GHSecrets and/or GHCodes"""
     if s == "":
         return []
 
@@ -211,7 +285,7 @@ def parse(s: str) -> List[Union[GHDependabot, GHSecret]]:
             raise CveException("invalid yaml: uses unquoted 'dependency: @...'")
         raise CveException("invalid yaml:\n'%s'" % s)
 
-    ghas: List[Union[GHDependabot, GHSecret]] = []
+    ghas: List[Union[GHDependabot, GHSecret, GHCode]] = []
     for item in yml:
         if "type" not in item:
             raise CveException("invalid GHAS document: 'type' missing for item")
@@ -220,6 +294,8 @@ def parse(s: str) -> List[Union[GHDependabot, GHSecret]]:
             ghas.append(GHDependabot(item))
         elif item["type"] == "secret-scanning":
             ghas.append(GHSecret(item))
+        elif item["type"] == "code-scanning":
+            ghas.append(GHCode(item))
         else:
             raise CveException(
                 "invalid GHAS document: unknown GHAS type '%s'" % item["type"]

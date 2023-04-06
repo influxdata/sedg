@@ -159,9 +159,17 @@ rePatterns: Dict[str, Pattern[str]] = {
         r"^(unavailable$|https://github.com/[a-z0-9+.-]{1,40}/[a-zA-Z0-9+._-]{1,%(software_len)d}/security/secret-scanning/[0-9]{1,12})"
         % ({"software_len": _patLengths["pkg-software"]})
     ),
+    "github-code-alert": re.compile(
+        r"^(unavailable$|https://github.com/[a-z0-9+.-]{1,40}/[a-zA-Z0-9+._-]{1,%(software_len)d}/security/code-scanning/[0-9]{1,12})"
+        % ({"software_len": _patLengths["pkg-software"]})
+    ),
     # dismissed requires a reason and github username
     "github-secret-status": re.compile(
         r"^(needs-triage|needed|released|dismissed \((revoked|false-positive|used-in-tests|wont-fix); [a-zA-Z0-9\-]+\))$",
+    ),
+    # dismissed requires a reason and github username
+    "github-code-status": re.compile(
+        r"^(needs-triage|needed|released|dismissed \((false-positive|used-in-tests|wont-fix); [a-zA-Z0-9\-]+\))$",
     ),
     # upstream: something
     # vendor: something

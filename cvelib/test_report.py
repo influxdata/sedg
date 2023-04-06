@@ -424,6 +424,18 @@ def mocked_requests_get__getGHAlertsEnabled(*args, **kwargs):
             ],
             200,
         )
+    elif (
+        args[0]
+        == "https://api.github.com/repos/valid-org/valid-repo/code-scanning/alerts"
+    ):
+        # this is for dependabot alerts
+        return MockResponse(None, 204)
+    elif (
+        args[0]
+        == "https://api.github.com/repos/valid-org/disabled-repo/code-scanning/alerts"
+    ):
+        # this is for dependabot alerts
+        return MockResponse(None, 404)
 
     # catch-all
     print(
@@ -1044,8 +1056,10 @@ foo"""
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHAlertsEnabled)
     def test_getGHAlertsEnabled(self, _):  # 2nd arg is mock_get
         """Test _getGHAlertsEnabled()"""
+
+        # dependabot
         enabled, disabled = cvelib.report._getGHAlertsEnabled(
-            "valid-org", repos=["valid-repo", "disabled-repo"]
+            "valid-org", "dependabot", repos=["valid-repo", "disabled-repo"]
         )
         self.assertEqual(1, len(enabled))
         self.assertTrue("valid-repo" in enabled)
@@ -1054,6 +1068,7 @@ foo"""
 
         enabled, disabled = cvelib.report._getGHAlertsEnabled(
             "valid-org",
+            "dependabot",
             repos=["valid-repo", "disabled-repo"],
             excluded_repos=["disabled-repo"],
         )
@@ -1063,6 +1078,7 @@ foo"""
 
         enabled, disabled = cvelib.report._getGHAlertsEnabled(
             "valid-org",
+            "dependabot",
             repos=["valid-repo", "disabled-repo"],
             excluded_repos=["valid-repo"],
         )
@@ -1070,7 +1086,43 @@ foo"""
         self.assertEqual(1, len(disabled))
         self.assertTrue("disabled-repo" in disabled)
 
-        enabled, disabled = cvelib.report._getGHAlertsEnabled("valid-org")
+        enabled, disabled = cvelib.report._getGHAlertsEnabled("valid-org", "dependabot")
+        self.assertEqual(1, len(enabled))
+        self.assertTrue("valid-repo" in enabled)
+        self.assertEqual(0, len(disabled))
+
+        # code-scanning
+        enabled, disabled = cvelib.report._getGHAlertsEnabled(
+            "valid-org", "code-scanning", repos=["valid-repo", "disabled-repo"]
+        )
+        self.assertEqual(1, len(enabled))
+        self.assertTrue("valid-repo" in enabled)
+        self.assertEqual(1, len(disabled))
+        self.assertTrue("disabled-repo" in disabled)
+
+        enabled, disabled = cvelib.report._getGHAlertsEnabled(
+            "valid-org",
+            "code-scanning",
+            repos=["valid-repo", "disabled-repo"],
+            excluded_repos=["disabled-repo"],
+        )
+        self.assertEqual(1, len(enabled))
+        self.assertTrue("valid-repo" in enabled)
+        self.assertEqual(0, len(disabled))
+
+        enabled, disabled = cvelib.report._getGHAlertsEnabled(
+            "valid-org",
+            "code-scanning",
+            repos=["valid-repo", "disabled-repo"],
+            excluded_repos=["valid-repo"],
+        )
+        self.assertEqual(0, len(enabled))
+        self.assertEqual(1, len(disabled))
+        self.assertTrue("disabled-repo" in disabled)
+
+        enabled, disabled = cvelib.report._getGHAlertsEnabled(
+            "valid-org", "code-scanning"
+        )
         self.assertEqual(1, len(enabled))
         self.assertTrue("valid-repo" in enabled)
         self.assertEqual(0, len(disabled))
@@ -1130,6 +1182,12 @@ foo"""
   disabled-repo
 
 Secret Scanning:
+ Enabled:
+  valid-repo
+ Disabled:
+  disabled-repo
+
+Code Scanning:
  Enabled:
   valid-repo
  Disabled:
