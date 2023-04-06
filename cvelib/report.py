@@ -669,6 +669,10 @@ def _getGHAlertsAll(
     org: str, alert_types=["code-scanning", "dependabot", "secret-scanning"]
 ) -> Dict[str, List[Dict[str, str]]]:
     """Obtain the list of GitHub alerts for the specified org"""
+    for a in alert_types:
+        if a not in ["code-scanning", "dependabot", "secret-scanning"]:
+            error("Unsupported alert type: %s" % a)
+
     # { "repo": [{ <alert1> }, { <alert2> }] }
     alerts: Dict[str, List[Dict[str, str]]] = {}
 
@@ -700,6 +704,7 @@ def getGHAlertsReport(
     repos: List[str] = [],
     excluded_repos: List[str] = [],
     with_templates: bool = False,
+    alert_types: List[str] = [],
 ) -> None:
     """Show GitHub alerts alerts"""
     since_str: str = epochToISO8601(since)
@@ -713,7 +718,11 @@ def getGHAlertsReport(
     knownAlerts: Set[str]
     knownAlerts, _ = collectGHAlertUrls(cves)
 
-    alerts: Dict[str, List[Dict[str, str]]] = _getGHAlertsAll(org)
+    alerts: Dict[str, List[Dict[str, str]]] = {}
+    if len(alert_types) > 0:
+        alerts = _getGHAlertsAll(org, alert_types=alert_types)
+    else:
+        alerts = _getGHAlertsAll(org)
 
     repo: str
     for repo in alerts:

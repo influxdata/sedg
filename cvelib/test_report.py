@@ -1807,7 +1807,9 @@ valid-repo updated alerts: 5
 
         # with_templates = false
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getGHAlertsReport([], "valid-org", repos=["valid-repo"])
+            cvelib.report.getGHAlertsReport(
+                [], "valid-org", repos=["valid-repo"], alert_types=["dependabot"]
+            )
         self.assertEqual("", error.getvalue().strip())
         exp = """Alerts:
 valid-repo updated alerts: 3
@@ -1856,7 +1858,11 @@ valid-repo dismissed alerts: 1
         # with_templates = true
         with cvelib.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsReport(
-                [], "valid-org", repos=["valid-repo"], with_templates=True
+                [],
+                "valid-org",
+                repos=["valid-repo"],
+                with_templates=True,
+                alert_types=["dependabot"],
             )
         self.assertEqual("", error.getvalue().strip())
 
@@ -2036,7 +2042,9 @@ valid-repo dismissed alerts: 1
 
         # with_templates = false
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getGHAlertsReport([], "valid-org", repos=["valid-repo"])
+            cvelib.report.getGHAlertsReport(
+                [], "valid-org", repos=["valid-repo"], alert_types=["code-scanning"]
+            )
         self.assertEqual("", error.getvalue().strip())
         exp = """Alerts:
 valid-repo updated alerts: 1
@@ -2067,7 +2075,11 @@ valid-repo dismissed alerts: 1
         # with_templates = true
         with cvelib.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsReport(
-                [], "valid-org", repos=["valid-repo"], with_templates=True
+                [],
+                "valid-org",
+                repos=["valid-repo"],
+                with_templates=True,
+                alert_types=["code-scanning"],
             )
         self.assertEqual("", error.getvalue().strip())
 
@@ -2202,7 +2214,9 @@ valid-repo dismissed alerts: 1
 
         # with_templates = false
         with cvelib.testutil.capturedOutput() as (output, error):
-            cvelib.report.getGHAlertsReport([], "valid-org", repos=["valid-repo"])
+            cvelib.report.getGHAlertsReport(
+                [], "valid-org", repos=["valid-repo"], alert_types=["secret-scanning"]
+            )
         self.assertEqual("", error.getvalue().strip())
         exp = """Alerts:
 valid-repo updated alerts: 1
@@ -2233,7 +2247,11 @@ valid-repo resolved alerts: 1
         # with_templates = true
         with cvelib.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsReport(
-                [], "valid-org", repos=["valid-repo"], with_templates=True
+                [],
+                "valid-org",
+                repos=["valid-repo"],
+                with_templates=True,
+                alert_types=["secret-scanning"],
             )
         self.assertEqual("", error.getvalue().strip())
 
