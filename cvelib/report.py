@@ -665,14 +665,16 @@ def _parseAlert(alert: Dict[str, Any]) -> Tuple[str, Dict[str, str]]:
 # https://docs.github.com/en/rest/dependabot/alerts?apiVersion=2022-11-28
 # https://docs.github.com/en/rest/secret-scanning?apiVersion=2022-11-28
 # https://docs.github.com/en/rest/code-scanning?apiVersion=2022-11-28
-def _getGHAlertsAll(org: str) -> Dict[str, List[Dict[str, str]]]:
+def _getGHAlertsAll(
+    org: str, alert_types=["code-scanning", "dependabot", "secret-scanning"]
+) -> Dict[str, List[Dict[str, str]]]:
     """Obtain the list of GitHub alerts for the specified org"""
     # { "repo": [{ <alert1> }, { <alert2> }] }
     alerts: Dict[str, List[Dict[str, str]]] = {}
 
     # jsons is a single list of res.json()s that are alerts for these URLs
     jsons: List[Dict[str, str]] = []
-    for alert_type in ["code-scanning", "dependabot", "secret-scanning"]:
+    for alert_type in alert_types:
         _, tmp = ghAPIGetList(
             "https://api.github.com/orgs/%s/%s/alerts" % (org, alert_type)
         )
