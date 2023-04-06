@@ -672,7 +672,7 @@ def _parseAlert(alert: Dict[str, Any]) -> Tuple[str, Dict[str, str]]:
         # if repo is public, suggest high priority, otherwise medium
         a["severity"] = "high"
         if a["private"].lower() == "true":
-            a["severity"] = "medium"
+            a["severity"] = "moderate"
 
         a["alert_type"] = "secret-scanning"
         a["secret_type_display_name"] = alert["secret_type_display_name"]
