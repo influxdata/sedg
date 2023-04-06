@@ -2422,7 +2422,7 @@ valid-repo resolved alerts: 1
         exp = """Alerts:
 valid-repo updated alerts: 1
   Some Other Leaked Secret
-    - severity: medium
+    - severity: moderate
     - created: 2022-07-05T18:15:30Z
     - url: https://github.com/valid-org/valid-repo/security/secret-scanning/21
 
@@ -2433,7 +2433,7 @@ Resolved alerts:
 
 valid-repo resolved alerts: 1
   Some Leaked Secret
-    - severity: medium
+    - severity: moderate
     - created: 2022-07-01T18:15:30Z
     - resolved: 2022-07-02T18:15:30Z
     - reason: revoked
