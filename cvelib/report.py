@@ -412,21 +412,15 @@ def _printGHAlertsSummary(
     org: str, repo: str, alert: List[Dict[str, str]], status: str
 ) -> None:
     """Print out the alert summary"""
-    if status not in ["dismissed", "resolved", "updated"]:
+    if status not in ["resolved", "updated"]:
         error("Unsupported alert status: %s" % status)
         return
 
     urls: List[str] = []
     print("%s %s alerts: %d" % (repo, status, len(alert)))
 
-    sec_sort: str = "created_at"
-    if status == "dismissed":
-        sec_sort = "dismissed_at"
-    elif status == "resolved":
-        sec_sort = "resolved_at"
-
     # for n in alert:
-    for n in sorted(alert, key=lambda i: (i["html_url"], i[sec_sort])):
+    for n in sorted(alert, key=lambda i: (i["html_url"], i["created_at"])):
         url: str = "https://github.com/%s/%s/security/%s" % (org, repo, n["alert_type"])
         if url not in urls:
             urls.append(url)
@@ -441,18 +435,19 @@ def _printGHAlertsSummary(
         print("    - severity: %s" % n["severity"])
         print("    - created: %s" % n["created_at"])
 
-        if status == "dismissed":
-            print("    - dismissed: %s" % n["dismissed_at"])
-            print("    - reason: %s" % n["dismissed_reason"])
-            print("    - comment: %s" % n["dismissed_comment"])
-            if n["dismissed_by"] is not None:
-                print("    - by: %s" % n["dismissed_by"])
-        elif status == "resolved":
-            print("    - resolved: %s" % n["resolved_at"])
-            print("    - reason: %s" % n["resolution"])
-            print("    - comment: %s" % n["resolution_comment"])
-            if n["resolved_by"] is not None:
-                print("    - by: %s" % n["resolved_by"])
+        if status == "resolved":
+            if n["alert_type"] == "secret-scanning":
+                print("    - resolved: %s" % n["resolved_at"])
+                print("    - reason: %s" % n["resolution"])
+                print("    - comment: %s" % n["resolution_comment"])
+                if n["resolved_by"] is not None:
+                    print("    - by: %s" % n["resolved_by"])
+            else:
+                print("    - dismissed: %s" % n["dismissed_at"])
+                print("    - reason: %s" % n["dismissed_reason"])
+                print("    - comment: %s" % n["dismissed_comment"])
+                if n["dismissed_by"] is not None:
+                    print("    - by: %s" % n["dismissed_by"])
 
         if n["alert_type"] == "dependabot":
             print("    - %s" % n["dependabot_manifest_path"])
@@ -736,7 +731,6 @@ def getGHAlertsReport(
 
     # find updates
     updated: Dict[str, List[Dict[str, str]]] = {}
-    dismissed: Dict[str, List[Dict[str, str]]] = {}
     resolved: Dict[str, List[Dict[str, str]]] = {}
 
     # collect the alerts we know about
@@ -762,9 +756,9 @@ def getGHAlertsReport(
                 and alert["dismissed_at"] is not None
                 and alert["dismissed_at"] > since_str
             ):
-                if repo not in dismissed:
-                    dismissed[repo] = []
-                dismissed[repo].append(alert)
+                if repo not in resolved:
+                    resolved[repo] = []
+                resolved[repo].append(alert)
             elif (
                 "resolved_at" in alert
                 and alert["resolved_at"] is not None
@@ -804,15 +798,6 @@ def getGHAlertsReport(
                 _printGHAlertsTemplates(org, repo, resolved[repo])
                 print("")
             _printGHAlertsSummary(org, repo, resolved[repo], "resolved")
-
-    if len(dismissed) > 0:
-        print("Dismissed alerts:")
-        for repo in sorted(dismissed.keys()):
-            print("")
-            if with_templates:
-                _printGHAlertsTemplates(org, repo, dismissed[repo])
-                print("")
-            _printGHAlertsSummary(org, repo, dismissed[repo], "dismissed")
 
 
 #
