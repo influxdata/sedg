@@ -91,7 +91,7 @@ class GHDependabot(object):
 
     def setSeverity(self, s: str) -> None:
         """Set severity"""
-        if not rePatterns["github-dependabot-severity"].search(s):
+        if not rePatterns["github-severity"].search(s):
             raise CveException("invalid dependabot severity: %s" % s)
         self.severity = s
 
@@ -117,9 +117,12 @@ class GHDependabot(object):
 
 
 class GHSecret(object):
+    # Note, GitHub doesn't provide a severity for secrets in its json, but we
+    # want to assign one for tracking, so we include it here
     required: List[str] = [
         "secret",
         "detectedIn",
+        "severity",
         "status",
         "url",
     ]
@@ -132,6 +135,7 @@ class GHSecret(object):
         s: str = " - type: secret-scanning\n"
         s += "   secret: %s\n" % self.secret
         s += "   detectedIn: %s\n" % self.detectedIn
+        s += "   severity: %s\n" % self.severity
         s += "   status: %s\n" % self.status
         s += "   url: %s" % self.url
         return s
@@ -139,6 +143,7 @@ class GHSecret(object):
     def __init__(self, data: Dict[str, str]) -> None:
         self.secret: str = ""
         self.detectedIn: str = ""
+        self.severity: str = ""
         self.status: str = ""
         self.url: str = ""
 
@@ -146,6 +151,7 @@ class GHSecret(object):
 
         self.setSecret(data["secret"])
         self.setDetectedIn(data["detectedIn"])
+        self.setSeverity(data["severity"])
         self.setStatus(data["status"])
         self.setUrl(data["url"])
 
@@ -168,6 +174,12 @@ class GHSecret(object):
     def setDetectedIn(self, s: str) -> None:
         """Set detectedIn"""
         self.detectedIn = s
+
+    def setSeverity(self, s: str) -> None:
+        """Set severity"""
+        if not rePatterns["github-severity"].search(s):
+            raise CveException("invalid secret severity: %s" % s)
+        self.severity = s
 
     def setStatus(self, s: str) -> None:
         """Set status"""
@@ -194,6 +206,7 @@ class GHCode(object):
     required: List[str] = [
         "description",
         "detectedIn",
+        "severity",
         "status",
         "url",
     ]
@@ -206,6 +219,7 @@ class GHCode(object):
         s: str = " - type: code-scanning\n"
         s += "   description: %s\n" % self.description
         s += "   detectedIn: %s\n" % self.detectedIn
+        s += "   severity: %s\n" % self.severity
         s += "   status: %s\n" % self.status
         s += "   url: %s" % self.url
         return s
@@ -213,6 +227,7 @@ class GHCode(object):
     def __init__(self, data: Dict[str, str]) -> None:
         self.description: str = ""
         self.detectedIn: str = ""
+        self.severity: str = ""
         self.status: str = ""
         self.url: str = ""
 
@@ -221,6 +236,7 @@ class GHCode(object):
         self.setDescription(data["description"])
         self.setDetectedIn(data["detectedIn"])
         self.setStatus(data["status"])
+        self.setSeverity(data["severity"])
         self.setUrl(data["url"])
 
     # verify methods
@@ -242,6 +258,12 @@ class GHCode(object):
     def setDetectedIn(self, s: str) -> None:
         """Set detectedIn"""
         self.detectedIn = s
+
+    def setSeverity(self, s: str) -> None:
+        """Set severity"""
+        if not rePatterns["github-severity"].search(s):
+            raise CveException("invalid code severity: %s" % s)
+        self.severity = s
 
     def setStatus(self, s: str) -> None:
         """Set status"""

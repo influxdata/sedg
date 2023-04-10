@@ -120,8 +120,15 @@ class TestCve(TestCase):
  - type: secret-scanning
    secret: Slack Incoming Webhook URL
    detectedIn: /path/to/file
+   severity: moderate
    status: dismissed (revoked; who)
    url: https://github.com/bar/baz/security/secret-scanning/1
+ - type: code-scanning
+   description: Some Code Violation
+   detectedIn: /path/to/file
+   severity: moderate
+   status: dismissed (false-positive; who)
+   url: https://github.com/bar/baz/security/code-scanning/1
 """
         self._mock_readCve(tmpl)
         exp = """Candidate: CVE-2020-1234
@@ -145,8 +152,15 @@ GitHub-Advanced-Security:
  - type: secret-scanning
    secret: Slack Incoming Webhook URL
    detectedIn: /path/to/file
+   severity: moderate
    status: dismissed (revoked; who)
    url: https://github.com/bar/baz/security/secret-scanning/1
+ - type: code-scanning
+   description: Some Code Violation
+   detectedIn: /path/to/file
+   severity: moderate
+   status: dismissed (false-positive; who)
+   url: https://github.com/bar/baz/security/code-scanning/1
 Notes:
  person> some notes
   more notes
@@ -1884,6 +1898,7 @@ cve-data = %s
    url: https://github.com/bar/baz/security/dependabot/1
  - type: secret-scanning
    secret: Slack Incoming Webhook URL
+   severity: high
    detectedIn: /path/to/file
    status: needed
    url: https://github.com/bar/baz/security/secret-scanning/1
@@ -3549,8 +3564,15 @@ cve-data = %s
  - type: secret-scanning
    secret: Slack Incoming Webhook URL
    detectedIn: /path/to/file
+   severity: moderate
    status: dismissed (revoked; who)
    url: https://github.com/bar/baz/security/secret-scanning/1
+ - type: code-scanning
+   description: Some Code Violation
+   detectedIn: /path/to/file
+   severity: moderate
+   status: dismissed (false-positive; who)
+   url: https://github.com/bar/baz/security/code-scanning/1
 """
         )
         cve2 = cvelib.cve.CVE(fn="fake")
@@ -3568,16 +3590,29 @@ cve-data = %s
             """ - type: secret-scanning
    secret: Slack Incoming Webhook URL
    detectedIn: /path/to/file
+   severity: moderate
    status: dismissed (revoked; who)
    url: https://github.com/bar/baz/security/secret-scanning/1
 """
         )
-        urls, dupes = cvelib.cve.collectGHAlertUrls([cve1, cve2, cve3])
-        self.assertEqual(3, len(urls))
+        cve4 = cvelib.cve.CVE(fn="fake")
+        cve4.setGHAS(
+            """ - type: code-scanning
+   description: Some Code Violation
+   detectedIn: /path/to/file
+   severity: moderate
+   status: dismissed (false-positive; who)
+   url: https://github.com/bar/baz/security/code-scanning/1
+"""
+        )
+        urls, dupes = cvelib.cve.collectGHAlertUrls([cve1, cve2, cve3, cve4])
+        self.assertEqual(4, len(urls))
         self.assertTrue("https://github.com/bar/baz/security/dependabot/1" in urls)
         self.assertTrue("https://github.com/bar/baz/security/dependabot/2" in urls)
         self.assertTrue("https://github.com/bar/baz/security/secret-scanning/1" in urls)
-        self.assertEqual(1, len(dupes))
+        self.assertTrue("https://github.com/bar/baz/security/code-scanning/1" in urls)
+        self.assertEqual(2, len(dupes))
         self.assertTrue(
             "https://github.com/bar/baz/security/secret-scanning/1" in dupes
         )
+        self.assertTrue("https://github.com/bar/baz/security/code-scanning/1" in dupes)
