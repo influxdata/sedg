@@ -484,7 +484,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "repository": {"name": "valid-repo", "private": False},
             "security_advisory": {
                 "ghsa_id": "GHSA-b",
-                "severity": "moderate",
+                "severity": "medium",
             },
         },
         {
@@ -503,7 +503,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "repository": {"name": "valid-repo", "private": False},
             "security_advisory": {
                 "ghsa_id": "GHSA-c",
-                "severity": "moderate",
+                "severity": "medium",
             },
         },
         {
@@ -574,7 +574,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "repository": {"name": "valid-repo", "private": False},
             "rule": {
                 "description": "Some Other Code Finding",
-                "security_severity_level": "moderate",
+                "security_severity_level": "medium",
             },
         },
     ]
@@ -1350,19 +1350,19 @@ Updated issues:
         exp = """Alerts:
 valid-repo updated alerts: 5
   Some Other Code Finding
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-05T17:15:30Z
     - url: https://github.com/valid-org/valid-repo/security/code-scanning/31
 
   baz
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-03T18:27:30Z
     - path/yarn.lock
     - advisory: https://github.com/advisories/GHSA-b
     - url: https://github.com/valid-org/valid-repo/security/dependabot/3
 
   baz
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-04T18:27:30Z
     - path/yarn.lock
     - advisory: https://github.com/advisories/GHSA-c
@@ -1448,19 +1448,19 @@ valid-repo resolved alerts: 3
         exp = """Alerts:
 valid-repo updated alerts: 5
   Some Other Code Finding
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-05T17:15:30Z
     - url: https://github.com/valid-org/valid-repo/security/code-scanning/31
 
   baz
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-03T18:27:30Z
     - path/yarn.lock
     - advisory: https://github.com/advisories/GHSA-b
     - url: https://github.com/valid-org/valid-repo/security/dependabot/3
 
   baz
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-04T18:27:30Z
     - path/yarn.lock
     - advisory: https://github.com/advisories/GHSA-c
@@ -1535,10 +1535,10 @@ Please update dependabot flagged dependencies in valid-repo
 
 The following alerts were issued:
 - [ ] [@norf/quz](https://github.com/valid-org/valid-repo/security/dependabot/5) (unknown)
-- [ ] [Some Other Code Finding](https://github.com/valid-org/valid-repo/security/code-scanning/31) (moderate)
+- [ ] [Some Other Code Finding](https://github.com/valid-org/valid-repo/security/code-scanning/31) (medium)
 - [ ] [Some Other Leaked Secret](https://github.com/valid-org/valid-repo/security/secret-scanning/21) (high)
-- [ ] [baz](https://github.com/valid-org/valid-repo/security/dependabot/3) (moderate)
-- [ ] [baz](https://github.com/valid-org/valid-repo/security/dependabot/4) (moderate)
+- [ ] [baz](https://github.com/valid-org/valid-repo/security/dependabot/3) (medium)
+- [ ] [baz](https://github.com/valid-org/valid-repo/security/dependabot/4) (medium)
 
 Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
 
@@ -1571,26 +1571,26 @@ References:
 Description:
  Please update dependabot flagged dependencies in valid-repo
  - [ ] @norf/quz (unknown)
- - [ ] Some Other Code Finding (moderate)
+ - [ ] Some Other Code Finding (medium)
  - [ ] Some Other Leaked Secret (high)
- - [ ] baz (2 moderate)
+ - [ ] baz (2 medium)
 GitHub-Advanced-Security:
  - type: code-scanning
    description: Some Other Code Finding
-   severity: moderate
+   severity: medium
    status: needs-triage
    url: https://github.com/valid-org/valid-repo/security/code-scanning/31
  - type: dependabot
    dependency: baz
    detectedIn: path/yarn.lock
-   severity: moderate
+   severity: medium
    advisory: https://github.com/advisories/GHSA-b
    status: needs-triage
    url: https://github.com/valid-org/valid-repo/security/dependabot/3
  - type: dependabot
    dependency: baz
    detectedIn: path/yarn.lock
-   severity: moderate
+   severity: medium
    advisory: https://github.com/advisories/GHSA-c
    status: needs-triage
    url: https://github.com/valid-org/valid-repo/security/dependabot/4
@@ -1621,19 +1621,19 @@ git/valid-org_valid-repo: needs-triage
 
 valid-repo updated alerts: 5
   Some Other Code Finding
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-05T17:15:30Z
     - url: https://github.com/valid-org/valid-repo/security/code-scanning/31
 
   baz
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-03T18:27:30Z
     - path/yarn.lock
     - advisory: https://github.com/advisories/GHSA-b
     - url: https://github.com/valid-org/valid-repo/security/dependabot/3
 
   baz
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-04T18:27:30Z
     - path/yarn.lock
     - advisory: https://github.com/advisories/GHSA-c
@@ -1776,19 +1776,19 @@ valid-repo resolved alerts: 3
         exp = """Alerts:
 valid-repo updated alerts: 5
   Some Other Code Finding
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-05T17:15:30Z
     - url: https://github.com/valid-org/valid-repo/security/code-scanning/31
 
   baz
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-03T18:27:30Z
     - path/yarn.lock
     - advisory: https://github.com/advisories/GHSA-b
     - url: https://github.com/valid-org/valid-repo/security/dependabot/3
 
   baz
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-04T18:27:30Z
     - path/yarn.lock
     - advisory: https://github.com/advisories/GHSA-c
@@ -1843,14 +1843,14 @@ valid-repo updated alerts: 5
         exp = """Alerts:
 valid-repo updated alerts: 3
   baz
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-03T18:27:30Z
     - path/yarn.lock
     - advisory: https://github.com/advisories/GHSA-b
     - url: https://github.com/valid-org/valid-repo/security/dependabot/3
 
   baz
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-04T18:27:30Z
     - path/yarn.lock
     - advisory: https://github.com/advisories/GHSA-c
@@ -1902,10 +1902,10 @@ Please update dependabot flagged dependencies in valid-repo
 
 The following alerts were issued:
 - [ ] [@norf/quz](https://github.com/valid-org/valid-repo/security/dependabot/5) (unknown)
-- [ ] [baz](https://github.com/valid-org/valid-repo/security/dependabot/3) (moderate)
-- [ ] [baz](https://github.com/valid-org/valid-repo/security/dependabot/4) (moderate)
+- [ ] [baz](https://github.com/valid-org/valid-repo/security/dependabot/3) (medium)
+- [ ] [baz](https://github.com/valid-org/valid-repo/security/dependabot/4) (medium)
 
-Since a 'moderate' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
+Since a 'medium' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
 
 Thanks!
 
@@ -1932,19 +1932,19 @@ References:
 Description:
  Please update dependabot flagged dependencies in valid-repo
  - [ ] @norf/quz (unknown)
- - [ ] baz (2 moderate)
+ - [ ] baz (2 medium)
 GitHub-Advanced-Security:
  - type: dependabot
    dependency: baz
    detectedIn: path/yarn.lock
-   severity: moderate
+   severity: medium
    advisory: https://github.com/advisories/GHSA-b
    status: needs-triage
    url: https://github.com/valid-org/valid-repo/security/dependabot/3
  - type: dependabot
    dependency: baz
    detectedIn: path/yarn.lock
-   severity: moderate
+   severity: medium
    advisory: https://github.com/advisories/GHSA-c
    status: needs-triage
    url: https://github.com/valid-org/valid-repo/security/dependabot/4
@@ -1969,14 +1969,14 @@ git/valid-org_valid-repo: needs-triage
 
 valid-repo updated alerts: 3
   baz
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-03T18:27:30Z
     - path/yarn.lock
     - advisory: https://github.com/advisories/GHSA-b
     - url: https://github.com/valid-org/valid-repo/security/dependabot/3
 
   baz
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-04T18:27:30Z
     - path/yarn.lock
     - advisory: https://github.com/advisories/GHSA-c
@@ -2078,7 +2078,7 @@ valid-repo resolved alerts: 1
         exp = """Alerts:
 valid-repo updated alerts: 1
   Some Other Code Finding
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-05T17:15:30Z
     - url: https://github.com/valid-org/valid-repo/security/code-scanning/31
 
@@ -2118,9 +2118,9 @@ valid-repo resolved alerts: 1
 Please update dependabot flagged dependencies in valid-repo
 
 The following alerts were issued:
-- [ ] [Some Other Code Finding](https://github.com/valid-org/valid-repo/security/code-scanning/31) (moderate)
+- [ ] [Some Other Code Finding](https://github.com/valid-org/valid-repo/security/code-scanning/31) (medium)
 
-Since a 'moderate' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
+Since a 'medium' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
 
 Thanks!
 
@@ -2141,11 +2141,11 @@ References:
  https://github.com/valid-org/valid-repo/security/code-scanning/31
 Description:
  Please update dependabot flagged dependencies in valid-repo
- - [ ] Some Other Code Finding (moderate)
+ - [ ] Some Other Code Finding (medium)
 GitHub-Advanced-Security:
  - type: code-scanning
    description: Some Other Code Finding
-   severity: moderate
+   severity: medium
    status: needs-triage
    url: https://github.com/valid-org/valid-repo/security/code-scanning/31
 Notes:
@@ -2162,7 +2162,7 @@ git/valid-org_valid-repo: needs-triage
 
 valid-repo updated alerts: 1
   Some Other Code Finding
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-05T17:15:30Z
     - url: https://github.com/valid-org/valid-repo/security/code-scanning/31
 
@@ -2426,7 +2426,7 @@ valid-repo resolved alerts: 1
         exp = """Alerts:
 valid-repo updated alerts: 1
   Some Other Leaked Secret
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-05T18:15:30Z
     - url: https://github.com/valid-org/valid-repo/security/secret-scanning/21
 
@@ -2437,7 +2437,7 @@ Resolved alerts:
 
 valid-repo resolved alerts: 1
   Some Leaked Secret
-    - severity: moderate
+    - severity: medium
     - created: 2022-07-01T18:15:30Z
     - resolved: 2022-07-02T18:15:30Z
     - reason: revoked
@@ -2462,7 +2462,7 @@ valid-repo resolved alerts: 1
                 "dependabot_package_name": "foo",
                 "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/1",
                 "security_advisory_ghsa_url": "https://github.com/advisories/GHSA-bbb",
-                "severity": "moderate",
+                "severity": "medium",
             },
             {
                 "alert_type": "dependabot",
@@ -2480,7 +2480,7 @@ valid-repo resolved alerts: 1
                 "dependabot_package_name": "foo",
                 "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/3",
                 "security_advisory_ghsa_url": "https://github.com/advisories/GHSA-bbb",
-                "severity": "moderate",
+                "severity": "medium",
             },
         ]
         with cvelib.testutil.capturedOutput() as (output, error):
@@ -2491,9 +2491,9 @@ valid-repo resolved alerts: 1
 Please update dependabot flagged dependencies in valid-repo
 
 The following alerts were issued:
-- [ ] [foo](https://github.com/valid-org/valid-repo/security/dependabot/1) (moderate)
+- [ ] [foo](https://github.com/valid-org/valid-repo/security/dependabot/1) (medium)
 - [ ] [foo](https://github.com/valid-org/valid-repo/security/dependabot/2) (high)
-- [ ] [foo](https://github.com/valid-org/valid-repo/security/dependabot/3) (moderate)
+- [ ] [foo](https://github.com/valid-org/valid-repo/security/dependabot/3) (medium)
 
 Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
 
@@ -2521,12 +2521,12 @@ References:
 Description:
  Please update dependabot flagged dependencies in valid-repo
  - [ ] foo (high)
- - [ ] foo (2 moderate)
+ - [ ] foo (2 medium)
 GitHub-Advanced-Security:
  - type: dependabot
    dependency: foo
    detectedIn: a/b/c
-   severity: moderate
+   severity: medium
    advisory: https://github.com/advisories/GHSA-bbb
    status: needs-triage
    url: https://github.com/valid-org/valid-repo/security/dependabot/1
@@ -2540,7 +2540,7 @@ GitHub-Advanced-Security:
  - type: dependabot
    dependency: foo
    detectedIn: d/e/f
-   severity: moderate
+   severity: medium
    advisory: https://github.com/advisories/GHSA-bbb
    status: needs-triage
    url: https://github.com/valid-org/valid-repo/security/dependabot/3

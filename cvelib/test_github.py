@@ -23,7 +23,7 @@ class TestGitHubDependabot(TestCase):
             "dependency": "foo",
             "detectedIn": "go.sum",
             "advisory": "https://github.com/advisories/GHSA-a",
-            "severity": "moderate",
+            "severity": "medium",
             "status": "needed",
             "url": "https://github.com/bar/baz/security/dependabot/1",
         }
@@ -40,7 +40,7 @@ class TestGitHubDependabot(TestCase):
    dependency: foo
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-a
-   severity: moderate
+   severity: medium
    status: needed
    url: https://github.com/bar/baz/security/dependabot/1"""
 
@@ -54,7 +54,7 @@ class TestGitHubDependabot(TestCase):
    dependency: foo
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-a
-   severity: moderate
+   severity: medium
    status: needed
    url: https://github.com/bar/baz/security/dependabot/1"""
 
@@ -66,7 +66,7 @@ class TestGitHubDependabot(TestCase):
    dependency: "@foo/bar"
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-a
-   severity: moderate
+   severity: medium
    status: needed
    url: https://github.com/bar/baz/security/dependabot/1"""
 
@@ -84,7 +84,7 @@ class TestGitHubDependabot(TestCase):
                     "dpendency": "foo",
                     "detectedIn": "go.sum",
                     "advisory": "https://github.com/advisories/GHSA-a",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "status": "needed",
                     "url": "https://github.com/bar/baz/security/dependabot/1",
                 },
@@ -95,7 +95,7 @@ class TestGitHubDependabot(TestCase):
                     "dependency": "",
                     "detectedIn": "go.sum",
                     "advisory": "https://github.com/advisories/GHSA-a",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "status": "needed",
                     "url": "https://github.com/bar/baz/security/dependabot/1",
                 },
@@ -106,7 +106,7 @@ class TestGitHubDependabot(TestCase):
                     "dependency": "foo\nbar",
                     "detectedIn": "go.sum",
                     "advisory": "https://github.com/advisories/GHSA-a",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "status": "needed",
                     "url": "https://github.com/bar/baz/security/dependabot/1",
                 },
@@ -116,7 +116,7 @@ class TestGitHubDependabot(TestCase):
                 {
                     "detectedIn": "go.sum",
                     "advisory": "https://github.com/advisories/GHSA-a",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "status": "needed",
                     "url": "https://github.com/bar/baz/security/dependabot/1",
                 },
@@ -126,7 +126,7 @@ class TestGitHubDependabot(TestCase):
                 {
                     "dependency": "foo",
                     "advisory": "https://github.com/advisories/GHSA-a",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "status": "needed",
                     "url": "https://github.com/bar/baz/security/dependabot/1",
                 },
@@ -136,7 +136,7 @@ class TestGitHubDependabot(TestCase):
                 {
                     "dependency": "foo",
                     "detectedIn": "go.sum",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "status": "needed",
                     "url": "https://github.com/bar/baz/security/dependabot/1",
                 },
@@ -157,7 +157,7 @@ class TestGitHubDependabot(TestCase):
                     "dependency": "foo",
                     "detectedIn": "go.sum",
                     "advisory": "https://github.com/advisories/GHSA-a",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "url": "https://github.com/bar/baz/security/dependabot/1",
                 },
                 "missing required field 'status'",
@@ -167,7 +167,7 @@ class TestGitHubDependabot(TestCase):
                     "dependency": "foo",
                     "detectedIn": "go.sum",
                     "advisory": "https://github.com/advisories/GHSA-a",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "status": "needed",
                 },
                 "missing required field 'url'",
@@ -239,12 +239,12 @@ class TestGitHubDependabot(TestCase):
         tsts = [
             # valid
             ("low", None),
-            ("moderate", None),
+            ("medium", None),
             ("high", None),
             ("critical", None),
             # invalid
             ("negligible", "invalid dependabot severity: negligible"),
-            ("medium", "invalid dependabot severity: medium"),
+            ("mdium", "invalid dependabot severity: mdium"),
             ("other", "invalid dependabot severity: other"),
         ]
 
@@ -336,7 +336,7 @@ class TestGitHubSecret(TestCase):
         return {
             "secret": "foo",
             "detectedIn": "path/to/file",
-            "severity": "moderate",
+            "severity": "medium",
             "status": "needed",
             "url": "https://github.com/bar/baz/security/secret-scanning/1",
         }
@@ -352,7 +352,7 @@ class TestGitHubSecret(TestCase):
         exp = """ - type: secret-scanning
    secret: foo
    detectedIn: path/to/file
-   severity: moderate
+   severity: medium
    status: needed
    url: https://github.com/bar/baz/security/secret-scanning/1"""
 
@@ -365,7 +365,7 @@ class TestGitHubSecret(TestCase):
         exp = """ - type: secret-scanning
    secret: foo
    detectedIn: path/to/file
-   severity: moderate
+   severity: medium
    status: needed
    url: https://github.com/bar/baz/security/secret-scanning/1"""
 
@@ -382,7 +382,7 @@ class TestGitHubSecret(TestCase):
                 {
                     "scret": "foo",
                     "detectedIn": "/path/to/file",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "status": "needed",
                     "url": "https://github.com/bar/baz/security/secret-scanning/1",
                 },
@@ -392,7 +392,7 @@ class TestGitHubSecret(TestCase):
                 {
                     "secret": "",
                     "detectedIn": "/path/to/file",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "status": "needed",
                     "url": "https://github.com/bar/baz/security/secret-scanning/1",
                 },
@@ -402,7 +402,7 @@ class TestGitHubSecret(TestCase):
                 {
                     "secret": "foo\nbar",
                     "detectedIn": "/path/to/file",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "status": "needed",
                     "url": "https://github.com/bar/baz/security/secret-scanning/1",
                 },
@@ -411,7 +411,7 @@ class TestGitHubSecret(TestCase):
             (
                 {
                     "detectedIn": "/path/to/file",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "status": "needed",
                     "url": "https://github.com/bar/baz/security/secret-scanning/1",
                 },
@@ -420,7 +420,7 @@ class TestGitHubSecret(TestCase):
             (
                 {
                     "secret": "foo",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "status": "needed",
                     "url": "https://github.com/bar/baz/security/secret-scanning/1",
                 },
@@ -437,7 +437,7 @@ class TestGitHubSecret(TestCase):
                 {
                     "secret": "foo",
                     "detectedIn": "/path/to/file",
-                    "severity": "moderate",
+                    "severity": "medium",
                 },
                 "missing required field 'status'",
             ),
@@ -445,7 +445,7 @@ class TestGitHubSecret(TestCase):
                 {
                     "secret": "foo",
                     "detectedIn": "/path/to/file",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "status": "needed",
                 },
                 "missing required field 'url'",
@@ -490,12 +490,12 @@ class TestGitHubSecret(TestCase):
         tsts = [
             # valid
             ("low", None),
-            ("moderate", None),
+            ("medium", None),
             ("high", None),
             ("critical", None),
             # invalid
             ("negligible", "invalid secret severity: negligible"),
-            ("medium", "invalid secret severity: medium"),
+            ("mdium", "invalid secret severity: mdium"),
             ("other", "invalid secret severity: other"),
         ]
 
@@ -585,7 +585,7 @@ class TestGitHubCode(TestCase):
         return {
             "description": "foo",
             "detectedIn": "path/to/file",
-            "severity": "moderate",
+            "severity": "medium",
             "status": "needed",
             "url": "https://github.com/bar/baz/security/code-scanning/1",
         }
@@ -601,7 +601,7 @@ class TestGitHubCode(TestCase):
         exp = """ - type: code-scanning
    description: foo
    detectedIn: path/to/file
-   severity: moderate
+   severity: medium
    status: needed
    url: https://github.com/bar/baz/security/code-scanning/1"""
 
@@ -614,7 +614,7 @@ class TestGitHubCode(TestCase):
         exp = """ - type: code-scanning
    description: foo
    detectedIn: path/to/file
-   severity: moderate
+   severity: medium
    status: needed
    url: https://github.com/bar/baz/security/code-scanning/1"""
 
@@ -631,7 +631,7 @@ class TestGitHubCode(TestCase):
                 {
                     "dscription": "foo",
                     "detectedIn": "/path/to/file",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "status": "needed",
                     "url": "https://github.com/bar/baz/security/code-scanning/1",
                 },
@@ -641,7 +641,7 @@ class TestGitHubCode(TestCase):
                 {
                     "description": "",
                     "detectedIn": "/path/to/file",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "status": "needed",
                     "url": "https://github.com/bar/baz/security/code-scanning/1",
                 },
@@ -651,7 +651,7 @@ class TestGitHubCode(TestCase):
                 {
                     "description": "foo\nbar",
                     "detectedIn": "/path/to/file",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "status": "needed",
                     "url": "https://github.com/bar/baz/security/code-scanning/1",
                 },
@@ -660,7 +660,7 @@ class TestGitHubCode(TestCase):
             (
                 {
                     "detectedIn": "/path/to/file",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "status": "needed",
                     "url": "https://github.com/bar/baz/security/code-scanning/1",
                 },
@@ -669,7 +669,7 @@ class TestGitHubCode(TestCase):
             (
                 {
                     "description": "foo",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "status": "needed",
                     "url": "https://github.com/bar/baz/security/code-scanning/1",
                 },
@@ -686,7 +686,7 @@ class TestGitHubCode(TestCase):
                 {
                     "description": "foo",
                     "detectedIn": "/path/to/file",
-                    "severity": "moderate",
+                    "severity": "medium",
                 },
                 "missing required field 'status'",
             ),
@@ -694,7 +694,7 @@ class TestGitHubCode(TestCase):
                 {
                     "description": "foo",
                     "detectedIn": "/path/to/file",
-                    "severity": "moderate",
+                    "severity": "medium",
                     "status": "needed",
                 },
                 "missing required field 'url'",
@@ -739,12 +739,12 @@ class TestGitHubCode(TestCase):
         tsts = [
             # valid
             ("low", None),
-            ("moderate", None),
+            ("medium", None),
             ("high", None),
             ("critical", None),
             # invalid
             ("negligible", "invalid code severity: negligible"),
-            ("medium", "invalid code severity: medium"),
+            ("mdium", "invalid code severity: mdium"),
             ("other", "invalid code severity: other"),
         ]
 
@@ -838,7 +838,7 @@ class TestGitHubCommon(TestCase):
    dependency: foo
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-a
-   severity: moderate
+   severity: medium
    status: needed
    url: https://github.com/bar/baz/security/dependabot/1
  - type: secret-scanning
@@ -874,7 +874,7 @@ class TestGitHubCommon(TestCase):
    dependency: @foo/bar
    detectedIn: path/to/thing
    advisory: https://github.com/advisories/GHSA-a
-   severity: moderate
+   severity: medium
    status: needed
    url: https://github.com/bar/baz/security/dependabot/1""",
                 "invalid yaml: uses unquoted 'dependency: @...'",

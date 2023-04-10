@@ -146,7 +146,7 @@ rePatterns: Dict[str, Pattern[str]] = {
     "github-advisory": re.compile(
         r"^(unavailable|https://github.com/advisories/GHSA-[a-zA-Z0-9\-]+)$"
     ),
-    "github-severity": re.compile(r"^(low|moderate|high|critical)$"),
+    "github-severity": re.compile(r"^(low|medium|high|critical)$"),
     # dismissed requires a reason and github username
     "github-dependabot-status": re.compile(
         r"^(needs-triage|needed|released|removed|dismissed \((started|no-bandwidth|tolerable|inaccurate|code-not-used); [a-zA-Z0-9\-]+\))$",

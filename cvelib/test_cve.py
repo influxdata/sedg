@@ -114,19 +114,19 @@ class TestCve(TestCase):
    dependency: foo
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
-   severity: moderate
+   severity: medium
    status: dismissed (inaccurate; who)
    url: https://github.com/bar/baz/security/dependabot/1
  - type: secret-scanning
    secret: Slack Incoming Webhook URL
    detectedIn: /path/to/file
-   severity: moderate
+   severity: medium
    status: dismissed (revoked; who)
    url: https://github.com/bar/baz/security/secret-scanning/1
  - type: code-scanning
    description: Some Code Violation
    detectedIn: /path/to/file
-   severity: moderate
+   severity: medium
    status: dismissed (false-positive; who)
    url: https://github.com/bar/baz/security/code-scanning/1
 """
@@ -146,19 +146,19 @@ GitHub-Advanced-Security:
    dependency: foo
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
-   severity: moderate
+   severity: medium
    status: dismissed (inaccurate; who)
    url: https://github.com/bar/baz/security/dependabot/1
  - type: secret-scanning
    secret: Slack Incoming Webhook URL
    detectedIn: /path/to/file
-   severity: moderate
+   severity: medium
    status: dismissed (revoked; who)
    url: https://github.com/bar/baz/security/secret-scanning/1
  - type: code-scanning
    description: Some Code Violation
    detectedIn: /path/to/file
-   severity: moderate
+   severity: medium
    status: dismissed (false-positive; who)
    url: https://github.com/bar/baz/security/code-scanning/1
 Notes:
@@ -1300,7 +1300,7 @@ git/github_norf: needs-triage
    dependency: foo
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
-   severity: moderate
+   severity: medium
    status: dismissed (inaccurate; who)
    url: https://github.com/bar/baz/security/dependabot/1
 """,
@@ -1314,7 +1314,7 @@ git/github_norf: needs-triage
    dependency: bár
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
-   severity: moderate
+   severity: medium
    status: dismissed (inaccurate; who)
    url: https://github.com/bar/baz/security/dependabot/1
 """,
@@ -1323,7 +1323,7 @@ git/github_norf: needs-triage
    dependency: bár
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
-   severity: moderate
+   severity: medium
    status: dismissed (inaccurate; who)
    url: https://github.com/bar/baz/security/dependabot/1
 ' (contains non-ASCII characters)""",
@@ -1893,7 +1893,7 @@ cve-data = %s
    dependency: foo
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
-   severity: moderate
+   severity: medium
    status: needed
    url: https://github.com/bar/baz/security/dependabot/1
  - type: secret-scanning
@@ -1935,7 +1935,7 @@ cve-data = %s
    dependency: foo
    detectedIn: yarn.lock
    advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
-   severity: moderate
+   severity: medium
    status: needed
    url: https://github.com/influxdata/foo/security/dependabot/1
 """
@@ -1967,7 +1967,7 @@ cve-data = %s
    dependency: foo
    detectedIn: yarn.lock
    advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
-   severity: moderate
+   severity: medium
    status: released
    url: https://github.com/influxdata/foo/security/dependabot/1
 """
@@ -2000,7 +2000,7 @@ cve-data = %s
    dependency: foo
    detectedIn: yarn.lock
    advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
-   severity: moderate
+   severity: medium
    status: released
    url: https://github.com/influxdata/foo/security/dependabot/1
 """
@@ -2046,7 +2046,7 @@ cve-data = %s
    dependency: foo
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
-   severity: moderate
+   severity: medium
    status: needed
    url: https://github.com/bar/baz/security/dependabot/1
 """
@@ -2066,7 +2066,7 @@ cve-data = %s
    dependency: foo
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
-   severity: moderate
+   severity: medium
    status: released
    url: https://github.com/bar/baz/security/dependabot/1
 """
@@ -3558,19 +3558,19 @@ cve-data = %s
    dependency: foo
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-foo
-   severity: moderate
+   severity: medium
    status: dismissed (inaccurate; who)
    url: https://github.com/bar/baz/security/dependabot/1
  - type: secret-scanning
    secret: Slack Incoming Webhook URL
    detectedIn: /path/to/file
-   severity: moderate
+   severity: medium
    status: dismissed (revoked; who)
    url: https://github.com/bar/baz/security/secret-scanning/1
  - type: code-scanning
    description: Some Code Violation
    detectedIn: /path/to/file
-   severity: moderate
+   severity: medium
    status: dismissed (false-positive; who)
    url: https://github.com/bar/baz/security/code-scanning/1
 """
@@ -3581,7 +3581,7 @@ cve-data = %s
    dependency: bar
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-bar
-   severity: moderate
+   severity: medium
    status: dismissed (inaccurate; who)
    url: https://github.com/bar/baz/security/dependabot/2"""
         )
@@ -3590,7 +3590,7 @@ cve-data = %s
             """ - type: secret-scanning
    secret: Slack Incoming Webhook URL
    detectedIn: /path/to/file
-   severity: moderate
+   severity: medium
    status: dismissed (revoked; who)
    url: https://github.com/bar/baz/security/secret-scanning/1
 """
@@ -3600,7 +3600,7 @@ cve-data = %s
             """ - type: code-scanning
    description: Some Code Violation
    detectedIn: /path/to/file
-   severity: moderate
+   severity: medium
    status: dismissed (false-positive; who)
    url: https://github.com/bar/baz/security/code-scanning/1
 """
