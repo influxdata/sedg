@@ -463,7 +463,7 @@ def _printGHAlertsSummary(
 
 def _printGHAlertsTemplates(org: str, repo: str, alert: List[Dict[str, str]]) -> None:
     """Print out the alerts issue templates"""
-    sev: List[str] = ["unknown", "low", "moderate", "high", "critical"]
+    sev: List[str] = ["unknown", "low", "medium", "high", "critical"]
     urls: List[str] = []
     highest: int = 0
 
@@ -520,7 +520,7 @@ def _printGHAlertsTemplates(org: str, repo: str, alert: List[Dict[str, str]]) ->
         checklist += "%s\n" % i
 
     priority: str = sev[highest]
-    if priority == "moderate" or priority == "unknown":
+    if priority == "unknown":
         priority = "medium"
 
     print("## %s template" % repo)
@@ -672,10 +672,14 @@ def _parseAlert(alert: Dict[str, Any]) -> Tuple[str, Dict[str, str]]:
         # if repo is public, suggest high priority, otherwise medium
         a["severity"] = "high"
         if a["private"].lower() == "true":
-            a["severity"] = "moderate"
+            a["severity"] = "medium"
 
         a["alert_type"] = "secret-scanning"
         a["secret_type_display_name"] = alert["secret_type_display_name"]
+
+    # codeql allows 'null'
+    if a["severity"] is None:
+        a["severity"] = "unknown"
 
     return repo, copy.deepcopy(a)
 
@@ -1251,7 +1255,7 @@ def _readStatsGHAS(
     """Read in stats by GHAS"""
 
     def _find_adjusted_priority(pkg: str, sev: str) -> str:
-        if sev == "moderate" or priority == "unknown":
+        if priority == "unknown":
             sev = "medium"
         if cve_priorities.index(sev) > cve_priorities.index(pkg):
             return sev
