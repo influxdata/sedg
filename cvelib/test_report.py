@@ -21,6 +21,7 @@ def mocked_requests_get__getGHReposAll(*args, **kwargs):
             self.json_data = json_data
             self.status_code = status_code
             self.headers = {}
+            self.content = ""
 
         def json(self):
             return self.json_data
@@ -113,6 +114,7 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
             self.json_data = json_data
             self.status_code = status_code
             self.headers = {}
+            self.content = ""
 
         def json(self):
             return self.json_data
@@ -381,6 +383,7 @@ def mocked_requests_get__getGHAlertsEnabled(*args, **kwargs):
             self.json_data = json_data
             self.status_code = status_code
             self.headers = {}
+            self.content = ""
 
         def json(self):  # pragma: nocover
             return self.json_data
@@ -596,6 +599,7 @@ def mocked_requests_get__getGHAlertsAllFull(*args, **kwargs):
             self.json_data = json_data
             self.status_code = status_code
             self.headers = {}
+            self.content = ""
 
         def json(self):  # pragma: no cover
             return self.json_data

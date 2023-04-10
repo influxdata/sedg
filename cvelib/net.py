@@ -21,7 +21,7 @@ def requestGetRaw(
         and "Authorization" not in hdrs
         and "GHTOKEN" in os.environ
     ):
-        hdrs["Authorization"] = "token %s" % os.getenv("GHTOKEN")
+        hdrs["Authorization"] = "Bearer %s" % os.getenv("GHTOKEN")
 
     # print("DEBUG: url=%s, headers=%s, params=%s" % (url, hdrs, params))
     return requests.get(url, headers=hdrs, params=params)
@@ -34,7 +34,7 @@ def requestGet(
     """Wrapper around requests.get() for json"""
     r: requests.Response = requestGetRaw(url, headers, params)
     if r.status_code >= 400:  # pragma: nocover
-        error("Problem fetching %s:\n%d - %s" % (url, r.status_code, r.json()))
+        error("Problem fetching %s:\n%d - %s" % (url, r.status_code, str(r.content)))
 
     return r.json()
 
@@ -54,7 +54,7 @@ def ghAPIGetList(
 
     hdrs: Dict[str, str] = copy.deepcopy(headers)
     if "Authorization" not in hdrs and "GHTOKEN" in os.environ:
-        hdrs["Authorization"] = "token %s" % os.getenv("GHTOKEN")
+        hdrs["Authorization"] = "Bearer %s" % os.getenv("GHTOKEN")
     if "Accept" not in hdrs:
         hdrs["Accept"] = "application/vnd.github+json"
     if "X-GitHub-Api-Version" not in hdrs:
@@ -73,7 +73,7 @@ def ghAPIGetList(
             print(".", end="", flush=True)
 
         try:
-            r: requests.Response = requestGetRaw(url, headers=headers, params=params)
+            r: requests.Response = requestGetRaw(url, headers=hdrs, params=parms)
         except requests.exceptions.RequestException as e:  # pragma: nocover
             if do_exit:
                 raise
@@ -82,7 +82,7 @@ def ghAPIGetList(
 
         if r.status_code >= 400:  # pragma: nocover
             error(
-                "Problem fetching %s:\n%d - %s" % (url, r.status_code, r.json()),
+                "Problem fetching %s:\n%d - %s" % (url, r.status_code, str(r.content)),
                 do_exit=do_exit,
             )
             return r.status_code, []
