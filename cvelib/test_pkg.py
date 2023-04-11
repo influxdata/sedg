@@ -139,17 +139,22 @@ class TestPkg(TestCase):
         """Test setProduct()"""
         tsts = [
             # valid
+            ("upstream", False, True),
             ("git", False, True),
+            ("svn", False, True),
+            ("deb", False, True),
             ("oci", False, True),
             ("snap", False, True),
             ("alpine", False, True),
             ("centos", False, True),
             ("debian", False, True),
+            ("distroless", False, True),
             ("opensuse", False, True),
+            ("osx", False, True),
             ("rhel", False, True),
             ("suse", False, True),
             ("ubuntu", False, True),
-            ("upstream", False, True),
+            ("windows", False, True),
             # valid compatUbuntu
             ("focal", True, True),
             # invalid

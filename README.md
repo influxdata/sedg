@@ -267,8 +267,13 @@ For each field in the software section:
  * `Priority_<softwareN>[/modifier]` (eg, `Priority_foo` or `Priority_bar/v1`)
    is optional and when specified contains a priority override for
    `<softwareN>[/modifier]`
- * `<product>` is the supporting technology (eg, `git`, `snap`, `oci`, etc),
-   OS (eg, `ubuntu`, `debian`, `suse`, etc) or simply `upstream`
+ * `<product>` is the supporting technology (eg, a VCS system, build artifact
+   or operating system) or simply `upstream`. Supported `<product>`s:
+   * VCS: bzr, cvs, git, hg or svn
+   * build artifacts: appimage, archive, deb, dmg, exe, flatpak, oci, rpm,
+     shell, snap
+   * OS: alpine, android, centos, debian, distroless, flatcar, ios, opensuse,
+     osx, rhel, suse, ubuntu, windows
  * `<where>` indicates where the software lives or in the case of snaps or
    other technologies with a concept of publishers, who the publisher is. For
    OS (eg, `ubuntu`, `debian`, `suse`, etc), `<where>` indicates the release of
@@ -282,7 +287,9 @@ For each field in the software section:
    `<where>` is used is not prescribed and the `<product>/<where>` combination
    is not meant to capture everything where the software lives. It is meant to
    be flexible to allow triagers a means to discern these differences as
-   appropriate for their requirements
+   appropriate for their requirements (eg, perhaps the triager wants to track
+   the status of the `targz` vs `zip`, one might use `archive/targz` and
+   `archive/zip`).
  * `<software>` is the name of the software as dictated by the product (eg, the
    name of the github project, the name of the OCI image, the deb source
    package, the name of the snap, etc)

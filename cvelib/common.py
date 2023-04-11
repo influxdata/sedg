@@ -54,6 +54,35 @@ _patLengths: Dict[str, int] = {
     "pkg-when": 100,
 }
 
+_product_vcs: List[str] = ["bzr", "cvs", "git", "hg", "svn"]
+_product_build_artifact: List[str] = [
+    "appimage",
+    "archive",
+    "deb",
+    "dmg",
+    "exe",
+    "flatpak",
+    "oci",
+    "rpm",
+    "shell",
+    "snap",
+]
+_product_os: List[str] = [
+    "alpine",
+    "android",
+    "centos",
+    "debian",
+    "distroless",
+    "flatcar",
+    "ios",
+    "opensuse",
+    "osx",
+    "rhel",
+    "suse",
+    "ubuntu",
+    "windows",
+]
+
 # Compile common regex on import
 rePatterns: Dict[str, Pattern[str]] = {
     # foo, foo1, foo-bar, foo.bar, for-bar-1.0, foo_bar, FOO
@@ -68,7 +97,8 @@ rePatterns: Dict[str, Pattern[str]] = {
     ),
     # add others distros and build artifacts (oci, etc) as desired
     "pkg-product": re.compile(
-        r"^(git|snap|oci|upstream|alpine|centos|debian|opensuse|rhel|suse|ubuntu)$"
+        r"^(upstream|%s)$"
+        % "|".join(_product_vcs + _product_build_artifact + _product_os)
     ),
     "pkg-product-build-artifact": re.compile(r"^(snap|oci)$"),
     "pkg-product-ubuntu": re.compile(
@@ -83,9 +113,12 @@ rePatterns: Dict[str, Pattern[str]] = {
     ),
     # the string form
     "pkg-full": re.compile(
-        r"^(git|snap|oci|upstream|alpine|debian|suse|ubuntu)(/[a-z0-9+.-]{1,%(where_len)d})?_[a-zA-Z0-9+._-]{1,%(software_len)d}(/[a-z0-9+.-]{1,%(modifier_len)d})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,%(when_len)d}\))?$"
+        r"^(upstream|%(products)s)(/[a-z0-9+.-]{1,%(where_len)d})?_[a-zA-Z0-9+._-]{1,%(software_len)d}(/[a-z0-9+.-]{1,%(modifier_len)d})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,%(when_len)d}\))?$"
         % (
             {
+                "products": "|".join(
+                    _product_vcs + _product_build_artifact + _product_os
+                ),
                 "where_len": _patLengths["pkg-where"],
                 "software_len": _patLengths["pkg-software"],
                 "when_len": _patLengths["pkg-when"],
