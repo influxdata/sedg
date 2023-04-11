@@ -27,7 +27,6 @@ syn case match
 " Everything that is not explicitly matched by the rules below
 syn match cveElse "^.*$"
 
-syn match cveRelease "\(git\|snap\|oci\|upstream\|alpine\|debian\|suse\|ubuntu\)\(/[a-z0-9+.-]\+\)\?"
 syn match cveSrcPkg contained "[a-zA-Z0-9][a-zA-Z0-9+._-]\+"
 syn match cveId contained "CVE-[0-9][0-9][0-9][0-9]-\([0-9]\{4,12\}\|NNN[0-9]\|NN[0-9][0-9]\|N[0-9]\{3,11\}\|GH[0-9]\+#[a-zA-Z0-9+._-]\+\)"
 syn match cveDate contained "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\( [0-2][0-9]:[0-5][0-9]:[0-5][0-9] \([A-Z][A-Z][A-Z]\|[+-][01][0-9][0-9][0-9]\)\)\?"
@@ -37,10 +36,9 @@ syn match cveStatusExtra contained " (.\+)"
 " Standard keys
 syn match cveKey "^\%(Candidate\|OpenDate\|PublicDate\|CRD\|References\|Description\|GitHub-Advanced-Security\|Notes\|Mitigation\|CVSS\|Bugs\|Discovered-by\|Assigned-to\|Patches_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\): *"
 
-" TODO: reuse the above definitions here
-" Release/status key
-" <release>_<software>[/<modifier>]: <status>
-syn match cveKeyRelease "^\%(git\|snap\|oci\|upstream\|alpine\|debian\|suse\|ubuntu\)\(/[a-z0-9+.-]\+\)\?_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+.-]\+\)\?: *"
+" Product/where key
+" <product>[/<where>]_<software>[/<modifier>]:
+syn match cveProductKey "^\%(upstream\|bzr\|cvs\|git\|hg\|svn\|appimage\|archive\|deb\|dmg\|exe\|flatpak\|oci\|rpm\|shell\|snap\|alpine\|android\|centos\|debian\|distroless\|flatcar\|ios\|opensuse\|osx\|rhel\|suse\|ubuntu\|windows\)\(/[a-z0-9+.-]\+\)\?_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+.-]\+\)\?: *"
 "
 " TODO: reuse the above definitions here
 " CloseDates key
@@ -67,14 +65,14 @@ syn region cveStrictField start="^Tags" end="$" contains=cveTagKey,cveTagValue o
 syn region cveStrictField start="^Candidate" end="$" contains=cveKey,cveId
 syn region cveStrictField start="^\(OpenDate\|PublicDate\|CRD\)" end="$" contains=cveKey,cveDate
 syn region cveStrictField start="^Patches_" end=":$" contains=cveKey,cveSrcPkg oneline
-syn region cveStrictField start="^[a-z/-]\+_" end="$" contains=cveKeyRelease,cveStatus,cveStatusExtra oneline
+syn region cveStrictField start="^[a-z/-]\+_" end="$" contains=cveProductKey,cveStatus,cveStatusExtra oneline
 
 " set the highlights
 hi def link cveKey                 Keyword
 hi def link cveCloseDateKey        Keyword
 hi def link cvePriorityKey         Keyword
 hi def link cveTagKey              Keyword
-hi def link cveKeyRelease          Keyword
+hi def link cveProductKey          Keyword
 hi def link cveElse                Normal
 hi def link cveStrictField         Error
 
