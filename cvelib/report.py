@@ -660,7 +660,8 @@ def _parseAlert(alert: Dict[str, Any]) -> Tuple[str, Dict[str, str]]:
         a["alert_type"] = "dependabot"
         a["dependabot_package_name"] = alert["dependency"]["package"]["name"]
         a["dependabot_manifest_path"] = alert["dependency"]["manifest_path"]
-    if "security_advisory" in alert:
+    if "security_advisory" in alert and alert["security_advisory"] is not None:
+        # alert["security_advisory"] = None indicates a withdrawn alert
         a["severity"] = alert["security_advisory"]["severity"]
         a["security_advisory_ghsa_url"] = (
             "https://github.com/advisories/%s" % alert["security_advisory"]["ghsa_id"]
