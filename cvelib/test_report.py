@@ -1531,7 +1531,7 @@ valid-repo resolved alerts: 3
         now: datetime.datetime = datetime.datetime.now()
         exp = """Alerts:
 ## valid-repo template
-Please update dependabot flagged dependencies in valid-repo
+Please address alerts (code-scanning, dependabot, secret-scanning) in valid-repo
 
 The following alerts were issued:
 - [ ] [@norf/quz](https://github.com/valid-org/valid-repo/security/dependabot/5) (unknown)
@@ -1569,7 +1569,7 @@ References:
  https://github.com/advisories/GHSA-c (baz)
  https://github.com/advisories/GHSA-d (@norf/quz)
 Description:
- Please update dependabot flagged dependencies in valid-repo
+ Please address alerts in valid-repo
  - [ ] @norf/quz (unknown)
  - [ ] Some Other Code Finding (medium)
  - [ ] Some Other Leaked Secret (high)
@@ -1659,7 +1659,7 @@ valid-repo updated alerts: 5
 Resolved alerts:
 
 ## valid-repo template
-Please update dependabot flagged dependencies in valid-repo
+Please address alerts (code-scanning, dependabot, secret-scanning) in valid-repo
 
 The following alerts were issued:
 - [ ] [Some Code Finding](https://github.com/valid-org/valid-repo/security/code-scanning/30) (high)
@@ -1691,7 +1691,7 @@ References:
  https://github.com/valid-org/valid-repo/security/secret-scanning/20
  https://github.com/advisories/GHSA-a (github.com/foo/bar)
 Description:
- Please update dependabot flagged dependencies in valid-repo
+ Please address alerts in valid-repo
  - [ ] Some Code Finding (high)
  - [ ] Some Leaked Secret (high)
  - [ ] github.com/foo/bar (low)
@@ -1898,7 +1898,7 @@ valid-repo resolved alerts: 1
         now: datetime.datetime = datetime.datetime.now()
         exp = """Alerts:
 ## valid-repo template
-Please update dependabot flagged dependencies in valid-repo
+Please address alerts (dependabot) in valid-repo
 
 The following alerts were issued:
 - [ ] [@norf/quz](https://github.com/valid-org/valid-repo/security/dependabot/5) (unknown)
@@ -1930,7 +1930,7 @@ References:
  https://github.com/advisories/GHSA-c (baz)
  https://github.com/advisories/GHSA-d (@norf/quz)
 Description:
- Please update dependabot flagged dependencies in valid-repo
+ Please address alerts in valid-repo
  - [ ] @norf/quz (unknown)
  - [ ] baz (2 medium)
 GitHub-Advanced-Security:
@@ -1995,9 +1995,9 @@ valid-repo updated alerts: 3
 Resolved alerts:
 
 ## valid-repo template
-Please update dependabot flagged dependencies in valid-repo
+Please address alert (dependabot) in valid-repo
 
-The following alerts were issued:
+The following alert was issued:
 - [ ] [github.com/foo/bar](https://github.com/valid-org/valid-repo/security/dependabot/1) (low)
 
 Since a 'low' severity issue is present, tentatively adding the 'security/low' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
@@ -2021,7 +2021,7 @@ References:
  https://github.com/valid-org/valid-repo/security/dependabot/1
  https://github.com/advisories/GHSA-a (github.com/foo/bar)
 Description:
- Please update dependabot flagged dependencies in valid-repo
+ Please address alert in valid-repo
  - [ ] github.com/foo/bar (low)
 GitHub-Advanced-Security:
  - type: dependabot
@@ -2115,9 +2115,9 @@ valid-repo resolved alerts: 1
         now: datetime.datetime = datetime.datetime.now()
         exp = """Alerts:
 ## valid-repo template
-Please update dependabot flagged dependencies in valid-repo
+Please address alert (code-scanning) in valid-repo
 
-The following alerts were issued:
+The following alert was issued:
 - [ ] [Some Other Code Finding](https://github.com/valid-org/valid-repo/security/code-scanning/31) (medium)
 
 Since a 'medium' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
@@ -2140,7 +2140,7 @@ CRD:
 References:
  https://github.com/valid-org/valid-repo/security/code-scanning/31
 Description:
- Please update dependabot flagged dependencies in valid-repo
+ Please address alert in valid-repo
  - [ ] Some Other Code Finding (medium)
 GitHub-Advanced-Security:
  - type: code-scanning
@@ -2172,9 +2172,9 @@ valid-repo updated alerts: 1
 Resolved alerts:
 
 ## valid-repo template
-Please update dependabot flagged dependencies in valid-repo
+Please address alert (code-scanning) in valid-repo
 
-The following alerts were issued:
+The following alert was issued:
 - [ ] [Some Code Finding](https://github.com/valid-org/valid-repo/security/code-scanning/30) (high)
 
 Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
@@ -2197,7 +2197,7 @@ CRD:
 References:
  https://github.com/valid-org/valid-repo/security/code-scanning/30
 Description:
- Please update dependabot flagged dependencies in valid-repo
+ Please address alert in valid-repo
  - [ ] Some Code Finding (high)
 GitHub-Advanced-Security:
  - type: code-scanning
@@ -2287,9 +2287,9 @@ valid-repo resolved alerts: 1
         now: datetime.datetime = datetime.datetime.now()
         exp = """Alerts:
 ## valid-repo template
-Please update dependabot flagged dependencies in valid-repo
+Please address alert (secret-scanning) in valid-repo
 
-The following alerts were issued:
+The following alert was issued:
 - [ ] [Some Other Leaked Secret](https://github.com/valid-org/valid-repo/security/secret-scanning/21) (high)
 
 Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
@@ -2312,7 +2312,7 @@ CRD:
 References:
  https://github.com/valid-org/valid-repo/security/secret-scanning/21
 Description:
- Please update dependabot flagged dependencies in valid-repo
+ Please address alert in valid-repo
  - [ ] Some Other Leaked Secret (high)
 GitHub-Advanced-Security:
  - type: secret-scanning
@@ -2345,9 +2345,9 @@ valid-repo updated alerts: 1
 Resolved alerts:
 
 ## valid-repo template
-Please update dependabot flagged dependencies in valid-repo
+Please address alert (secret-scanning) in valid-repo
 
-The following alerts were issued:
+The following alert was issued:
 - [ ] [Some Leaked Secret](https://github.com/valid-org/valid-repo/security/secret-scanning/20) (high)
 
 Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
@@ -2370,7 +2370,7 @@ CRD:
 References:
  https://github.com/valid-org/valid-repo/security/secret-scanning/20
 Description:
- Please update dependabot flagged dependencies in valid-repo
+ Please address alert in valid-repo
  - [ ] Some Leaked Secret (high)
 GitHub-Advanced-Security:
  - type: secret-scanning
@@ -2488,7 +2488,7 @@ valid-repo resolved alerts: 1
         self.assertEqual("", error.getvalue().strip())
         now: datetime.datetime = datetime.datetime.now()
         exp = """## valid-repo template
-Please update dependabot flagged dependencies in valid-repo
+Please address alerts (dependabot) in valid-repo
 
 The following alerts were issued:
 - [ ] [foo](https://github.com/valid-org/valid-repo/security/dependabot/1) (medium)
@@ -2519,7 +2519,7 @@ References:
  https://github.com/advisories/GHSA-aaa (foo)
  https://github.com/advisories/GHSA-bbb (foo)
 Description:
- Please update dependabot flagged dependencies in valid-repo
+ Please address alerts in valid-repo
  - [ ] foo (high)
  - [ ] foo (2 medium)
 GitHub-Advanced-Security:

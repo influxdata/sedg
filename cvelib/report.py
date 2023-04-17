@@ -467,6 +467,7 @@ def _printGHAlertsTemplates(org: str, repo: str, alert: List[Dict[str, str]]) ->
     urls: List[str] = []
     highest: int = 0
 
+    alert_types: List[str] = []
     references: List[str] = []
     advisories: List[str] = []
     html_items: List[str] = []
@@ -486,6 +487,8 @@ def _printGHAlertsTemplates(org: str, repo: str, alert: List[Dict[str, str]]) ->
             )
             if adv not in advisories:
                 advisories.append(adv)
+        if n["alert_type"] not in alert_types:
+            alert_types.append(n["alert_type"])
 
         display_name: str = ""
         if n["alert_type"] == "dependabot":
@@ -523,10 +526,12 @@ def _printGHAlertsTemplates(org: str, repo: str, alert: List[Dict[str, str]]) ->
     if priority == "unknown":
         priority = "medium"
 
-    print("## %s template" % repo)
-    template: str = """Please update dependabot flagged dependencies in %s
+    plural: bool = len(alert) > 1
 
-The following alerts were issued:
+    print("## %s template" % repo)
+    template: str = """Please address alert%s (%s) in %s
+
+The following alert%s issued:
 %s
 Since a '%s' severity issue is present, tentatively adding the 'security/%s' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
 
@@ -537,7 +542,10 @@ References:
  * https://docs.influxdata.io/development/security/issue_response/#developers
  * %s
 """ % (
+        "s" if plural else "",
+        ", ".join(sorted(alert_types)),
         repo,
+        "s were" if plural else " was",
         checklist,
         sev[highest],
         priority,
@@ -565,12 +573,13 @@ CRD:
 References:
  %s
 Description:
- Please update dependabot flagged dependencies in %s
+ Please address alert%s in %s
 %sGitHub-Advanced-Security:"""
         % (
             "CVE-%d-NNNN" % now.year,
             "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
             "\n ".join(references + sorted(advisories)),
+            "s" if plural else "",
             repo,
             checklist,
         )
