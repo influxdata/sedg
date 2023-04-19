@@ -452,6 +452,11 @@ def _printGHAlertsSummary(
 def _printGHAlertsTemplates(org: str, repo: str, alert: List[Dict[str, str]]) -> None:
     """Print out the alerts issue templates"""
     sev: List[str] = ["unknown", "low", "medium", "high", "critical"]
+    clause_txt: Dict[str, str] = {
+        "dependabot": "Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.",
+        "secret-scanning": "While any secrets should be removed from the repo, they will live forever in git history so please remember to rotate the secret too.",
+        "code-scanning": "Code scanning only reported against the default branch so please be sure to check any other supported branches when researching/fixing.",
+    }
     urls: List[str] = []
     highest: int = 0
 
@@ -460,6 +465,7 @@ def _printGHAlertsTemplates(org: str, repo: str, alert: List[Dict[str, str]]) ->
     advisories: List[str] = []
     html_items: List[str] = []
     txt_items: Dict[str, int] = {}
+    clauses: List[str] = []
     for n in sorted(alert, key=lambda i: i["html_url"]):
         url: str = "https://github.com/%s/%s/security/%s" % (org, repo, n["alert_type"])
         if url not in urls:
@@ -475,8 +481,12 @@ def _printGHAlertsTemplates(org: str, repo: str, alert: List[Dict[str, str]]) ->
             )
             if adv not in advisories:
                 advisories.append(adv)
+
         if n["alert_type"] not in alert_types:
             alert_types.append(n["alert_type"])
+
+        if clause_txt[n["alert_type"]] not in clauses:
+            clauses.append(clause_txt[n["alert_type"]])
 
         display_name: str = ""
         if n["alert_type"] == "dependabot":
@@ -521,7 +531,7 @@ def _printGHAlertsTemplates(org: str, repo: str, alert: List[Dict[str, str]]) ->
 
 The following alert%s issued:
 %s
-Since a '%s' severity issue is present, tentatively adding the 'security/%s' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
+Since a '%s' severity issue is present, tentatively adding the 'security/%s' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. %s
 
 Thanks!
 
@@ -537,6 +547,7 @@ References:
         checklist,
         sev[highest],
         priority,
+        " ".join(sorted(clauses)),
         "\n * ".join(sorted(urls)),
     )
 

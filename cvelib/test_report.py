@@ -1531,7 +1531,7 @@ The following alerts were issued:
 - [ ] [baz](https://github.com/valid-org/valid-repo/security/dependabot/3) (medium)
 - [ ] [baz](https://github.com/valid-org/valid-repo/security/dependabot/4) (medium)
 
-Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
+Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Code scanning only reported against the default branch so please be sure to check any other supported branches when researching/fixing. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing. While any secrets should be removed from the repo, they will live forever in git history so please remember to rotate the secret too.
 
 Thanks!
 
@@ -1657,7 +1657,7 @@ The following alerts were issued:
 - [ ] [Some Leaked Secret](https://github.com/valid-org/valid-repo/security/secret-scanning/20) (high)
 - [ ] [github.com/foo/bar](https://github.com/valid-org/valid-repo/security/dependabot/1) (low)
 
-Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
+Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Code scanning only reported against the default branch so please be sure to check any other supported branches when researching/fixing. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing. While any secrets should be removed from the repo, they will live forever in git history so please remember to rotate the secret too.
 
 Thanks!
 
@@ -2111,7 +2111,7 @@ Please address alert (code-scanning) in valid-repo
 The following alert was issued:
 - [ ] [Some Other Code Finding](https://github.com/valid-org/valid-repo/security/code-scanning/31) (medium)
 
-Since a 'medium' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
+Since a 'medium' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Code scanning only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
 
 Thanks!
 
@@ -2168,7 +2168,7 @@ Please address alert (code-scanning) in valid-repo
 The following alert was issued:
 - [ ] [Some Code Finding](https://github.com/valid-org/valid-repo/security/code-scanning/30) (high)
 
-Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
+Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Code scanning only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
 
 Thanks!
 
@@ -2283,7 +2283,7 @@ Please address alert (secret-scanning) in valid-repo
 The following alert was issued:
 - [ ] [Some Other Leaked Secret](https://github.com/valid-org/valid-repo/security/secret-scanning/21) (high)
 
-Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
+Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. While any secrets should be removed from the repo, they will live forever in git history so please remember to rotate the secret too.
 
 Thanks!
 
@@ -2341,7 +2341,7 @@ Please address alert (secret-scanning) in valid-repo
 The following alert was issued:
 - [ ] [Some Leaked Secret](https://github.com/valid-org/valid-repo/security/secret-scanning/20) (high)
 
-Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
+Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. While any secrets should be removed from the repo, they will live forever in git history so please remember to rotate the secret too.
 
 Thanks!
 
