@@ -331,39 +331,27 @@ def _getGHSecretsScanningEnabled(
     return enabled, disabled
 
 
-# https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28
-#
-# Perhaps more efficient to look at security_and_analysis from
-# https://docs.github.com/en/rest/secret-scanning?apiVersion=2022-11-28 when
-
-
 def getGHAlertsStatusReport(
     org: str, repos: List[str] = [], excluded_repos: List[str] = []
 ) -> None:
     """Obtain list of repos that have vulnerability alerts enabled/disabled"""
-    enabled: List[str]
-    disabled: List[str]
-
-    enabled, disabled = _getGHAlertsEnabled(
-        org, "dependabot", repos, excluded_repos=excluded_repos
-    )
-    print("Dependabot:")
-    print(" Enabled:\n%s" % "\n".join("  %s" % r for r in enabled))
-    print(" Disabled:\n%s" % "\n".join("  %s" % r for r in disabled))
-
-    enabled, disabled = _getGHSecretsScanningEnabled(
-        org, repos, excluded_repos=excluded_repos
-    )
-    print("\nSecret Scanning:")
-    print(" Enabled:\n%s" % "\n".join("  %s" % r for r in enabled))
-    print(" Disabled:\n%s" % "\n".join("  %s" % r for r in disabled))
-
-    enabled, disabled = _getGHAlertsEnabled(
-        org, "code-scanning", repos, excluded_repos=excluded_repos
-    )
-    print("\nCode Scanning:")
-    print(" Enabled:\n%s" % "\n".join("  %s" % r for r in enabled))
-    print(" Disabled:\n%s" % "\n".join("  %s" % r for r in disabled))
+    alert_type: str = ""
+    for alert_type in ["code-scanning", "dependabot", "secret-scanning"]:
+        enabled: List[str] = []
+        disabled: List[str] = []
+        if alert_type == "secret-scanning":
+            enabled, disabled = _getGHSecretsScanningEnabled(
+                org, repos, excluded_repos=excluded_repos
+            )
+        else:
+            enabled, disabled = _getGHAlertsEnabled(
+                org, alert_type, repos, excluded_repos=excluded_repos
+            )
+        for repo in sorted(enabled + disabled):
+            print(
+                "%s,%s,%s,https://github.com/influxdata/%s/settings/security_analysis"
+                % (alert_type, "enabled" if repo in enabled else "disabled", repo, repo)
+            )
 
 
 def getUpdatedReport(

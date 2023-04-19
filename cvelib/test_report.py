@@ -1210,23 +1210,12 @@ foo"""
                 "valid-org", repos=["valid-repo", "disabled-repo"]
             )
         self.assertEqual("", error.getvalue().strip())
-        exp = """Dependabot:
- Enabled:
-  valid-repo
- Disabled:
-  disabled-repo
-
-Secret Scanning:
- Enabled:
-  valid-repo
- Disabled:
-  disabled-repo
-
-Code Scanning:
- Enabled:
-  valid-repo
- Disabled:
-  disabled-repo"""
+        exp = """code-scanning,disabled,disabled-repo,https://github.com/influxdata/disabled-repo/settings/security_analysis
+code-scanning,enabled,valid-repo,https://github.com/influxdata/valid-repo/settings/security_analysis
+dependabot,disabled,disabled-repo,https://github.com/influxdata/disabled-repo/settings/security_analysis
+dependabot,enabled,valid-repo,https://github.com/influxdata/valid-repo/settings/security_analysis
+secret-scanning,disabled,disabled-repo,https://github.com/influxdata/disabled-repo/settings/security_analysis
+secret-scanning,enabled,valid-repo,https://github.com/influxdata/valid-repo/settings/security_analysis"""
         self.assertEqual(exp, output.getvalue().strip())
 
     #
