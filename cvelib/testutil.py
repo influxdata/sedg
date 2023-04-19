@@ -53,3 +53,8 @@ def cveContentFromDict(d):
     for key in d:
         s += "%s:%s\n" % (key, " %s" % d[key] if d[key] else "")
     return s
+
+
+def disableRequestsCache():
+    """Disable use of requests_cache"""
+    os.environ["SEDG_REQUESTS_CACHE"] = "none"

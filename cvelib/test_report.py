@@ -728,6 +728,8 @@ class TestReport(TestCase):
         os.environ["GHTOKEN"] = "fake-test-token"
         os.environ["TEST_UPDATE_PROGRESS"] = "0"
 
+        cvelib.testutil.disableRequestsCache()
+
     def tearDown(self):
         """Teardown functions common for all tests"""
         if self.orig_ghtoken is not None:

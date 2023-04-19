@@ -6,6 +6,7 @@ import copy
 import os
 import requests
 import sys
+from tempfile import gettempdir
 from typing import Any, Dict, List, Mapping, MutableMapping, Tuple, Union
 
 from cvelib.common import error, warn
@@ -15,6 +16,47 @@ def requestGetRaw(
     url: str, headers: Dict[str, str] = {}, params: Mapping[str, Union[str, int]] = {}
 ) -> requests.Response:
     """Wrapper around requests.get()"""
+    # use the requests-cache module only if it is installed. Disable caching
+    # with SEDG_REQUESTS_CACHE=none
+    if (
+        "SEDG_REQUESTS_CACHE" not in os.environ
+        or os.environ["SEDG_REQUESTS_CACHE"] != "none"
+    ):  # pragma: nocover
+        try:
+            # if "requests_cache" not in sys.modules:
+            import requests_cache
+
+            # require version 1 for match_headers
+            # pip install "requests-cache>=1.0"
+            if (
+                "requests_cache" in sys.modules
+                and int(requests_cache.__version__.split(".")[0]) > 0
+            ):
+                # put in /tmp for now. Could instead use:
+                # '"sedg-cache", backend="filesystem", use_cache_dir=True' to
+                # write to ~/.cache/sedg-cache
+                cache_fn: str = os.path.join(gettempdir(), "sedg-cache")
+                expiry: int = 3600  # 1 hour
+                allowable_codes = [200]
+                if url.startswith("https://api.github.com/"):
+                    # 200 and 204 are used with GitHub and 403 and 404 with
+                    # GitHub Advanced Security
+                    allowable_codes = [200, 204, 403, 404]
+
+                requests_cache.patcher.install_cache(
+                    cache_name=cache_fn,
+                    backend="sqlite",
+                    expire_after=expiry,
+                    allowable_codes=allowable_codes,
+                    match_headers=True,
+                    ignored_parameters=["Authorization", "cookie"],
+                )
+                # for some reason, it's written with world read
+                os.chmod(cache_fn + ".sqlite", 0o0600)
+        except Exception:
+            # print("DEBUG: requests_cache could not be imported")
+            pass
+
     hdrs: Dict[str, str] = copy.deepcopy(headers)
     if (
         url.startswith("https://api.github.com/")
