@@ -23,6 +23,8 @@ class TestNet(TestCase):
             self.orig_ghtoken = os.getenv("GHTOKEN")
         os.environ["GHTOKEN"] = "fake-test-token"
 
+        cvelib.testutil.disableRequestsCache()
+
     def tearDown(self):
         """Teardown functions common for all tests"""
         if self.orig_ghtoken is not None:
