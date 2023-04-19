@@ -291,7 +291,7 @@ cve-data = %s
         ]
         for val, exp, expOut, expErr in tsts:
             cvelib.common.configCache = None
-            self.orig_xdg_config_home, self.tmpdir = cvelib.testutil._newConfigFile(
+            self.orig_xdg_config_home, tmpdir = cvelib.testutil._newConfigFile(
                 """[Behavior]
 compat-ubuntu = %s
 """
@@ -300,6 +300,8 @@ compat-ubuntu = %s
 
             with cvelib.testutil.capturedOutput() as (output, error):
                 res = cvelib.common.getConfigCompatUbuntu()
+            cvelib.common.recursive_rm(tmpdir)
+
             self.assertEqual(exp, res)
 
             self.assertEqual(expOut, output.getvalue().strip())
