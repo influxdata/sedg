@@ -1,5 +1,5 @@
 pyyaml
-requests
+requests>=2.22
 requests_cache>=1.0
 # syntax
 black==22.12.0
