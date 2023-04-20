@@ -5,3 +5,4 @@ ignored
 __pycache__
 .coverage
 venv
+.venv
