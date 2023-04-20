@@ -2,86 +2,109 @@
 
  1. Clone this repo (https://github.com/influxdata/sedg)
 
- 2. Clone CVE data into /path/to/cve-data
+ 2. Create a venv for it (a venv is recommended to ensure you have the proper
+    versions of dependencies to avoid mismatches and bugs (eg, requests_cache
+    1.0.1 is known to have issues with system python packages from Ubuntu 20.04
+    LTS)):
 
- 3. Create ~/.config/sedg/sedg.conf to have:
+    ```
+    $ cd /path/to/sedg
+    $ python3 -m venv venv
+    $ . /path/to/sedg/venv/bin/activate
+    $ pip install -r requirements.txt
+    ```
+
+ 3. Clone CVE data into /path/to/cve-data
+
+ 4. Create ~/.config/sedg/sedg.conf to have:
 
     ```
     [Locations]
     cve-data = /path/to/cve-data
     ```
 
- 4. Do stuff
+ 5. Do stuff
 
     ```
-    $ export PYTHONPATH=/path/to/sedg
-    $ export PATH=$PATH:/path/to/sedg/bin
+    $ cd /path/to/cve-data
+    $ . /path/to/sedg/venv/bin/activate
+    (venv) $ export PYTHONPATH=/path/to/sedg
+    (venv) $ export PATH=$PATH:/path/to/sedg/bin
 
     # create a CVE against a particular package
-    $ cve-add --cve CVE-2020-1234 -p git/foo-org_foo
+    (venv) $ cve-add --cve CVE-2020-1234 -p git/foo-org_foo
 
     # create a placeholder CVE against a particular package
-    $ cve-add -c CVE-2020-NNN1 -p git/foo-org_foo
+    (venv) $ cve-add -c CVE-2020-NNN1 -p git/foo-org_foo
 
     # create a new placeholder CVE for this year against a particular package
     # (creates CVE-<YEAR>-NNN1 if it doesn't exist or incremements the highest
     # found for the year and adds it (eg, if CVE-<YEAR>-NNN9 exists,
     # CVE-<YEAR>-NN10 is created))
-    $ cve-add -c next -p git/foo-org_foo
+    (venv) $ cve-add -c next -p git/foo-org_foo
 
     # create a GitHub placholder CVE from the GitHub url using this year
-    $ cve-add --cve https://github.com/...
+    (venv) $ cve-add --cve https://github.com/...
 
     # create a GitHub placeholder CVE with a particular id and package
     # template
-    $ cve-add -c CVE-2020-GH1234#foo -p git/foo-org_foo --package-template=bar
+    (venv) $ cve-add -c CVE-2020-GH1234#foo -p git/foo-org_foo --package-template=bar
 
     $ <work on CVEs in .../<cve-data>
-    $ cve-check-syntax
+    (venv) $ cve-check-syntax
 
     # various reports for humans
-    $ cve-report				# summary
-    $ cve-report --output-todolist		# todo list
-    $ cve-report --output-sw [SOFTWARE]		# software info
-    $ cve-report --output-summary [PATH]	# summary info
+    (venv) $ cve-report				# summary
+    (venv) $ cve-report --output-todolist		# todo list
+    (venv) $ cve-report --output-sw [SOFTWARE]		# software info
+    (venv) $ cve-report --output-summary [PATH]	# summary info
 
     # various machine reports
-    $ cve-report --output-influxdb [PATH]	# InfluxDB line protocol
+    (venv) $ cve-report --output-influxdb [PATH]	# InfluxDB line protocol
+
+    # leave the venv
+    (venv) $ deactivate
     ```
 
- 5. (Optional) If vim user, symlink cvelib/cve.vim in ~/.vim/syntax
+ 6. (Optional) If vim user, symlink cvelib/cve.vim in ~/.vim/syntax
 
 
 # Tests
 
+Development should be done in a venv, see 'Using' above to set one up. Once
+setup, develop like so:
+
+    $ cd /path/to/sedg
+    $ . ./venv/bin/activate
+    (venv) $
+    <do stuff>
+    (venv) $ deactivate
+
 Run all checks:
 
-    $ make check
+    (venv) $ make check
 
 Run unittests:
 
-    $ make check-deps  # install what it tells you (deb-centric)
-    $ make test
-
-or a single test file:
-
-    $ PYTHONPATH=$PWD python3 -m unittest cvelib.cve_foo
-
-or a single test:
-
-    $ PYTHONPATH=$PWD python3 -m unittest cvelib.cve_foo.TestFoo.test_bar
-
-or in a venv:
-
-    $ python3 -m venv venv
-    $ . venv/bin/activate
-    $ pip install -r requirements.txt
     (venv) $ make test
     ...
     Ran 116 tests in 0.219s
     OK
-    (venv) deactivate
-    $
+
+or a single test file:
+
+    # template
+    (venv) $ PYTHONPATH=$PWD python3 -m unittest cvelib.test_foo
+    # example
+    (venv) $ PYTHONPATH=$PWD python3 -m unittest cvelib.test_cve
+
+or a single test:
+
+    # template
+    (venv) $ PYTHONPATH=$PWD python3 -m unittest cvelib.test_foo.TestFoo.test_bar
+    # example
+    (venv) $ PYTHONPATH=$PWD python3 -m unittest cvelib.test_cve.TestCve.test___init__valid
+
 
 # CVE File format
 
