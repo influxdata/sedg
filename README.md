@@ -16,6 +16,20 @@
 
  3. Clone CVE data into /path/to/cve-data
 
+ 4. Optionally create a shell function to setup your environment for using sedg
+    with your CVE data. Eg, in `~/.bashrc`:
+
+    cve_env() {
+        sedgpath="/path/to/sedg"
+        echo "Entering venv for 'sedg' tooling. Use 'deactivate' when done."
+        . "$sedgpath/venv/bin/activate"
+
+        export PATH="$PATH:$sedgpath/bin"
+        export PYTHONPATH="$sedgpath"
+
+        cd "/path/to/cve-data"
+    }
+
  4. Create ~/.config/sedg/sedg.conf to have:
 
     ```
@@ -26,6 +40,9 @@
  5. Do stuff
 
     ```
+    # if added shell function
+    $ cve_env
+    # otherwise
     $ cd /path/to/cve-data
     $ . /path/to/sedg/venv/bin/activate
     (venv) $ export PYTHONPATH=/path/to/sedg
