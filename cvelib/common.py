@@ -467,6 +467,13 @@ def setCveHeader(headers: Message, key: str, val: Optional[str]) -> None:
         headers.add_header(key, val)
 
 
+def getCacheDirPath() -> str:
+    """Return the path to the cache directory"""
+    if "XDG_CACHE_HOME" in os.environ:
+        return os.path.expandvars("$XDG_CACHE_HOME/sedg")
+    return os.path.expandvars("$HOME/.cache/sedg")
+
+
 def getConfigFilePath() -> str:
     """Return the path to sedg.conf"""
     if "XDG_CONFIG_HOME" in os.environ:

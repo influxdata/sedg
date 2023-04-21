@@ -119,6 +119,22 @@ class TestCommon(TestCase):
         cvelib.common.setCveHeader(m, "foo", None)
         self.assertEqual(0, len(m))
 
+    def test_getCacheDirPath(self):
+        """Test getCacheDirPath()"""
+        if "XDG_CACHE_HOME" in os.environ:
+            self.orig_xdg_config_home = os.environ["XDG_CACHE_HOME"]
+
+        os.environ["XDG_CACHE_HOME"] = "/fake/.cache"
+        res = cvelib.common.getCacheDirPath()
+        self.assertEqual("/fake/.cache/sedg", res)
+
+        del os.environ["XDG_CACHE_HOME"]
+        res = cvelib.common.getCacheDirPath()
+        self.assertEqual(
+            os.path.expandvars("$HOME/.cache/sedg"),
+            res,
+        )
+
     def test_getConfigFilePath(self):
         """Test getConfigFilePath()"""
         if "XDG_CONFIG_HOME" in os.environ:
