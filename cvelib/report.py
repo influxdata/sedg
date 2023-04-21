@@ -583,6 +583,8 @@ Description:
             checklist,
         )
     )
+
+    discovered_by: List[str] = []
     for n in sorted(alert, key=lambda i: i["html_url"]):
         s: str = " - type: %s\n" % n["alert_type"]
 
@@ -592,11 +594,17 @@ Description:
             else:
                 s += "   dependency: %s\n" % n["dependabot_package_name"]
             s += "   detectedIn: %s\n" % n["dependabot_manifest_path"]
+            if "gh-dependabot" not in discovered_by:
+                discovered_by.append("gh-dependabot")
         elif n["alert_type"] == "code-scanning":
             s += "   description: %s\n" % n["code_description"]
+            if "gh-code" not in discovered_by:
+                discovered_by.append("gh-code")
         elif n["alert_type"] == "secret-scanning":
             s += "   secret: %s\n" % n["secret_type_display_name"]
             s += "   detectedIn: tbd\n"
+            if "gh-secret" not in discovered_by:
+                discovered_by.append("gh-secret")
 
         s += "   severity: %s\n" % n["severity"]
         if n["alert_type"] == "dependabot":
@@ -609,7 +617,7 @@ Description:
 Mitigation:
 Bugs:
 Priority: %s
-Discovered-by: gh-dependabot
+Discovered-by: %s
 Assigned-to:
 CVSS:
 
@@ -617,6 +625,7 @@ Patches_%s:
 git/%s_%s: needs-triage"""
         % (
             priority,
+            ", ".join(sorted(discovered_by)),
             repo,
             org,
             repo,

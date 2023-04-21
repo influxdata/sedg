@@ -1602,7 +1602,7 @@ Notes:
 Mitigation:
 Bugs:
 Priority: high
-Discovered-by: gh-dependabot
+Discovered-by: gh-code, gh-dependabot, gh-secret
 Assigned-to:
 CVSS:
 
@@ -1709,7 +1709,7 @@ Notes:
 Mitigation:
 Bugs:
 Priority: high
-Discovered-by: gh-dependabot
+Discovered-by: gh-code, gh-dependabot, gh-secret
 Assigned-to:
 CVSS:
 
@@ -2143,7 +2143,7 @@ Notes:
 Mitigation:
 Bugs:
 Priority: medium
-Discovered-by: gh-dependabot
+Discovered-by: gh-code
 Assigned-to:
 CVSS:
 
@@ -2200,7 +2200,7 @@ Notes:
 Mitigation:
 Bugs:
 Priority: high
-Discovered-by: gh-dependabot
+Discovered-by: gh-code
 Assigned-to:
 CVSS:
 
@@ -2316,7 +2316,7 @@ Notes:
 Mitigation:
 Bugs:
 Priority: high
-Discovered-by: gh-dependabot
+Discovered-by: gh-secret
 Assigned-to:
 CVSS:
 
@@ -2374,7 +2374,7 @@ Notes:
 Mitigation:
 Bugs:
 Priority: high
-Discovered-by: gh-dependabot
+Discovered-by: gh-secret
 Assigned-to:
 CVSS:
 
