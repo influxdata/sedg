@@ -6,10 +6,9 @@ import copy
 import os
 import requests
 import sys
-from tempfile import gettempdir
 from typing import Any, Dict, List, Mapping, MutableMapping, Tuple, Union
 
-from cvelib.common import error, warn
+from cvelib.common import error, warn, getCacheDirPath
 
 
 def requestGetRaw(
@@ -32,10 +31,13 @@ def requestGetRaw(
                 "requests_cache" in sys.modules
                 and int(requests_cache.__version__.split(".")[0]) > 0
             ):
-                # put in /tmp for now. Could instead use:
-                # '"sedg-cache", backend="filesystem", use_cache_dir=True' to
-                # write to ~/.cache/sedg-cache
-                cache_fn: str = os.path.join(gettempdir(), "sedg-cache")
+                cache_dir: str = getCacheDirPath()
+                if not os.path.exists(os.path.dirname(cache_dir)):
+                    os.mkdir(os.path.dirname(cache_dir), 0o700)
+                if not os.path.exists(cache_dir):
+                    os.mkdir(cache_dir, 0o700)
+                cache_fn: str = os.path.join(cache_dir, "sedg-cache")
+
                 expiry: int = 3600  # 1 hour
                 allowable_codes = [200]
                 if url.startswith("https://api.github.com/"):
