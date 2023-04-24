@@ -5,7 +5,7 @@
 import sys
 import unittest
 
-suite = unittest.TestLoader().discover("./cvelib", "test*.py", "./")
+suite = unittest.TestLoader().discover("./tests", "test*.py", "./")
 test_result = unittest.TextTestRunner(verbosity=2).run(suite)
 if (
     len(test_result.errors) > 0

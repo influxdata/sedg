@@ -27,6 +27,7 @@ esac
 
 echo "= $exe ="
 for i in ./cvelib/*py \
+         ./tests/*py \
          ./bin/cve-* \
          ./bin/gar-report \
          ./bin/gh-report \

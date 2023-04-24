@@ -11,7 +11,7 @@
     $ cd /path/to/sedg
     $ python3 -m venv .venv
     $ . ./.venv/bin/activate
-    (venv) $ pip install -r requirements.txt
+    (venv) $ pip install -e .   # editable install (use files in current dir)
     ```
 
  3. Clone CVE data into /path/to/cve-data
@@ -28,7 +28,6 @@
         VIRTUAL_ENV_DISABLE_PROMPT=1 . "$sedgpath/.venv/bin/activate"
 
         export PATH="$PATH:$sedgpath/bin"
-        export PYTHONPATH="$sedgpath"
 
         cd "/path/to/cve-data"
     }
@@ -48,7 +47,6 @@
     # otherwise
     $ cd /path/to/cve-data
     $ VIRTUAL_ENV_DISABLE_PROMPT=1 . /path/to/sedg/.venv/bin/activate
-    $ export PYTHONPATH=/path/to/sedg
     $ export PATH=$PATH:/path/to/sedg/bin
 
     # create a CVE against a particular package
@@ -114,16 +112,16 @@ Run unittests:
 or a single test file:
 
     # template
-    $ PYTHONPATH=$PWD python3 -m unittest cvelib.test_foo
+    $ python3 -m unittest tests.test_foo
     # example
-    $ PYTHONPATH=$PWD python3 -m unittest cvelib.test_cve
+    $ python3 -m unittest tests.test_cve
 
 or a single test:
 
     # template
-    $ PYTHONPATH=$PWD python3 -m unittest cvelib.test_foo.TestFoo.test_bar
+    $ python3 -m unittest tests.test_foo.TestFoo.test_bar
     # example
-    $ PYTHONPATH=$PWD python3 -m unittest cvelib.test_cve.TestCve.test___init__valid
+    $ python3 -m unittest tests.test_cve.TestCve.test___init__valid
 
 
 # CVE File format

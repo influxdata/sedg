@@ -6,7 +6,7 @@ from unittest import TestCase, mock
 import os
 
 import cvelib.net
-import cvelib.testutil
+import tests.testutil
 import cvelib.common
 
 debug: bool = True
@@ -23,7 +23,7 @@ class TestNet(TestCase):
             self.orig_ghtoken = os.getenv("GHTOKEN")
         os.environ["GHTOKEN"] = "fake-test-token"
 
-        cvelib.testutil.disableRequestsCache()
+        tests.testutil.disableRequestsCache()
 
     def tearDown(self):
         """Teardown functions common for all tests"""
@@ -119,7 +119,7 @@ class TestNet(TestCase):
         self.assertEqual("bar", rjson[0]["foo"])
 
         # bad link
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.net.ghAPIGetList("https://bad.link", do_exit=False)
             self.assertEqual("", output.getvalue().strip())
             self.assertEqual(

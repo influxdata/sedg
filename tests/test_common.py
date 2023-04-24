@@ -7,7 +7,7 @@ import os
 from unittest import TestCase, mock, skipIf
 
 import cvelib.common
-import cvelib.testutil
+import tests.testutil
 
 
 class TestCommon(TestCase):
@@ -37,21 +37,21 @@ class TestCommon(TestCase):
 
     def test_msg(self):
         """Test msg()"""
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.common.msg("Test msg")
         self.assertEqual("Test msg", output.getvalue().strip())
         self.assertEqual("", error.getvalue().strip())
 
     def test_warn(self):
         """Test warn()"""
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.common.warn("Test warning")
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual("WARN: Test warning", error.getvalue().strip())
 
     def test_error(self):
         """Test error()"""
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.common.error("Test error", do_exit=False)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual("ERROR: Test error", error.getvalue().strip())
@@ -71,7 +71,7 @@ class TestCommon(TestCase):
             (0.5, 0, "a" * 100000, "%s..." % ("a" * 67)),
         ]
         for pro, bar, pre, expOut in tsts:
-            with cvelib.testutil.capturedOutput() as (output, error):
+            with tests.testutil.capturedOutput() as (output, error):
                 cvelib.common.updateProgress(pro, barLength=bar, prefix=pre)
             if bar == 0:
                 self.assertTrue(output.getvalue().strip().endswith(expOut))
@@ -153,7 +153,7 @@ class TestCommon(TestCase):
 
     def test_readConfig(self):
         """Test readConfig()"""
-        self.tmpdir = cvelib.testutil._createTmpDir()
+        self.tmpdir = tests.testutil._createTmpDir()
 
         if "XDG_CONFIG_HOME" in os.environ:  # pragma: nocover
             self.orig_xdg_config_home = os.environ["XDG_CONFIG_HOME"]
@@ -162,7 +162,7 @@ class TestCommon(TestCase):
         fn = os.path.expandvars("$XDG_CONFIG_HOME/sedg/sedg.conf")
 
         # create
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             (exp_conf, exp_fn) = cvelib.common.readConfig()
         self.assertEqual(exp_fn, fn)
         self.assertTrue("Locations" in exp_conf)
@@ -173,7 +173,7 @@ class TestCommon(TestCase):
         self.assertEqual("", error.getvalue().strip())
 
         # reuse
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             (exp_conf2, exp_fn2) = cvelib.common.readConfig()
         self.assertEqual(exp_conf, exp_conf2)  # same object
         self.assertEqual(exp_fn, exp_fn2)
@@ -184,7 +184,7 @@ class TestCommon(TestCase):
         self.assertEqual("", error.getvalue().strip())
 
     def _setup_conf_and_data(self):
-        self.tmpdir = cvelib.testutil._createTmpDir()
+        self.tmpdir = tests.testutil._createTmpDir()
 
         if "XDG_CONFIG_HOME" in os.environ:
             self.orig_xdg_config_home = os.environ["XDG_CONFIG_HOME"]
@@ -233,7 +233,7 @@ cve-data = %s
                 False,
             ),
         ):
-            with cvelib.testutil.capturedOutput() as (output, error):
+            with tests.testutil.capturedOutput() as (output, error):
                 res = cvelib.common.getConfigCveDataPaths()
             self.assertEqual(0, len(res))
             self.assertEqual("", output.getvalue().strip())
@@ -257,7 +257,7 @@ cve-data = %s
                 False,
             ),
         ):
-            with cvelib.testutil.capturedOutput() as (output, error):
+            with tests.testutil.capturedOutput() as (output, error):
                 res = cvelib.common.getConfigCveDataPaths()
             self.assertEqual(0, len(res))
             self.assertEqual("", output.getvalue().strip())
@@ -280,7 +280,7 @@ cve-data = %s
                 False,
             ),
         ):
-            with cvelib.testutil.capturedOutput() as (output, error):
+            with tests.testutil.capturedOutput() as (output, error):
                 res = cvelib.common.getConfigCveDataPaths()
             self.assertEqual(0, len(res))
             self.assertEqual("", output.getvalue().strip())
@@ -307,14 +307,14 @@ cve-data = %s
         ]
         for val, exp, expOut, expErr in tsts:
             cvelib.common.configCache = None
-            self.orig_xdg_config_home, tmpdir = cvelib.testutil._newConfigFile(
+            self.orig_xdg_config_home, tmpdir = tests.testutil._newConfigFile(
                 """[Behavior]
 compat-ubuntu = %s
 """
                 % val
             )
 
-            with cvelib.testutil.capturedOutput() as (output, error):
+            with tests.testutil.capturedOutput() as (output, error):
                 res = cvelib.common.getConfigCompatUbuntu()
             cvelib.common.recursive_rm(tmpdir)
 
@@ -325,7 +325,7 @@ compat-ubuntu = %s
 
     def test_readCVE(self):
         """Test readCve()"""
-        self.tmpdir = cvelib.testutil._createTmpDir()
+        self.tmpdir = tests.testutil._createTmpDir()
 
         tsts = [
             # one stanza - single
@@ -372,7 +372,7 @@ compat-ubuntu = %s
             with open(fn, "w") as f:
                 f.write(inp)
 
-            with cvelib.testutil.capturedOutput() as (output, error):
+            with tests.testutil.capturedOutput() as (output, error):
                 res = cvelib.common.readCve(fn)
             os.unlink(fn)
             self.assertTrue(res == exp)
@@ -388,13 +388,13 @@ compat-ubuntu = %s
 
     def test_readFile(self):
         """Test readFile()"""
-        self.tmpdir = cvelib.testutil._createTmpDir()
+        self.tmpdir = tests.testutil._createTmpDir()
 
         fn = os.path.join(self.tmpdir, "test")
         with open(fn, "w") as f:
             f.write("data")
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.common.readFile(fn)
         os.unlink(fn)
         self.assertTrue(res == {"data"})
@@ -410,7 +410,7 @@ compat-ubuntu = %s
                 False,
             ),
         ):
-            with cvelib.testutil.capturedOutput() as (output, error):
+            with tests.testutil.capturedOutput() as (output, error):
                 res = cvelib.common.readFile(fn_non)
             self.assertTrue(res is None)
             self.assertEqual("", output.getvalue().strip())
