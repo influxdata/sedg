@@ -12,7 +12,7 @@ import tempfile
 import cvelib.cve
 import cvelib.common
 from cvelib.pkg import CvePkg
-import cvelib.testutil
+import tests.testutil
 
 
 class TestCve(TestCase):
@@ -371,7 +371,7 @@ git/github_norf: needs-triage
             )
 
         cve.setPackages(pkgs)
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cve.onDiskFormat()
 
         self.assertEqual(exp, res)
@@ -1491,7 +1491,7 @@ cve-data = %s
 """
             % self.tmpdir
         )
-        self.orig_xdg_config_home, self.tmpdir = cvelib.testutil._newConfigFile(
+        self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
 
@@ -1524,14 +1524,14 @@ cve-data = %s
                 tmpl["CloseDate"] = today
             else:
                 tmpl["git/github_pkg1"] = "needed"
-            content = cvelib.testutil.cveContentFromDict(tmpl)
+            content = tests.testutil.cveContentFromDict(tmpl)
 
             cve_fn = os.path.join(cveDirs[dir], cand)
 
             with open(cve_fn, "w") as fp:
                 fp.write("%s" % content)
 
-            with cvelib.testutil.capturedOutput() as (output, error):
+            with tests.testutil.capturedOutput() as (output, error):
                 res = cvelib.cve.checkSyntax(cveDirs, False)
             os.unlink(cve_fn)
 
@@ -1547,12 +1547,12 @@ cve-data = %s
         # non-matching with cveFiles unset
         tmpl = self._cve_template()
         tmpl["git/github_pkg1"] = "needed"
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
         with open(cve_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
@@ -1566,12 +1566,12 @@ cve-data = %s
         # non-matching with cveFiles set
         tmpl = self._cve_template()
         tmpl["git/github_pkg1"] = "needed"
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
         with open(cve_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False, cveFiles=[cve_fn])
         os.unlink(cve_fn)
 
@@ -1584,12 +1584,12 @@ cve-data = %s
 
         # missing packages
         tmpl = self._cve_template()
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
         with open(cve_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
@@ -1604,12 +1604,12 @@ cve-data = %s
         tmpl = self._cve_template()
         tmpl["References"] = ""
         tmpl["git/github_pkg1"] = "needed"
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
         with open(cve_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
@@ -1625,12 +1625,12 @@ cve-data = %s
         tmpl["Candidate"] = "CVE-2022-NNN1"
         tmpl["References"] = ""
         tmpl["git/github_pkg1"] = "needed"
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
         with open(cve_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
@@ -1643,12 +1643,12 @@ cve-data = %s
         tmpl["Candidate"] = "CVE-1234-5678"
         tmpl["git/github_pkg1"] = "needed"
         tmpl["CloseDate"] = today
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["retired"], "CVE-1234-5678")
         with open(cve_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
@@ -1664,12 +1664,12 @@ cve-data = %s
         tmpl["Candidate"] = "CVE-1234-5678"
         tmpl["git/github_pkg1"] = "deferred (2023-03-27)"
         tmpl["CloseDate"] = today
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["retired"], "CVE-1234-5678")
         with open(cve_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
@@ -1684,12 +1684,12 @@ cve-data = %s
         tmpl = self._cve_template()
         tmpl["git/github_pkg1"] = "deferred"
         tmpl["git/github_pkg2"] = "deferred (not-valid)"
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
         with open(cve_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
@@ -1703,12 +1703,12 @@ cve-data = %s
         # should not use date for when without deferred
         tmpl = self._cve_template()
         tmpl["git/github_pkg1"] = "needed (2023-03-27)"
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
         with open(cve_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
@@ -1723,12 +1723,12 @@ cve-data = %s
         tmpl = self._cve_template()
         tmpl["Candidate"] = "CVE-1234-5678"
         tmpl["git/github_pkg1"] = "released"
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
         with open(cve_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
@@ -1743,12 +1743,12 @@ cve-data = %s
         tmpl = self._cve_template()
         tmpl["Candidate"] = "CVE-1234-5678"
         tmpl["git/github_pkg1"] = "released"
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["retired"], "CVE-1234-5678")
         with open(cve_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
@@ -1765,12 +1765,12 @@ cve-data = %s
         tmpl["git/github_pkg1"] = "released"
         tmpl["OpenDate"] = "2023-03-17"
         tmpl["CloseDate"] = "2023-03-16"
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["retired"], "CVE-1234-5678")
         with open(cve_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
@@ -1784,7 +1784,7 @@ cve-data = %s
         # multiple
         tmpl = self._cve_template()
         tmpl["git/github_pkg1"] = "needed"
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_active_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
         with open(cve_active_fn, "w") as fp:
             fp.write("%s" % content)
@@ -1792,11 +1792,11 @@ cve-data = %s
         cve_retired_fn = os.path.join(cveDirs["retired"], tmpl["Candidate"])
         tmpl["git/github_pkg1"] = "released"
         tmpl["CloseDate"] = today
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         with open(cve_retired_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_active_fn)
         os.unlink(cve_retired_fn)
@@ -1812,12 +1812,12 @@ cve-data = %s
         # status should use 'not-affected'
         tmpl = self._cve_template()
         tmpl["git/github_pkg1"] = "needed (code-not-imported)"
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
         with open(cve_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
@@ -1832,12 +1832,12 @@ cve-data = %s
         tmpl = self._cve_template()
         tmpl["git/github_pkg1"] = "not-affected (code not used)"
         tmpl["CloseDate"] = today
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["retired"], tmpl["Candidate"])
         with open(cve_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
@@ -1904,12 +1904,12 @@ cve-data = %s
    url: https://github.com/bar/baz/security/secret-scanning/1
 """
             tmpl["Discovered-by"] = dsc
-            content = cvelib.testutil.cveContentFromDict(tmpl)
+            content = tests.testutil.cveContentFromDict(tmpl)
             cve_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
             with open(cve_fn, "w") as fp:
                 fp.write("%s" % content)
 
-            with cvelib.testutil.capturedOutput() as (output, error):
+            with tests.testutil.capturedOutput() as (output, error):
                 res = cvelib.cve.checkSyntax(cveDirs, False)
             os.unlink(cve_fn)
 
@@ -1939,12 +1939,12 @@ cve-data = %s
    status: needed
    url: https://github.com/influxdata/foo/security/dependabot/1
 """
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["retired"], "CVE-1234-5678")
         with open(cve_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
@@ -1971,12 +1971,12 @@ cve-data = %s
    status: released
    url: https://github.com/influxdata/foo/security/dependabot/1
 """
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
         with open(cve_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
@@ -2004,12 +2004,12 @@ cve-data = %s
    status: released
    url: https://github.com/influxdata/foo/security/dependabot/1
 """
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
         with open(cve_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_fn)
 
@@ -2026,7 +2026,7 @@ cve-data = %s
 """
             % self.tmpdir
         )
-        self.orig_xdg_config_home, self.tmpdir = cvelib.testutil._newConfigFile(
+        self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
 
@@ -2050,7 +2050,7 @@ cve-data = %s
    status: needed
    url: https://github.com/bar/baz/security/dependabot/1
 """
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_active_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
         with open(cve_active_fn, "w") as fp:
             fp.write("%s" % content)
@@ -2070,13 +2070,13 @@ cve-data = %s
    status: released
    url: https://github.com/bar/baz/security/dependabot/1
 """
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_retired_fn = os.path.join(cveDirs["retired"], tmpl["Candidate"])
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         with open(cve_retired_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.cve.checkSyntax(cveDirs, False)
         os.unlink(cve_active_fn)
         os.unlink(cve_retired_fn)
@@ -2479,7 +2479,7 @@ upstream_baz: needed
                 cve_name, _ = cvelib.cve.cveFromUrl(cve)
                 cve_fn = os.path.join(cveDirs[dir], cve_name)
 
-            with cvelib.testutil.capturedOutput() as (output, error):
+            with tests.testutil.capturedOutput() as (output, error):
                 cvelib.cve.addCve(
                     cveDirs, compat, cve, pkgs, template=template, retired=retired
                 )
@@ -2493,7 +2493,7 @@ upstream_baz: needed
                 self.assertEqual("Created active/%s" % os.path.basename(cve_fn), out)
             self.assertEqual("", err)
 
-            with cvelib.testutil.capturedOutput() as (output, error):
+            with tests.testutil.capturedOutput() as (output, error):
                 res = cvelib.common.readCve(cve_fn)
             os.unlink(cve_fn)
             self.assertEqual("", output.getvalue().strip())
@@ -2767,7 +2767,7 @@ cve-data = %s
 """
             % self.tmpdir
         )
-        self.orig_xdg_config_home, self.tmpdir = cvelib.testutil._newConfigFile(
+        self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
         cveDirs = {}
@@ -2806,7 +2806,7 @@ CVSS:
                 False,
             ),
         ):
-            with cvelib.testutil.capturedOutput() as (output, error):
+            with tests.testutil.capturedOutput() as (output, error):
                 cvelib.cve.addCve(
                     cveDirs,
                     False,
@@ -2830,7 +2830,7 @@ cve-data = %s
 """
             % self.tmpdir
         )
-        self.orig_xdg_config_home, self.tmpdir = cvelib.testutil._newConfigFile(
+        self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
 
@@ -2895,7 +2895,7 @@ cve-data = %s
 """
             % self.tmpdir
         )
-        self.orig_xdg_config_home, self.tmpdir = cvelib.testutil._newConfigFile(
+        self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
 
@@ -2927,7 +2927,7 @@ cve-data = %s
 """
             % self.tmpdir
         )
-        self.orig_xdg_config_home, self.tmpdir = cvelib.testutil._newConfigFile(
+        self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
 
@@ -2947,7 +2947,7 @@ cve-data = %s
             tmpl = self._cve_template()
             dir, cand = fn.split("/")
             tmpl["Candidate"] = cand
-            content = cvelib.testutil.cveContentFromDict(tmpl)
+            content = tests.testutil.cveContentFromDict(tmpl)
 
             cve_fn = os.path.join(cveDirs[dir], cand)
 
@@ -3129,7 +3129,7 @@ cve-data = %s
 """
             % self.tmpdir
         )
-        self.orig_xdg_config_home, self.tmpdir = cvelib.testutil._newConfigFile(
+        self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
 
@@ -3149,14 +3149,14 @@ cve-data = %s
             tmpl = self._cve_template()
             dir, cand = fn.split("/")
             tmpl["Candidate"] = cand
-            content = cvelib.testutil.cveContentFromDict(tmpl)
+            content = tests.testutil.cveContentFromDict(tmpl)
 
             cve_fn = os.path.join(cveDirs[dir], cand)
 
             with open(cve_fn, "w") as fp:
                 fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.cve.collectCVEData(cveDirs, False)
 
         self.assertEqual("", output.getvalue().strip())
@@ -3167,7 +3167,7 @@ cve-data = %s
         dir = "active"
         cand = "CVE-bad"
         tmpl["Candidate"] = cand
-        content = cvelib.testutil.cveContentFromDict(tmpl)
+        content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs[dir], cand)
 
         with open(cve_fn, "w") as fp:
@@ -3181,7 +3181,7 @@ cve-data = %s
         """Generate a bunch of CVEs"""
 
         def _write_cve(cve_fn, d):
-            content = cvelib.testutil.cveContentFromDict(d)
+            content = tests.testutil.cveContentFromDict(d)
             with open(cve_fn, "w") as fp:
                 fp.write("%s" % content)
 
@@ -3192,7 +3192,7 @@ cve-data = %s
 """
             % self.tmpdir
         )
-        self.orig_xdg_config_home, self.tmpdir = cvelib.testutil._newConfigFile(
+        self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
 

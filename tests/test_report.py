@@ -12,7 +12,7 @@ import cvelib.common
 import cvelib.cve
 import cvelib.github
 import cvelib.report
-import cvelib.testutil
+import tests.testutil
 
 
 def mocked_requests_get__getGHReposAll(*args, **kwargs):
@@ -728,7 +728,7 @@ class TestReport(TestCase):
         os.environ["GHTOKEN"] = "fake-test-token"
         os.environ["TEST_UPDATE_PROGRESS"] = "0"
 
-        cvelib.testutil.disableRequestsCache()
+        tests.testutil.disableRequestsCache()
 
     def tearDown(self):
         """Teardown functions common for all tests"""
@@ -783,7 +783,7 @@ class TestReport(TestCase):
         """Generate a List[cvelib.cve.CVE]"""
 
         def _write_cve(cve_fn, d):
-            content = cvelib.testutil.cveContentFromDict(d)
+            content = tests.testutil.cveContentFromDict(d)
             with open(cve_fn, "w") as fp:
                 fp.write("%s" % content)
 
@@ -794,7 +794,7 @@ cve-data = %s
 """
             % self.tmpdir
         )
-        self.orig_xdg_config_home, self.tmpdir = cvelib.testutil._newConfigFile(
+        self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
 
@@ -939,7 +939,7 @@ cve-data = %s
     def test_getReposReport(self, _):  # 2nd arg is 'mock_get'
         """Test test_getReposReport - active"""
         # default args
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getReposReport("valid-org")
         self.assertEqual("", error.getvalue().strip())
         exp = """baz
@@ -947,7 +947,7 @@ foo"""
         self.assertEqual(exp, output.getvalue().strip())
 
         # explicit active
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getReposReport("valid-org", archived=False)
         self.assertEqual("", error.getvalue().strip())
         exp = """baz
@@ -955,7 +955,7 @@ foo"""
         self.assertEqual(exp, output.getvalue().strip())
 
         # default args
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getReposReport("valid-org", archived=True)
         self.assertEqual("", error.getvalue().strip())
         exp = """bar"""
@@ -1060,7 +1060,7 @@ foo"""
     def test_getMissingReport(self, _):  # 2nd arg is mock_get
         """Test getMissingReport()"""
         cves = self._mock_cve_list_basic()
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getMissingReport(cves, "valid-org", repos=["valid-repo"])
         self.assertEqual("", error.getvalue().strip())
         exp = """Issues missing from CVE data:
@@ -1068,7 +1068,7 @@ foo"""
         self.assertEqual(exp, output.getvalue().strip())
 
         # excluded
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getMissingReport(
                 cves, "valid-org", repos=["valid-repo"], excluded_repos=["valid-repo"]
             )
@@ -1078,7 +1078,7 @@ foo"""
 
         # archived
         cves = self._mock_cve_list_basic()
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getMissingReport(cves, "valid-org")
         self.assertEqual("", error.getvalue().strip())
         exp = """Issues missing from CVE data:
@@ -1205,7 +1205,7 @@ foo"""
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHAlertsEnabled)
     def test_getGHAlertsStatusReport(self, _):  # 2nd arg is mock_get
         """Test _getGHAlertsStatusReport()"""
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsStatusReport(
                 "valid-org", repos=["valid-repo", "disabled-repo"]
             )
@@ -1227,7 +1227,7 @@ secret-scanning,enabled,valid-repo,https://github.com/influxdata/valid-repo/sett
         cves = self._mock_cve_list_basic()
 
         # all updated since
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getUpdatedReport(cves, "valid-org")
         self.assertEqual("", error.getvalue().strip())
         exp = """Collecting known issues:
@@ -1238,7 +1238,7 @@ Updated issues:
         self.assertEqual(exp, output.getvalue().strip())
 
         # some updated since 1656792271 (2022-07-02)
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getUpdatedReport(cves, "valid-org", since=1656792271)
         self.assertEqual("", error.getvalue().strip())
         exp = """Collecting known issues:
@@ -1247,7 +1247,7 @@ Updated issues:
         self.assertEqual(exp, output.getvalue().strip())
 
         # none updated since 1657224398 (2022-07-07)
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getUpdatedReport(cves, "valid-org", since=1657224398)
         self.assertEqual("", error.getvalue().strip())
         exp = """Collecting known issues:
@@ -1267,7 +1267,7 @@ No updated issues for the specified repos."""
         cves.append(cve)
 
         # all updated since with other-repo in the mix
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getUpdatedReport(cves, "valid-org", excluded_repos=[])
         self.assertEqual("", error.getvalue().strip())
         exp = """Collecting known issues:
@@ -1279,7 +1279,7 @@ Updated issues:
         self.assertEqual(exp, output.getvalue().strip())
 
         # other-repo updated when excluding valid-repo
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getUpdatedReport(
                 cves, "valid-org", excluded_repos=["valid-repo"]
             )
@@ -1294,7 +1294,7 @@ Updated issues:
     #
     def test__printGHAlertsSummary(self):
         """Test _printGHAlertsSummary()"""
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report._printGHAlertsSummary(
                 "valid-org", "valid-repo", [], "updated"
             )
@@ -1302,7 +1302,7 @@ Updated issues:
         exp = "valid-repo updated alerts: 0"
         self.assertEqual(exp, output.getvalue().strip())
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report._printGHAlertsSummary(
                 "valid-org", "valid-repo", [], "resolved"
             )
@@ -1318,7 +1318,7 @@ Updated issues:
                 False,
             ),
         ):
-            with cvelib.testutil.capturedOutput() as (output, error):
+            with tests.testutil.capturedOutput() as (output, error):
                 cvelib.report._printGHAlertsSummary(
                     "valid-org", "valid-repo", [], "invalid"
                 )
@@ -1335,7 +1335,7 @@ Updated issues:
         self.maxDiff = 16384
 
         # with_templates = false
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsReport([], "valid-org", repos=["valid-repo"])
         self.assertEqual("", error.getvalue().strip())
         exp = """Alerts:
@@ -1433,7 +1433,7 @@ valid-repo resolved alerts: 3
    url: https://github.com/valid-org/valid-repo/security/dependabot/1"""
         cve.setData(c)
         cves.append(cve)
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsReport(cves, "valid-org", repos=["valid-repo"])
         self.assertEqual("", error.getvalue().strip())
         exp = """Alerts:
@@ -1513,7 +1513,7 @@ valid-repo resolved alerts: 3
         self.assertEqual(exp, output.getvalue().strip())
 
         # with_templates = true
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsReport(
                 [], "valid-org", repos=["valid-repo"], with_templates=True
             )
@@ -1759,7 +1759,7 @@ valid-repo resolved alerts: 3
         self.assertEqual(exp, output.getvalue().strip())
 
         # some updated since 1656792271 (2022-07-02)
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsReport(
                 [], "valid-org", repos=["valid-repo"], since=1656792271
             )
@@ -1804,7 +1804,7 @@ valid-repo updated alerts: 5
         self.assertEqual(exp, output.getvalue().strip())
 
         # none updated since 1657224398 (2022-07-07)
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsReport(
                 [], "valid-org", repos=["valid-repo"], since=1657224398
             )
@@ -1826,7 +1826,7 @@ valid-repo updated alerts: 5
         self.maxDiff = 16384
 
         # with_templates = false
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsReport(
                 [], "valid-org", repos=["valid-repo"], alert_types=["dependabot"]
             )
@@ -1876,7 +1876,7 @@ valid-repo resolved alerts: 1
         self.assertEqual(exp, output.getvalue().strip())
 
         # with_templates = true
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsReport(
                 [],
                 "valid-org",
@@ -2061,7 +2061,7 @@ valid-repo resolved alerts: 1
         self.maxDiff = 16384
 
         # with_templates = false
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsReport(
                 [], "valid-org", repos=["valid-repo"], alert_types=["code-scanning"]
             )
@@ -2093,7 +2093,7 @@ valid-repo resolved alerts: 1
         self.assertEqual(exp, output.getvalue().strip())
 
         # with_templates = true
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsReport(
                 [],
                 "valid-org",
@@ -2233,7 +2233,7 @@ valid-repo resolved alerts: 1
         self.maxDiff = 16384
 
         # with_templates = false
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsReport(
                 [], "valid-org", repos=["valid-repo"], alert_types=["secret-scanning"]
             )
@@ -2265,7 +2265,7 @@ valid-repo resolved alerts: 1
         self.assertEqual(exp, output.getvalue().strip())
 
         # with_templates = true
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsReport(
                 [],
                 "valid-org",
@@ -2409,7 +2409,7 @@ valid-repo resolved alerts: 1
         self.maxDiff = 16384
 
         # with_templates = false
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsReport(
                 [], "valid-org", repos=["valid-repo"], alert_types=["secret-scanning"]
             )
@@ -2474,7 +2474,7 @@ valid-repo resolved alerts: 1
                 "severity": "medium",
             },
         ]
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report._printGHAlertsTemplates("valid-org", "valid-repo", alerts)
         self.assertEqual("", error.getvalue().strip())
         now: datetime.datetime = datetime.datetime.now()
@@ -2557,7 +2557,7 @@ git/valid-org_valid-repo: needs-triage
     def test_getHumanSummary(self):
         """Test getHumanSummary()"""
         # empty cve list
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getHumanSummary(
                 [], "", report_output=cvelib.report.ReportOutput.OPEN
             )
@@ -2581,7 +2581,7 @@ Totals:
             cveDirs, False, filter_status="needs-triage,needed,pending,released"
         )
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getHumanSummary(
                 cves, "", report_output=cvelib.report.ReportOutput.OPEN
             )
@@ -2605,7 +2605,7 @@ Totals:
 - negligible: 0 in 0 repos"""
         self.assertEqual(exp, output.getvalue().strip())
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getHumanSummary(
                 cves, "", report_output=cvelib.report.ReportOutput.BOTH
             )
@@ -2644,7 +2644,7 @@ Totals:
         with open(pkg_fn, "w") as fp:
             fp.write("%s" % content)
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getHumanSummary(
                 cves, pkg_fn, report_output=cvelib.report.ReportOutput.OPEN
             )
@@ -2664,7 +2664,7 @@ Totals:
 - negligible: 0 in 0 repos"""
         self.assertEqual(exp, output.getvalue().strip())
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getHumanSummary(
                 cves, pkg_fn, report_output=cvelib.report.ReportOutput.BOTH
             )
@@ -2700,7 +2700,7 @@ Totals:
             filter_product="git/org",
         )
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getHumanSummary(
                 cves, "", report_output=cvelib.report.ReportOutput.OPEN
             )
@@ -2720,7 +2720,7 @@ Totals:
 - negligible: 0 in 0 repos"""
         self.assertEqual(exp, output.getvalue().strip())
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getHumanSummary(
                 cves, "", report_output=cvelib.report.ReportOutput.BOTH
             )
@@ -2756,7 +2756,7 @@ Totals:
             filter_priority="high,critical",
         )
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getHumanSummary(
                 cves, "", report_output=cvelib.report.ReportOutput.OPEN
             )
@@ -2775,7 +2775,7 @@ Totals:
 - negligible: 0 in 0 repos"""
         self.assertEqual(exp, output.getvalue().strip())
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getHumanSummary(
                 cves, "", report_output=cvelib.report.ReportOutput.BOTH
             )
@@ -2811,7 +2811,7 @@ Totals:
             filter_tag="-limit-report",
         )
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getHumanSummary(
                 cves, "", report_output=cvelib.report.ReportOutput.OPEN
             )
@@ -2834,7 +2834,7 @@ Totals:
 - negligible: 0 in 0 repos"""
         self.assertEqual(exp, output.getvalue().strip())
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getHumanSummary(
                 cves, "", report_output=cvelib.report.ReportOutput.BOTH
             )
@@ -2866,7 +2866,7 @@ Totals:
             filter_status="needs-triage,needed,pending,released",
             filter_tag="limit-report",
         )
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getHumanSummary(
                 cves, "", report_output=cvelib.report.ReportOutput.OPEN
             )
@@ -2885,7 +2885,7 @@ Totals:
 - negligible: 0 in 0 repos"""
         self.assertEqual(exp, output.getvalue().strip())
 
-        with cvelib.testutil.capturedOutput() as (output, error):
+        with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getHumanSummary(
                 cves, "", report_output=cvelib.report.ReportOutput.BOTH
             )

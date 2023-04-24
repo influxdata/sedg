@@ -29,5 +29,9 @@ Before opening a pull request you should run the following checks locally to
 make sure the CI will pass.
 
 ```shell
-$ make check
+$ make setup-venv
+$ . ./.venv/bin/activate
+(.venv) $ make check
+(.venv) $ deactivate
+$
 ```
