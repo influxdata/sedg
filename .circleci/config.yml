@@ -6,16 +6,16 @@ commands:
     steps:
       - restore_cache:
           name: Restore python cache
-          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          key: deps1-{{ .Branch }}-{{ checksum "setup.cfg" }}
 
   cache_save:
     description: Save python cache
     steps:
       - save_cache:
           name: Save python cache
-          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          key: deps1-{{ .Branch }}-{{ checksum "setup.cfg" }}
           paths:
-            - "venv"
+            - ".venv"
 
   python_components:
     description: Install python components
@@ -23,9 +23,7 @@ commands:
       - run:
           name: Install python components
           command: |
-            python3 -m venv venv
-            . venv/bin/activate
-            pip install -r requirements.txt
+            make setup-venv
 
   # https://docs.getwoke.tech/installation/
   install_woke:
@@ -47,7 +45,7 @@ jobs:
       - run:
           name: Running coverage
           command: |
-            . venv/bin/activate
+            . .venv/bin/activate
             make coverage
             make coverage-report
       - cache_save
@@ -62,7 +60,7 @@ jobs:
       - run:
           name: Running syntax checks
           command: |
-            . venv/bin/activate
+            . .venv/bin/activate
             make syntax-check
       - cache_save
 
@@ -76,7 +74,7 @@ jobs:
       - run:
           name: Running style checks
           command: |
-            . venv/bin/activate
+            . .venv/bin/activate
             make style-check
       - cache_save
 
