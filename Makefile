@@ -2,14 +2,6 @@ all:
 	# Nothing to install. Use 'make check'
 	exit 1
 
-DEB_DEPENDENCIES := \
-	python3-coverage
-
-check-deb-deps:
-	@for dep in $(DEB_DEPENDENCIES); do if test -z "$(VIRTUAL_ENV)" && ! dpkg -l $$dep 1>/dev/null 2>&1; then echo "Please apt install $$dep" ; exit 1; fi; done
-
-check-deps: check-deb-deps
-
 test:
 	if test -z "$(VIRTUAL_ENV)" ; then \
 		echo "WARN: not running in venv. Did you forget to '. ./.venv/bin/activate'? Proceeding anyway..." ; \
@@ -34,9 +26,9 @@ inclusivity-check: clean
 		echo "Could not find woke!" ; \
 	fi \
 
-check: check-deps test inclusivity-check syntax-check style-check
+check: test inclusivity-check syntax-check style-check
 
-coverage: check-deb-deps
+coverage:
 	python3 -m coverage run ./tests/run-tests
 
 coverage-report:
