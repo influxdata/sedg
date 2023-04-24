@@ -28,8 +28,6 @@
         echo "Entering venv for 'sedg' tooling. Use 'deactivate' when done."
         VIRTUAL_ENV_DISABLE_PROMPT=1 . "$sedgpath/.venv/bin/activate"
 
-        export PATH="$PATH:$sedgpath/bin"
-
         cd "/path/to/cve-data"
     }
 
@@ -48,7 +46,6 @@
     # otherwise
     $ cd /path/to/cve-data
     $ VIRTUAL_ENV_DISABLE_PROMPT=1 . /path/to/sedg/.venv/bin/activate
-    $ export PATH=$PATH:/path/to/sedg/bin
 
     # create a CVE against a particular package
     $ cve-add --cve CVE-2020-1234 -p git/foo-org_foo
