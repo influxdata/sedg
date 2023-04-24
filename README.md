@@ -11,7 +11,8 @@
     $ cd /path/to/sedg
     $ python3 -m venv .venv
     $ . ./.venv/bin/activate
-    (venv) $ pip install -e .   # editable install (use files in current dir)
+    (venv) $ pip install -e .     # editable install (use files in current dir)
+    (venv) $ pip install .[cache] # optional
     ```
 
  3. Clone CVE data into /path/to/cve-data
@@ -94,6 +95,7 @@ setup, develop like so:
 
     $ cd /path/to/sedg
     $ VIRTUAL_ENV_DISABLE_PROMPT=1 . ./venv/bin/activate
+    $ pip install .[dev]   # install extra development dependencies
     $
     <do stuff>
     $ deactivate

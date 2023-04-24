@@ -1,10 +1,26 @@
+VENV = .venv
+
 all:
 	# Nothing to install. Use 'make check'
 	exit 1
 
+setup-venv:
+	@if ! test -d "./$(VENV)" ; then \
+		echo "Running 'python3 -m venv $(VENV)'" ; \
+		python3 -m venv $(VENV) ; \
+	fi
+	@if test -z "$(VIRTUAL_ENV)" ; then \
+		echo "Installing dependencies into '$(VENV)'" ; \
+		. ./$(VENV)/bin/activate ; \
+		pip install -e . ; \
+		pip install -e .[cache] ; \
+		pip install -e .[dev] ; \
+	fi
+	@echo "\nTo use and develop sedg, run '. ./$(VENV)/bin/activate'"
+
 test:
-	if test -z "$(VIRTUAL_ENV)" ; then \
-		echo "WARN: not running in venv. Did you forget to '. ./.venv/bin/activate'? Proceeding anyway..." ; \
+	@if test -z "$(VIRTUAL_ENV)" ; then \
+		echo "WARN: not running in venv. Did you forget to '. ./$(VENV)/bin/activate'? Proceeding anyway..." ; \
 	fi
 	./tests/run-tests
 
@@ -17,7 +33,7 @@ style-check: clean
 
 # require woke to be installed in CI but not one local system
 inclusivity-check: clean
-	echo "# Check for non-inclusive language"; \
+	@echo "\n# Check for non-inclusive language"; \
 	if test -n "$(CI)" ; then \
 		woke --exit-1-on-failure . ; \
 	elif which woke >/dev/null ; then \
