@@ -18,6 +18,13 @@ setup-venv:
 	fi
 	@echo "\nTo use and develop sedg, run '. ./$(VENV)/bin/activate'"
 
+# for now, install-venv. Someday, install...
+install-venv: setup-venv
+	@if test -z "$(VIRTUAL_ENV)" ; then \
+		. ./$(VENV)/bin/activate ; \
+	fi
+	pip install -e .
+
 test:
 	@if test -z "$(VIRTUAL_ENV)" ; then \
 		echo "WARN: not running in venv. Did you forget to '. ./$(VENV)/bin/activate'? Proceeding anyway..." ; \

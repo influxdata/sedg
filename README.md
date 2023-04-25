@@ -84,6 +84,16 @@
 
  6. (Optional) If vim user, symlink cvelib/cve.vim in ~/.vim/syntax
 
+# Staying up to date
+
+Assuming you've setup sedg as described in 'Using', can stay up to date with:
+
+    ```
+    $ cd /path/to/sedg
+    $ git checkout main
+    $ git fetch && git pull --ff-only
+    $ make install-venv
+    ```
 
 # Tests
 
