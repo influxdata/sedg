@@ -789,7 +789,7 @@ class TestReport(TestCase):
 
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         content = (
-            """[Location]
+            """[Locations]
 cve-data = %s
 """
             % self.tmpdir
