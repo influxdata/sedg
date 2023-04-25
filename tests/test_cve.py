@@ -1486,7 +1486,7 @@ git/github_norf: needs-triage
         """Test checkSyntax"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         content = (
-            """[Location]
+            """[Locations]
 cve-data = %s
 """
             % self.tmpdir
@@ -2021,7 +2021,7 @@ cve-data = %s
         """Test checkSyntax() - cross checks"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         content = (
-            """[Location]
+            """[Locations]
 cve-data = %s
 """
             % self.tmpdir
@@ -2762,7 +2762,7 @@ CVSS:
         """Test addCve() - exists in other"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         content = (
-            """[Location]
+            """[Locations]
 cve-data = %s
 """
             % self.tmpdir
@@ -2825,7 +2825,7 @@ CVSS:
         """Test _findNextPlaceholder"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         content = (
-            """[Location]
+            """[Locations]
 cve-data = %s
 """
             % self.tmpdir
@@ -2890,7 +2890,7 @@ cve-data = %s
         """Test _cveExists"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         content = (
-            """[Location]
+            """[Locations]
 cve-data = %s
 """
             % self.tmpdir
@@ -2922,7 +2922,7 @@ cve-data = %s
         """Test _getCVEPaths"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         content = (
-            """[Location]
+            """[Locations]
 cve-data = %s
 """
             % self.tmpdir
@@ -3124,7 +3124,7 @@ cve-data = %s
         """Test collectCVEData()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         content = (
-            """[Location]
+            """[Locations]
 cve-data = %s
 """
             % self.tmpdir
@@ -3187,7 +3187,7 @@ cve-data = %s
 
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         content = (
-            """[Location]
+            """[Locations]
 cve-data = %s
 """
             % self.tmpdir
