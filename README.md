@@ -9,17 +9,24 @@
 
     ```
     $ cd /path/to/sedg
+    $ make install-venv
+    ```
+
+    `make install-venv` does the following:
+    ```
     $ python3 -m venv .venv
     $ . ./.venv/bin/activate
     (venv) $ pip install -e .     # editable install (use files in current dir)
     (venv) $ pip install .[cache] # optional
+    (venv) $ pip install .[dev]   # optional for developing sedg
     ```
 
- 3. Clone CVE data into /path/to/cve-data
+ 3. Clone CVE data into `/path/to/cve-data`
 
  4. Optionally create a shell function to setup your environment for using sedg
     with your CVE data. Eg, in `~/.bashrc`:
 
+    ```
     cve_env() {
         sedgpath="/path/to/sedg"
 
@@ -30,8 +37,9 @@
 
         cd "/path/to/cve-data"
     }
+    ```
 
- 4. Create ~/.config/sedg/sedg.conf to have:
+ 4. Create `~/.config/sedg/sedg.conf` to have:
 
     ```
     [Locations]
@@ -82,7 +90,7 @@
     $ deactivate
     ```
 
- 6. (Optional) If vim user, symlink cvelib/cve.vim in ~/.vim/syntax
+ 6. (Optional) If vim user, symlink `cvelib/cve.vim` in `~/.vim/syntax`
 
 # Staying up to date
 
@@ -93,6 +101,14 @@ Assuming you've setup sedg as described in 'Using', can stay up to date with:
     $ git checkout main
     $ git fetch && git pull --ff-only
     $ make install-venv
+    ```
+
+# Uninstalling
+
+Since `sedg` is installed to a venv, uninstall is as simple as:
+
+    ```
+    $ rm -rf /path/to/sedg/.venv
     ```
 
 # Tests
