@@ -4,6 +4,7 @@
 
 from unittest import TestCase, mock
 from unittest.mock import MagicMock
+import argparse
 import copy
 import datetime
 import os
@@ -23,9 +24,18 @@ class TestCve(TestCase):
         self.orig_readCve = None
         self.maxDiff = None
         self.tmpdir = None
+        self.orig_xdg_config_home = None
 
     def tearDown(self):
         """Teardown functions common for all tests"""
+        if self.orig_xdg_config_home is None:
+            if "XDG_CONFIG_HOME" in os.environ:
+                del os.environ["XDG_CONFIG_HOME"]
+        else:
+            os.environ["XDG_CONFIG_HOME"] = self.orig_xdg_config_home
+            self.orig_xdg_config_home = None
+        cvelib.common.configCache = None
+
         if self.orig_readCve is not None:
             cvelib.common.readCve = self.orig_readCve
             self.orig_readCve = None
@@ -2820,6 +2830,145 @@ CVSS:
                     "ERROR: CVE-2022-2345 already exists in ignored/not-for-us.txt",
                     error.getvalue().strip(),
                 )
+
+    @mock.patch(
+        "argparse.ArgumentParser.parse_args",
+        return_value=argparse.Namespace(
+            cve="CVE-2021-999999",
+            assigned_to="assignee",
+            discovered_by="discoveree",
+            pkgs=["git/org_foo", "git/org_bar"],
+            template="some-template",
+            retired=True,
+        ),
+    )
+    def test_main_cve_add(self, _):  # 2nd arg is 'mock_args'
+        """Test main_cve_add()"""
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
+        content = (
+            """[Locations]
+cve-data = %s
+"""
+            % self.tmpdir
+        )
+        self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
+            content, self.tmpdir
+        )
+
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
+
+        template_fn = os.path.join(cveDirs["templates"], "some-template")
+        template_content = """Candidate:
+PublicDate: 2020-01-01
+References:
+Description:
+Notes:
+Mitigation:
+Bugs:
+Priority: untriaged
+Discovered-by:
+Assigned-to:
+CVSS:
+
+#Patches_PKG:
+#upstream_PKG:
+"""
+        with open(template_fn, "w") as fp:
+            fp.write("%s" % template_content)
+
+        cvelib.cve.main_cve_add()
+
+        # put in the right place
+        cve_fn = os.path.join(cveDirs["retired"], "CVE-2021-999999")
+        self.assertTrue(os.path.exists(cve_fn))
+
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.common.readCve(cve_fn)
+        os.unlink(cve_fn)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual("", error.getvalue().strip())
+
+        # right candidate was used
+        self.assertEqual("CVE-2021-999999", res["Candidate"])
+        # template's PublicDate was used
+        self.assertEqual("2020-01-01", res["PublicDate"])
+        # specified Assigned-to and Discovered-by used
+        self.assertEqual("assignee", res["Assigned-to"])
+        self.assertEqual("discoveree", res["Discovered-by"])
+        # pkgs used
+        self.assertTrue("git/org_foo" in res)
+        self.assertTrue("git/org_bar" in res)
+
+    @mock.patch(
+        "argparse.ArgumentParser.parse_args",
+        return_value=argparse.Namespace(
+            untriagedOk=True,
+            fns=[],
+        ),
+    )
+    def test_main_cve_check_syntax(self, _):  # second arg is 'mock_args'
+        """Test main_cve_check_syntax()"""
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
+        content = (
+            """[Locations]
+cve-data = %s
+"""
+            % self.tmpdir
+        )
+        self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
+            content, self.tmpdir
+        )
+
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
+
+        tmpl = self._cve_template()
+        tmpl["git/github_pkg1"] = "needed"
+        content = tests.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["active"], "CVE-2020-1234")
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        cvelib.cve.main_cve_check_syntax()
+
+    @mock.patch(
+        "argparse.ArgumentParser.parse_args",
+        return_value=argparse.Namespace(
+            untriagedOk=True,
+            fns=["active/CVE-2020-1234"],
+        ),
+    )
+    def test_main_cve_check_syntax_fns(self, _):  # second arg is 'mock_args'
+        """Test main_cve_check_syntax() - -f"""
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
+        content = (
+            """[Locations]
+cve-data = %s
+"""
+            % self.tmpdir
+        )
+        self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
+            content, self.tmpdir
+        )
+
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
+
+        tmpl = self._cve_template()
+        tmpl["git/github_pkg1"] = "needed"
+        content = tests.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["active"], "CVE-2020-1234")
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        cvelib.cve.main_cve_check_syntax()
 
     def test__findNextPlaceholder(self):
         """Test _findNextPlaceholder"""

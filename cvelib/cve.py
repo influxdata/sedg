@@ -1578,5 +1578,5 @@ def main_cve_check_syntax():
             getConfigCveDataPaths(), getConfigCompatUbuntu(), args.untriagedOk
         )
 
-    if not ok:
+    if not ok:  # pragma: nocover
         sys.exit(1)
