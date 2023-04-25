@@ -4,26 +4,26 @@ all:
 	# Nothing to install. Use 'make check'
 	exit 1
 
-setup-venv:
+# for now, install-venv. Someday, install...
+install-venv:
 	@if ! test -d "./$(VENV)" ; then \
 		echo "Running 'python3 -m venv $(VENV)'" ; \
 		python3 -m venv $(VENV) ; \
 	fi
 	@if test -z "$(VIRTUAL_ENV)" ; then \
-		echo "Installing dependencies into '$(VENV)'" ; \
+		echo "Installing to '$(VENV)'" ; \
 		. ./$(VENV)/bin/activate ; \
 		pip install -e . ; \
 		pip install -e .[cache] ; \
 		pip install -e .[dev] ; \
+		echo "\nInstalled sedg to ./$(VENV). To use, run '. ./$(VENV)/bin/activate'" ; \
+	else \
+		echo "Updating '$(VENV)'" ; \
+		pip install -e . ; \
+		pip install -e .[cache] ; \
+		pip install -e .[dev] ; \
+		echo "\nUpdated sedg in ./$(VENV)." ; \
 	fi
-	@echo "\nTo use and develop sedg, run '. ./$(VENV)/bin/activate'"
-
-# for now, install-venv. Someday, install...
-install-venv: setup-venv
-	@if test -z "$(VIRTUAL_ENV)" ; then \
-		. ./$(VENV)/bin/activate ; \
-	fi
-	pip install -e .
 
 test:
 	@if test -z "$(VIRTUAL_ENV)" ; then \

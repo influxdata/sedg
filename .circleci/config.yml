@@ -23,7 +23,7 @@ commands:
       - run:
           name: Install python components
           command: |
-            make setup-venv
+            make install-venv
 
   # https://docs.getwoke.tech/installation/
   install_woke:
