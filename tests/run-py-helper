@@ -26,17 +26,7 @@ case "$1" in
 esac
 
 echo "= $exe ="
-for i in ./cvelib/*py \
-         ./tests/*py \
-         ./bin/cve-* \
-         ./bin/gar-report \
-         ./bin/gh-report \
-         ./bin/quay-report ; do
-    # this is a bash script
-    if [ "$i" = "./bin/cve-edit" ] || [ "$i" = "./bin/cve-nfu" ]; then
-        continue
-    fi
-
+for i in ./cvelib/*py ./tests/*py ; do
     echo "Checking $i"
     #shellcheck disable=2086
     PYTHONPATH=./ "$exe" $args "$i"

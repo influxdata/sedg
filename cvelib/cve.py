@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 
+import argparse
 import copy
 import datetime
 import functools
@@ -9,6 +10,7 @@ import glob
 import os
 import re
 import shutil
+import sys
 import tempfile
 from typing import Any, Dict, List, Optional, Pattern, Set, Tuple, Union
 
@@ -16,6 +18,8 @@ from cvelib.common import (
     CveException,
     cve_priorities,
     cve_statuses,
+    getConfigCveDataPaths,
+    getConfigCompatUbuntu,
     error,
     rePatterns,
     readFile,
@@ -1465,3 +1469,114 @@ def collectGHAlertUrls(cves: List[CVE]) -> Tuple[Set[str], Set[str]]:
             elif a.url != "unavailable" and a.url not in dupes:
                 dupes.append(a.url)
     return set(urls), set(dupes)
+
+
+#
+# CLI mains
+#
+def main_cve_add():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
+        prog="cve-add",
+        description="Add CVE to tracker",
+    )
+    parser.add_argument(
+        "-c",
+        "--cve",
+        dest="cve",
+        help="CVE entry",
+        metavar="CVE-YYYY-NNNN|CVE-YYYY-GHNNNN#PROJECT|https://github.com/.../issues/NNN|next",
+    )
+    parser.add_argument(
+        "--assigned-to",
+        dest="assigned_to",
+        help="Assigned to entity",
+        metavar="NAME[ (nick)]",
+    )
+    parser.add_argument(
+        "--discovered-by",
+        dest="discovered_by",
+        help="Discovered by entity",
+        metavar="NAME[ (nick)]",
+    )
+    parser.add_argument(
+        "-p",
+        "--package",
+        dest="pkgs",
+        help="Package (project) name",
+        metavar="PKGNAME|git/github_PKGNAME|CVE-YYYY-GHNNNN#PROJECT",
+        action="append",
+    )
+    parser.add_argument(
+        "--package-template",
+        dest="template",
+        help="Use template for PKGNAME instead of auto-detecting",
+        metavar="PKGNAME",
+        default=None,
+    )
+    parser.add_argument(
+        "-r",
+        "--retired",
+        dest="retired",
+        help="add to retired/ instead of active/",
+        action="store_true",
+    )
+    args: argparse.Namespace = parser.parse_args()
+
+    if not args.cve:
+        error("missing required argument: --cve")
+
+    # If given a url, we'll try to determine the package name, otherwise we
+    # need to be given one
+    if not args.cve.startswith("http") and not args.pkgs:
+        error("missing required argument: --package")
+
+    addCve(
+        getConfigCveDataPaths(),
+        getConfigCompatUbuntu(),
+        args.cve,
+        args.pkgs,
+        template=args.template,
+        retired=args.retired,
+        discovered_by=args.discovered_by,
+        assigned_to=args.assigned_to,
+    )
+
+
+def main_cve_check_syntax():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
+        prog="cve-check-syntax",
+        description="Verify syntax of CVEs",
+    )
+
+    parser.add_argument(
+        "--untriaged-ok",
+        dest="untriagedOk",
+        help="'priority' can be 'untriaged'",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "-f",
+        dest="fns",
+        help="CVE file(s) to check",
+        metavar="FILENAME1 FILENAME2... FILENAMEN",
+        nargs="+",
+    )
+
+    args: argparse.Namespace = parser.parse_args()
+
+    ok: bool
+    if args.fns:
+        ok = checkSyntax(
+            getConfigCveDataPaths(),
+            getConfigCompatUbuntu(),
+            args.untriagedOk,
+            cveFiles=args.fns,
+        )
+    else:
+        ok = checkSyntax(
+            getConfigCveDataPaths(), getConfigCompatUbuntu(), args.untriagedOk
+        )
+
+    if not ok:
+        sys.exit(1)
