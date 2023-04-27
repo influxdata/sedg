@@ -1356,11 +1356,14 @@ def getHumanSummaryGHAS(
     def _output(stats, state: str):
         maxlen: int = 20
         maxlen_aff: int = 35
-        tableStr: str = "{pri:10s} {repo:%ds} {aff:%ds} {cve:s}" % (maxlen, maxlen_aff)
+        tableStr: str = "{pri:10s} {repo:%ds} {aff:%ds} {cve:25s} {extra:s}" % (
+            maxlen,
+            maxlen_aff,
+        )
         table_f: object = tableStr.format
 
         # TODO: cleanup Any
-        lines_open: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]] = {}
+        lines: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]] = {}
         totals: Dict[str, Dict[str, int]] = {
             "critical": {"num": 0, "num_repos": 0},
             "high": {"num": 0, "num_repos": 0},
@@ -1382,22 +1385,23 @@ def getHumanSummaryGHAS(
                         ):
                             continue
 
-                        if priority not in lines_open:
-                            lines_open[priority] = {}
-                        if repo not in lines_open[priority]:
-                            lines_open[priority][repo] = {}
-                        if dependency not in lines_open[priority][repo]:
-                            lines_open[priority][repo][dependency] = {
+                        if priority not in lines:
+                            lines[priority] = {}
+                        if repo not in lines[priority]:
+                            lines[priority][repo] = {}
+                        if dependency not in lines[priority][repo]:
+                            lines[priority][repo][dependency] = {
+                                "typ": typ,
                                 "cves": [],
                                 "num_affected": 0,
                             }
                         cves: List[str] = stats[repo][typ][dependency][priority]["cves"]
-                        lines_open[priority][repo][dependency]["cves"] = cves
+                        lines[priority][repo][dependency]["cves"] = cves
 
                         num: int = stats[repo][typ][dependency][priority]["num"]
                         totals[priority]["num"] += num
 
-                        lines_open[priority][repo][dependency]["num_affected"] += num
+                        lines[priority][repo][dependency]["num_affected"] += num
                         if repo != last:
                             totals[priority]["num_repos"] += 1
                             last = repo
@@ -1405,26 +1409,25 @@ def getHumanSummaryGHAS(
         print("# %s\n" % state.capitalize())
         print(
             table_f(
-                pri="Priority", repo="Repository", aff="Affected", cve="CVEs"
+                pri="Priority", repo="Repository", aff="Affected", cve="CVEs", extra=""
             ).rstrip()
         )
         print(
             table_f(
-                pri="--------", repo="----------", aff="--------", cve="----"
+                pri="--------", repo="----------", aff="--------", cve="----", extra=""
             ).rstrip()
         )
         for priority in cve_priorities:
-            if priority not in lines_open:
+            if priority not in lines:
                 continue
             repo: str
-            for repo in sorted(lines_open[priority]):
+            for repo in sorted(lines[priority]):
                 dependency: str
-                for dependency in sorted(lines_open[priority][repo]):
+                for dependency in sorted(lines[priority][repo]):
                     num_aff: str = ""
-                    if lines_open[priority][repo][dependency]["num_affected"] > 1:
+                    if lines[priority][repo][dependency]["num_affected"] > 1:
                         num_aff = (
-                            " (%d)"
-                            % lines_open[priority][repo][dependency]["num_affected"]
+                            " (%d)" % lines[priority][repo][dependency]["num_affected"]
                         )
 
                     aff = (
@@ -1440,9 +1443,8 @@ def getHumanSummaryGHAS(
                             if len(repo) > maxlen
                             else repo,
                             aff=aff,
-                            cve=", ".join(
-                                lines_open[priority][repo][dependency]["cves"]
-                            ),
+                            cve=", ".join(lines[priority][repo][dependency]["cves"]),
+                            extra="(%s)" % lines[priority][repo][dependency]["typ"],
                         ).rstrip()
                     )
 
