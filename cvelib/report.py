@@ -1043,16 +1043,17 @@ def getHumanTodo(
 
 def getHumanSoftwareInfo(
     cves: List[CVE],
-    pkg: str = "",
+    packages: str = "",
 ) -> None:
     """Show report of open items by software and priority"""
+    pkgs: Optional[Set[str]] = _parseSoftwareArg(packages)
     stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
         cves,
     )
 
     sw: str
     for sw in sorted(stats_open.keys()):
-        if pkg != "" and sw != pkg:
+        if pkgs is not None and sw not in pkgs:
             continue
         print("%s:" % sw)
         p: str
@@ -1063,18 +1064,21 @@ def getHumanSoftwareInfo(
                     print("    %s" % cve)
 
 
-def _readPackagesFile(pkg_fn: str) -> Optional[Set[str]]:
+def _parseSoftwareArg(p: str) -> Optional[Set[str]]:
     """Read the 'packages file' (a list of packages, one per line)"""
     pkgs: Optional[Set[str]] = None
-    if pkg_fn:
-        pkgs = readFile(pkg_fn)
+    if p:
+        if os.path.exists(p):
+            pkgs = readFile(p)
+        else:  # try to parse comma-separated list
+            pkgs = set(p.split(","))
 
     return pkgs
 
 
 def getHumanSummary(
     cves: List[CVE],
-    pkg_fn: str = "",
+    packages: str = "",
     report_output: ReportOutput = ReportOutput.OPEN,
 ) -> None:
     """Show report in summary format"""
@@ -1082,7 +1086,7 @@ def getHumanSummary(
     def _output(
         stats: Dict[str, _statsUniqueCVEsPkgSoftware],
         state: str,
-        pkgs: Optional[Set[str]],
+        pkgs: Optional[Set[str]] = None,
     ):
         maxlen: int = 30
         tableStr: str = "{pri:10s} {repo:%ds} {cve:25s} {extra:s}" % maxlen
@@ -1160,7 +1164,7 @@ def getHumanSummary(
                 % (priority, totals[priority]["num"], totals[priority]["num_repos"])
             )
 
-    pkgs: Optional[Set[str]] = _readPackagesFile(pkg_fn)
+    pkgs: Optional[Set[str]] = _parseSoftwareArg(packages)
 
     if report_output == ReportOutput.OPEN or report_output == ReportOutput.BOTH:
         stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsUniqueCVEs(
@@ -1242,11 +1246,11 @@ def _readStatsLineProtocol(
 
 def getInfluxDBLineProtocol(
     cves: List[CVE],
-    pkg_fn: str = "",
+    packages: str = "",
     base_timestamp: Optional[int] = None,
 ) -> None:
     """Show report of open items in InfluxDB line protocol format"""
-    pkgs: Optional[Set[str]] = _readPackagesFile(pkg_fn)
+    pkgs: Optional[Set[str]] = _parseSoftwareArg(packages)
     stats_open: List[str] = _readStatsLineProtocol(
         cves,
         base_timestamp=base_timestamp,
@@ -1349,11 +1353,12 @@ def _readStatsGHAS(
 
 def getHumanSummaryGHAS(
     cves: List[CVE],
+    packages: str = "",
     report_output: ReportOutput = ReportOutput.OPEN,
 ) -> None:
     """Show GitHub Advanced Security report in summary format"""
 
-    def _output(stats, state: str):
+    def _output(stats, state: str, pkgs: Optional[Set[str]] = None):
         maxlen: int = 20
         maxlen_aff: int = 35
         tableStr: str = "{pri:10s} {repo:%ds} {aff:%ds} {cve:25s} {extra:s}" % (
@@ -1375,6 +1380,10 @@ def getHumanSummaryGHAS(
         last: str = ""
         for priority in cve_priorities:
             for repo in sorted(stats):
+                # skip repos not in the list we want to report on
+                if pkgs is not None and repo not in pkgs:
+                    continue
+
                 typ: str
                 for typ in stats[repo]:
                     dependency: str
@@ -1455,6 +1464,8 @@ def getHumanSummaryGHAS(
                 % (priority, totals[priority]["num"], totals[priority]["num_repos"])
             )
 
+    pkgs: Optional[Set[str]] = _parseSoftwareArg(packages)
+
     if report_output == ReportOutput.OPEN or report_output == ReportOutput.BOTH:
         # report on a) packages that are open and b) alerts that are needed
         stats_open = _readStatsGHAS(
@@ -1462,7 +1473,7 @@ def getHumanSummaryGHAS(
             pkg_filter_status=["needed", "needs-triage", "pending"],
             ghas_filter_status=["needed", "needs-triage"],
         )
-        _output(stats_open, "open")
+        _output(stats_open, "open", pkgs)
 
     if report_output == ReportOutput.CLOSED or report_output == ReportOutput.BOTH:
         if report_output == ReportOutput.BOTH:
@@ -1476,11 +1487,11 @@ def getHumanSummaryGHAS(
             pkg_filter_status=["released", "not-affected", "ignored"],
             ghas_filter_status=["released", "dismissed"],
         )
-        _output(stats_closed, "closed")
+        _output(stats_closed, "closed", pkgs)
 
 
 #
-# gh-report
+# cve-report gh --active|--archived
 #
 def getReposReport(org: str, archived: Optional[bool] = False) -> None:
     """Show list of active and archived repos"""
@@ -1991,3 +2002,506 @@ $ gh-report --output-archived-repos --gh-org=foo
         getReposReport(args.gh_org, archived=False)
     elif args.output_archived_repos:
         getReposReport(args.gh_org, archived=True)
+
+
+# def main_report():
+def main_report():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
+        prog="cve-report",
+        description="Generate reports",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=textwrap.dedent(
+            """\
+Use -h or --help for additional options for report commands (positional
+arguments). Eg:
+
+  $ cve-report summary -h
+
+
+Example usage:
+
+# Summary reports
+
+  # open issues
+  $ cve-report summary
+
+  # open issues filtered by product git/org and oci/dockerhub
+  $ cve-report summary --filter-product=git/myorg,oci/dockerhub
+
+  # closed issues
+  $ cve-report summary --closed
+
+  # open issues for just 'foo' and 'bar' software (repos)
+  $ cve-report summary --software=foo,bar
+
+  # similary, but with software (repo) list from a file
+  $ cve-report summary --software=/path/to/software/list
+
+  # open GitHub Advanced Security (GHAS) issues
+  $ cve-report summary --ghas
+
+  # counts of unique issues by priority for each software
+  $ cve-report summary --unique
+
+
+# Software report
+
+  # open issues by software and priority
+  $ cve-report sw
+
+  # similarly, but for just 'foo' and 'bar' software (repos)
+  $ cve-report sw --software=foo,bar
+
+  # similarly, but with software (repo) list from a file
+  $ cve-report sw --software=/path/to/software/list
+
+# Todo list with heuristic scoring
+
+  $ cve-report todo
+
+
+# InfluxDB line protocol
+
+  $ cve-report influxdb
+  $ cve-report influxdb --starttime=$(date --date "8 days ago" "+%s")
+
+
+# GitHub-specific reports
+
+  # show active repos for org
+  $ cve-report gh --org <org> --status=active
+
+  # show archived repos for org
+  $ cve-report gh --org <org> --status=archived
+
+  # show GHAS alerts for org
+  $ cve-report gh --org <org> --alerts --since YYYY-MM-DD
+
+  # show GitHub dependabot alerts for org with template text
+  $ cve-report gh --org <org> --alerts=dependabot --with-templates --since YYYY-MM-DD
+
+  # show GHAS alerts for foo and bar repos in org
+  $ cve-report gh --org <org> --alerts --software=foo,bar --since YYYY-MM-DD
+
+  # show GitHub issue URLs with label 'security' that aremissing from CVE data
+  $ cve-report gh --org <org> --missing --labels=security --since YYYY-MM-DD
+
+  # show GitHub issue URLs from the foo and bar repos with label 'security'
+  # that are missing from CVE data
+  $ cve-report gh --org <org> --missing --labels=security --software=foo,bar --since YYYY-MM-DD
+
+  # show GitHub issue URLs with label 'security' updated since YYYY-MM-DD
+  $ cve-report gh --org <org> --updated --labels=security --since YYYY-MM-DD
+
+  # show GitHub issue URLs with label 'security' updated since YYYY-MM-DD that
+  # aren't for the baz and norf repos.
+  $ cve-report gh --org <org> --updated --labels=security --excluded-repos=baz,norf --since YYYY-MM-DD
+
+  # Show a combined report (alerts, updated and missing)
+  $ cve-report gh --org <org> --alerts --updated --missing --labels=security --since YYYY-MM-DD
+        """
+        ),
+    )
+
+    def _add_common_filter(p):
+        p.add_argument(
+            "--filter-product",
+            dest="filter_product",
+            help="comma-separated list of PRODUCTs to limit by (eg 'git/org')",
+            type=str,
+            default=None,
+        )
+        p.add_argument(
+            "--filter-priority",
+            dest="filter_priority",
+            help="comma-separated list of PRIORITYs to limit by (eg 'critical,high' or '-negligible')",
+            type=str,
+            default=None,
+        )
+        p.add_argument(
+            "--filter-tag",
+            dest="filter_tag",
+            help="comma-separated list of TAGs to limit by (eg 'apparmor,pie' or '-limit-report')",
+            type=str,
+            default=None,
+        )
+        p.add_argument(
+            "-s",
+            "--software",
+            dest="software",
+            help="comma-separated list of software (repos) or PATH to file with software list (newline separated) to limit by (eg, 'foo,bar')",
+            type=str,
+            default=None,
+        )
+
+    def _add_issues_filter(p):
+        p.add_argument(
+            "--open",
+            dest="open",
+            help="show open issues",
+            action="store_true",
+        )
+        p.add_argument(
+            "--closed",
+            dest="closed",
+            help="show closed issues",
+            action="store_true",
+        )
+        p.add_argument(
+            "--all",
+            dest="all",
+            help="show all issues",
+            action="store_true",
+        )
+
+    sub = parser.add_subparsers(dest="cmd")
+
+    # summary
+    parser_summary = sub.add_parser("summary")
+    _add_common_filter(parser_summary)
+    _add_issues_filter(parser_summary)
+    parser_summary.add_argument(
+        "--ghas",
+        dest="ghas",
+        help="show GitHub Advanced Security issues",
+        action="store_true",
+    )
+    parser_summary.add_argument(
+        "--unique",
+        dest="unique",
+        help="show unique issues by software (repos)",
+        action="store_true",
+    )
+
+    # influxdb
+    parser_influxdb = sub.add_parser("influxdb")
+    _add_common_filter(parser_influxdb)
+    parser_influxdb.add_argument(
+        "--starttime",
+        dest="starttime",
+        type=int,
+        help="use TIME as base start time for InfluxDB line protocol",
+        default=None,
+    )
+
+    # sw
+    parser_sw = sub.add_parser("sw")
+    _add_common_filter(parser_sw)
+
+    # todo
+    parser_todo = sub.add_parser("todo")
+    _add_common_filter(parser_todo)
+
+    # gh
+    parser_gh = sub.add_parser("gh")
+    parser_gh.add_argument(
+        "--alerts",
+        nargs="?",
+        default=None,
+        const="unspecified",
+        dest="alerts",
+        help="show GHAS alerts. Optionally add comma-separated list of alert types (code-scanning, dependabot, secret-scanning)",
+        type=str,
+    )
+    parser_gh.add_argument(
+        "--missing",
+        dest="missing",
+        help="show URLs missing from CVE info since '--since TIME'",
+        action="store_true",
+    )
+    parser_gh.add_argument(
+        "--updated",
+        dest="updated",
+        help="show URLs that have been updated since '--since TIME'",
+        action="store_true",
+    )
+    parser_gh.add_argument(
+        "--status",
+        dest="status",
+        help="show GHAS enabled/disabled status for repos (--status=alerts) or show active/archived status for repos (--status=active|archived)",
+        type=str,
+    )
+    parser_gh.add_argument(
+        "--org",
+        dest="org",
+        type=str,
+        help="GitHub ORG",
+        default=None,
+    )
+    parser_gh.add_argument(
+        "-s",
+        "--software",
+        dest="software",
+        help="comma-separated list of GitHub repos or PATH to file with GitHub repo list (newline separated) to limit by (eg, 'foo,bar')",
+        type=str,
+        default=None,
+    )
+    parser_gh.add_argument(
+        "--excluded-software",
+        dest="excluded_software",
+        type=str,
+        help="comma-separated list of GitHub repos to exclude",
+        default=None,
+    )
+    # The GitHub API uses:
+    #   &labels=foo     - issue has 'foo' label
+    #   &labels=bar,baz - issue has 'bar' and 'baz' labels
+    #
+    # --labels uses ',' for AND and ':' for OR such that
+    #   foo             - show issues with 'foo' label
+    #   foo:bar         - show issues with 'foo' or 'bar' label
+    #   foo:bar,baz     - show issues with 'foo' label or 'bar' and 'baz labels
+    parser_gh.add_argument(
+        "--labels",
+        dest="labels",
+        type=str,
+        help="colon-separated list of GitHub labels (use commas for ANDed labels)",
+        default=None,
+    )
+    # Consider that --labels=foo returns all issues with the label 'foo'.
+    # Sometimes it is useful to list all issues with the label foo but without
+    # label 'bar'. Use --labels=foo --exclude-labels=bar
+    parser_gh.add_argument(
+        "--excluded-labels",
+        dest="excluded_labels",
+        type=str,
+        help="colon-separated list of GitHub labels to exclude issues when present",
+        default=None,
+    )
+    parser_gh.add_argument(
+        "--since",
+        dest="since",
+        type=str,
+        help="limit report to issues since SINCE (in epoch seconds)",
+        default="0",
+    )
+    parser_gh.add_argument(
+        "--since-stamp",
+        dest="since_stamp",
+        type=str,
+        help="limit report to issues since mtime of SINCE_STAMP file",
+        default=None,
+    )
+
+    parser_gh.add_argument(
+        "--with-templates",
+        dest="with_templates",
+        help="show issue templates with GHAS alerts",
+        action="store_true",
+    )
+
+    args: argparse.Namespace = parser.parse_args()
+    print(args)
+
+    if args.cmd is None:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+
+    # check for unreasonable combinations
+    if args.cmd == "summary":
+        if args.all | args.closed | args.open:
+            if args.unique:
+                error(
+                    "--open, --closed and --all not supported with 'summary --unique'"
+                )
+            elif not args.all ^ args.closed ^ args.open:
+                # if any are specified, only one can be
+                error("Please use only one of --all, --closed or --open with 'summary'")
+        if args.software:
+            if args.ghas:
+                error("--software is not supported with 'summary --ghas'")
+            elif args.unique:
+                error("--software is not supported with 'summary --unique'")
+    elif args.cmd == "todo" and args.software:
+        error("--software is not supported with 'todo'")
+    elif args.cmd == "gh":
+        if (
+            not args.missing
+            and not args.updated
+            and not args.alerts
+            and not args.status
+        ):
+            error(
+                "Please specify one of --alerts, --missing, --updates or --status with 'gh'"
+            )
+        elif (args.updated or args.missing or args.alerts) and (
+            args.since == "0" and args.since_stamp is None
+        ):
+            error(
+                "Please specify --since and/or --since-stamp with --missing/--updated/--alerts"
+            )
+        elif args.with_templates and not args.alerts:
+            error("Please specify --alerts with --with-templates")
+        elif (
+            args.updated
+            and args.software is not None
+            and args.alerts is None
+            and not args.missing
+        ):
+            error("Unsupported option --software with --updated")
+        # TODO: args.status=active|archived with other options
+
+    cveDirs: Dict[str, str] = getConfigCveDataPaths()
+    compat: bool = getConfigCompatUbuntu()
+
+    # XXX: skipping this makes things faster, but it is nice to have. For now
+    # only with 'gh' since it is already slow
+    # First, check the syntax of our CVEs
+    if args.cmd == "gh":
+        checkSyntax(cveDirs, compat, untriagedOk=True)
+
+    # Gather the CVEs
+    cves: List[CVE] = []
+    if args.cmd in ["summary", "influxdb", "sw", "todo"]:
+        # default (--open) has open statuses (but not 'deferred')
+        filter_status = "needs-triage,needed,pending"
+        if args.cmd == "summary":
+            if args.all:
+                # --all has all statuses
+                filter_status = None
+            elif args.closed:
+                # --closed is all the non-active statuses
+                filter_status = "DNE,ignored,not-affected,released"
+            elif args.ghas:
+                # getHumanSummaryGHAS() filters down internally so send all to
+                # collectCVEData
+                filter_status = None
+            elif args.unique:
+                filter_status = "needs-triage,needed,pending,released"
+
+        cves = collectCVEData(
+            cveDirs,
+            compat,
+            untriagedOk=True,
+            filter_status=filter_status,
+            filter_product=args.filter_product,
+            filter_priority=args.filter_priority,
+            filter_tag=args.filter_tag,
+        )
+
+        # send to a report
+        if args.cmd == "influxdb":
+            getInfluxDBLineProtocol(cves, args.software, args.starttime)
+        elif args.cmd == "sw":
+            getHumanSoftwareInfo(cves, args.software)
+        elif args.cmd == "todo":
+            getHumanTodo(cves)
+        elif args.cmd == "summary":
+            # default to open
+            report_output: ReportOutput = ReportOutput.OPEN
+            if args.closed:
+                report_output = ReportOutput.CLOSED
+            elif args.all:
+                report_output = ReportOutput.BOTH
+
+            if args.ghas:
+                getHumanSummaryGHAS(cves, args.software, report_output=report_output)
+            elif args.unique:
+                getHumanReport(cves)
+            else:
+                getHumanSummary(cves, args.software, report_output=report_output)
+    elif args.cmd == "gh":
+        if args.org is None:
+            error("Please specify --org")
+
+        if "GHTOKEN" not in os.environ:
+            error("Please export GitHub personal access token as GHTOKEN")
+
+        repos: List[str] = []
+        if args.software is not None:
+            tmp: Optional[Set[str]] = _parseSoftwareArg(args.software)
+            if tmp is not None:
+                repos = list(tmp)
+
+        excluded_repos: List[str] = []
+        if args.excluded_software is not None:
+            tmp: Optional[Set[str]] = _parseSoftwareArg(args.excluded_software)
+            if tmp is not None:
+                excluded_repos = list(tmp)
+
+        if args.status in ["active", "archived"]:
+            getReposReport(args.org, archived=(args.status == "archived"))
+            return
+        elif args.status == "alerts":
+            getGHAlertsStatusReport(
+                args.org, repos=repos, excluded_repos=excluded_repos
+            )
+            return
+
+        # at this point, we should be any of args.missing, args.updates or
+        # args.alerts
+        cves: List[CVE] = collectCVEData(cveDirs, compat, untriagedOk=True)
+
+        # Allow for specifying --since and --since-stamp together. Eg:
+        #   --since alone just sets 'since' with no stamp file
+        #   --since-stamp alone where stamp file doesn't exists defaults to '0'
+        #     then creates the stamp file
+        #   --since-stamp alone where stamp file exists uses mtime of stamp
+        #     file then updates the stamp file
+        #   --since with --since-stamp sets 'since' to --since and then updates
+        #     stamp file
+        since: int = 0
+        try:
+            since = int(args.since)
+        except ValueError:
+            if not rePatterns["date-only"].search(args.since):
+                error("Please specify seconds since epoch or YYYY-MM-DD with --since")
+            year, mon, day = args.since.split("-")
+            since = int(
+                datetime.datetime(int(year), int(mon), int(day), 0, 0, 0).strftime("%s")
+            )
+
+        if (
+            since == 0
+            and args.since_stamp is not None
+            and os.path.exists(args.since_stamp)
+        ):
+            since = int(os.path.getmtime(args.since_stamp))
+
+        if args.alerts:
+            if args.missing or args.updated:
+                print("\n# Alerts")
+
+            if args.alerts == "unspecified":
+                alert_types = ["code-scanning", "dependabot", "secret-scanning"]
+            else:
+                alert_types = args.alerts.split(",")
+
+            getGHAlertsReport(
+                cves,
+                args.org,
+                since=since,
+                repos=repos,
+                excluded_repos=excluded_repos,
+                with_templates=args.with_templates,
+                alert_types=alert_types,
+            )
+
+        if args.updated:
+            if args.alerts is not None or args.missing:
+                print("\n# Updates")
+
+            getUpdatedReport(cves, args.org, excluded_repos=excluded_repos, since=since)
+
+        if args.missing:
+            if args.alerts is not None or args.updated:
+                print("\n# Missing")
+
+            labels: List[str] = []
+            if args.labels is not None:
+                labels = args.labels.split(":")
+            excluded_labels: List[str] = []
+            if args.excluded_labels is not None:
+                excluded_labels = args.excluded_labels.split(":")
+            getMissingReport(
+                cves,
+                args.org,
+                repos=repos,
+                excluded_repos=excluded_repos,
+                labels=labels,
+                skip_labels=excluded_labels,
+                since=since,
+            )
+
+        if args.since_stamp is not None:
+            pathlib.Path(args.since_stamp).touch()

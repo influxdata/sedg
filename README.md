@@ -77,14 +77,16 @@
     $ <work on CVEs in .../<cve-data>
     $ cve-check-syntax
 
-    # various reports for humans
-    $ cve-report				# summary
-    $ cve-report --output-todolist		# todo list
-    $ cve-report --output-sw [SOFTWARE]		# software info
-    $ cve-report --output-summary [PATH]	# summary info
+    # various reports for humans (add --help to see additional options)
+    $ cve-report summary			# summary
+    $ cve-report todo           		# todo list
 
     # various machine reports
-    $ cve-report --output-influxdb [PATH]	# InfluxDB line protocol
+    $ cve-report influxdb               	# InfluxDB line protocol
+
+    # GitHub-specific reports
+    $ cve-report gh --org <org> --status=active
+    $ cve-report gh --org <org> --alerts --since YYYY-MM-DD
 
     # if desired, leave the venv
     $ deactivate
@@ -475,12 +477,12 @@ Package stanzas then become:
 suitable for sending to InfluxDB. Eg:
 
 ```
-$ cve-report --output-influxdb
+$ cve-report influxdb
 cveLog,priority=medium,status=needed,product=git id="CVE-2020-1234",software="foo",modifier="" 1633040641675003246
 ...
 
 # or pipe into 'influx write':
-$ cve-report --output-influxdb | influx write --host $URL --org-id $ORGID --bucket-id $BUCKETID --token $TOKEN
+$ cve-report influxdb | influx write --host $URL --org-id $ORGID --bucket-id $BUCKETID --token $TOKEN
 ```
 
 For now, paste this into 'Add Data/Line Protocol' whenever you make relevant
@@ -497,9 +499,9 @@ sending data in daily, you can skip the `noop()` function and at the end use a
 single `aggregateWindow(every: 1d, count)` without a `fill()`.
 
 It is possible to backfill by checking out a commit and running `cve-report`
-with `--output-influxdb-starttime`. Eg:
+with `--starttime`. Eg:
 ```
-$ cve-report --output-influxdb --output-influxdb-starttime $(date --date "8 days ago" "+%s")
+$ cve-report influxdb --starttime $(date --date "8 days ago" "+%s")
 ```
 
 TODO: there is also a telegraf/github plugin that could be investigated.
@@ -669,26 +671,25 @@ GitHub does not provide easy mechanisms to subscribe to labels in repos or
 across the org and also doesn't provide issue label information in their email
 headers for bug comments. Combined, we must poll GitHub for information to
 detect new issues or issues that have received updates. The
-`cve-report-updated-bugs` tool aims to address this gap. Example usage:
+`cve-report` tool aims to address this gap. Example usage:
 ```
     # first export a GitHub Personal Access Token that can read issues:
     $  export GHTOKEN=...
 
     # Show issues that are referenced in open CVE data that have been
     # updated since last week
-    $ cve-report-updated-bugs --show-updated \
-        --gh-org foo --since $(date --date "7 days ago" "+%s")
+    $ cve-report gh --updated --org foo --since $(date --date "7 days ago" "+%s")
     Updated issues:
      https://github.com/foo/bar/issues/123
      https://github.com/foo/baz/issues/234
 
     # Show list of issues for specific repos in an org with different
     # labels, but without label 'skipme'
-    $ cve-report-updated-bugs --show-missing \
-        --gh-org foo \
-        --gh-labels="bar:baz" \
-        --gh-skip-labels="skipme" \
-        --gh-repos=norf,corge,qux
+    $ cve-report gh --missing \
+        --org foo \
+        --labels="bar:baz" \
+        --excluded-labels="skipme" \
+        --repos=norf,corge,qux
     Fetching list of repos: ...... done!
     Fetching list of issues for:
      foo/corge: .. done!
@@ -701,8 +702,8 @@ detect new issues or issues that have received updates. The
 
     # Show dependabot alerts since last stamp file update (does not filter on
     # 'active' status)
-    $ cve-report-updated-bugs --gh-show-alerts \
-        --gh-org foo \
+    $ cve-report gh --alerts \
+        --org foo \
         --since-stamp /path/to/stamp
     Collecting repo status: [#########################################] 100%
     Collecting alerts: [##############################################] 100%
@@ -714,31 +715,30 @@ detect new issues or issues that have received updates. The
       - https://github.com/advisories/GHSA-35jh-r3h4-6jhm
 ```
 
-`cve-report-updated-bugs --show-updated` also supports `--since-stamp` as a
-convenience and will set the since time to the `mtime` of the specified file.
-Eg, to bootstrap and then just use the stamp file, use:
+`cve-report gh --updated` also supports `--since-stamp` as a convenience and
+will set the since time to the `mtime` of the specified file. Eg, to bootstrap
+and then just use the stamp file, use:
 ```
     # first time only
-    $ cve-report-updated-bugs --show-updated \
-        --gh-org foo --since $(date --date "7 days ago" "+%s")
+    $ cve-report gh --updated --org foo --since $(date --date "7 days ago" "+%s")
 
     # hereafter
-    $ cve-report-updated-bugs --show-updated \
-        --gh-org foo \
+    $ cve-report gh --updated \
+        --org foo \
         --since-stamp /path/to/stamp
 ```
 
-The `gh-report` script can be used to show a few things about GitHub repos. Eg,
-to show archived repos:
+The `cve-report` script can also be used to show a few things about GitHub
+repos. Eg, to show archived repos:
 
 ```
-$ gh-report --gh-org foo --output-archived-repos
+$ cve-report gh --org foo --status=archived
 norf
 ```
 
 To show active repos:
 ```
-$ gh-report --gh-org foo --output-repos
+$ cve-report gh --org foo --status=active
 bar
 baz
 ```
@@ -749,6 +749,6 @@ into other tools. Eg:
 # for private repos
 $  export GHUSER=...
 $  export GHTOKEN=...
-$ gh-report --gh-org foo --output-repos | sort -f > foo-repos.txt
-$ cve-report --output-summary="foo-repos.txt"
+$ cve-report gh --org foo --status=active | sort -f > foo-repos.txt
+$ cve-report summary --software="foo-repos.txt"
 ```
