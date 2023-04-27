@@ -1131,9 +1131,9 @@ def getHumanSummary(
                     extras: List[str] = []
 
                     if cve in stats[repo]["deps"]:
-                        extras.append("gh-dependabot")
+                        extras.append("dependabot")
                     if cve in stats[repo]["secrets"]:
-                        extras.append("gh-secrets")
+                        extras.append("secret-scanning")
                     for tag in stats[repo]["tags"]:
                         if cve in stats[repo]["tags"][tag]:
                             extras.append(tag)

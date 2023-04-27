@@ -2590,7 +2590,7 @@ Totals:
 
 Priority   Repository                     Issue
 --------   ----------                     -----
-high       bar                            CVE-2022-GH2#bar          (gh-dependabot, gh-secrets)
+high       bar                            CVE-2022-GH2#bar          (dependabot, secret-scanning)
 medium     foo                            CVE-2022-0001
 medium     foo                            CVE-2022-GH1#foo          (limit-report)
 low        bar                            CVE-2022-0002
@@ -2653,7 +2653,7 @@ Totals:
 
 Priority   Repository                     Issue
 --------   ----------                     -----
-high       bar                            CVE-2022-GH2#bar          (gh-dependabot, gh-secrets)
+high       bar                            CVE-2022-GH2#bar          (dependabot, secret-scanning)
 low        bar                            CVE-2022-0002
 
 Totals:
@@ -2709,7 +2709,7 @@ Totals:
 
 Priority   Repository                     Issue
 --------   ----------                     -----
-high       bar                            CVE-2022-GH2#bar          (gh-dependabot, gh-secrets)
+high       bar                            CVE-2022-GH2#bar          (dependabot, secret-scanning)
 medium     foo                            CVE-2022-GH1#foo          (limit-report)
 
 Totals:
@@ -2765,7 +2765,7 @@ Totals:
 
 Priority   Repository                     Issue
 --------   ----------                     -----
-high       bar                            CVE-2022-GH2#bar          (gh-dependabot, gh-secrets)
+high       bar                            CVE-2022-GH2#bar          (dependabot, secret-scanning)
 
 Totals:
 - critical: 0 in 0 repos
@@ -2820,7 +2820,7 @@ Totals:
 
 Priority   Repository                     Issue
 --------   ----------                     -----
-high       bar                            CVE-2022-GH2#bar          (gh-dependabot, gh-secrets)
+high       bar                            CVE-2022-GH2#bar          (dependabot, secret-scanning)
 medium     foo                            CVE-2022-0001
 low        bar                            CVE-2022-0002
 low        baz                            CVE-2022-0003
