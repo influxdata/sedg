@@ -1467,11 +1467,13 @@ def getHumanSummaryGHAS(
     if report_output == ReportOutput.CLOSED or report_output == ReportOutput.BOTH:
         if report_output == ReportOutput.BOTH:
             print("\n")
-        # report on a) packages that are closed (but not ignored/deferred) and
-        # b) alerts that are released/dismissed
+        # report on a) packages that are closed (but not deferred) and b)
+        # alerts that are released/dismissed. We report on ignored issues since
+        # we'll sometimes use 'ignored' for CVE status with 'dismissed' as GHAS
+        # status.
         stats_closed = _readStatsGHAS(
             cves,
-            pkg_filter_status=["released", "not-affected"],
+            pkg_filter_status=["released", "not-affected", "ignored"],
             ghas_filter_status=["released", "dismissed"],
         )
         _output(stats_closed, "closed")
