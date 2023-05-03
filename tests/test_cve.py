@@ -1769,7 +1769,29 @@ cve-data = %s
             error.getvalue().strip(),
         )
 
-        # retired but CloseDate not set
+        # active but CloseDate set
+        tmpl = self._cve_template()
+        tmpl["Candidate"] = "CVE-1234-5678"
+        tmpl["git/github_pkg1"] = "needed"
+        tmpl["OpenDate"] = "2023-03-17"
+        tmpl["CloseDate"] = "2023-03-17"
+        content = tests.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertFalse(res)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: active/CVE-1234-5678 is active but CloseDate is set",
+            error.getvalue().strip(),
+        )
+
+        # ClosedDate is before OpenDate
         tmpl = self._cve_template()
         tmpl["Candidate"] = "CVE-1234-5678"
         tmpl["git/github_pkg1"] = "released"
