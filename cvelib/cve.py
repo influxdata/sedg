@@ -867,6 +867,9 @@ def checkSyntaxFile(
     if "retired" in rel and cve.closeDate == "":
         ok = False
         cvelib.common.warn("%s is retired but CloseDate is not set" % rel)
+    elif "active" in rel and cve.closeDate != "":
+        ok = False
+        cvelib.common.warn("%s is active but CloseDate is set" % rel)
 
     # make sure CloseDate is same or after OpenDate
     if cve.openDate != "" and cve.closeDate != "":
