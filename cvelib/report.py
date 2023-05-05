@@ -12,7 +12,18 @@ import requests
 import sys
 import textwrap
 import time
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, TypedDict, Union
+from typing import (
+    Any,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    TypedDict,
+    Union,
+)
 
 from cvelib.cve import CVE, checkSyntax, collectCVEData, collectGHAlertUrls
 from cvelib.github import GHDependabot, GHSecret, GHCode
@@ -1503,10 +1514,8 @@ def getReposReport(org: str, archived: Optional[bool] = False) -> None:
             print(name)
 
 
-#
-# CLI mains
-#
-def main_report():
+def _main_report_parse_args(sysargs: Sequence[str]) -> argparse.Namespace:
+    """Parse args for main_report()"""
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         prog="cve-report",
         description="Generate reports",
@@ -1791,11 +1800,11 @@ Example usage:
         action="store_true",
     )
 
-    args: argparse.Namespace = parser.parse_args()
+    args: argparse.Namespace = parser.parse_args(sysargs)
 
     if args.cmd is None:
         parser.print_help(sys.stderr)
-        sys.exit(1)
+        error("Please specify a report command")
 
     # check for unreasonable combinations
     if args.cmd == "summary":
@@ -1840,6 +1849,16 @@ Example usage:
         ):
             error("Unsupported option --software with --updated")
         # TODO: args.status=active|archived with other options
+
+    return args
+
+
+#
+# CLI mains
+#
+def main_report():
+    """Main function for cve-report command"""
+    args: argparse.Namespace = _main_report_parse_args(sys.argv[1:])
 
     cveDirs: Dict[str, str] = getConfigCveDataPaths()
     compat: bool = getConfigCompatUbuntu()

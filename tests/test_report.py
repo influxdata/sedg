@@ -2908,3 +2908,66 @@ Totals:
 - negligible: 0 in 0 repos"""
         )
         self.assertEqual(expClosed, output.getvalue().strip())
+
+    def test__main_report_parse_args(self):
+        """Test _main_report_parse_args"""
+
+        # unreasonable combinations
+        tsts = [
+            # no args
+            ([], "ERROR: Please specify a report command"),
+            (
+                ["summary", "--unique", "--open"],
+                "--open, --closed and --all not supported with 'summary --unique'",
+            ),
+            (
+                ["summary", "--all", "--closed"],
+                "Please use only one of --all, --closed or --open with 'summary'",
+            ),
+            (
+                ["summary", "--software", "foo", "--ghas"],
+                "--software is not supported with 'summary --ghas'",
+            ),
+            (
+                ["summary", "--software", "foo", "--unique"],
+                "--software is not supported with 'summary --unique'",
+            ),
+            (["todo", "--software", "foo"], "--software is not supported with 'todo'"),
+            (
+                ["gh"],
+                "Please specify one of --alerts, --missing, --updates or --status with 'gh'",
+            ),
+            (
+                ["gh", "--alerts"],
+                "Please specify --since and/or --since-stamp with --missing/--updated/--alerts",
+            ),
+            (
+                ["gh", "--missing", "--with-templates", "--since", "1"],
+                "Please specify --alerts with --with-templates",
+            ),
+            (
+                ["gh", "--updated", "--since", "1", "--software", "foo"],
+                "Unsupported option --software with --updated",
+            ),
+        ]
+        for args, expErr in tsts:
+            with mock.patch.object(
+                cvelib.common.error,
+                "__defaults__",
+                (
+                    1,
+                    False,
+                ),
+            ):
+                with tests.testutil.capturedOutput() as (output, error):
+                    cvelib.report._main_report_parse_args(args)
+                self.assertEqual("", output.getvalue().strip())
+                errout = error.getvalue()
+                self.assertTrue(
+                    expErr in errout.strip(),
+                    msg="Could not find '%s' in: %s" % (expErr, errout),
+                )
+
+    def test_main_report(self):
+        """Test main_report"""
+        self._mock_cve_data_mixed()
