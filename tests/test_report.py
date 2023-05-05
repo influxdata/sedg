@@ -722,6 +722,7 @@ class TestReport(TestCase):
         self.orig_ghtoken = None
         self.maxDiff = None
         self.tmpdir = None
+        self.orig_xdg_config_home = None
 
         if "GHTOKEN" in os.environ:
             self.orig_ghtoken = os.getenv("GHTOKEN")
@@ -741,6 +742,14 @@ class TestReport(TestCase):
         cvelib.report.issues_ind = {}
         if "TEST_UPDATE_PROGRESS" in os.environ:
             del os.environ["TEST_UPDATE_PROGRESS"]
+
+        if self.orig_xdg_config_home is None:
+            if "XDG_CONFIG_HOME" in os.environ:
+                del os.environ["XDG_CONFIG_HOME"]
+        else:
+            os.environ["XDG_CONFIG_HOME"] = self.orig_xdg_config_home
+            self.orig_xdg_config_home = None
+        cvelib.common.configCache = None
 
         if self.tmpdir is not None:
             cvelib.common.recursive_rm(self.tmpdir)
@@ -804,24 +813,36 @@ cve-data = %s
             os.mkdir(cveDirs[d], 0o0700)
 
         # regular CVE - foo
-        d = self._cve_template(cand="CVE-2022-0001")
+        d = self._cve_template(
+            cand="CVE-2022-0001",
+            references=["https://www.cve.org/CVERecord?id=CVE-2022-0001"],
+        )
         d["upstream_foo"] = "needs-triage"
         _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
 
         # regular CVE - bar
-        d = self._cve_template(cand="CVE-2022-0002")
+        d = self._cve_template(
+            cand="CVE-2022-0002",
+            references=["https://www.cve.org/CVERecord?id=CVE-2022-0002"],
+        )
         d["Priority"] = "low"
         d["upstream_bar"] = "needs-triage"
         _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
 
         # regular CVE - baz
-        d = self._cve_template(cand="CVE-2022-0003")
+        d = self._cve_template(
+            cand="CVE-2022-0003",
+            references=["https://www.cve.org/CVERecord?id=CVE-2022-0003"],
+        )
         d["Priority"] = "low"
         d["upstream_baz"] = "needs-triage"
         _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
 
         # placeholder with priority override
-        d = self._cve_template(cand="CVE-2022-NNN1")
+        d = self._cve_template(
+            cand="CVE-2022-NNN1",
+            references=["https://www.cve.org/CVERecord?id=CVE-2022-NNN1"],
+        )
         d["upstream_foo"] = "needed"
         d["Priority_foo"] = "low"
         _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
@@ -846,22 +867,34 @@ cve-data = %s
         _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
 
         # regular CVE, closed
-        d = self._cve_template(cand="CVE-2021-9991")
+        d = self._cve_template(
+            cand="CVE-2021-9991",
+            references=["https://www.cve.org/CVERecord?id=CVE-2021-9991"],
+        )
         d["upstream_foo"] = "released"
         d["Priority"] = "critical"
-        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+        d["CloseDate"] = "2021-06-27"
+        _write_cve(os.path.join(cveDirs["retired"], d["Candidate"]), d)
 
         # regular CVE, closed
-        d = self._cve_template(cand="CVE-2021-9992")
+        d = self._cve_template(
+            cand="CVE-2021-9992",
+            references=["https://www.cve.org/CVERecord?id=CVE-2021-9992"],
+        )
         d["git/org_bar"] = "released"
         d["Priority"] = "negligible"
-        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+        d["CloseDate"] = "2021-06-28"
+        _write_cve(os.path.join(cveDirs["retired"], d["Candidate"]), d)
 
         # regular CVE, ignored
-        d = self._cve_template(cand="CVE-2021-9993")
+        d = self._cve_template(
+            cand="CVE-2021-9993",
+            references=["https://www.cve.org/CVERecord?id=CVE-2021-9993"],
+        )
         d["upstream_bar"] = "ignored"
         d["Priority"] = "negligible"
-        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+        d["CloseDate"] = "2021-06-29"
+        _write_cve(os.path.join(cveDirs["retired"], d["Candidate"]), d)
 
         return cveDirs
 
@@ -1073,7 +1106,7 @@ foo"""
                 cves, "valid-org", repos=["valid-repo"], excluded_repos=["valid-repo"]
             )
         self.assertEqual("", error.getvalue().strip())
-        exp = """No missing issues for the specified repos."""
+        exp = """No missing issues."""
         self.assertEqual(exp, output.getvalue().strip())
 
         # archived
@@ -1251,7 +1284,7 @@ Updated issues:
             cvelib.report.getUpdatedReport(cves, "valid-org", since=1657224398)
         self.assertEqual("", error.getvalue().strip())
         exp = """Collecting known issues:
-No updated issues for the specified repos."""
+No updated issues."""
         self.assertEqual(exp, output.getvalue().strip())
 
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
@@ -2911,11 +2944,10 @@ Totals:
 
     def test__main_report_parse_args(self):
         """Test _main_report_parse_args"""
-
-        # unreasonable combinations
+        # invalid invocations
         tsts = [
             # no args
-            ([], "ERROR: Please specify a report command"),
+            ([], "Please specify a report command"),
             (
                 ["summary", "--unique", "--open"],
                 "--open, --closed and --all not supported with 'summary --unique'",
@@ -2949,6 +2981,15 @@ Totals:
                 ["gh", "--updated", "--since", "1", "--software", "foo"],
                 "Unsupported option --software with --updated",
             ),
+            (["gh", "--alerts", "--since", "1"], "Please specify --org"),
+            (
+                ["gh", "--alerts", "--since", "1", "--org", "foo"],
+                "Please export GitHub personal access token as GHTOKEN",
+            ),
+            (
+                ["gh", "--alerts", "--since", "bad", "--org", "foo"],
+                "Please specify seconds since epoch or YYYY-MM-DD with --since",
+            ),
         ]
         for args, expErr in tsts:
             with mock.patch.object(
@@ -2959,8 +3000,12 @@ Totals:
                     False,
                 ),
             ):
+                if "GHTOKEN" in expErr:
+                    del os.environ["GHTOKEN"]
                 with tests.testutil.capturedOutput() as (output, error):
                     cvelib.report._main_report_parse_args(args)
+                if "GHTOKEN" in expErr:
+                    os.environ["GHTOKEN"] = "fake-test-token"
                 self.assertEqual("", output.getvalue().strip())
                 errout = error.getvalue()
                 self.assertTrue(
@@ -2971,3 +3016,248 @@ Totals:
     def test_main_report(self):
         """Test main_report"""
         self._mock_cve_data_mixed()
+
+        tsts = [
+            (["summary"], "- high: 1 in 1 repos"),
+            (["summary", "--open"], "- high: 1 in 1 repos"),
+            (["summary", "--closed"], "- critical: 1 in 1 repos"),
+            (["summary", "--all"], "- high: 1 in 1 repos"),
+            (["summary", "--all"], "- critical: 1 in 1 repos"),
+            (["summary", "--ghas"], "- critical: 0 in 0 repos"),
+            (
+                ["summary", "--unique"],
+                "Total:                                  1          1          2          3          1",
+            ),
+            (
+                ["influxdb"],
+                'cveLog,priority=high,status=needed,product=git,where=org id="CVE-2022-GH2#bar",software="bar",modifier="" ',
+            ),
+            (["sw"], "bar:\n  high:\n    CVE-2022-GH2#bar\n  low:\n    CVE-2022-0002"),
+            (
+                ["todo"],
+                "110      bar: 1 high, 1 low\n110      foo: 2 medium, 1 low\n10       baz: 1 low",
+            ),
+        ]
+        for args, exp in tsts:
+            with mock.patch.object(
+                cvelib.common.error,
+                "__defaults__",
+                (
+                    1,
+                    False,
+                ),
+            ):
+                with tests.testutil.capturedOutput() as (output, error):
+                    cvelib.report.main_report(args)
+                self.assertEqual("", error.getvalue().strip())
+                out = output.getvalue()
+                self.assertTrue(
+                    exp in out.strip(),
+                    msg="Could not find '%s' in: %s" % (exp, out),
+                )
+
+        # for coverage, handle main_report without setting args
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.report.main_report()
+            self.assertEqual("", output.getvalue().strip())
+            errout = error.getvalue()
+            self.assertTrue("Please specify a report command" in errout.strip())
+
+    @mock.patch("requests.get", side_effect=mocked_requests_get__getGHAlertsAllFull)
+    def test_main_report_gh_alerts(self, _):  # 2nd arg is mock_get
+        """Test main_report - gh --alerts"""
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
+
+        since_stamp_fn = os.path.join(self.tmpdir, "since")
+        with open(since_stamp_fn, "w"):  # touch the file
+            pass
+        # set the access and modification time to 2000-01-01
+        os.utime(since_stamp_fn, (946706400, 946706400))
+
+        self._mock_cve_data_mixed()
+
+        tsts = [
+            (
+                [
+                    "gh",
+                    "--alerts",
+                    "--since",
+                    "1",
+                    "--org",
+                    "valid-org",
+                    "-s",
+                    "valid-repo",
+                ],
+                "valid-repo updated alerts:",
+            ),
+            (
+                [
+                    "gh",
+                    "--alerts",
+                    "--since",
+                    "2000-01-01",
+                    "--org",
+                    "valid-org",
+                    "-s",
+                    "valid-repo",
+                ],
+                "valid-repo updated alerts:",
+            ),
+            (
+                [
+                    "gh",
+                    "--alerts",
+                    "--since",
+                    "1",
+                    "--org",
+                    "valid-org",
+                    "--excluded-software",
+                    "other-repo",
+                ],
+                "valid-repo updated alerts:",
+            ),
+            (
+                [
+                    "gh",
+                    "--alerts=dependabot",
+                    "--since",
+                    "1",
+                    "--org",
+                    "valid-org",
+                    "-s",
+                    "valid-repo",
+                ],
+                "valid-repo updated alerts:",
+            ),
+            (
+                [
+                    "gh",
+                    "--alerts",
+                    "--since-stamp",
+                    since_stamp_fn,
+                    "--org",
+                    "valid-org",
+                    "-s",
+                    "valid-repo",
+                ],
+                "valid-repo updated alerts:",
+            ),
+        ]
+        for args, exp in tsts:
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.report.main_report(args)
+            self.assertEqual("", error.getvalue().strip())
+            out = output.getvalue()
+            self.assertTrue(
+                exp in out.strip(),
+                msg="Could not find '%s' in: %s" % (exp, out),
+            )
+
+    @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
+    def test_main_report_gh_missing(self, _):  # 2nd arg is mock_get
+        """Test main_report - gh --missing"""
+        self._mock_cve_data_mixed()
+        args = [
+            "gh",
+            "--missing",
+            "--org",
+            "valid-org",
+            "--software",
+            "empty-repo",
+            "--labels",
+            "blah1:blah2",
+            "--excluded-labels",
+            "blah3:blah4",
+            "--since",
+            "1",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        out = output.getvalue()
+        exp = "No missing issues."
+        self.assertTrue(
+            exp in out.strip(), msg="Could not find '%s' in: %s" % (exp, out)
+        )
+
+    @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
+    def test_main_report_gh_updated(self, _):  # 2nd arg is mock_get
+        """Test main_report - gh --updated"""
+        self._mock_cve_data_mixed()
+        args = ["gh", "--updated", "--org", "valid-org", "--since", "1"]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        out = output.getvalue()
+        exp = "No updated issues."
+        self.assertTrue(
+            exp in out.strip(), msg="Could not find '%s' in: %s" % (exp, out)
+        )
+
+    @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
+    def test_main_report_gh_multiple(self, _):  # 2nd arg is mock_get
+        """Test main_report - gh --alerts --updated --missing"""
+        self._mock_cve_data_mixed()
+        args = [
+            "gh",
+            "--updated",
+            "--missing",
+            "--org",
+            "valid-org",
+            "--software",
+            "empty-repo",
+            "--since",
+            "1",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        out = output.getvalue()
+        exp = "# Missing"
+        self.assertTrue(
+            exp in out.strip(), msg="Could not find '%s' in: %s" % (exp, out)
+        )
+        exp = "# Updates"
+        self.assertTrue(
+            exp in out.strip(), msg="Could not find '%s' in: %s" % (exp, out)
+        )
+
+    @mock.patch("requests.get", side_effect=mocked_requests_get__getGHReposAll)
+    def test_main_report_gh_status_active(self, _):  # 2nd arg is mock_get
+        """Test main_report - gh --status=active"""
+        self._mock_cve_data_mixed()
+        args = ["gh", "--org", "valid-org", "--status", "active"]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        out = output.getvalue()
+        exp = "foo"
+        self.assertTrue(
+            exp in out.strip(), msg="Could not find '%s' in: %s" % (exp, out)
+        )
+        exp = "baz"
+        self.assertTrue(
+            exp in out.strip(), msg="Could not find '%s' in: %s" % (exp, out)
+        )
+
+    @mock.patch("requests.get", side_effect=mocked_requests_get__getGHAlertsEnabled)
+    def test_main_report_gh_status_alerts(self, _):  # 2nd arg is mock_get
+        """Test main_report - gh --status=alerts"""
+        self._mock_cve_data_mixed()
+        args = ["gh", "--org", "valid-org", "--status", "alerts"]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        out = output.getvalue()
+        exp = "dependabot,enabled,valid-repo"
+        self.assertTrue(
+            exp in out.strip(), msg="Could not find '%s' in: %s" % (exp, out)
+        )

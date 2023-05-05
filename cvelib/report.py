@@ -256,7 +256,7 @@ def getMissingReport(
                 gh_urls.append(url)
 
     if len(gh_urls) == 0:
-        print("No missing issues for the specified repos.")
+        print("No missing issues.")
     else:
         print("Issues missing from CVE data:")
         for url in gh_urls:
@@ -406,7 +406,7 @@ def getUpdatedReport(
             updated_urls.append(url)
 
     if len(updated_urls) == 0:
-        print("No updated issues for the specified repos.")
+        print("No updated issues.")
     else:
         print("Updated issues:")
         for url in updated_urls:
@@ -1848,7 +1848,19 @@ Example usage:
             and not args.missing
         ):
             error("Unsupported option --software with --updated")
-        # TODO: args.status=active|archived with other options
+        elif args.org is None:
+            error("Please specify --org")
+        elif "GHTOKEN" not in os.environ:
+            error("Please export GitHub personal access token as GHTOKEN")
+
+        if args.since != "0":
+            try:
+                int(args.since)
+            except ValueError:
+                if not rePatterns["date-only"].search(args.since):
+                    error(
+                        "Please specify seconds since epoch or YYYY-MM-DD with --since"
+                    )
 
     return args
 
@@ -1856,9 +1868,11 @@ Example usage:
 #
 # CLI mains
 #
-def main_report():
+def main_report(sysargs: Optional[Sequence[str]] = None):
     """Main function for cve-report command"""
-    args: argparse.Namespace = _main_report_parse_args(sys.argv[1:])
+    if sysargs is None:
+        sysargs = sys.argv[1:]
+    args: argparse.Namespace = _main_report_parse_args(sysargs)
 
     cveDirs: Dict[str, str] = getConfigCveDataPaths()
     compat: bool = getConfigCompatUbuntu()
@@ -1920,12 +1934,6 @@ def main_report():
             else:
                 getHumanSummary(cves, args.software, report_output=report_output)
     elif args.cmd == "gh":
-        if args.org is None:
-            error("Please specify --org")
-
-        if "GHTOKEN" not in os.environ:
-            error("Please export GitHub personal access token as GHTOKEN")
-
         repos: List[str] = []
         if args.software is not None:
             tmp: Optional[Set[str]] = _parseSoftwareArg(args.software)
@@ -1962,9 +1970,7 @@ def main_report():
         since: int = 0
         try:
             since = int(args.since)
-        except ValueError:
-            if not rePatterns["date-only"].search(args.since):
-                error("Please specify seconds since epoch or YYYY-MM-DD with --since")
+        except ValueError:  # input validation happened in _main_report_parse_args()
             year, mon, day = args.since.split("-")
             since = int(
                 datetime.datetime(int(year), int(mon), int(day), 0, 0, 0).strftime("%s")
