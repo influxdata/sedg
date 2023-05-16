@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: MIT
 
-# EXPERIMENTAL: this script and APIs subject to change
-
 import argparse
 import copy
 from datetime import datetime
@@ -17,6 +15,7 @@ from typing import Dict, List, Optional
 from cvelib.common import (
     error,
     warn,
+    _experimental,
 )
 from cvelib.net import requestGetRaw
 
@@ -249,6 +248,9 @@ def _getQuaySecurityManifest(repo_full: str, raw: Optional[bool] = False) -> str
 # CLI mains
 #
 def main_quay_report():
+    # EXPERIMENTAL: this script and APIs subject to change
+    _experimental()
+
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         prog="quay-report",
         description="Generate reports on security issues",
