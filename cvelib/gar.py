@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: MIT
 
-# EXPERIMENTAL: this script and APIs subject to change
-
 import argparse
 import copy
 from datetime import datetime
@@ -13,10 +11,7 @@ import sys
 import textwrap
 from typing import Dict, List, Optional
 
-from cvelib.common import (
-    error,
-    warn,
-)
+from cvelib.common import error, warn, _experimental
 from cvelib.net import requestGetRaw
 
 
@@ -213,6 +208,9 @@ def _getGARRepo(
 # CLI mains
 #
 def main_gar_report():
+    # EXPERIMENTAL: this script and APIs subject to change
+    _experimental()
+
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         prog="gar-report",
         description="Generate reports on security issues",

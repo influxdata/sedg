@@ -618,6 +618,14 @@ def verifyDate(
     return dObj
 
 
+def _experimental():
+    """Check if can run experimental feature"""
+    if "SEDG_EXPERIMENTAL" not in os.environ or os.environ["SEDG_EXPERIMENTAL"] != "1":
+        error(
+            "This functionality is experimental. To use, please set SEDG_EXPERIMENTAL=1"
+        )
+
+
 #
 # Utility classes
 #
