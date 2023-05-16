@@ -35,6 +35,9 @@ class TestCommon(TestCase):
         if "TEST_UPDATE_PROGRESS" in os.environ:
             del os.environ["TEST_UPDATE_PROGRESS"]
 
+        if "SEDG_EXPERIMENTAL" in os.environ:
+            del os.environ["SEDG_EXPERIMENTAL"]
+
     def test_msg(self):
         """Test msg()"""
         with tests.testutil.capturedOutput() as (output, error):
@@ -476,3 +479,25 @@ compat-ubuntu = %s
                     "invalid TestKey: '%s' %s" % (date, suffix),
                     str(context.exception),
                 )
+
+    def test__experimental(self):
+        """Test _experimental()"""
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.common._experimental()
+            self.assertEqual("", output.getvalue().strip())
+            expErr = "ERROR: This functionality is experimental. To use, please set SEDG_EXPERIMENTAL=1"
+            self.assertEqual(expErr, error.getvalue().strip())
+
+        os.environ["SEDG_EXPERIMENTAL"] = "1"
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.common._experimental()
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual("", error.getvalue().strip())
