@@ -211,11 +211,11 @@ class TestGitHubDependabot(TestCase):
         """Test setDetectedIn()"""
         tsts = [
             # valid
-            ("foo", None),
-            ("path/to/bar", None),
+            ("foo"),
+            ("path/to/bar"),
         ]
 
-        for s, expErr in tsts:
+        for s in tsts:
             ghd = cvelib.github.GHDependabot(self._getValid())
             ghd.setDetectedIn(s)
 
@@ -469,11 +469,11 @@ class TestGitHubSecret(TestCase):
         """Test setSecret()"""
         tsts = [
             # valid
-            ("foo", None),
-            ("foo bar", None),
+            ("foo"),
+            ("foo bar"),
         ]
 
-        for s, expErr in tsts:
+        for s in tsts:
             ghs = cvelib.github.GHSecret(self._getValid())
             ghs.setSecret(s)
 
@@ -481,11 +481,11 @@ class TestGitHubSecret(TestCase):
         """Test setDetectedIn()"""
         tsts = [
             # valid
-            ("foo", None),
-            ("path/to/bar", None),
+            ("foo"),
+            ("path/to/bar"),
         ]
 
-        for s, expErr in tsts:
+        for s in tsts:
             ghs = cvelib.github.GHSecret(self._getValid())
             ghs.setDetectedIn(s)
 
@@ -718,11 +718,11 @@ class TestGitHubCode(TestCase):
         """Test setCode()"""
         tsts = [
             # valid
-            ("foo", None),
-            ("foo bar", None),
+            ("foo"),
+            ("foo bar"),
         ]
 
-        for s, expErr in tsts:
+        for s in tsts:
             ghs = cvelib.github.GHCode(self._getValid())
             ghs.setDescription(s)
 
@@ -730,11 +730,11 @@ class TestGitHubCode(TestCase):
         """Test setDetectedIn()"""
         tsts = [
             # valid
-            ("foo", None),
-            ("path/to/bar", None),
+            ("foo"),
+            ("path/to/bar"),
         ]
 
-        for s, expErr in tsts:
+        for s in tsts:
             ghs = cvelib.github.GHCode(self._getValid())
             ghs.setDetectedIn(s)
 
