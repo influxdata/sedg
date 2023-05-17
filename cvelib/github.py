@@ -2,11 +2,18 @@
 #
 # SPDX-License-Identifier: MIT
 
+import argparse
+import copy
+import datetime
+import json
+import os
 import re
-from typing import Dict, List, Union
+import textwrap
+from typing import Any, Dict, List, Union
 from yaml import load, CSafeLoader
 
-from cvelib.common import CveException, rePatterns
+from cvelib.common import CveException, rePatterns, error, warn, _experimental
+from cvelib.net import ghAPIGetList
 
 
 class GHDependabot(object):
@@ -324,3 +331,139 @@ def parse(s: str) -> List[Union[GHDependabot, GHSecret, GHCode]]:
             )
 
     return ghas
+
+
+#
+# CLI mains
+#
+def main_dump_alerts():
+    # EXPERIMENTAL: this is subject to change
+    _experimental()
+
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
+        prog="gh-dump-alerts",
+        description="Fetch alerts and save locally",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=textwrap.dedent(
+            """\
+
+        """
+        ),
+    )
+    parser.add_argument(
+        "-p",
+        "--path",
+        dest="path",
+        type=str,
+        help="local PATH to save alerts",
+        default=None,
+        required=True,
+    )
+    parser.add_argument(
+        "--org",
+        dest="org",
+        type=str,
+        help="GitHub ORG",
+        default=None,
+        required=True,
+    )
+    parser.add_argument(
+        "--alerts",
+        default=None,
+        dest="alerts",
+        help="alert type to fetch. If omitted, default to all",
+        type=str,
+        choices=["code-scanning", "dependabot", "secret-scanning"],
+    )
+
+    args: argparse.Namespace = parser.parse_args()
+
+    if "GHTOKEN" not in os.environ:  # pragma: nocover
+        error("Please export GitHub personal access token as GHTOKEN")
+
+    alert_types: List[str] = ["code-scanning", "secret-scanning", "dependabot"]
+    if args.alerts is not None:
+        alert_types = [args.alerts]
+
+    jsons: Dict[str, List[Any]] = {}
+    for alert_type in alert_types:
+        _, tmp = ghAPIGetList(
+            "https://api.github.com/orgs/%s/%s/alerts" % (args.org, alert_type)
+        )
+        if alert_type not in jsons:
+            jsons[alert_type] = []
+        jsons[alert_type] += copy.deepcopy(tmp)
+
+    dir: str = args.path
+    if not os.path.exists(dir):
+        os.mkdir(dir)
+    if not os.path.isdir(dir):  # pragma: nocover
+        error("'%s' is not a directory" % dir)
+
+    for alert_type in jsons:
+        for j in jsons[alert_type]:
+            # GitHub API should guarantee this...
+            ok = True
+            for i in ["created_at", "number", "repository"]:
+                if i not in j:
+                    warn("Could not find '%s' in: %s" % (i, j))
+                    ok = False
+            if not ok:
+                continue
+
+            if "name" not in j["repository"]:
+                warn("Could not find 'name' in: %s" % j["repository"])
+                continue
+
+            # create the directory hierarchy as we go
+            dobj = datetime.datetime.strptime(j["created_at"], "%Y-%m-%dT%H:%M:%S%z")
+            dir = args.path
+            for subdir in [
+                str(dobj.year),
+                str(dobj.month),
+                str(dobj.day),
+                alert_type,
+                args.org,
+                j["repository"]["name"],
+            ]:
+                dir = os.path.join(dir, subdir)
+                if not os.path.exists(dir):
+                    os.mkdir(dir)
+                if not os.path.isdir(dir):  # pragma: nocover
+                    error("'%s' is not a directory" % dir)
+
+            created: bool = False
+            fn = os.path.join(dir, "%d.json" % j["number"])
+            if not os.path.exists(fn):
+                with open(fn, "w") as fh:
+                    print("Created: %s" % os.path.relpath(fn, args.path))
+                    json.dump(j, fh, indent=2)
+                    # json.dump() doesn't put a newline at the end, so add it
+                    fh.seek(os.SEEK_SET, os.SEEK_END)
+                    fh.write("\n")
+                    created = True
+            if not os.path.isfile(fn):
+                warn("'%s' is not a file" % os.path.relpath(fn, args.path))
+                continue
+
+            # if the updated_at in the existing file is earlier than
+            # updated_at of the downloaded alert, update the file
+            if not created and "updated_at" in j:
+                with open(fn, "r") as fh:
+                    orig = json.load(fh)
+                updated_orig = datetime.datetime.strptime(
+                    orig["updated_at"], "%Y-%m-%dT%H:%M:%S%z"
+                )
+                updated_cur = datetime.datetime.strptime(
+                    j["updated_at"], "%Y-%m-%dT%H:%M:%S%z"
+                )
+
+                if updated_cur > updated_orig:
+                    os.unlink(fn)
+                    with open(fn, "w") as fh:
+                        print("Updated: %s" % os.path.relpath(fn, args.path))
+                        json.dump(j, fh, indent=2)
+                        # json.dump() doesn't put a newline at the end, so add
+                        # it
+                        fh.seek(os.SEEK_SET, os.SEEK_END)
+                        fh.write("\n")

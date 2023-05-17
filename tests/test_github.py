@@ -2,10 +2,14 @@
 #
 # SPDX-License-Identifier: MIT
 
-from unittest import TestCase
+import json
+import os
+import tempfile
+from unittest import TestCase, mock
 
 import cvelib.common
 import cvelib.github
+import tests.testutil
 
 
 class TestGitHubDependabot(TestCase):
@@ -828,9 +832,26 @@ class TestGitHubCommon(TestCase):
 
     def setUp(self):
         """Setup functions common for all tests"""
+        self.tmpdir = None
+        self.orig_ghtoken = None
+
+        if "GHTOKEN" in os.environ:
+            self.orig_ghtoken = os.getenv("GHTOKEN")
+        os.environ["GHTOKEN"] = "fake-test-token"
+
+        tests.testutil.disableRequestsCache()
 
     def tearDown(self):
         """Teardown functions common for all tests"""
+        if self.orig_ghtoken is not None:
+            os.environ["GHTOKEN"] = self.orig_ghtoken
+            self.orig_ghtoken = None
+
+        if self.tmpdir is not None:
+            cvelib.common.recursive_rm(self.tmpdir)
+
+        if "SEDG_EXPERIMENTAL" in os.environ:
+            del os.environ["SEDG_EXPERIMENTAL"]
 
     def _getValidYaml(self):
         """Returns a valid yaml document"""
@@ -892,3 +913,175 @@ class TestGitHubCommon(TestCase):
                 with self.assertRaises(cvelib.common.CveException) as context:
                     cvelib.github.parse(s)
                 self.assertEqual(expErr, str(context.exception))
+
+    def _mock_response_for_ghAPIGetList(self, json_data):
+        """Build a mocked requests response
+
+        Example:
+
+          @mock.patch('requests.get')
+          def test_requestGetRaw(self, mock_get):
+              mr = self._mock_response_for_ghAPIGetList([{"foo": "bar"}])
+              mock_get.return_value = mr
+              res = foo('good')
+              self.assertEqual(res, "...")
+        """
+        # mock up a one page link for simplicity
+        url = "https://api.github.com/orgs/valid-org/dependabot/alerts"
+        link = '<%s?after=blah2>; rel="prev", <%s>; rel="first"' % (url, url)
+        mr = mock.Mock()
+        mr.status_code = 200
+        mr.json = mock.Mock(return_value=json_data)
+        mr.headers = {"Link": link}
+
+        return mr
+
+    @mock.patch("requests.get")
+    def test_main_dump_alerts(self, mock_get):
+        """Test main_dump_alerts()"""
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
+        os.environ["SEDG_EXPERIMENTAL"] = "1"
+
+        alert = {
+            "number": 1,
+            "created_at": "2021-04-24T22:20:52Z",
+            "updated_at": "2021-05-16T16:33:27Z",
+            "repository": {"name": "foo"},
+        }
+        mock_get.return_value = self._mock_response_for_ghAPIGetList([alert])
+
+        fn = self.tmpdir + "/subdir/2021/4/24/dependabot/valid-org/foo/1.json"
+        relfn = os.path.relpath(fn, self.tmpdir + "/subdir")
+
+        # create
+        with mock.patch(
+            "argparse._sys.argv",
+            [
+                "_",
+                "--path",
+                self.tmpdir + "/subdir",
+                "--org",
+                "valid-org",
+                "--alerts",
+                "dependabot",
+            ],
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.github.main_dump_alerts()
+        self.assertEqual("Created: %s" % relfn, output.getvalue().strip())
+        self.assertEqual("", error.getvalue().strip())
+
+        # verify the file is what we expect
+        with open(fn, "r") as fh:
+            j = json.load(fh)
+        self.assertDictEqual(alert, j)
+
+        # update
+        alert["updated_at"] = "2021-05-17T16:33:27Z"
+        with mock.patch(
+            "argparse._sys.argv",
+            [
+                "_",
+                "--path",
+                self.tmpdir + "/subdir",
+                "--org",
+                "valid-org",
+                "--alerts",
+                "dependabot",
+            ],
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.github.main_dump_alerts()
+        self.assertEqual("Updated: %s" % relfn, output.getvalue().strip())
+        self.assertEqual("", error.getvalue().strip())
+
+        # verify the file is what we expect
+        with open(fn, "r") as fh:
+            j = json.load(fh)
+        self.assertDictEqual(alert, j)
+
+    @mock.patch("requests.get")
+    def test_main_dump_alerts_bad(self, mock_get):
+        """Test main_dump_alerts() - bad"""
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
+        os.environ["SEDG_EXPERIMENTAL"] = "1"
+
+        # missing 'number'
+        alert = {
+            "created_at": "2021-04-24T22:20:52Z",
+            "updated_at": "2021-05-16T16:33:27Z",
+            "repository": {"name": "foo"},
+        }
+        mock_get.return_value = self._mock_response_for_ghAPIGetList([alert])
+
+        with mock.patch(
+            "argparse._sys.argv",
+            [
+                "_",
+                "--path",
+                self.tmpdir + "/subdir",
+                "--org",
+                "valid-org",
+                "--alerts",
+                "dependabot",
+            ],
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.github.main_dump_alerts()
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue("WARN: Could not find 'number' in" in error.getvalue().strip())
+
+        # missing repository['name']
+        alert = {
+            "number": 1,
+            "created_at": "2021-04-24T22:20:52Z",
+            "updated_at": "2021-05-16T16:33:27Z",
+            "repository": {},
+        }
+        mock_get.return_value = self._mock_response_for_ghAPIGetList([alert])
+
+        with mock.patch(
+            "argparse._sys.argv",
+            [
+                "_",
+                "--path",
+                self.tmpdir + "/subdir",
+                "--org",
+                "valid-org",
+                "--alerts",
+                "dependabot",
+            ],
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.github.main_dump_alerts()
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue("WARN: Could not find 'name' in" in error.getvalue().strip())
+
+        # path exists but isn't a file
+        fn = self.tmpdir + "/subdir/2021/4/24/dependabot/valid-org/foo/1.json"
+        relfn = os.path.relpath(fn, self.tmpdir + "/subdir")
+        os.makedirs(fn)
+        alert = {
+            "number": 1,
+            "created_at": "2021-04-24T22:20:52Z",
+            "updated_at": "2021-05-16T16:33:27Z",
+            "repository": {"name": "foo"},
+        }
+        mock_get.return_value = self._mock_response_for_ghAPIGetList([alert])
+
+        with mock.patch(
+            "argparse._sys.argv",
+            [
+                "_",
+                "--path",
+                self.tmpdir + "/subdir",
+                "--org",
+                "valid-org",
+                "--alerts",
+                "dependabot",
+            ],
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.github.main_dump_alerts()
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual("WARN: '%s' is not a file" % relfn, error.getvalue().strip())
