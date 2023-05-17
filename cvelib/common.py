@@ -204,6 +204,10 @@ rePatterns: Dict[str, Pattern[str]] = {
     "github-code-status": re.compile(
         r"^(needs-triage|needed|released|dismissed \((false-positive|used-in-tests|wont-fix); [a-zA-Z0-9\-]+\))$",
     ),
+    # dismissed requires a reason and username
+    "scan-oci-status": re.compile(
+        r"^(needs-triage|needed|released|dismissed \((tolerable|code-not-used); [a-zA-Z0-9\-]+\))$",
+    ),
     # upstream: something
     # vendor: something
     # other: something

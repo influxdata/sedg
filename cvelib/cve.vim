@@ -41,7 +41,7 @@ syn match cveStatus contained "\(needs\-triage\|needed\|deferred\|pending\|relea
 syn match cveStatusExtra contained " (.\+)"
 
 " Standard keys
-syn match cveKey "^\%(Candidate\|OpenDate\|PublicDate\|CRD\|References\|Description\|GitHub-Advanced-Security\|Notes\|Mitigation\|CVSS\|Bugs\|Discovered-by\|Assigned-to\|Patches_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\): *"
+syn match cveKey "^\%(Candidate\|OpenDate\|PublicDate\|CRD\|References\|Description\|GitHub-Advanced-Security\|Scan-Reports\|Notes\|Mitigation\|CVSS\|Bugs\|Discovered-by\|Assigned-to\|Patches_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\): *"
 
 " Product/where key
 " <product>[/<where>]_<software>[/<modifier>]:

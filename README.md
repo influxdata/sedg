@@ -195,9 +195,16 @@ Items within `[]` are optional.
        secret: <found secret description>
        detectedIn: path/to/file
        status: needs-triage |needed | released | dismissed (<reason>; <who>)
-       url: https://github.com/ORG/REPO/security/secret-scanning/N | unavailable
-    ]
-    Notes:
+       url: https://github.com/ORG/REPO/security/secret-scanning/N | unavailable]
+    [Scan-Reports:
+     - type: oci
+       component: <affected software>
+       detectedIn: <OCI image name>
+       advisory: <url for relevant security advisory> | unavailable
+       fixedBy: <version> | unavailable
+       severity: low | moderate | high | critical
+       status: needs-triage|needed|released|dismissed (<reason>; <who>)
+       url: <url to scan report> | unavailable]
      person> One line note
      person> Multi-line note. Lorem ipsum dolor sit amet, consectetur adipiscing
       elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
@@ -280,6 +287,7 @@ For each field in the global section:
    other software might use it)
  * `GitHub-Advanced-Security` is optional and may be used to track GitHub
    dependabot alerts and secret scanning
+ * `Scan-Reports` is optional and may be used to track OCI scan reports
  * `Notes` contains information from triagers, developers, etc to give more
    insight into the vulnerability, particularly how it pertains to individual
    pieces of software, configuration, build artifacts, etc. It will often
@@ -300,7 +308,9 @@ For each field in the global section:
    * `critical`
  * `Discovered-by` is a comma-separated list of names, slack handles, GitHub
    usernames, etc and used for attribution. `gh-dependabot` and `gh-secret` are
-   used when using `GitHub-Advanced-Security` (above)
+   used when using `GitHub-Advanced-Security` (above). `quay.io`, `gar` and
+   `docker` are used when using `Scan-Reports` (above) with specific
+   report URLs.
  * `Assigned-to` contains the name, slack handle, GitHub username, etc of the
    person assigned to this issue
  * `CVSS` contains a list of CVSS scores as assigned by different entities
