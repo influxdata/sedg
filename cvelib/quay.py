@@ -138,8 +138,10 @@ def _getQuayRepo(namespace: str, name: str, tagsearch: str = "") -> str:
 
 
 # TODO: document the format
-def _getQuaySecurityManifest(repo_full: str, raw: Optional[bool] = False) -> str:
-    """Obtain the security manifest for the spcified repo@sha256:..."""
+def _getQuaySecurityManifest(
+    repo_full: str, raw: Optional[bool] = False, fixable: Optional[bool] = False
+) -> str:
+    """Obtain the security manifest for the specified repo@sha256:..."""
     repo: str
     sha256: str
     if repo_full.count("@") == 0:
@@ -237,6 +239,8 @@ def _getQuaySecurityManifest(repo_full: str, raw: Optional[bool] = False) -> str
     table_f: object = tableStr.format
     s: str = ""
     for f in sorted(features.keys()):
+        if fixable and "needed" not in features[f]["status"]:
+            continue
         s += (
             table_f(name=f, vers=features[f]["version"], status=features[f]["status"])
             + "\n"
@@ -292,6 +296,12 @@ $ quay-report
         help="output quay.io raw security report for ORG/REPO@sha256:SHA256",
         default=None,
     )
+    parser.add_argument(
+        "--fixable",
+        dest="fixable",
+        help="show only fixables issues",
+        action="store_true",
+    )
     args: argparse.Namespace = parser.parse_args()
 
     # send to a report
@@ -314,7 +324,9 @@ $ quay-report
     elif args.get_security_manifest:
         if "/" not in args.get_security_manifest:
             error("please use ORG/NAME")
-        s: str = _getQuaySecurityManifest(args.get_security_manifest)
+        s: str = _getQuaySecurityManifest(
+            args.get_security_manifest, fixable=args.fixable
+        )
         print("# %s report" % args.get_security_manifest)
         print(s)
     elif args.get_security_manifest_raw:
