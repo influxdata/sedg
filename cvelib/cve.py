@@ -28,6 +28,7 @@ from cvelib.common import (
 import cvelib.common
 from cvelib.pkg import CvePkg, parse, cmp_pkgs
 import cvelib.github
+import cvelib.scan
 
 
 class CVE(object):
@@ -49,6 +50,7 @@ class CVE(object):
     cve_optional: List[str] = [
         "CRD",
         "GitHub-Advanced-Security",
+        "Scan-Reports",
         "Mitigation",
     ]
 
@@ -81,6 +83,7 @@ class CVE(object):
                 cvelib.github.GHDependabot, cvelib.github.GHSecret, cvelib.github.GHCode
             ]
         ] = []
+        self.scan_reports: List[cvelib.scan.ScanOCI] = []
         self.mitigation: List[str] = []
         self.bugs: List[str] = []
         self.priority: str = ""
@@ -131,6 +134,9 @@ class CVE(object):
 
         if "GitHub-Advanced-Security" in data:
             self.setGHAS(data["GitHub-Advanced-Security"])
+
+        if "Scan-Reports" in data:
+            self.setScanReports(data["Scan-Reports"])
 
         # Any field with '_' is a package or patch. Since these could be out of
         # order, collect them separately, then call setPackages()
@@ -255,6 +261,10 @@ class CVE(object):
     def setGHAS(self, s: str) -> None:
         """Set GitHub-Advanced-Security"""
         self.ghas = cvelib.github.parse(s)
+
+    def setScanReports(self, s: str) -> None:
+        """Set GitHub-Advanced-Security"""
+        self.scan_reports = cvelib.scan.parse(s)
 
     def setMitigation(self, s: str) -> None:
         """Set Mitigation"""
@@ -436,6 +446,12 @@ class CVE(object):
                 s.append("%s" % g)
             return s
 
+        def _collectScanReports(scans) -> List[str]:
+            s = []
+            for m in scans:
+                s.append("%s" % m)
+            return s
+
         s: str = """Candidate:%(candidate)s
 OpenDate:%(openDate)s
 CloseDate:%(closeDate)s
@@ -443,7 +459,7 @@ PublicDate:%(publicDate)s
 CRD:%(crd)s
 References:%(references)s
 Description:%(description)s
-%(ghas)sNotes:%(notes)s
+%(ghas)s%(scans)sNotes:%(notes)s
 Mitigation:%(mitigation)s
 Bugs:%(bugs)s
 Priority:%(priority)s
@@ -466,6 +482,10 @@ CVSS:%(cvss)s
                 "ghas": "GitHub-Advanced-Security:\n%s\n"
                 % "\n".join(_collectGHAS(self.ghas))
                 if len(self.ghas) > 0
+                else "",
+                "scans": "Scan-Reports:\n%s\n"
+                % "\n".join(_collectScanReports(self.scan_reports))
+                if len(self.scan_reports) > 0
                 else "",
                 "notes": "\n %s" % "\n ".join(self.notes) if self.notes else "",
                 "mitigation": "\n %s" % "\n ".join(self.mitigation)
@@ -601,6 +621,8 @@ CVSS:%(cvss)s
                 self._verifyMitigation(key, val)
             elif key == "GitHub-Advanced-Security":
                 self._verifyGHAS(key, val)
+            elif key == "Scan-Reports":
+                self._verifyScanReports(key, val)
 
         # namespaced keys
         for key in data:
@@ -782,6 +804,13 @@ CVSS:%(cvss)s
         if val != "":  # empty is ok
             self._verifyMultiline(key, val)
 
+    def _verifyScanReports(self, key: str, val: str) -> None:
+        """Verify CVE Scan-Reports"""
+        # only verify multi-line here as the parse() function in
+        # setScanReports() will handle this more fully
+        if val != "":  # empty is ok
+            self._verifyMultiline(key, val)
+
 
 # Utility functions that work on CVE files
 def checkSyntaxFile(
@@ -882,7 +911,7 @@ def checkSyntaxFile(
                 % (rel, cve.closeDate, cve.openDate)
             )
 
-    # make sure Discovered-by is populated if specified GitHub-Advanced-Security
+    # GHAS
     seen: List[str] = []
     open_ghas = False
     for item in cve.ghas:
@@ -929,6 +958,51 @@ def checkSyntaxFile(
         cvelib.common.warn(
             "%s is active but has only closed GitHub Advanced Security entries" % rel
         )
+
+    # scan reports
+    seen: List[str] = []
+    open_scans = False
+    for item in cve.scan_reports:
+        if item.status.startswith("need"):
+            open_scans = True
+        needle: str = ""
+        if isinstance(item, cvelib.scan.ScanOCI):
+            if item.url.startswith("https://quay.io/"):
+                needle = "quay.io"
+            elif item.url.startswith("https://console.cloud.google.com/"):
+                needle = "gar"
+            elif item.url.startswith("https://dso.docker.com/"):
+                needle = "docker"
+
+        if needle != "" and needle not in seen:
+            if (
+                not cve.discoveredBy == needle
+                and not cve.discoveredBy.startswith("%s," % needle)
+                and not ", %s," % needle in cve.discoveredBy
+                and not cve.discoveredBy.endswith(", %s" % needle)
+            ):
+                seen.append(needle)
+                ok = False
+                cvelib.common.warn(
+                    "%s has '%s' missing from Discovered-by" % (rel, needle)
+                )
+
+    if len(cve.scan_reports) > 0 and open_scans and "retired" in rel:
+        ok = False
+        cvelib.common.warn("%s is retired but has open scan report entries" % rel)
+    elif (
+        len(cve.scan_reports) > 0
+        and not open_scans
+        and "active" in rel
+        and not cve_pkgs_only_pending_or_closed
+    ):
+        # We only alert on this if all the alerts are closed, it's still and
+        # active and if at least one package is not closed or pending. We don't
+        # alert with pending to account for times when the alert is staged in a
+        # branch but not yet in a release (ie, the alert is closed, but the
+        # issue is still open)
+        ok = False
+        cvelib.common.warn("%s is active but has only closed scan report entries" % rel)
 
     return cve, ok
 

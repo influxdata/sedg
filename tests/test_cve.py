@@ -115,7 +115,7 @@ class TestCve(TestCase):
 
     def test_onDiskFormat(self):
         """Test onDiskFormat()"""
-        self.maxDiff = 2048
+        self.maxDiff = 4096
         tmpl = self._cve_template()
         tmpl[
             "GitHub-Advanced-Security"
@@ -139,6 +139,34 @@ class TestCve(TestCase):
    severity: medium
    status: dismissed (false-positive; who)
    url: https://github.com/bar/baz/security/code-scanning/1
+"""
+        tmpl[
+            "Scan-Reports"
+        ] = """
+ - type: oci
+   component: foo
+   detectedIn: myorg/myimg@sha256:deadbeef
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   fixedBy: 1.2.3
+   severity: medium
+   status: needed
+   url: https://blah.com/BAR-a
+ - type: oci
+   component: baz
+   detectedIn: myorg/myimg2@sha256:deadbeef1
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   fixedBy: 2.3.4
+   severity: medium
+   status: needed
+   url: https://blah.com/NORF-a
+ - type: oci
+   component: corge
+   detectedIn: myorg/myimg@sha256:deadbeef
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0003
+   fixedBy: 9.2.0-5
+   severity: high
+   status: released
+   url: https://blah.com/CORGE-a
 """
         self._mock_readCve(tmpl)
         exp = """Candidate: CVE-2020-1234
@@ -171,6 +199,31 @@ GitHub-Advanced-Security:
    severity: medium
    status: dismissed (false-positive; who)
    url: https://github.com/bar/baz/security/code-scanning/1
+Scan-Reports:
+ - type: oci
+   component: foo
+   detectedIn: myorg/myimg@sha256:deadbeef
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   fixedBy: 1.2.3
+   severity: medium
+   status: needed
+   url: https://blah.com/BAR-a
+ - type: oci
+   component: baz
+   detectedIn: myorg/myimg2@sha256:deadbeef1
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   fixedBy: 2.3.4
+   severity: medium
+   status: needed
+   url: https://blah.com/NORF-a
+ - type: oci
+   component: corge
+   detectedIn: myorg/myimg@sha256:deadbeef
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0003
+   fixedBy: 9.2.0-5
+   severity: high
+   status: released
+   url: https://blah.com/CORGE-a
 Notes:
  person> some notes
   more notes
@@ -1347,6 +1400,57 @@ git/github_norf: needs-triage
                     cvelib.cve.CVE()._verifyGHAS(key, val)
                 self.assertEqual(expErr, str(context.exception))
 
+    def test__verifyScanReports(self):
+        """Test _verifyScanReports()"""
+        tsts = [
+            # valid
+            (
+                "Scan-Reports",
+                """
+ - type: oci
+   component: foo
+   detectedIn: myorg/myimg@sha256:deadbeef
+   advisory: https://blah.com/BAR-a
+   fixedBy: 1.2.3-1
+   severity: medium
+   status: dismissed (tolerable; who)
+   url: https://www.cve.org/CVERecord?id=CVE-2023-0001
+""",
+                None,
+            ),
+            # invalid
+            (
+                "Scan-Reports",
+                """
+ - type: oci
+   component: bár
+   detectedIn: myorg/myimg@sha256:deadbeef
+   advisory: https://blah.com/BAR-a
+   fixedBy: 1.2.3-1
+   severity: medium
+   status: dismissed (tolerable; who)
+   url: https://www.cve.org/CVERecord?id=CVE-2023-0001
+""",
+                """invalid Scan-Reports: '
+ - type: oci
+   component: bár
+   detectedIn: myorg/myimg@sha256:deadbeef
+   advisory: https://blah.com/BAR-a
+   fixedBy: 1.2.3-1
+   severity: medium
+   status: dismissed (tolerable; who)
+   url: https://www.cve.org/CVERecord?id=CVE-2023-0001
+' (contains non-ASCII characters)""",
+            ),
+        ]
+        for (key, val, expErr) in tsts:
+            if expErr is None:
+                cvelib.cve.CVE()._verifyScanReports(key, val)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    cvelib.cve.CVE()._verifyScanReports(key, val)
+                self.assertEqual(expErr, str(context.exception))
+
     def test_cveFromUrl(self):
         """Test cveFromUrl()"""
         # If this runs before Jan 1 00:00:00 but the test runs after, it will
@@ -2035,6 +2139,187 @@ cve-data = %s
    severity: medium
    status: released
    url: https://github.com/influxdata/foo/security/dependabot/1
+"""
+        content = tests.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertTrue(res)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual("", error.getvalue().strip())
+
+        # scan reports
+        os.environ["SEDG_EXPERIMENTAL"] = "1"
+        scanTsts = [
+            # valid
+            ("quay.io, gar, docker", None),
+            ("gar, quay.io, docker", None),
+            ("foo, quay.io, gar, docker", None),
+            ("quay.io, foo, gar, docker", None),
+            ("quay.io, gar, foo, docker", None),
+            # invalid
+            (
+                "uay, gar, docker",
+                "WARN: active/CVE-2020-1234 has 'quay.io' missing from Discovered-by",
+            ),
+            (
+                "quaY, gar, docker",
+                "WARN: active/CVE-2020-1234 has 'quay.io' missing from Discovered-by",
+            ),
+            (
+                "quay.ioX, gar, docker",
+                "WARN: active/CVE-2020-1234 has 'quay.io' missing from Discovered-by",
+            ),
+            (
+                "quay.io, gr, docker",
+                "WARN: active/CVE-2020-1234 has 'gar' missing from Discovered-by",
+            ),
+            (
+                "quay.io, docker",
+                "WARN: active/CVE-2020-1234 has 'gar' missing from Discovered-by",
+            ),
+            (
+                "gar, docker",
+                "WARN: active/CVE-2020-1234 has 'quay.io' missing from Discovered-by",
+            ),
+        ]
+
+        for dsc, expErr in scanTsts:
+            tmpl = self._cve_template()
+            tmpl["git/github_pkg1"] = "needed"
+            tmpl[
+                "Scan-Reports"
+            ] = """
+ - type: oci
+   component: foo
+   detectedIn: myorg/myimg@sha256:deadbeef1
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   fixedBy: 1.2.3
+   severity: medium
+   status: needed
+   url: https://quay.io/...
+ - type: oci
+   component: bar
+   detectedIn: myorg/myimg@sha256:deadbeef1
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   fixedBy: 2.3.4
+   severity: medium
+   status: needed
+   url: https://console.cloud.google.com/...
+ - type: oci
+   component: baz
+   detectedIn: myorg/myimg@sha256:deadbeef1
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   fixedBy: 3.4.5
+   severity: high
+   status: needed
+   url: https://dso.docker.com/...
+"""
+            tmpl["Discovered-by"] = dsc
+            content = tests.testutil.cveContentFromDict(tmpl)
+            cve_fn = os.path.join(cveDirs["active"], tmpl["Candidate"])
+            with open(cve_fn, "w") as fp:
+                fp.write("%s" % content)
+
+            with tests.testutil.capturedOutput() as (output, error):
+                res = cvelib.cve.checkSyntax(cveDirs, False)
+            os.unlink(cve_fn)
+
+            if expErr is None:
+                self.assertTrue(res, msg="'%s' errored" % dsc)
+                self.assertEqual("", output.getvalue().strip())
+                self.assertEqual("", error.getvalue().strip())
+            else:
+                self.assertFalse(res)
+                self.assertEqual("", output.getvalue().strip())
+                self.assertEqual(expErr, error.getvalue().strip())
+
+        # retired has open scan reports
+        tmpl = self._cve_template()
+        tmpl["Candidate"] = "CVE-1234-5678"
+        tmpl["CloseDate"] = today
+        tmpl["git/github_pkg1"] = "released"
+        tmpl[
+            "Scan-Reports"
+        ] = """
+ - type: oci
+   component: foo
+   detectedIn: myorg/myimg@sha256:deadbeef
+   advisory: https://blah.com/BAR-a
+   fixedBy: 1.2.3-1
+   severity: medium
+   status: needed
+   url: https://www.cve.org/CVERecord?id=CVE-2023-0001
+"""
+        content = tests.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["retired"], "CVE-1234-5678")
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertFalse(res)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: retired/CVE-1234-5678 is retired but has open scan report entries",
+            error.getvalue().strip(),
+        )
+
+        # active has closed scan reports
+        tmpl = self._cve_template()
+        tmpl["Candidate"] = "CVE-1234-5678"
+        tmpl["git/github_pkg1"] = "needed"
+        tmpl[
+            "Scan-Reports"
+        ] = """
+ - type: oci
+   component: foo
+   detectedIn: myorg/myimg@sha256:deadbeef
+   advisory: https://blah.com/BAR-a
+   fixedBy: 1.2.3-1
+   severity: medium
+   status: released
+   url: https://www.cve.org/CVERecord?id=CVE-2023-0001
+"""
+        content = tests.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertFalse(res)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: active/CVE-1234-5678 is active but has only closed scan report entries",
+            error.getvalue().strip(),
+        )
+
+        # active has closed and pending scan reports
+        tmpl = self._cve_template()
+        tmpl["Candidate"] = "CVE-1234-5678"
+        tmpl["git/github_pkg1"] = "released"
+        tmpl["git/github_pkg1"] = "pending"
+        tmpl[
+            "Scan-Reports"
+        ] = """
+ - type: oci
+   component: foo
+   detectedIn: myorg/myimg@sha256:deadbeef
+   advisory: https://blah.com/BAR-a
+   fixedBy: 1.2.3-1
+   severity: medium
+   status: released
+   url: https://www.cve.org/CVERecord?id=CVE-2023-0001
 """
         content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
