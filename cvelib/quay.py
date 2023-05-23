@@ -10,7 +10,7 @@ import os
 import requests
 import sys
 import textwrap
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from cvelib.common import (
     error,
@@ -18,6 +18,8 @@ from cvelib.common import (
     _experimental,
 )
 from cvelib.net import requestGetRaw
+from cvelib.report import getScanOCIsReport
+from cvelib.scan import ScanOCI
 
 
 def _createQuayHeaders() -> Dict[str, str]:
@@ -137,7 +139,101 @@ def _getQuayRepo(namespace: str, name: str, tagsearch: str = "") -> str:
     return digest
 
 
-# TODO: document the format
+# {
+#   "status": "scanned",
+#   "data": {
+#     "Layer": {
+#       "Features": [
+#         {
+#           "Name": "<component name>",
+#           "Version": "<affected version>",
+#           "Vulnerabilities": [
+#             {
+#               "Severity": "...",
+#               "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-...",
+#               "FixedBy": "<fixed version>",
+#               "MetaData":
+#                 {
+#                   "RepoName": "...",
+#                   "DistroName": "...",
+#                   "DistroVersion": "...",
+#                 },
+#               ...
+def parse(resj: Dict[str, Any], url_prefix: str) -> List[ScanOCI]:
+    """Parse report JSON and return a list of ScanOCIs"""
+    ocis: List[ScanOCI] = []
+
+    for feature in resj["data"]["Layer"]["Features"]:
+        scan_data: Dict[str, str] = {}
+
+        if "Name" not in feature:
+            warn("Could not find 'Name' in %s" % feature)
+            continue
+        elif "Version" not in feature:
+            warn("Could not find 'Version' in %s" % feature)
+            continue
+        elif "Vulnerabilities" not in feature:
+            warn("Could not find 'Vulnerabilities' in %s" % feature)
+            continue
+
+        # One ScanOCI per vuln
+        for v in feature["Vulnerabilities"]:
+            scan_data["component"] = feature["Name"]
+            scan_data["version"] = feature["Version"]
+            scan_data["url"] = "%s?tab=vulnerabilities" % url_prefix
+
+            status: str = "needed"
+            if v["FixedBy"] == "" or v["FixedBy"] == "0:0":
+                status = "needs-triage"
+            elif v["FixedBy"] == feature["Version"]:
+                # TODO: >= (needs dpkg, rpm, alpine, etc)
+                status = "released"
+            scan_data["status"] = status
+
+            # detectedIn
+            detectedIn: str = "unknown"
+            if "MetaData" in v:
+                if (
+                    "RepoName" in v["Metadata"]
+                    and v["Metadata"]["RepoName"] is not None
+                ):
+                    detectedIn = "%s" % v["Metadata"]["RepoName"]
+                elif (
+                    "DistroName" in v["Metadata"]
+                    and v["Metadata"]["DistroName"] is not None
+                ):
+                    detectedIn = "%s" % v["Metadata"]["DistroName"]
+                    if (
+                        "DistroVersion" in v["Metadata"]
+                        and v["Metadata"]["DistroVersion"] is not None
+                    ):
+                        detectedIn += " %s" % v["Metadata"]["DistroVersion"]
+            scan_data["detectedIn"] = detectedIn
+
+            # severity
+            severity: str = "unknown"
+            if "Severity" in v:
+                severity = v["Severity"].lower()
+            scan_data["severity"] = severity
+
+            # fixedBy
+            fixedBy = "unavailable"
+            if v["FixedBy"] != "" and v["FixedBy"] != "0:0":
+                fixedBy = v["FixedBy"]
+            scan_data["fixedBy"] = fixedBy
+
+            # adv url
+            adv: str = "unknown"
+            if "Link" in v:
+                # Link may be a space-separated list
+                adv = v["Link"].split()[0]
+            scan_data["advisory"] = adv
+
+            ocis.append(ScanOCI(scan_data))
+
+    return ocis
+
+
 def _getQuaySecurityManifest(
     repo_full: str, raw: Optional[bool] = False, fixable: Optional[bool] = False
 ) -> str:
@@ -184,68 +280,11 @@ def _getQuaySecurityManifest(
     if "Features" not in resj["data"]["Layer"]:
         error("Could not find 'Features' in %s" % resj["data"]["Layer"])
 
-    features: Dict[str, Dict[str, str]] = {}
-    max_name: int = 0
-    max_vers: int = 0
-    for feature in resj["data"]["Layer"]["Features"]:
-        if "Name" not in feature:
-            error("Could not find 'Name' in %s" % feature)
-        elif "Version" not in feature:
-            error("Could not find 'Version' in %s" % feature)
-        elif "Vulnerabilities" not in feature:
-            error("Could not find 'Vulnerabilities' in %s" % feature)
+    url_prefix: str = "https://quay.io/repository/%s/manifest/%s" % (repo, sha256)
 
-        features[feature["Name"]] = {"version": feature["Version"]}
-
-        if len(feature["Name"]) > max_name:
-            max_name = len(feature["Name"])
-        if len(feature["Version"]) > max_vers:
-            max_vers = len(feature["Version"])
-
-        # n/a, unavailable, needed, released
-        severities: List[str] = []
-        statuses: List[str] = []
-
-        for vuln in feature["Vulnerabilities"]:
-            if vuln["FixedBy"] == "":
-                s = "unavailable"
-            elif (
-                vuln["FixedBy"] == feature["Version"]
-            ):  # TODO: >= (needs dpkg, rpm, alpine, etc)
-                s = "released"
-            else:
-                s = "needed"
-
-            if s not in statuses:
-                statuses.append(s)
-
-            if vuln["Severity"].lower() not in severities:
-                severities.append(vuln["Severity"].lower())
-
-        # XXX: clean this up
-        status = "n/a"
-        if "needed" in statuses:
-            status = "needed"
-        elif "unavailable" in statuses:
-            status = "unavailable"
-        elif "released" in statuses:
-            status = "released"
-
-        if len(severities) > 0:
-            status += " (%s)" % ",".join(sorted(severities))
-        features[feature["Name"]]["status"] = status
-
-    tableStr: str = "{name:%d} {vers:%d} {status}" % (max_name, max_vers)
-    table_f: object = tableStr.format
-    s: str = ""
-    for f in sorted(features.keys()):
-        if fixable and "needed" not in features[f]["status"]:
-            continue
-        s += (
-            table_f(name=f, vers=features[f]["version"], status=features[f]["status"])
-            + "\n"
-        )
-    return s.rstrip()
+    ocis: List[ScanOCI] = parse(resj, url_prefix)
+    s: str = getScanOCIsReport(ocis, fixable=fixable)
+    return s
 
 
 #
@@ -321,16 +360,17 @@ $ quay-report
             name, tag = name.split(":", 2)
         digest: str = _getQuayRepo(ns, name, tagsearch=tag)
         print(digest)
-    elif args.get_security_manifest:
-        if "/" not in args.get_security_manifest:
-            error("please use ORG/NAME")
-        s: str = _getQuaySecurityManifest(
-            args.get_security_manifest, fixable=args.fixable
-        )
-        print("# %s report" % args.get_security_manifest)
-        print(s)
-    elif args.get_security_manifest_raw:
-        if "/" not in args.get_security_manifest_raw:
-            error("please use ORG/NAME")
-        s: str = _getQuaySecurityManifest(args.get_security_manifest_raw, raw=True)
+    elif args.get_security_manifest or args.get_security_manifest_raw:
+        arg: str
+        raw: bool = False
+        if args.get_security_manifest:
+            arg = args.get_security_manifest
+        else:
+            arg = args.get_security_manifest_raw
+            raw = True
+
+        if "/" not in arg or "@sha256:" not in arg:
+            error("please use ORG/NAME@sha256:<sha256>")
+
+        s: str = _getQuaySecurityManifest(arg, raw=raw, fixable=args.fixable)
         print(s)
