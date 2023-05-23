@@ -147,6 +147,7 @@ class TestCve(TestCase):
    component: foo
    detectedIn: myorg/myimg@sha256:deadbeef
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.2
    fixedBy: 1.2.3
    severity: medium
    status: needed
@@ -155,6 +156,7 @@ class TestCve(TestCase):
    component: baz
    detectedIn: myorg/myimg2@sha256:deadbeef1
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   version: 2.3.3
    fixedBy: 2.3.4
    severity: medium
    status: needed
@@ -163,6 +165,7 @@ class TestCve(TestCase):
    component: corge
    detectedIn: myorg/myimg@sha256:deadbeef
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0003
+   version: 9.2.0-4
    fixedBy: 9.2.0-5
    severity: high
    status: released
@@ -204,6 +207,7 @@ Scan-Reports:
    component: foo
    detectedIn: myorg/myimg@sha256:deadbeef
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.2
    fixedBy: 1.2.3
    severity: medium
    status: needed
@@ -212,6 +216,7 @@ Scan-Reports:
    component: baz
    detectedIn: myorg/myimg2@sha256:deadbeef1
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   version: 2.3.3
    fixedBy: 2.3.4
    severity: medium
    status: needed
@@ -220,6 +225,7 @@ Scan-Reports:
    component: corge
    detectedIn: myorg/myimg@sha256:deadbeef
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0003
+   version: 9.2.0-4
    fixedBy: 9.2.0-5
    severity: high
    status: released
@@ -1411,6 +1417,7 @@ git/github_norf: needs-triage
    component: foo
    detectedIn: myorg/myimg@sha256:deadbeef
    advisory: https://blah.com/BAR-a
+   version: 1.2.3-0
    fixedBy: 1.2.3-1
    severity: medium
    status: dismissed (tolerable; who)
@@ -1426,6 +1433,7 @@ git/github_norf: needs-triage
    component: bár
    detectedIn: myorg/myimg@sha256:deadbeef
    advisory: https://blah.com/BAR-a
+   version: 1.2.3-0
    fixedBy: 1.2.3-1
    severity: medium
    status: dismissed (tolerable; who)
@@ -1436,6 +1444,7 @@ git/github_norf: needs-triage
    component: bár
    detectedIn: myorg/myimg@sha256:deadbeef
    advisory: https://blah.com/BAR-a
+   version: 1.2.3-0
    fixedBy: 1.2.3-1
    severity: medium
    status: dismissed (tolerable; who)
@@ -2199,6 +2208,7 @@ cve-data = %s
    component: foo
    detectedIn: myorg/myimg@sha256:deadbeef1
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.2
    fixedBy: 1.2.3
    severity: medium
    status: needed
@@ -2207,6 +2217,7 @@ cve-data = %s
    component: bar
    detectedIn: myorg/myimg@sha256:deadbeef1
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   version: 2.3.3
    fixedBy: 2.3.4
    severity: medium
    status: needed
@@ -2215,6 +2226,7 @@ cve-data = %s
    component: baz
    detectedIn: myorg/myimg@sha256:deadbeef1
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   version: 3.4.4
    fixedBy: 3.4.5
    severity: high
    status: needed
@@ -2251,6 +2263,7 @@ cve-data = %s
    component: foo
    detectedIn: myorg/myimg@sha256:deadbeef
    advisory: https://blah.com/BAR-a
+   version: 1.2.3-0
    fixedBy: 1.2.3-1
    severity: medium
    status: needed
@@ -2283,6 +2296,7 @@ cve-data = %s
    component: foo
    detectedIn: myorg/myimg@sha256:deadbeef
    advisory: https://blah.com/BAR-a
+   version: 1.2.3-0
    fixedBy: 1.2.3-1
    severity: medium
    status: released
@@ -2316,6 +2330,7 @@ cve-data = %s
    component: foo
    detectedIn: myorg/myimg@sha256:deadbeef
    advisory: https://blah.com/BAR-a
+   version: 1.2.3-0
    fixedBy: 1.2.3-1
    severity: medium
    status: released

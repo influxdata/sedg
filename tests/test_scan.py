@@ -28,6 +28,7 @@ class TestScanOCI(TestCase):
             "component": "foo",
             "detectedIn": "myorg/myimg@sha256:deadbeef",
             "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+            "version": "1.2.2",
             "fixedBy": "1.2.3",
             "severity": "medium",
             "status": "needed",
@@ -42,6 +43,7 @@ class TestScanOCI(TestCase):
    component: foo
    detectedIn: myorg/myimg@sha256:deadbeef
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.2
    fixedBy: 1.2.3
    severity: medium
    status: needed
@@ -57,6 +59,7 @@ class TestScanOCI(TestCase):
    component: foo
    detectedIn: myorg/myimg@sha256:deadbeef
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.2
    fixedBy: 1.2.3
    severity: medium
    status: needed
@@ -76,6 +79,7 @@ class TestScanOCI(TestCase):
                     "cmponent": "foo",
                     "detectedIn": "myorg/myimg@sha256:deadbeef",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+                    "version": "1.2.2",
                     "fixedBy": "1.2.3",
                     "severity": "medium",
                     "status": "needed",
@@ -88,6 +92,7 @@ class TestScanOCI(TestCase):
                     "component": "foo",
                     "dtectedIn": "myorg/myimg@sha256:deadbeef",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+                    "version": "1.2.2",
                     "fixedBy": "1.2.3",
                     "status": "needed",
                     "url": "https://blah.com/BAR-a",
@@ -99,6 +104,7 @@ class TestScanOCI(TestCase):
                     "component": "foo",
                     "detectedIn": "myorg/myimg@sha256:deadbeef",
                     "avisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+                    "version": "1.2.2",
                     "fixedBy": "1.2.3",
                     "severity": "medium",
                     "status": "needed",
@@ -111,6 +117,20 @@ class TestScanOCI(TestCase):
                     "component": "foo",
                     "detectedIn": "myorg/myimg@sha256:deadbeef",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+                    "vrsion": "1.2.2",
+                    "fixedBy": "1.2.3",
+                    "severity": "medium",
+                    "status": "needed",
+                    "url": "https://blah.com/BAR-a",
+                },
+                "missing required field 'version'",
+            ),
+            (
+                {
+                    "component": "foo",
+                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+                    "version": "1.2.2",
                     "fxedBy": "1.2.3",
                     "severity": "medium",
                     "status": "needed",
@@ -123,6 +143,7 @@ class TestScanOCI(TestCase):
                     "component": "foo",
                     "detectedIn": "myorg/myimg@sha256:deadbeef",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+                    "version": "1.2.2",
                     "fixedBy": "1.2.3",
                     "sverity": "medium",
                     "status": "needed",
@@ -135,6 +156,7 @@ class TestScanOCI(TestCase):
                     "component": "foo",
                     "detectedIn": "myorg/myimg@sha256:deadbeef",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+                    "version": "1.2.2",
                     "fixedBy": "1.2.3",
                     "severity": "medium",
                     "satus": "needed",
@@ -147,6 +169,7 @@ class TestScanOCI(TestCase):
                     "component": "foo",
                     "detectedIn": "myorg/myimg@sha256:deadbeef",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+                    "version": "1.2.2",
                     "fixedBy": "1.2.3",
                     "severity": "medium",
                     "status": "needed",
@@ -159,6 +182,7 @@ class TestScanOCI(TestCase):
                     "component": "",
                     "detectedIn": "myorg/myimg@sha256:deadbeef",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+                    "version": "1.2.2",
                     "fixedBy": "1.2.3",
                     "severity": "medium",
                     "status": "needed",
@@ -171,6 +195,7 @@ class TestScanOCI(TestCase):
                     "component": "foo\nbar",
                     "detectedIn": "myorg/myimg@sha256:deadbeef",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+                    "version": "1.2.2",
                     "fixedBy": "1.2.3",
                     "severity": "medium",
                     "status": "needed",
@@ -233,8 +258,8 @@ class TestScanOCI(TestCase):
                     sm.setSeverity(s)
                 self.assertEqual(expErr, str(context.exception))
 
-    def test_setFixedBy(self):
-        """Test setFixedBy()"""
+    def test_setVersionFixed(self):
+        """Test setVersionFixed()"""
         tsts = [
             # valid
             ("foo"),
@@ -242,7 +267,7 @@ class TestScanOCI(TestCase):
 
         for s in tsts:
             sm = cvelib.scan.ScanOCI(self._getValid())
-            sm.setFixedBy(s)
+            sm.setVersionFixed(s)
 
     def test_setStatus(self):
         """Test setStatus()"""
@@ -330,6 +355,7 @@ class TestScanCommon(TestCase):
    component: foo
    detectedIn: myorg/myimg@sha256:deadbeef
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.2
    fixedBy: 1.2.3
    severity: medium
    status: needed
@@ -338,6 +364,7 @@ class TestScanCommon(TestCase):
    component: baz
    detectedIn: myorg/myimg2@sha256:deadbeef1
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   version: 2.3.3
    fixedBy: 2.3.4
    severity: medium
    status: needed
@@ -346,6 +373,7 @@ class TestScanCommon(TestCase):
    component: corge
    detectedIn: myorg/myimg@sha256:deadbeef
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0003
+   version: 9.2.0-4
    fixedBy: 9.2.0-5
    severity: high
    status: released

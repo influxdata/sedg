@@ -12,6 +12,7 @@ from cvelib.common import CveException, cve_priorities, rePatterns, _experimenta
 #    component: ...
 #    detectedIn: <image name@sha256:...>
 #    advisory: https://.../CVE-... (relevant security advisory)
+#    version: <version>
 #    fixedBy: <version>
 #    severity: negligible|low|medium|high|critical
 #    status: needs-triage|needed|released|dismissed (tolerable|code-not-used; name)
@@ -23,6 +24,7 @@ class ScanOCI(object):
         "component",
         "detectedIn",
         "severity",
+        "version",
         "fixedBy",
         "status",
         "advisory",
@@ -38,7 +40,8 @@ class ScanOCI(object):
         s += "   component: %s\n" % self.component
         s += "   detectedIn: %s\n" % self.detectedIn
         s += "   advisory: %s\n" % self.advisory
-        s += "   fixedBy: %s\n" % self.fixedBy
+        s += "   version: %s\n" % self.versionAffected
+        s += "   fixedBy: %s\n" % self.versionFixed
         s += "   severity: %s\n" % self.severity
         s += "   status: %s\n" % self.status
         s += "   url: %s" % self.url
@@ -50,7 +53,8 @@ class ScanOCI(object):
         self.component: str = ""
         self.detectedIn: str = ""
         self.advisory: str = ""
-        self.fixedBy: str = ""
+        self.versionAffected: str = ""
+        self.versionFixed: str = ""
         self.severity: str = ""
         self.status: str = ""
         self.url: str = ""
@@ -60,7 +64,8 @@ class ScanOCI(object):
         self.setComponent(data["component"])
         self.setDetectedIn(data["detectedIn"])
         self.setSeverity(data["severity"])
-        self.setFixedBy(data["fixedBy"])
+        self.setVersionAffected(data["version"])
+        self.setVersionFixed(data["fixedBy"])
         self.setStatus(data["status"])
         self.setAdvisory(data["advisory"])
         self.setUrl(data["url"])
@@ -89,9 +94,13 @@ class ScanOCI(object):
             raise CveException("invalid severity: %s" % s)
         self.severity = s
 
-    def setFixedBy(self, s: str) -> None:
+    def setVersionAffected(self, s: str) -> None:
+        """Set version"""
+        self.versionAffected = s
+
+    def setVersionFixed(self, s: str) -> None:
         """Set fixedBy"""
-        self.fixedBy = s
+        self.versionFixed = s
 
     def setStatus(self, s: str) -> None:
         """Set status"""
