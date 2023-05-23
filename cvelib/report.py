@@ -39,6 +39,7 @@ from cvelib.common import (
     warn,
 )
 from cvelib.net import requestGetRaw, ghAPIGetList
+from cvelib.scan import ScanOCI
 
 
 #
@@ -1512,6 +1513,54 @@ def getReposReport(org: str, archived: Optional[bool] = False) -> None:
             print(name)
         elif not archived and not _repoArchived(repos[name]):
             print(name)
+
+
+#
+# common report output for list of ScanOCIs
+#
+def getScanOCIsReport(ocis: List[ScanOCI], fixable: Optional[bool] = False) -> str:
+    """Show list of ScanOCIs objects"""
+    max_name: int = 0
+    max_vers: int = 0
+    grouped = {}
+    for i in ocis:
+        if len(i.component) > max_name:
+            max_name = len(i.component)
+        if len(i.versionAffected) > max_vers:
+            max_vers = len(i.versionAffected)
+
+        if i.component not in grouped:
+            grouped[i.component] = {}
+            grouped[i.component]["version"] = i.versionAffected
+            grouped[i.component]["status"] = [i.status]
+            grouped[i.component]["severity"] = [i.severity]
+            continue
+        if i.status not in grouped[i.component]["status"]:
+            grouped[i.component]["status"].append(i.status)
+        if i.severity not in grouped[i.component]["severity"]:
+            grouped[i.component]["severity"].append(i.severity)
+
+    tableStr: str = "{name:%d} {vers:%d} {status}" % (max_name, max_vers)
+    table_f: object = tableStr.format
+    s: str = ""
+    for g in sorted(grouped.keys()):
+        status = "n/a"
+        if "needed" in grouped[g]["status"]:
+            status = "needed"
+        elif "unavailable" in grouped[g]["status"]:
+            status = "unavailable"
+        elif "released" in grouped[g]["status"]:
+            status = "released"
+
+        if fixable and status != "needed":
+            continue
+
+        if len(grouped[g]["severity"]) > 0:
+            status += " (%s)" % ",".join(sorted(grouped[g]["severity"]))
+
+        s += table_f(name=g, vers=grouped[g]["version"], status=status) + "\n"
+
+    return s.rstrip()
 
 
 def _main_report_parse_args(sysargs: Sequence[str]) -> argparse.Namespace:

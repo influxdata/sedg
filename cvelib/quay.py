@@ -18,6 +18,7 @@ from cvelib.common import (
     _experimental,
 )
 from cvelib.net import requestGetRaw
+from cvelib.report import getScanOCIsReport
 from cvelib.scan import ScanOCI
 
 
@@ -281,48 +282,9 @@ def _getQuaySecurityManifest(
 
     url_prefix: str = "https://quay.io/repository/%s/manifest/%s" % (repo, sha256)
 
-    # parse the vulns into ScanOCIs and then group them for the report
-    max_name: int = 0
-    max_vers: int = 0
-    grouped = {}
-    for i in parse(resj, url_prefix):
-        if len(i.component) > max_name:
-            max_name = len(i.component)
-        if len(i.versionAffected) > max_vers:
-            max_vers = len(i.versionAffected)
-
-        if i.component not in grouped:
-            grouped[i.component] = {}
-            grouped[i.component]["version"] = i.versionAffected
-            grouped[i.component]["status"] = [i.status]
-            grouped[i.component]["severity"] = [i.severity]
-            continue
-        if i.status not in grouped[i.component]["status"]:
-            grouped[i.component]["status"].append(i.status)
-        if i.severity not in grouped[i.component]["severity"]:
-            grouped[i.component]["severity"].append(i.severity)
-
-    tableStr: str = "{name:%d} {vers:%d} {status}" % (max_name, max_vers)
-    table_f: object = tableStr.format
-    s: str = ""
-    for g in sorted(grouped.keys()):
-        status = "n/a"
-        if "needed" in grouped[g]["status"]:
-            status = "needed"
-        elif "unavailable" in grouped[g]["status"]:
-            status = "unavailable"
-        elif "released" in grouped[g]["status"]:
-            status = "released"
-
-        if fixable and status != "needed":
-            continue
-
-        if len(grouped[g]["severity"]) > 0:
-            status += " (%s)" % ",".join(sorted(grouped[g]["severity"]))
-
-        s += table_f(name=g, vers=grouped[g]["version"], status=status) + "\n"
-
-    return s.rstrip()
+    ocis: List[ScanOCI] = parse(resj, url_prefix)
+    s: str = getScanOCIsReport(ocis, fixable=fixable)
+    return s
 
 
 #
