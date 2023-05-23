@@ -245,6 +245,7 @@ class TestScanOCI(TestCase):
             ("medium", None),
             ("low", None),
             ("negligible", None),
+            ("unknown", None),
             # invalid
             ("foo", "invalid severity: foo"),
         ]

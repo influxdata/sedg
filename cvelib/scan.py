@@ -90,7 +90,7 @@ class ScanOCI(object):
 
     def setSeverity(self, s: str) -> None:
         """Set severity"""
-        if s not in cve_priorities:
+        if s not in cve_priorities and s != "unknown":
             raise CveException("invalid severity: %s" % s)
         self.severity = s
 
