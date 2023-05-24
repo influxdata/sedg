@@ -409,3 +409,73 @@ class TestScanCommon(TestCase):
                 with self.assertRaises(cvelib.common.CveException) as context:
                     cvelib.scan.parse(s)
                 self.assertEqual(expErr, str(context.exception))
+
+    def _getValidOCIs(self):
+        """Returns valid list of ScanOCIs"""
+        return [
+            cvelib.scan.ScanOCI(
+                {
+                    "component": "foo",
+                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+                    "version": "1.2.2",
+                    "fixedBy": "1.2.2",
+                    "severity": "low",
+                    "status": "released",
+                    "url": "https://blah.com/BAR-a",
+                }
+            ),
+            cvelib.scan.ScanOCI(
+                {
+                    "component": "foo",
+                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0002",
+                    "version": "1.2.2",
+                    "fixedBy": "1.2.3",
+                    "severity": "medium",
+                    "status": "needed",
+                    "url": "https://blah.com/BAR-a",
+                }
+            ),
+            cvelib.scan.ScanOCI(
+                {
+                    "component": "baz",
+                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0003",
+                    "version": "2.3.4",
+                    "fixedBy": "unavailable",
+                    "severity": "high",
+                    "status": "needs-triage",
+                    "url": "https://blah.com/BAR-a",
+                }
+            ),
+            cvelib.scan.ScanOCI(
+                {
+                    "component": "norf",
+                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0004",
+                    "version": "2.3.4",
+                    "fixedBy": "2.3.4",
+                    "severity": "negligible",
+                    "status": "released",
+                    "url": "https://blah.com/BAR-a",
+                }
+            ),
+        ]
+
+    def test_getScanOCIsReport(self):
+        """test getScanOCIsReport()"""
+        tsts = [
+            ([], False, ""),
+            ([], True, ""),
+            (
+                self._getValidOCIs(),
+                False,
+                "baz  2.3.4 n/a (high)\nfoo  1.2.2 needed (low,medium)\nnorf 2.3.4 released (negligible)",
+            ),
+            (self._getValidOCIs(), True, "foo  1.2.2 needed (low,medium)"),
+        ]
+
+        for ocis, fixable, exp in tsts:
+            res = cvelib.scan.getScanOCIsReport(ocis, fixable=fixable)
+            self.assertEqual(exp, res)
