@@ -1667,6 +1667,7 @@ Example usage:
             "--filter-product",
             dest="filter_product",
             help="comma-separated list of PRODUCTs to limit by (eg 'git/org')",
+            metavar="PRODUCT",
             type=str,
             default=None,
         )
@@ -1674,6 +1675,7 @@ Example usage:
             "--filter-priority",
             dest="filter_priority",
             help="comma-separated list of PRIORITYs to limit by (eg 'critical,high' or '-negligible')",
+            metavar="PRIORITY",
             type=str,
             default=None,
         )
@@ -1681,6 +1683,7 @@ Example usage:
             "--filter-tag",
             dest="filter_tag",
             help="comma-separated list of TAGs to limit by (eg 'apparmor,pie' or '-limit-report')",
+            metavar="TAG",
             type=str,
             default=None,
         )
@@ -1740,6 +1743,7 @@ Example usage:
         dest="starttime",
         type=int,
         help="use TIME as base start time for InfluxDB line protocol",
+        metavar="TIME",
         default=None,
     )
 
@@ -1760,6 +1764,7 @@ Example usage:
         const="unspecified",
         dest="alerts",
         help="show GHAS alerts. Optionally add comma-separated list of alert types (code-scanning, dependabot, secret-scanning)",
+        metavar="TYPE",
         type=str,
     )
     parser_gh.add_argument(
@@ -1831,17 +1836,18 @@ Example usage:
         "--since",
         dest="since",
         type=str,
-        help="limit report to issues since SINCE (in epoch seconds)",
+        help="limit report to issues since TIME (in epoch seconds)",
+        metavar="TIME",
         default="0",
     )
     parser_gh.add_argument(
         "--since-stamp",
         dest="since_stamp",
         type=str,
-        help="limit report to issues since mtime of SINCE_STAMP file",
+        help="limit report to issues since mtime of FILE",
+        metavar="FILE",
         default=None,
     )
-
     parser_gh.add_argument(
         "--with-templates",
         dest="with_templates",
