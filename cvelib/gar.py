@@ -14,8 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from cvelib.common import error, warn, rePatterns, _experimental
 from cvelib.net import requestGetRaw
-from cvelib.report import getScanOCIsReport
-from cvelib.scan import ScanOCI
+from cvelib.scan import ScanOCI, getScanOCIsReport
 
 
 def _createGARHeaders() -> Dict[str, str]:

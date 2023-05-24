@@ -18,8 +18,7 @@ from cvelib.common import (
     _experimental,
 )
 from cvelib.net import requestGetRaw
-from cvelib.report import getScanOCIsReport
-from cvelib.scan import ScanOCI
+from cvelib.scan import ScanOCI, getScanOCIsReport
 
 
 def _createQuayHeaders() -> Dict[str, str]:
