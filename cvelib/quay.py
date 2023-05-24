@@ -38,7 +38,7 @@ def _createQuayHeaders() -> Dict[str, str]:
 # https://docs.quay.io/api/swagger
 
 
-def _getQuayRepos(namespace: str) -> List[str]:
+def getQuayOCIsForOrg(namespace: str) -> List[str]:
     """Obtain the list of Quay repos for the specified namespace"""
     url: str = "https://quay.io/api/v1/repository"
     headers: Dict[str, str] = _createQuayHeaders()
@@ -89,9 +89,21 @@ def _getQuayRepos(namespace: str) -> List[str]:
     return copy.deepcopy(repos)
 
 
-def _getQuayRepo(namespace: str, name: str, tagsearch: str = "") -> str:
+# def _getQuayRepo(namespace: str, name: str, tagsearch: str = "") -> str:
+def getQuayDigestForImage(repo_full: str) -> str:
     """Obtain the list of Quay repos for the specified namespace"""
-    repo: str = "%s/%s" % (namespace, name)
+    if "/" not in repo_full:
+        error("please use ORG/NAME", do_exit=False)
+        return ""
+
+    ns: str = ""
+    name: str = ""
+    tagsearch: str = ""
+    ns, name = repo_full.split("/", 2)
+    if ":" in name:
+        name, tagsearch = name.split(":", 2)
+
+    repo: str = "%s/%s" % (ns, name)
     url: str = "https://quay.io/api/v1/repository/%s" % repo
     headers: Dict[str, str] = _createQuayHeaders()
     params: Dict[str, str] = {"includeTags": "true"}
@@ -233,10 +245,14 @@ def parse(resj: Dict[str, Any], url_prefix: str) -> List[ScanOCI]:
     return ocis
 
 
-def _getQuaySecurityManifest(
+def getQuaySecurityReport(
     repo_full: str, raw: Optional[bool] = False, fixable: Optional[bool] = False
 ) -> str:
     """Obtain the security manifest for the specified repo@sha256:..."""
+    if "/" not in repo_full or "@sha256:" not in repo_full:
+        error("please use ORG/NAME@sha256:<sha256>", do_exit=False)
+        return ""
+
     repo: str
     sha256: str
     if repo_full.count("@") == 0:
@@ -344,20 +360,11 @@ $ quay-report
 
     # send to a report
     if args.list_repos:
-        repos: List[str] = _getQuayRepos(args.list_repos)
+        repos: List[str] = getQuayOCIsForOrg(args.list_repos)
         for r in sorted(repos):
             print(r)
     elif args.get_repo_latest_digest:
-        ns: str = ""
-        name: str = ""
-        tag: str = ""
-        if "/" not in args.get_repo_latest_digest:
-            error("please use ORG/NAME")
-
-        ns, name = args.get_repo_latest_digest.split("/", 2)
-        if ":" in name:
-            name, tag = name.split(":", 2)
-        digest: str = _getQuayRepo(ns, name, tagsearch=tag)
+        digest: str = getQuayDigestForImage(args.get_repo_latest_digest)
         print(digest)
     elif args.get_security_manifest or args.get_security_manifest_raw:
         arg: str
@@ -368,8 +375,5 @@ $ quay-report
             arg = args.get_security_manifest_raw
             raw = True
 
-        if "/" not in arg or "@sha256:" not in arg:
-            error("please use ORG/NAME@sha256:<sha256>")
-
-        s: str = _getQuaySecurityManifest(arg, raw=raw, fixable=args.fixable)
+        s: str = getQuaySecurityReport(arg, raw=raw, fixable=args.fixable)
         print(s)

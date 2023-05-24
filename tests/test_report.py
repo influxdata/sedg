@@ -2948,6 +2948,7 @@ Totals:
         tsts = [
             # no args
             ([], "Please specify a report command"),
+            # summary
             (
                 ["summary", "--unique", "--open"],
                 "--open, --closed and --all not supported with 'summary --unique'",
@@ -2964,7 +2965,9 @@ Totals:
                 ["summary", "--software", "foo", "--unique"],
                 "--software is not supported with 'summary --unique'",
             ),
+            # todo
             (["todo", "--software", "foo"], "--software is not supported with 'todo'"),
+            # gh
             (
                 ["gh"],
                 "Please specify one of --alerts, --missing, --updates or --status with 'gh'",
@@ -2989,6 +2992,147 @@ Totals:
             (
                 ["gh", "--alerts", "--since", "bad", "--org", "foo"],
                 "Please specify seconds since epoch or YYYY-MM-DD with --since",
+            ),
+            # quay
+            (
+                ["quay"],
+                "Please specify one of --alerts, --list or --list-digest with 'quay'",
+            ),
+            (
+                ["quay", "--list", "foo", "--raw"],
+                "Please specify --alerts with --raw",
+            ),
+            (
+                ["quay", "--list", "foo", "--all"],
+                "Please specify --alerts with --all",
+            ),
+            (
+                ["quay", "--list", "foo", "--with-templates"],
+                "Please specify --alerts with --with-templates",
+            ),
+            (
+                [
+                    "quay",
+                    "--alerts",
+                    "--name",
+                    "foo/img@sha256:deadbeef",
+                    "--list",
+                    "foo",
+                ],
+                "Unsupported option --list with --alerts",
+            ),
+            (
+                [
+                    "quay",
+                    "--alerts",
+                    "--name",
+                    "foo/img@sha256:deadbeef",
+                    "--list-digest",
+                    "foo/img",
+                ],
+                "Unsupported option --list-digest with --alerts",
+            ),
+            (
+                ["quay", "--alerts"],
+                "Please specify --name with --alerts",
+            ),
+            (
+                [
+                    "quay",
+                    "--alerts",
+                    "--name",
+                    "foo/img@sha256:deadbeef",
+                    "--raw",
+                    "--all",
+                ],
+                "--raw not supported with --all or --with-templates",
+            ),
+            (
+                [
+                    "quay",
+                    "--alerts",
+                    "--name",
+                    "foo/img@sha256:deadbeef",
+                    "--raw",
+                    "--with-templates",
+                ],
+                "--raw not supported with --all or --with-templates",
+            ),
+            # gar
+            (
+                ["gar"],
+                "Please specify one of --alerts, --list, --list-repos or --list-digest with 'gar'",
+            ),
+            (
+                ["gar", "--list", "foo/us", "--raw"],
+                "Please specify --alerts with --raw",
+            ),
+            (
+                ["gar", "--list", "foo/us", "--all"],
+                "Please specify --alerts with --all",
+            ),
+            (
+                ["gar", "--list", "foo/us", "--with-templates"],
+                "Please specify --alerts with --with-templates",
+            ),
+            (
+                [
+                    "gar",
+                    "--alerts",
+                    "--name",
+                    "foo/us/repo/img@sha256:deadbeef",
+                    "--list",
+                    "foo/us",
+                ],
+                "Unsupported option --list with --alerts",
+            ),
+            (
+                [
+                    "gar",
+                    "--alerts",
+                    "--name",
+                    "foo/us/repo/img@sha256:deadbeef",
+                    "--list-digest",
+                    "foo/us/repo/img",
+                ],
+                "Unsupported option --list-digest with --alerts",
+            ),
+            (
+                [
+                    "gar",
+                    "--alerts",
+                    "--name",
+                    "foo/us/repo/img@sha256:deadbeef",
+                    "--list-repos",
+                    "foo/us",
+                ],
+                "Unsupported option --list-repos with --alerts",
+            ),
+            (
+                ["gar", "--alerts"],
+                "Please specify --name with --alerts",
+            ),
+            (
+                [
+                    "gar",
+                    "--alerts",
+                    "--name",
+                    "foo/us/repo/img@sha256:deadbeef",
+                    "--raw",
+                    "--all",
+                ],
+                "--raw not supported with --all or --with-templates",
+            ),
+            (
+                [
+                    "gar",
+                    "--alerts",
+                    "--name",
+                    "foo/us/repo/img@sha256:deadbeef",
+                    "--raw",
+                    "--with-templates",
+                ],
+                "--raw not supported with --all or --with-templates",
             ),
         ]
         for args, expErr in tsts:

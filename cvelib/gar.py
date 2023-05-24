@@ -33,8 +33,13 @@ def _createGARHeaders() -> Dict[str, str]:
 
 # https://cloud.google.com/artifact-registry/docs/reference/rest
 # https://cloud.google.com/artifact-registry/docs/reference/rest/v1/projects.locations.repositories/list
-def _getGARRepos(project: str, location: str) -> List[str]:
+def getGARReposForProjectLoc(proj_loc: str) -> List[str]:
     """Obtain the list of GAR repos for the specified project and location"""
+    if "/" not in proj_loc:
+        error("please use PROJECT/LOCATION", do_exit=False)
+        return []
+    project, location = proj_loc.split("/", 2)
+
     url: str = (
         "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories"
         % (project, location)
@@ -86,9 +91,14 @@ def _getGARRepos(project: str, location: str) -> List[str]:
 
 
 # https://cloud.google.com/artifact-registry/docs/reference/rest/v1/projects.locations.repositories.dockerImages
-def _getGAROCIs(project: str, location: str) -> List[str]:
+def getGAROCIsForProjectLoc(proj_loc: str) -> List[str]:
     """Obtain the list of GAR OCIs for the specified project and location"""
-    repos: List[str] = _getGARRepos(project, location)
+    if "/" not in proj_loc:
+        error("please use PROJECT/LOCATION", do_exit=False)
+        return []
+    project, location = proj_loc.split("/", 2)
+
+    repos: List[str] = getGARReposForProjectLoc(proj_loc)
     ocis: List[str] = []
     for repo in repos:
         tmp: List[str] = _getGAROCIForRepo(project, location, repo.split("/")[-1])
@@ -99,6 +109,8 @@ def _getGAROCIs(project: str, location: str) -> List[str]:
     return sorted(ocis)
 
 
+# TODO: this is quite slow as it pulls all images digests not just image names.
+# Perhaps there is something better?
 def _getGAROCIForRepo(project: str, location: str, repo: str) -> List[str]:
     """Obtain the list of GAR OCIs for the specified project, location and repo"""
     url: str = (
@@ -109,7 +121,11 @@ def _getGAROCIForRepo(project: str, location: str, repo: str) -> List[str]:
     params: Dict[str, str] = {"pageSize": "1000"}
 
     ocis: List[str] = []
+    if sys.stdout.isatty():
+        print("Fetching list of image: ", end="", flush=True)
     while True:
+        if sys.stdout.isatty():
+            print(".", end="", flush=True)
         try:
             r: requests.Response = requestGetRaw(url, headers=headers, params=params)
         except requests.exceptions.RequestException as e:
@@ -134,6 +150,8 @@ def _getGAROCIForRepo(project: str, location: str, repo: str) -> List[str]:
                 ocis.append(name)
 
         if "nextPageToken" not in resj:
+            if sys.stdout.isatty():
+                print(" done!")
             break
 
         params["pageToken"] = resj["nextPageToken"]
@@ -144,8 +162,12 @@ def _getGAROCIForRepo(project: str, location: str, repo: str) -> List[str]:
 
 # https://cloud.google.com/artifact-registry/docs/reference/rest/v1/projects.locations.repositories.dockerImages
 # XXX: can we filter here?
-def _getGARRepo(repo_full: str) -> str:
+def getGARDigestForImage(repo_full: str) -> str:
     """Obtain the GAR digest for the specified project, location and repo"""
+    if "/" not in repo_full or repo_full.count("/") != 3:
+        error("please use PROJECT/LOCATION/REPO/IMGNAME", do_exit=False)
+        return ""
+
     project, location, repo, name = repo_full.split("/", 4)
     tagsearch: str = ""
     if ":" in name:
@@ -338,12 +360,16 @@ def parse(vulns: List[Dict[str, Any]]) -> List[ScanOCI]:
 
 # https://cloud.google.com/container-analysis/docs/investigate-vulnerabilities
 # https://cloud.google.com/container-analysis/docs/reference/rest
-def _getGARSecurityManifest(
+def getGARSecurityReport(
     repo_full: str,
     raw: Optional[bool] = False,
     fixable: Optional[bool] = False,
 ) -> str:
     """Obtain the security manifest for the specified repo@sha256:..."""
+    if "/" not in repo_full or repo_full.count("/") != 3 or "@sha256:" not in repo_full:
+        error("please use PROJECT/LOCATION/REPO/IMGNAME@sha256:<sha256>", do_exit=False)
+        return ""
+
     project, location, repo, name = repo_full.split("/", 4)
 
     url: str = (
@@ -386,6 +412,9 @@ def _getGARSecurityManifest(
 
         resj = r.json()
         if "occurrences" not in resj:
+            if len(resj) == 0:
+                warn("no scan results for image")
+                break
             error("Could not find 'occurrences' in response: %s" % resj)
 
         vulns += resj["occurrences"]
@@ -493,28 +522,15 @@ $ gar-report --get-security-manifest foo/us/bar/norf@sha256:5891b5b522d5df086d0f
 
     # send to a report
     if args.list_repos:
-        if "/" not in args.list_repos:
-            error("please use PROJECT/LOCATION")
-
-        proj, loc = args.list_repos.split("/", 2)
-        repos: List[str] = _getGARRepos(proj, loc)
+        repos: List[str] = getGARReposForProjectLoc(args.list_repos)
         for r in sorted(repos):
             print(r.split("/")[-1])  # trim off the proj/loc
     elif args.list_ocis:
-        if "/" not in args.list_ocis:
-            error("please use PROJECT/LOCATION")
-
-        proj, loc = args.list_ocis.split("/", 2)
-        repos: List[str] = _getGAROCIs(proj, loc)
+        repos: List[str] = getGAROCIsForProjectLoc(args.list_ocis)
         for r in sorted(repos):
             print(r.split("/", maxsplit=5)[-1])  # trim off the proj/loc
     elif args.get_repo_latest_digest:
-        if (
-            "/" not in args.get_repo_latest_digest
-            or args.get_repo_latest_digest.count("/") != 3
-        ):
-            error("please use PROJECT/LOCATION/REPO/IMGNAME")
-        digest: str = _getGARRepo(args.get_repo_latest_digest)
+        digest: str = getGARDigestForImage(args.get_repo_latest_digest)
         print(digest.split("/")[-1])  # trim off the proj/loc/repo
     elif args.get_security_manifest or args.get_security_manifest_raw:
         arg: str
@@ -525,8 +541,5 @@ $ gar-report --get-security-manifest foo/us/bar/norf@sha256:5891b5b522d5df086d0f
             arg = args.get_security_manifest_raw
             raw = True
 
-        if "/" not in arg or arg.count("/") != 3 or "@sha256:" not in arg:
-            error("please use PROJECT/LOCATION/REPO/IMGNAME@sha256:<sha256>")
-
-        s: str = _getGARSecurityManifest(arg, raw=raw, fixable=args.fixable)
+        s: str = getGARSecurityReport(arg, raw=raw, fixable=args.fixable)
         print(s)
