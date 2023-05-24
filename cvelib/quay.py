@@ -29,9 +29,22 @@ def _createQuayHeaders() -> Dict[str, str]:
     return copy.deepcopy(headers)
 
 
-# https://docs.quay.io/api/swagger
-
-
+# {
+#   "repositories": [
+#     {
+#       "namespace": "foo",
+#       "name": "bar",
+#       "description": null,
+#       "is_public": false,
+#       "kind": "image",
+#       "state": "NORMAL",
+#       "last_modified": 1684472852,
+#       "is_starred": false
+#     },
+#     ...
+#   ],
+#   "next_page": "gAAAAA..."
+# }
 def getQuayOCIsForOrg(namespace: str) -> List[str]:
     """Obtain the list of Quay repos for the specified namespace"""
     url: str = "https://quay.io/api/v1/repository"
@@ -51,7 +64,7 @@ def getQuayOCIsForOrg(namespace: str) -> List[str]:
 
         try:
             r: requests.Response = requestGetRaw(url, headers=headers, params=params)
-        except requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException as e:  # pragma: nocover
             warn("Skipping %s (request error: %s)" % (url, str(e)))
             return []
 
@@ -83,11 +96,40 @@ def getQuayOCIsForOrg(namespace: str) -> List[str]:
     return copy.deepcopy(repos)
 
 
-# def _getQuayRepo(namespace: str, name: str, tagsearch: str = "") -> str:
+# {
+#   "namespace": "valid-org",
+#   "name": "valid-repo",
+#   "kind": "image",
+#   "description": "",
+#   "is_public": true,
+#   "is_organization": true,
+#   "is_starred": false,
+#   "status_token": "",
+#   "trust_enabled": false,
+#   "tag_expiration_s": 1209600,
+#   "is_free_account": false,
+#   "state": "NORMAL",
+#   "tags": {
+#     "latest": {
+#       "name": "latest",
+#       "size": 270353940,
+#       "last_modified": "Wed, 15 Mar 2023 15:05:28 -0000",
+#       "manifest_digest": "sha256:3fa5256ad34b31901ca30021c722fc7ba11a66ca070c8442862205696b908ddb"
+#     },
+#     "f7d94bbcf4f202b9f9d8f72c37d5650d7756f188": {
+#       "name": "f7d94bbcf4f202b9f9d8f72c37d5650d7756f188",
+#       "size": 573662556,
+#       "last_modified": "Tue, 14 Jun 2022 12:07:42 -0000",
+#       "manifest_digest": "sha256:2536a15812ba685df76e835aefdc7f512941c12c561e0aed152d17aa025cc820"
+#     },
+#   },
+#   "can_write": false,
+#   "can_admin": false
+# }
 def getQuayDigestForImage(repo_full: str) -> str:
-    """Obtain the list of Quay repos for the specified namespace"""
+    """Obtain the digest for the the specified repo"""
     if "/" not in repo_full:
-        error("please use ORG/NAME", do_exit=False)
+        error("Please use ORG/NAME", do_exit=False)
         return ""
 
     ns: str = ""
@@ -104,7 +146,7 @@ def getQuayDigestForImage(repo_full: str) -> str:
 
     try:
         r: requests.Response = requestGetRaw(url, headers=headers, params=params)
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.RequestException as e:  # pragma: nocover
         warn("Skipping %s (request error: %s)" % (url, str(e)))
         return ""
 
@@ -157,7 +199,7 @@ def getQuayDigestForImage(repo_full: str) -> str:
 #               "Severity": "...",
 #               "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-...",
 #               "FixedBy": "<fixed version>",
-#               "MetaData":
+#               "Metadata":
 #                 {
 #                   "RepoName": "...",
 #                   "DistroName": "...",
@@ -197,7 +239,7 @@ def parse(resj: Dict[str, Any], url_prefix: str) -> List[ScanOCI]:
 
             # detectedIn
             detectedIn: str = "unknown"
-            if "MetaData" in v:
+            if "Metadata" in v:
                 if (
                     "RepoName" in v["Metadata"]
                     and v["Metadata"]["RepoName"] is not None
@@ -222,14 +264,14 @@ def parse(resj: Dict[str, Any], url_prefix: str) -> List[ScanOCI]:
             scan_data["severity"] = severity
 
             # fixedBy
-            fixedBy = "unavailable"
+            fixedBy = "unknown"
             if v["FixedBy"] != "" and v["FixedBy"] != "0:0":
                 fixedBy = v["FixedBy"]
             scan_data["fixedBy"] = fixedBy
 
             # adv url
-            adv: str = "unknown"
-            if "Link" in v:
+            adv: str = "unavailable"
+            if "Link" in v and len(v["Link"]) != 0:
                 # Link may be a space-separated list
                 adv = v["Link"].split()[0]
             scan_data["advisory"] = adv
@@ -244,14 +286,11 @@ def getQuaySecurityReport(
 ) -> str:
     """Obtain the security manifest for the specified repo@sha256:..."""
     if "/" not in repo_full or "@sha256:" not in repo_full:
-        error("please use ORG/NAME@sha256:<sha256>", do_exit=False)
+        error("Please use ORG/NAME@sha256:<sha256>", do_exit=False)
         return ""
 
     repo: str
     sha256: str
-    if repo_full.count("@") == 0:
-        error("Please specify <namespace>/<repo>@sha256:<sha256>")
-
     repo, sha256 = repo_full.split("@", 2)
     url: str = "https://quay.io/api/v1/repository/%s/manifest/%s/security" % (
         repo,
@@ -262,7 +301,7 @@ def getQuaySecurityReport(
 
     try:
         r: requests.Response = requestGetRaw(url, headers=headers, params=params)
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.RequestException as e:  # pragma: nocover
         warn("Skipping %s (request error: %s)" % (url, str(e)))
         return ""
 
@@ -275,19 +314,27 @@ def getQuaySecurityReport(
         return json.dumps(resj)
 
     if "status" not in resj:
-        error("Cound not find 'status' in response: %s" % resj)
+        error("Cound not find 'status' in response: %s" % resj, do_exit=False)
+        return ""
     elif resj["status"] != "scanned":
-        error("Could not process report due to status: %s" % resj["status"])
+        error(
+            "Could not process report due to status: %s" % resj["status"], do_exit=False
+        )
+        return ""
 
     if "data" not in resj:
-        error("Could not find 'data' in %s" % resj)
+        error("Could not find 'data' in %s" % resj, do_exit=False)
+        return ""
     elif resj["data"] is None:
-        error("Could not process report due to no data in %s" % resj)
+        error("Could not process report due to no data in %s" % resj, do_exit=False)
+        return ""
 
     if "Layer" not in resj["data"]:
-        error("Could not find 'Layer' in %s" % resj["data"])
+        error("Could not find 'Layer' in %s" % resj["data"], do_exit=False)
+        return ""
     if "Features" not in resj["data"]["Layer"]:
-        error("Could not find 'Features' in %s" % resj["data"]["Layer"])
+        error("Could not find 'Features' in %s" % resj["data"]["Layer"], do_exit=False)
+        return ""
 
     url_prefix: str = "https://quay.io/repository/%s/manifest/%s" % (repo, sha256)
 
