@@ -2,21 +2,15 @@
 #
 # SPDX-License-Identifier: MIT
 
-import argparse
 import copy
 from datetime import datetime
 import json
 import os
 import requests
 import sys
-import textwrap
 from typing import Any, Dict, List, Optional
 
-from cvelib.common import (
-    error,
-    warn,
-    _experimental,
-)
+from cvelib.common import error, warn
 from cvelib.net import requestGetRaw
 from cvelib.scan import ScanOCI, getScanOCIsReport
 
@@ -300,80 +294,3 @@ def getQuaySecurityReport(
     ocis: List[ScanOCI] = parse(resj, url_prefix)
     s: str = getScanOCIsReport(ocis, fixable=fixable)
     return s
-
-
-#
-# CLI mains
-#
-def main_quay_report():
-    # EXPERIMENTAL: this script and APIs subject to change
-    _experimental()
-
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(
-        prog="quay-report",
-        description="Generate reports on security issues",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=textwrap.dedent(
-            """\
-Example usage:
-
-$ quay-report
-...
-        """
-        ),
-    )
-    parser.add_argument(
-        "--list-repos",
-        dest="list_repos",
-        type=str,
-        help="output quay.io repos for ORG",
-        default=None,
-    )
-    parser.add_argument(
-        "--get-repo-latest-digest",
-        dest="get_repo_latest_digest",
-        type=str,
-        help="output quay.io repo digest for ORG/REPO",
-        default=None,
-    )
-    parser.add_argument(
-        "--get-security-manifest",
-        dest="get_security_manifest",
-        type=str,
-        help="output quay.io security report for ORG/REPO@sha256:SHA256",
-        default=None,
-    )
-    parser.add_argument(
-        "--get-security-manifest-raw",
-        dest="get_security_manifest_raw",
-        type=str,
-        help="output quay.io raw security report for ORG/REPO@sha256:SHA256",
-        default=None,
-    )
-    parser.add_argument(
-        "--fixable",
-        dest="fixable",
-        help="show only fixables issues",
-        action="store_true",
-    )
-    args: argparse.Namespace = parser.parse_args()
-
-    # send to a report
-    if args.list_repos:
-        repos: List[str] = getQuayOCIsForOrg(args.list_repos)
-        for r in sorted(repos):
-            print(r)
-    elif args.get_repo_latest_digest:
-        digest: str = getQuayDigestForImage(args.get_repo_latest_digest)
-        print(digest)
-    elif args.get_security_manifest or args.get_security_manifest_raw:
-        arg: str
-        raw: bool = False
-        if args.get_security_manifest:
-            arg = args.get_security_manifest
-        else:
-            arg = args.get_security_manifest_raw
-            raw = True
-
-        s: str = getQuaySecurityReport(arg, raw=raw, fixable=args.fixable)
-        print(s)

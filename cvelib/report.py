@@ -37,6 +37,7 @@ from cvelib.common import (
     rePatterns,
     updateProgress,
     warn,
+    _experimental,
 )
 from cvelib.gar import (
     getGARReposForProjectLoc,
@@ -2185,6 +2186,8 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
         if args.since_stamp is not None:
             pathlib.Path(args.since_stamp).touch()
     elif args.cmd in ["quay", "gar"]:
+        # EXPERIMENTAL: this script and APIs subject to change
+        _experimental()
         if args.list:
             ocis: List[str] = []
             if args.cmd == "quay":

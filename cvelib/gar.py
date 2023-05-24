@@ -2,17 +2,15 @@
 #
 # SPDX-License-Identifier: MIT
 
-import argparse
 import copy
 from datetime import datetime
 import json
 import os
 import requests
 import sys
-import textwrap
 from typing import Any, Dict, List, Optional
 
-from cvelib.common import error, warn, rePatterns, _experimental
+from cvelib.common import error, warn, rePatterns
 from cvelib.net import requestGetRaw
 from cvelib.scan import ScanOCI, getScanOCIsReport
 
@@ -433,113 +431,3 @@ def getGARSecurityReport(
     ocis: List[ScanOCI] = parse(vulns)
     s: str = getScanOCIsReport(ocis, fixable=fixable)
     return s
-
-
-#
-# CLI mains
-#
-def main_gar_report():
-    # EXPERIMENTAL: this script and APIs subject to change
-    _experimental()
-
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(
-        prog="gar-report",
-        description="Generate reports on security issues",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=textwrap.dedent(
-            """\
-Example usage:
-
-# List all repos for the 'foo' PROJECT and 'us' LOCATION
-$ gar-report --list-repos foo/us
-bar
-baz
-
-# List all OCIs for the 'foo' PROJECT and 'us' LOCATION
-$ gar-report --list-ocis foo/us
-bar/norf
-bar/corge
-baz/qux
-
-# Get the latest digest for the 'foo' PROJECT, 'us' LOCATION, 'bar'
-# repository and 'norf' image name
-$ gar-report --get-repo-latest-digest foo/us/bar/norf
-norf@sha256:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03
-
-# Get the latest digest for the 'foo' PROJECT, 'us' LOCATION, 'bar' repository
-# and 'norf' image name with a particular tag
-$ gar-report --get-repo-latest-digest foo/us/bar/norf:some-tag
-norf@sha256:4993b5edd6b6f0b8361b85ba34f0c3595f95be62d086634247eca5982c8a8b26
-
-# Get the security report for the 'foo' PROJECT, 'us' LOCATION, 'bar'
-# repository, norf image name with a specific digest
-$ gar-report --get-security-manifest foo/us/bar/norf@sha256:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03
-        """
-        ),
-    )
-    parser.add_argument(
-        "--list-repos",
-        dest="list_repos",
-        type=str,
-        help="output GAR repos for PROJECT/LOCATION",
-        default=None,
-    )
-    parser.add_argument(
-        "--list-ocis",
-        dest="list_ocis",
-        type=str,
-        help="output GAR OCIs for PROJECT/LOCATION",
-        default=None,
-    )
-    parser.add_argument(
-        "--get-repo-latest-digest",
-        dest="get_repo_latest_digest",
-        type=str,
-        help="output GAR repo digest for PROJECT/LOCATION/REPO/IMGNAME",
-        default=None,
-    )
-    parser.add_argument(
-        "--get-security-manifest",
-        dest="get_security_manifest",
-        type=str,
-        help="output GAR security report for PROJECT/LOCATION/REPO/IMGNAME@sha256:<sha256>",
-        default=None,
-    )
-    parser.add_argument(
-        "--get-security-manifest-raw",
-        dest="get_security_manifest_raw",
-        type=str,
-        help="output GAR raw security report for PROJECT/LOCATION/REPO/IMGNAME@sha256:<sha256>",
-        default=None,
-    )
-    parser.add_argument(
-        "--fixable",
-        dest="fixable",
-        help="show only fixables issues",
-        action="store_true",
-    )
-    args: argparse.Namespace = parser.parse_args()
-
-    # send to a report
-    if args.list_repos:
-        repos: List[str] = getGARReposForProjectLoc(args.list_repos)
-        for r in sorted(repos):
-            print(r.split("/")[-1])  # trim off the proj/loc
-    elif args.list_ocis:
-        repos: List[str] = getGAROCIsForProjectLoc(args.list_ocis)
-        for r in sorted(repos):
-            print(r.split("/", maxsplit=5)[-1])  # trim off the proj/loc
-    elif args.get_repo_latest_digest:
-        digest: str = getGARDigestForImage(args.get_repo_latest_digest)
-        print(digest.split("/")[-1])  # trim off the proj/loc/repo
-    elif args.get_security_manifest or args.get_security_manifest_raw:
-        arg: str
-        raw: bool = False
-        if args.get_security_manifest:
-            arg = args.get_security_manifest
-        else:
-            arg = args.get_security_manifest_raw
-            raw = True
-
-        s: str = getGARSecurityReport(arg, raw=raw, fixable=args.fixable)
-        print(s)
