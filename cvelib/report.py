@@ -37,9 +37,16 @@ from cvelib.common import (
     rePatterns,
     updateProgress,
     warn,
+    _experimental,
+)
+from cvelib.gar import (
+    getGARReposForProjectLoc,
+    getGAROCIsForProjectLoc,
+    getGARDigestForImage,
+    getGARSecurityReport,
 )
 from cvelib.net import requestGetRaw, ghAPIGetList
-from cvelib.scan import ScanOCI
+from cvelib.quay import getQuayOCIsForOrg, getQuayDigestForImage, getQuaySecurityReport
 
 
 #
@@ -1515,54 +1522,6 @@ def getReposReport(org: str, archived: Optional[bool] = False) -> None:
             print(name)
 
 
-#
-# common report output for list of ScanOCIs
-#
-def getScanOCIsReport(ocis: List[ScanOCI], fixable: Optional[bool] = False) -> str:
-    """Show list of ScanOCIs objects"""
-    max_name: int = 0
-    max_vers: int = 0
-    grouped = {}
-    for i in ocis:
-        if len(i.component) > max_name:
-            max_name = len(i.component)
-        if len(i.versionAffected) > max_vers:
-            max_vers = len(i.versionAffected)
-
-        if i.component not in grouped:
-            grouped[i.component] = {}
-            grouped[i.component]["version"] = i.versionAffected
-            grouped[i.component]["status"] = [i.status]
-            grouped[i.component]["severity"] = [i.severity]
-            continue
-        if i.status not in grouped[i.component]["status"]:
-            grouped[i.component]["status"].append(i.status)
-        if i.severity not in grouped[i.component]["severity"]:
-            grouped[i.component]["severity"].append(i.severity)
-
-    tableStr: str = "{name:%d} {vers:%d} {status}" % (max_name, max_vers)
-    table_f: object = tableStr.format
-    s: str = ""
-    for g in sorted(grouped.keys()):
-        status = "n/a"
-        if "needed" in grouped[g]["status"]:
-            status = "needed"
-        elif "unavailable" in grouped[g]["status"]:
-            status = "unavailable"
-        elif "released" in grouped[g]["status"]:
-            status = "released"
-
-        if fixable and status != "needed":
-            continue
-
-        if len(grouped[g]["severity"]) > 0:
-            status += " (%s)" % ",".join(sorted(grouped[g]["severity"]))
-
-        s += table_f(name=g, vers=grouped[g]["version"], status=status) + "\n"
-
-    return s.rstrip()
-
-
 def _main_report_parse_args(sysargs: Sequence[str]) -> argparse.Namespace:
     """Parse args for main_report()"""
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
@@ -1658,6 +1617,41 @@ Example usage:
 
   # Show a combined report (alerts, updated and missing)
   $ cve-report gh --org <org> --alerts --updated --missing --labels=security --since YYYY-MM-DD
+
+# OCI reports
+
+  # Show list of OCI image names
+  $ cve-report gar --list <project>/<location>  # eg, foo/us
+  $ cve-report quay --list <org>
+
+  # Show list of GAR repositories
+  $ cve-report gar --list-repos <project/location>
+
+  # Show latest SHA256 digest for image name
+  $ cve-report gar --list-digest <project>/<location>/<repo>/<name>
+  $ cve-report quay --list-digest <org>/<name>
+
+  # Show SHA256 digest for image name with tag
+  $ cve-report gar --list-digest <project>/<location>/<repo>/<name>:<tag>
+  $ cve-report quay --list-digest <org>/<name>:<tag>
+
+  # Show security report for image name with digest
+  $ cve-report gar --alerts --name <project>/<location>/<repo>/<name>@<digest>
+  $ cve-report quay --alerts --name <project>/<location>/<repo>/<name>@<digest>
+
+  # Eg, to research the 'foo' project with location 'us' in GAR:
+  # - find all the container images
+  $ cve-report gar --list foo/us
+  ...
+  foo/us/bar/bar
+  foo/us/bar/baz
+  # - find a digest for an image
+  $ cve-report gar --list-digest foo/us/bar/baz
+  sha256:791be3...
+  # - pull the report for the image with a particular digest
+  $ cve-report gar --alerts --name foo/us/bar/baz@sha256:791be3...
+  qux   1.2.3-1        needed (low,medium)
+  norf  2.3.4+deb11u1  needed (low,medium)
         """
         ),
     )
@@ -1667,6 +1661,7 @@ Example usage:
             "--filter-product",
             dest="filter_product",
             help="comma-separated list of PRODUCTs to limit by (eg 'git/org')",
+            metavar="PRODUCT",
             type=str,
             default=None,
         )
@@ -1674,6 +1669,7 @@ Example usage:
             "--filter-priority",
             dest="filter_priority",
             help="comma-separated list of PRIORITYs to limit by (eg 'critical,high' or '-negligible')",
+            metavar="PRIORITY",
             type=str,
             default=None,
         )
@@ -1681,6 +1677,7 @@ Example usage:
             "--filter-tag",
             dest="filter_tag",
             help="comma-separated list of TAGs to limit by (eg 'apparmor,pie' or '-limit-report')",
+            metavar="TAG",
             type=str,
             default=None,
         )
@@ -1713,6 +1710,56 @@ Example usage:
             action="store_true",
         )
 
+    def _add_common_oci(p, what: str, where: str, name: str):
+        p.add_argument(
+            "--list",
+            dest="list",
+            help="list %s OCI image names for %s" % (what, where),
+            metavar=where,
+            type=str,
+        )
+        bare_name: str = name.split("@")[0]
+        p.add_argument(
+            "--list-digest",
+            dest="list_digest",
+            help="list %s OCI image digest (eg, SHA256) for NAME (eg %s)"
+            % (what, bare_name),
+            metavar="NAME",
+            type=str,
+        )
+        p.add_argument(
+            "--alerts",
+            dest="alerts",
+            help="show %s security reports" % what,
+            action="store_true",
+        )
+        p.add_argument(
+            "--with-templates",
+            dest="with_templates",
+            help="show issue templates with %s security reports" % what,
+            action="store_true",
+        )
+        p.add_argument(
+            "--raw",
+            dest="raw",
+            help="display raw JSON for %s security reports" % what,
+            action="store_true",
+        )
+        p.add_argument(
+            "--all",
+            dest="all",
+            help="also show unfixable items in %s security reports" % what,
+            action="store_true",
+        )
+        p.add_argument(
+            "--name",
+            dest="name",
+            help="%s OCI image name (eg %s)" % (what, name),
+            metavar="NAME",
+            type=str,
+            default=None,
+        )
+
     sub = parser.add_subparsers(dest="cmd")
 
     # summary
@@ -1740,6 +1787,7 @@ Example usage:
         dest="starttime",
         type=int,
         help="use TIME as base start time for InfluxDB line protocol",
+        metavar="TIME",
         default=None,
     )
 
@@ -1760,6 +1808,7 @@ Example usage:
         const="unspecified",
         dest="alerts",
         help="show GHAS alerts. Optionally add comma-separated list of alert types (code-scanning, dependabot, secret-scanning)",
+        metavar="TYPE",
         type=str,
     )
     parser_gh.add_argument(
@@ -1831,22 +1880,43 @@ Example usage:
         "--since",
         dest="since",
         type=str,
-        help="limit report to issues since SINCE (in epoch seconds)",
+        help="limit report to issues since TIME (in epoch seconds)",
+        metavar="TIME",
         default="0",
     )
     parser_gh.add_argument(
         "--since-stamp",
         dest="since_stamp",
         type=str,
-        help="limit report to issues since mtime of SINCE_STAMP file",
+        help="limit report to issues since mtime of FILE",
+        metavar="FILE",
         default=None,
     )
-
     parser_gh.add_argument(
         "--with-templates",
         dest="with_templates",
         help="show issue templates with GHAS alerts",
         action="store_true",
+    )
+
+    # quay
+    parser_quay = sub.add_parser("quay")
+    _add_common_oci(parser_quay, "quay.io", "ORG", "ORG/NAME@sha256:SHA256")
+
+    # gar
+    parser_gar = sub.add_parser("gar")
+    _add_common_oci(
+        parser_gar,
+        "GAR",
+        "PROJECT/LOCATION",
+        "PROJECT/LOCATION/REPO/NAME@sha256:SHA256",
+    )
+    parser_gar.add_argument(
+        "--list-repos",
+        dest="list_repos",
+        help="list GAR repository names for PROJECT/LOCATION",
+        metavar="PROJECT/LOCATION",
+        type=str,
     )
 
     args: argparse.Namespace = parser.parse_args(sysargs)
@@ -1910,6 +1980,42 @@ Example usage:
                     error(
                         "Please specify seconds since epoch or YYYY-MM-DD with --since"
                     )
+    elif args.cmd == "gar" or args.cmd == "quay":
+        if (
+            args.cmd == "gar"
+            and not args.alerts
+            and not args.list
+            and not args.list_repos
+            and not args.list_digest
+        ):
+            error(
+                "Please specify one of --alerts, --list, --list-repos or --list-digest with 'gar'"
+            )
+        elif (
+            args.cmd == "quay"
+            and not args.alerts
+            and not args.list
+            and not args.list_digest
+        ):
+            error("Please specify one of --alerts, --list or --list-digest with 'quay'")
+
+        elif not args.alerts:
+            if args.with_templates:
+                error("Please specify --alerts with --with-templates")
+            if args.all:
+                error("Please specify --alerts with --all")
+            if args.raw:
+                error("Please specify --alerts with --raw")
+        elif args.raw and (args.with_templates or args.all):
+            error("--raw not supported with --all or --with-templates")
+        elif args.list:
+            error("Unsupported option --list with --alerts")
+        elif args.list_digest:
+            error("Unsupported option --list-digest with --alerts")
+        elif args.cmd == "gar" and args.list_repos:
+            error("Unsupported option --list-repos with --alerts")
+        elif not args.name:
+            error("Please specify --name with --alerts")
 
     return args
 
@@ -2079,3 +2185,52 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
 
         if args.since_stamp is not None:
             pathlib.Path(args.since_stamp).touch()
+    elif args.cmd in ["quay", "gar"]:
+        # EXPERIMENTAL: this script and APIs subject to change
+        _experimental()
+        if args.list:
+            ocis: List[str] = []
+            if args.cmd == "quay":
+                ocis: List[str] = getQuayOCIsForOrg(args.list)
+                for r in sorted(ocis):
+                    # ORG/NAME
+                    print("%s/%s" % (args.list, r))
+            elif args.cmd == "gar":
+                ocis: List[str] = getGAROCIsForProjectLoc(args.list)
+                for r in sorted(ocis):
+                    # PROJECT/LOCATION/REPO/NAME
+                    print("%s/%s" % (args.list, r.split("/", maxsplit=5)[-1]))
+        elif args.cmd == "gar" and args.list_repos:
+            repos: List[str] = getGARReposForProjectLoc(args.list_repos)
+            for r in sorted(repos):
+                # PROJECT/LOCATION/REPO
+                print("%s/%s" % (args.list_repos, r.split("/")[-1]))
+        elif args.list_digest:
+            digest: str = ""
+            if args.cmd == "quay":
+                digest = getQuayDigestForImage(args.list_digest)
+            elif args.cmd == "gar":
+                digest = getGARDigestForImage(args.list_digest)
+
+            if digest == "":
+                sys.exit(1)
+
+            if "@" in digest:
+                # sha256:...
+                print(digest.split("@")[1])
+            else:
+                print(digest)
+        elif args.alerts:
+            s: str = ""
+            if args.cmd == "quay":
+                s = getQuaySecurityReport(
+                    args.name, raw=args.raw, fixable=(not args.all)
+                )
+            elif args.cmd == "gar":
+                s = getGARSecurityReport(
+                    args.name, raw=args.raw, fixable=(not args.all)
+                )
+
+            if s == "":
+                sys.exit(1)
+            print(s)
