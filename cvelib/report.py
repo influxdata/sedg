@@ -1637,7 +1637,7 @@ Example usage:
 
   # Show security report for image name with digest
   $ cve-report gar --alerts --name <project>/<location>/<repo>/<name>@<digest>
-  $ cve-report quay --alerts --name <project>/<location>/<repo>/<name>@<digest>
+  $ cve-report quay --alerts --name <org>/<name>@<digest>
 
   # Eg, to research the 'foo' project with location 'us' in GAR:
   # - find all the container images
