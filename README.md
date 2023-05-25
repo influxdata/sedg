@@ -88,6 +88,16 @@
     $ cve-report gh --org <org> --status=active
     $ cve-report gh --org <org> --alerts --since YYYY-MM-DD
 
+    # GAR container security reports
+    $ cve-report gar --list <project>/<location>
+    $ cve-report gar --list-digest <project>/<location>/<repo>/<name>
+    $ cve-report gar --alerts --name <project>/<location>/<repo>/<name>@<digest>
+
+    # quay.io container security reports
+    $ cve-report quay --list <org>
+    $ cve-report quay --list-digest <org>/<name>
+    $ cve-report quay --alerts --name <org>/<name>@<digest>
+
     # if desired, leave the venv
     $ deactivate
     ```
