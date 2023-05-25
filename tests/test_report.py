@@ -88,6 +88,7 @@ def mocked_requests_get__getGHReposAll(*args, **kwargs):
                 },
                 {
                     "archived": False,
+                    "private": True,
                     "name": "baz",
                     "id": 1002,
                     "license": {"key": "mit"},
@@ -165,6 +166,8 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
     elif args[0] == "https://api.github.com/repos/valid-org/400-repo/issues":
         return MockResponse(None, 400)
     elif args[0] == "https://api.github.com/repos/valid-org/empty-repo/issues":
+        return MockResponse([], 200)
+    elif args[0] == "https://api.github.com/repos/valid-org/private-repo/issues":
         return MockResponse([], 200)
     elif args[0] == "https://api.github.com/orgs/valid-org/repos":
         return MockResponse(
@@ -754,6 +757,9 @@ class TestReport(TestCase):
         if self.tmpdir is not None:
             cvelib.common.recursive_rm(self.tmpdir)
 
+        if "SEDG_EXPERIMENTAL" in os.environ:
+            del os.environ["SEDG_EXPERIMENTAL"]
+
     def _cve_template(self, cand="", references=[]):
         """Generate a valid CVE to mimic what readCve() might see"""
         d = {
@@ -829,13 +835,14 @@ cve-data = %s
         d["upstream_bar"] = "needs-triage"
         _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
 
-        # regular CVE - baz
+        # regular CVE - baz and baz/v1
         d = self._cve_template(
             cand="CVE-2022-0003",
             references=["https://www.cve.org/CVERecord?id=CVE-2022-0003"],
         )
         d["Priority"] = "low"
         d["upstream_baz"] = "needs-triage"
+        d["upstream_baz/v1"] = "needs-triage"
         _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
 
         # placeholder with priority override
@@ -898,6 +905,189 @@ cve-data = %s
 
         return cveDirs
 
+    def _mock_cve_data_ghas_mixed(self):
+        """Generate a List[cvelib.cve.CVE] with ghas"""
+
+        def _write_cve(cve_fn, d):
+            content = tests.testutil.cveContentFromDict(d)
+            with open(cve_fn, "w") as fp:
+                fp.write("%s" % content)
+
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
+        content = (
+            """[Locations]
+cve-data = %s
+"""
+            % self.tmpdir
+        )
+        self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
+            content, self.tmpdir
+        )
+
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
+
+        # regular CVE - foo
+        d = self._cve_template(
+            cand="CVE-2022-0001",
+            references=["https://www.cve.org/CVERecord?id=CVE-2022-0001"],
+        )
+        d["upstream_foo"] = "needs-triage"
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+
+        # github placeholder with tag
+        d = self._cve_template(
+            cand="CVE-2022-GH1#foo",
+            references=["https://github.com/org/foo/issues/1"],
+        )
+        d["git/org_foo"] = "pending"
+        d["Tags_foo"] = "limit-report"
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+
+        # github for dependabot, secret-scanning and code-scanning
+        d = self._cve_template(
+            cand="CVE-2022-GH2#bar",
+            references=["https://github.com/org/bar/issues/2"],
+        )
+        d["Priority"] = "high"
+        d["git/org_bar"] = "needed"
+        d["Discovered-by"] = "gh-secrets, gh-dependabot, gh-code"
+        d[
+            "GitHub-Advanced-Security"
+        ] = """
+ - type: dependabot
+   dependency: foo
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-a
+   severity: medium
+   status: needed
+   url: https://github.com/org/bar/security/dependabot/1
+ - type: dependabot
+   dependency: foo
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-b
+   severity: high
+   status: needed
+   url: https://github.com/org/bar/security/dependabot/2
+ - type: dependabot
+   dependency: foo
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-b
+   severity: high
+   status: needed
+   url: https://github.com/org/bar/security/dependabot/2
+ - type: dependabot
+   dependency: corge
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-c
+   severity: high
+   status: dismissed (tolerable; who)
+   url: https://github.com/org/bar/security/dependabot/3
+ - type: secret-scanning
+   secret: baz
+   detectedIn: path/to/file
+   severity: high
+   status: needed
+   url: https://github.com/org/bar/security/secret-scanning/1
+ - type: secret-scanning
+   secret: baz
+   detectedIn: path/to/file
+   severity: high
+   status: needed
+   url: https://github.com/org/bar/security/secret-scanning/2
+ - type: code-scanning
+   description: quxx
+   detectedIn: path/to/file
+   severity: low
+   status: needed
+   url: https://github.com/org/bar/security/code-scanning/1"""
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+
+        # 2nd dependabot
+        d = self._cve_template(
+            cand="CVE-2022-GH3#bar",
+            references=["https://github.com/org/bar/issues/3"],
+        )
+        d["Priority"] = "medium"
+        d["git/org_bar"] = "needed"
+        d["Discovered-by"] = "gh-dependabot"
+        d[
+            "GitHub-Advanced-Security"
+        ] = """
+ - type: dependabot
+   dependency: foo
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-d
+   severity: medium
+   status: needed
+   url: https://github.com/org/bar/security/dependabot/4"""
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+
+        # released dependabot
+        d = self._cve_template(
+            cand="CVE-2022-GH4#bar",
+            references=["https://github.com/org/bar/issues/4"],
+        )
+        d["Priority"] = "low"
+        d["git/org_bar"] = "released"
+        d["Discovered-by"] = "gh-dependabot"
+        d[
+            "GitHub-Advanced-Security"
+        ] = """
+ - type: dependabot
+   dependency: corge
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-e
+   severity: low
+   status: released
+   url: https://github.com/org/bar/security/dependabot/5"""
+        _write_cve(os.path.join(cveDirs["retired"], d["Candidate"]), d)
+
+        # per-pkg priority override dependabot
+        d = self._cve_template(
+            cand="CVE-2022-GH5#bar",
+            references=["https://github.com/org/bar/issues/5"],
+        )
+        d["Priority"] = "critical"
+        d["Priority_bar"] = "negligible"
+        d["git/org_bar"] = "needed"
+        d["Discovered-by"] = "gh-dependabot"
+        d[
+            "GitHub-Advanced-Security"
+        ] = """
+ - type: dependabot
+   dependency: qux
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-f
+   severity: critical
+   status: needed
+   url: https://github.com/org/bar/security/dependabot/6"""
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+
+        # regular CVE, closed
+        d = self._cve_template(
+            cand="CVE-2021-9991",
+            references=["https://www.cve.org/CVERecord?id=CVE-2021-9991"],
+        )
+        d["upstream_foo"] = "released"
+        d["Priority"] = "critical"
+        d["CloseDate"] = "2021-06-27"
+        _write_cve(os.path.join(cveDirs["retired"], d["Candidate"]), d)
+
+        # regular CVE, ignored
+        d = self._cve_template(
+            cand="CVE-2021-9993",
+            references=["https://www.cve.org/CVERecord?id=CVE-2021-9993"],
+        )
+        d["upstream_bar"] = "ignored"
+        d["Priority"] = "negligible"
+        d["CloseDate"] = "2021-06-29"
+        _write_cve(os.path.join(cveDirs["retired"], d["Candidate"]), d)
+
+        return cveDirs
+
     #
     # _getGHReposAll() tests
     #
@@ -922,6 +1112,8 @@ cve-data = %s
         self.assertTrue("baz" in r)
         self.assertTrue("archived" in r["baz"])
         self.assertFalse(r["baz"]["archived"])
+        self.assertTrue("private" in r["baz"])
+        self.assertTrue(r["baz"]["private"])
         self.assertTrue("secret_scanning" in r["baz"])
         self.assertFalse(r["baz"]["secret_scanning"])
 
@@ -1007,6 +1199,31 @@ foo"""
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/3" in r)
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/4" in r)
 
+        r = cvelib.report._getGHIssuesForRepo(
+            "valid-repo", "valid-org", labels=["label1"]
+        )
+        self.assertEqual(2, len(r))
+        self.assertTrue("https://github.com/valid-org/valid-repo/issues/1" in r)
+        self.assertTrue("https://github.com/valid-org/valid-repo/issues/3" in r)
+
+        r = cvelib.report._getGHIssuesForRepo(
+            "valid-repo", "valid-org", labels=["label1"], skip_labels=["label2"]
+        )
+        self.assertEqual(1, len(r))
+        self.assertTrue("https://github.com/valid-org/valid-repo/issues/1" in r)
+
+        with tests.testutil.capturedOutput() as (output, error):
+            r = cvelib.report._getGHIssuesForRepo("404-repo", "valid-org")
+        self.assertEqual(0, len(r))
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue("Skipping" in error.getvalue().strip())
+
+        with tests.testutil.capturedOutput() as (output, error):
+            r = cvelib.report._getGHIssuesForRepo("400-repo", "valid-org")
+        self.assertEqual(0, len(r))
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue("Problem fetching" in error.getvalue().strip())
+
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
     def test__getGHIssuesForRepoSince(self, _):  # 2nd arg is 'mock_get'
         """Test _getGHIssuesForRepo() since 2022-06-22T12:33:47Z"""
@@ -1068,8 +1285,32 @@ foo"""
     #
     def test__getKnownIssues(self):
         """Test _getKnownIssues()"""
-        res = cvelib.report._getKnownIssues(self._mock_cve_list_basic())
-        self.assertEqual(3, len(res))
+
+        cves = self._mock_cve_list_basic()
+        cve = cvelib.cve.CVE()
+        cve.setData(
+            self._cve_template(
+                cand="CVE-2022-GH9999#valid-repo",
+                references=[
+                    "https://github.com/valid-org/valid-repo/issues/9999#issuecomment"
+                ],
+            )
+        )
+        cves.append(cve)
+
+        cve = cvelib.cve.CVE()
+        cve.setData(
+            self._cve_template(
+                cand="CVE-2022-7777",
+                references=[
+                    "https://www.cve.org/CVERecord?id=CVE-2022-7777",
+                ],
+            )
+        )
+        cves.append(cve)
+
+        res = cvelib.report._getKnownIssues(cves)
+        self.assertEqual(4, len(res))
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/1" in res)
         self.assertTrue(
             "CVE-2022-GH1001#valid-repo"
@@ -1085,6 +1326,13 @@ foo"""
             "CVE-2022-GH1003#valid-repo"
             in res["https://github.com/valid-org/valid-repo/issues/3"]
         )
+        self.assertTrue(
+            "CVE-2022-GH9999#valid-repo"
+            in res["https://github.com/valid-org/valid-repo/issues/9999"]
+        )
+
+        res = cvelib.report._getKnownIssues(cves, filter_url="other-repo")
+        self.assertEqual(0, len(res))
 
     #
     # getMissingReport()
@@ -1122,7 +1370,7 @@ foo"""
     # _getGHAlertsEnabled()
     #
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHAlertsEnabled)
-    def test_getGHAlertsEnabled(self, _):  # 2nd arg is mock_get
+    def test__getGHAlertsEnabled(self, _):  # 2nd arg is mock_get
         """Test _getGHAlertsEnabled()"""
 
         # dependabot
@@ -1199,7 +1447,7 @@ foo"""
     # _getGHSecretsScanningEnabled()
     #
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHAlertsEnabled)
-    def test_getGHSecretsScanningEnabled(self, _):  # 2nd arg is mock_get
+    def test__getGHSecretsScanningEnabled(self, _):  # 2nd arg is mock_get
         """Test _getGHSecretsScanningEnabled()"""
         enabled, disabled = cvelib.report._getGHSecretsScanningEnabled(
             "valid-org", repos=["valid-repo", "disabled-repo"]
@@ -1230,6 +1478,12 @@ foo"""
         enabled, disabled = cvelib.report._getGHSecretsScanningEnabled("valid-org")
         self.assertEqual(1, len(enabled))
         self.assertTrue("valid-repo" in enabled)
+        self.assertEqual(0, len(disabled))
+
+        enabled, disabled = cvelib.report._getGHSecretsScanningEnabled(
+            "valid-org", repos=["nonexistent"]
+        )
+        self.assertEqual(0, len(enabled))
         self.assertEqual(0, len(disabled))
 
     #
@@ -1268,6 +1522,16 @@ Updated issues:
  https://github.com/valid-org/valid-repo/issues/1 (CVE-2022-GH1001#valid-repo)
  https://github.com/valid-org/valid-repo/issues/2 (CVE-2022-GH1002#valid-repo)
  https://github.com/valid-org/valid-repo/issues/3 (CVE-2022-GH1003#valid-repo)"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        # excluded
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getUpdatedReport(
+                cves, "valid-org", excluded_repos=["valid-repo"]
+            )
+        self.assertEqual("", error.getvalue().strip())
+        exp = """Collecting known issues:
+No updated issues."""
         self.assertEqual(exp, output.getvalue().strip())
 
         # some updated since 1656792271 (2022-07-02)
@@ -1359,6 +1623,189 @@ Updated issues:
             exp = "ERROR: Unsupported alert status: invalid"
             self.assertEqual(exp, error.getvalue().strip())
 
+        # these alerts are the ones after _parseAlert
+        alerts = []
+        for g in _getMockedAlertsJSON():
+            alerts.append(cvelib.report._parseAlert(g)[1])
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report._printGHAlertsSummary(
+                "valid-org", "valid-repo", alerts, "resolved"
+            )
+        self.assertEqual("", error.getvalue().strip())
+        exp = """valid-repo resolved alerts: 8
+  Some Code Finding
+    - severity: high
+    - created: 2022-07-01T17:15:30Z
+    - dismissed: 2022-07-02T17:15:30Z
+    - reason: false positive
+    - comment: some code comment
+    - by: ghuser3
+    - url: https://github.com/valid-org/valid-repo/security/code-scanning/30
+
+  Some Other Code Finding
+    - severity: medium
+    - created: 2022-07-05T17:15:30Z
+    - dismissed: None
+    - reason: None
+    - comment: None
+    - url: https://github.com/valid-org/valid-repo/security/code-scanning/31
+
+  github.com/foo/bar
+    - severity: low
+    - created: 2022-07-01T18:27:30Z
+    - dismissed: 2022-07-02T18:27:30Z
+    - reason: tolerable
+    - comment: some comment
+    - by: ghuser1
+    - go.sum
+    - advisory: https://github.com/advisories/GHSA-a
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/1
+
+  baz
+    - severity: medium
+    - created: 2022-07-03T18:27:30Z
+    - dismissed: None
+    - reason: None
+    - comment: None
+    - path/yarn.lock
+    - advisory: https://github.com/advisories/GHSA-b
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/3
+
+  baz
+    - severity: medium
+    - created: 2022-07-04T18:27:30Z
+    - dismissed: None
+    - reason: None
+    - comment: None
+    - path/yarn.lock
+    - advisory: https://github.com/advisories/GHSA-c
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/4
+
+  @norf/quz
+    - severity: unknown
+    - created: 2022-07-05T18:27:30Z
+    - dismissed: None
+    - reason: None
+    - comment: None
+    - path/yarn.lock
+    - advisory: https://github.com/advisories/GHSA-d
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/5
+
+  Some Leaked Secret
+    - severity: high
+    - created: 2022-07-01T18:15:30Z
+    - resolved: 2022-07-02T18:15:30Z
+    - reason: revoked
+    - comment: some secret comment
+    - by: ghuser2
+    - url: https://github.com/valid-org/valid-repo/security/secret-scanning/20
+
+  Some Other Leaked Secret
+    - severity: high
+    - created: 2022-07-05T18:15:30Z
+    - resolved: None
+    - reason: None
+    - comment: None
+    - url: https://github.com/valid-org/valid-repo/security/secret-scanning/21
+
+  References:
+  - https://github.com/valid-org/valid-repo/security/code-scanning
+  - https://github.com/valid-org/valid-repo/security/dependabot
+  - https://github.com/valid-org/valid-repo/security/secret-scanning"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+    #
+    # _parseAlert()
+    #
+    def test__parseAlert(self):
+        """Test _parseAlert()"""
+        tsts = [
+            # input, expRepo, expK, expV
+            (
+                {
+                    "created_at": "2022-07-01T18:27:30Z",
+                    "dependency": {
+                        "manifest_path": "go.sum",
+                        "package": {
+                            "name": "github.com/foo/bar",
+                        },
+                    },
+                    "dismissed_at": "2022-07-02T18:27:30Z",
+                    "dismissed_by": {"login": "ghuser1"},
+                    "dismissed_comment": "some comment",
+                    "dismissed_reason": "tolerable",
+                    "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/1",
+                    "repository": {"name": "valid-repo", "private": False},
+                    "security_advisory": {
+                        "ghsa_id": "GHSA-a",
+                        "severity": "low",
+                    },
+                },
+                "valid-repo",
+                "dismissed_by",
+                "ghuser1",
+            ),
+            (
+                {
+                    "created_at": "2022-07-01T17:15:30Z",
+                    "dismissed_at": "2022-07-02T17:15:30Z",
+                    "dismissed_by": {"login": "ghuser3"},
+                    "dismissed_comment": "some code comment",
+                    "dismissed_reason": "false positive",
+                    "html_url": "https://github.com/valid-org/valid-repo/security/code-scanning/30",
+                    "repository": {"name": "valid-repo", "private": False},
+                    "rule": {
+                        "description": "Some Code Finding",
+                        "security_severity_level": "high",
+                    },
+                },
+                "valid-repo",
+                "severity",
+                "high",
+            ),
+            (
+                {
+                    "created_at": "2022-07-01T17:15:30Z",
+                    "dismissed_at": "2022-07-02T17:15:30Z",
+                    "dismissed_by": {"login": "ghuser3"},
+                    "dismissed_comment": "some code comment",
+                    "dismissed_reason": "false positive",
+                    "html_url": "https://github.com/valid-org/valid-repo/security/code-scanning/30",
+                    "repository": {"name": "valid-repo", "private": False},
+                    "rule": {
+                        "description": "Some Code Finding",
+                        "security_severity_level": None,
+                    },
+                },
+                "valid-repo",
+                "severity",
+                "unknown",
+            ),
+            (
+                {
+                    "created_at": "2022-07-01T18:15:30Z",
+                    "secret_type_display_name": "Some Leaked Secret",
+                    "resolved_at": "2022-07-02T18:15:30Z",
+                    "resolved_by": {"login": "ghuser2"},
+                    "resolution_comment": "some secret comment",
+                    "resolution": "revoked",
+                    "html_url": "https://github.com/valid-org/valid-repo/security/secret-scanning/20",
+                    "repository": {"name": "valid-repo", "private": True},
+                },
+                "valid-repo",
+                "severity",
+                "medium",
+            ),
+        ]
+
+        for alert, expRepo, expK, expV in tsts:
+            (resRepo, resAlert) = cvelib.report._parseAlert(alert)
+            self.assertEqual(expRepo, resRepo)
+            self.assertTrue(len(resAlert) > 0)
+            if expK is not None:
+                self.assertTrue(expK in resAlert)
+                self.assertEqual(expV, resAlert[expK])
+
     #
     # getGHAlertsReport()
     #
@@ -1366,6 +1813,37 @@ Updated issues:
     def test_getGHAlertsReport(self, _):  # 2nd arg is mock_get
         """Test getGHAlertsReport()"""
         self.maxDiff = 16384
+
+        # bad
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.report.getGHAlertsReport([], "valid-org", alert_types=["bad"])
+            self.assertTrue("Unsupported alert type: bad" in error.getvalue().strip())
+
+        # specify non-existent repo
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getGHAlertsReport([], "valid-org", repos=["nonexistent"])
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual(
+            "No alerts for the specified repos.", output.getvalue().strip()
+        )
+
+        # specify excluded repo
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getGHAlertsReport(
+                [], "valid-org", excluded_repos=["valid-repo"]
+            )
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual(
+            "No alerts for the specified repos.", output.getvalue().strip()
+        )
 
         # with_templates = false
         with tests.testutil.capturedOutput() as (output, error):
@@ -1548,7 +2026,7 @@ valid-repo resolved alerts: 3
         # with_templates = true
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsReport(
-                [], "valid-org", repos=["valid-repo"], with_templates=True
+                cves, "valid-org", repos=["valid-repo"], with_templates=True
             )
         self.assertEqual("", error.getvalue().strip())
 
@@ -2478,55 +2956,37 @@ valid-repo resolved alerts: 1
     #
     def test__printGHAlertsTemplates(self):
         """Test _printGHAlertsTemplates()"""
-        alerts = [
-            {
-                "alert_type": "dependabot",
-                "created": "2022-07-01T18:27:30Z",
-                "dependabot_manifest_path": "a/b/c",
-                "dependabot_package_name": "foo",
-                "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/1",
-                "security_advisory_ghsa_url": "https://github.com/advisories/GHSA-bbb",
-                "severity": "medium",
-            },
-            {
-                "alert_type": "dependabot",
-                "created": "2022-07-02T18:27:30Z",
-                "dependabot_manifest_path": "a/b/c",
-                "dependabot_package_name": "foo",
-                "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/2",
-                "security_advisory_ghsa_url": "https://github.com/advisories/GHSA-aaa",
-                "severity": "high",
-            },
-            {
-                "alert_type": "dependabot",
-                "created": "2022-07-03T18:27:30Z",
-                "dependabot_manifest_path": "d/e/f",
-                "dependabot_package_name": "foo",
-                "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/3",
-                "security_advisory_ghsa_url": "https://github.com/advisories/GHSA-bbb",
-                "severity": "medium",
-            },
-        ]
+        # these alerts are the ones after _parseAlert
+        alerts = []
+        for g in _getMockedAlertsJSON():
+            alerts.append(cvelib.report._parseAlert(g)[1])
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report._printGHAlertsTemplates("valid-org", "valid-repo", alerts)
         self.assertEqual("", error.getvalue().strip())
         now: datetime.datetime = datetime.datetime.now()
         exp = """## valid-repo template
-Please address alerts (dependabot) in valid-repo
+Please address alerts (code-scanning, dependabot, secret-scanning) in valid-repo
 
 The following alerts were issued:
-- [ ] [foo](https://github.com/valid-org/valid-repo/security/dependabot/1) (medium)
-- [ ] [foo](https://github.com/valid-org/valid-repo/security/dependabot/2) (high)
-- [ ] [foo](https://github.com/valid-org/valid-repo/security/dependabot/3) (medium)
+- [ ] [@norf/quz](https://github.com/valid-org/valid-repo/security/dependabot/5) (unknown)
+- [ ] [Some Code Finding](https://github.com/valid-org/valid-repo/security/code-scanning/30) (high)
+- [ ] [Some Leaked Secret](https://github.com/valid-org/valid-repo/security/secret-scanning/20) (high)
+- [ ] [Some Other Code Finding](https://github.com/valid-org/valid-repo/security/code-scanning/31) (medium)
+- [ ] [Some Other Leaked Secret](https://github.com/valid-org/valid-repo/security/secret-scanning/21) (high)
+- [ ] [baz](https://github.com/valid-org/valid-repo/security/dependabot/3) (medium)
+- [ ] [baz](https://github.com/valid-org/valid-repo/security/dependabot/4) (medium)
+- [ ] [github.com/foo/bar](https://github.com/valid-org/valid-repo/security/dependabot/1) (low)
 
-Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
+Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Code scanning only reported against the default branch so please be sure to check any other supported branches when researching/fixing. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing. While any secrets should be removed from the repo, they will live forever in git history so please remember to rotate the secret too.
 
 Thanks!
 
 References:
  * https://docs.influxdata.io/development/security/issue_handling/
  * https://docs.influxdata.io/development/security/issue_response/#developers
+ * https://github.com/valid-org/valid-repo/security/code-scanning
  * https://github.com/valid-org/valid-repo/security/dependabot
+ * https://github.com/valid-org/valid-repo/security/secret-scanning
 
 ## end template
 
@@ -2537,42 +2997,83 @@ CloseDate:
 PublicDate:
 CRD:
 References:
+ https://github.com/valid-org/valid-repo/security/code-scanning/30
+ https://github.com/valid-org/valid-repo/security/code-scanning/31
  https://github.com/valid-org/valid-repo/security/dependabot/1
- https://github.com/valid-org/valid-repo/security/dependabot/2
  https://github.com/valid-org/valid-repo/security/dependabot/3
- https://github.com/advisories/GHSA-aaa (foo)
- https://github.com/advisories/GHSA-bbb (foo)
+ https://github.com/valid-org/valid-repo/security/dependabot/4
+ https://github.com/valid-org/valid-repo/security/dependabot/5
+ https://github.com/valid-org/valid-repo/security/secret-scanning/20
+ https://github.com/valid-org/valid-repo/security/secret-scanning/21
+ https://github.com/advisories/GHSA-a (github.com/foo/bar)
+ https://github.com/advisories/GHSA-b (baz)
+ https://github.com/advisories/GHSA-c (baz)
+ https://github.com/advisories/GHSA-d (@norf/quz)
 Description:
  Please address alerts in valid-repo
- - [ ] foo (high)
- - [ ] foo (2 medium)
+ - [ ] @norf/quz (unknown)
+ - [ ] Some Code Finding (high)
+ - [ ] Some Leaked Secret (high)
+ - [ ] Some Other Code Finding (medium)
+ - [ ] Some Other Leaked Secret (high)
+ - [ ] baz (2 medium)
+ - [ ] github.com/foo/bar (low)
 GitHub-Advanced-Security:
- - type: dependabot
-   dependency: foo
-   detectedIn: a/b/c
+ - type: code-scanning
+   description: Some Code Finding
+   severity: high
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/code-scanning/30
+ - type: code-scanning
+   description: Some Other Code Finding
    severity: medium
-   advisory: https://github.com/advisories/GHSA-bbb
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/code-scanning/31
+ - type: dependabot
+   dependency: github.com/foo/bar
+   detectedIn: go.sum
+   severity: low
+   advisory: https://github.com/advisories/GHSA-a
    status: needs-triage
    url: https://github.com/valid-org/valid-repo/security/dependabot/1
  - type: dependabot
-   dependency: foo
-   detectedIn: a/b/c
-   severity: high
-   advisory: https://github.com/advisories/GHSA-aaa
-   status: needs-triage
-   url: https://github.com/valid-org/valid-repo/security/dependabot/2
- - type: dependabot
-   dependency: foo
-   detectedIn: d/e/f
+   dependency: baz
+   detectedIn: path/yarn.lock
    severity: medium
-   advisory: https://github.com/advisories/GHSA-bbb
+   advisory: https://github.com/advisories/GHSA-b
    status: needs-triage
    url: https://github.com/valid-org/valid-repo/security/dependabot/3
+ - type: dependabot
+   dependency: baz
+   detectedIn: path/yarn.lock
+   severity: medium
+   advisory: https://github.com/advisories/GHSA-c
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/dependabot/4
+ - type: dependabot
+   dependency: "@norf/quz"
+   detectedIn: path/yarn.lock
+   severity: unknown
+   advisory: https://github.com/advisories/GHSA-d
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/dependabot/5
+ - type: secret-scanning
+   secret: Some Leaked Secret
+   detectedIn: tbd
+   severity: high
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/secret-scanning/20
+ - type: secret-scanning
+   secret: Some Other Leaked Secret
+   detectedIn: tbd
+   severity: high
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/secret-scanning/21
 Notes:
 Mitigation:
 Bugs:
 Priority: high
-Discovered-by: gh-dependabot
+Discovered-by: gh-code, gh-dependabot, gh-secret
 Assigned-to:
 CVSS:
 
@@ -2584,6 +3085,76 @@ git/valid-org_valid-repo: needs-triage
         )
         self.assertEqual(exp, output.getvalue().strip())
 
+        alerts = [
+            {
+                "alert_type": "dependabot",
+                "created": "2022-07-01T18:27:30Z",
+                "dependabot_manifest_path": "a/b/c",
+                "dependabot_package_name": "foo",
+                "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/1",
+                "security_advisory_ghsa_url": "https://github.com/advisories/GHSA-bbb",
+                "severity": "bad",
+            },
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report._printGHAlertsTemplates("valid-org", "valid-repo", alerts)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertTrue("Since an 'unknown' severity" in output.getvalue().strip())
+
+    #
+    # getHumanSoftwareInfo()
+    #
+    def test_getHumanSoftwareInfo(self):
+        """Test getHumanSoftwareInfo()"""
+        # mock some data by calling collectCVEData() like bin/cve-report
+        cveDirs = self._mock_cve_data_mixed()
+        cves = cvelib.cve.collectCVEData(
+            cveDirs, False, filter_status="needs-triage,needed,pending,released"
+        )
+
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSoftwareInfo(cves, "")
+        self.assertEqual("", error.getvalue().strip())
+        exp = """bar:
+  high:
+    CVE-2022-GH2#bar
+  low:
+    CVE-2022-0002
+  negligible:
+    CVE-2021-9992
+baz:
+  low:
+    CVE-2022-0003
+foo:
+  critical:
+    CVE-2021-9991
+  medium:
+    CVE-2022-0001
+    CVE-2022-GH1#foo
+  low:
+    CVE-2022-NNN1"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSoftwareInfo(cves, "baz")
+        self.assertEqual("", error.getvalue().strip())
+        exp = """baz:
+  low:
+    CVE-2022-0003"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        fn = os.path.join(cveDirs["active"], "../", "repos")
+        content = "baz"
+        with open(fn, "w") as fp:
+            fp.write("%s" % content)
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSoftwareInfo(cves, fn)
+        self.assertEqual("", error.getvalue().strip())
+        exp = """baz:
+  low:
+    CVE-2022-0003"""
+        self.assertEqual(exp, output.getvalue().strip())
+
     #
     # getHumanSummary()
     #
@@ -2592,10 +3163,23 @@ git/valid-org_valid-repo: needs-triage
         # empty cve list
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getHumanSummary(
-                [], "", report_output=cvelib.report.ReportOutput.OPEN
+                [], "", report_output=cvelib.report.ReportOutput.BOTH
             )
         self.assertEqual("", error.getvalue().strip())
         exp = """# Open
+
+Priority   Repository                     Issue
+--------   ----------                     -----
+
+Totals:
+- critical: 0 in 0 repos
+- high: 0 in 0 repos
+- medium: 0 in 0 repos
+- low: 0 in 0 repos
+- negligible: 0 in 0 repos
+
+
+# Closed
 
 Priority   Repository                     Issue
 --------   ----------                     -----
@@ -2942,6 +3526,84 @@ Totals:
         )
         self.assertEqual(expClosed, output.getvalue().strip())
 
+    #
+    # getHumanSummaryGHAS()
+    #
+    def test_getHumanSummaryGHAS(self):
+        """Test getHumanSummaryGHAS()"""
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSummaryGHAS(
+                [], "", report_output=cvelib.report.ReportOutput.BOTH
+            )
+        self.assertEqual("", error.getvalue().strip())
+        exp = """# Open
+
+Priority   Repository           Affected                            CVEs
+--------   ----------           --------                            ----
+
+Totals:
+- critical: 0 in 0 repos
+- high: 0 in 0 repos
+- medium: 0 in 0 repos
+- low: 0 in 0 repos
+- negligible: 0 in 0 repos
+
+
+# Closed
+
+Priority   Repository           Affected                            CVEs
+--------   ----------           --------                            ----
+
+Totals:
+- critical: 0 in 0 repos
+- high: 0 in 0 repos
+- medium: 0 in 0 repos
+- low: 0 in 0 repos
+- negligible: 0 in 0 repos"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        # mock some data by calling collectCVEData() like bin/cve-report
+        cveDirs = self._mock_cve_data_ghas_mixed()
+        cves = cvelib.cve.collectCVEData(
+            cveDirs, False, filter_status="needs-triage,needed,pending,released"
+        )
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSummaryGHAS(
+                cves, "", report_output=cvelib.report.ReportOutput.BOTH
+            )
+        self.assertEqual("", error.getvalue().strip())
+        exp = """# Open
+
+Priority   Repository           Affected                            CVEs
+--------   ----------           --------                            ----
+high       bar                  baz (2)                             CVE-2022-GH2#bar          (secret-scanning)
+high       bar                  foo (2)                             CVE-2022-GH2#bar          (dependabot)
+high       bar                  quxx                                CVE-2022-GH2#bar          (code-scanning)
+medium     bar                  foo (2)                             CVE-2022-GH2#bar, CVE-2022-GH3#bar (dependabot)
+negligible bar                  qux                                 CVE-2022-GH5#bar          (dependabot)
+
+Totals:
+- critical: 0 in 0 repos
+- high: 5 in 1 repos
+- medium: 2 in 0 repos
+- low: 0 in 0 repos
+- negligible: 1 in 0 repos
+
+
+# Closed
+
+Priority   Repository           Affected                            CVEs
+--------   ----------           --------                            ----
+low        bar                  corge                               CVE-2022-GH4#bar          (dependabot)
+
+Totals:
+- critical: 0 in 0 repos
+- high: 0 in 0 repos
+- medium: 0 in 0 repos
+- low: 1 in 1 repos
+- negligible: 0 in 0 repos"""
+        self.assertEqual(exp, output.getvalue().strip())
+
     def test__main_report_parse_args(self):
         """Test _main_report_parse_args"""
         # invalid invocations
@@ -3176,6 +3838,10 @@ Totals:
                 ["influxdb"],
                 'cveLog,priority=high,status=needed,product=git,where=org id="CVE-2022-GH2#bar",software="bar",modifier="" ',
             ),
+            (
+                ["influxdb", "--starttime", "1"],
+                'cveLog,priority=high,status=needed,product=git,where=org id="CVE-2022-GH2#bar",software="bar",modifier="" ',
+            ),
             (["sw"], "bar:\n  high:\n    CVE-2022-GH2#bar\n  low:\n    CVE-2022-0002"),
             (
                 ["todo"],
@@ -3214,6 +3880,10 @@ Totals:
             self.assertEqual("", output.getvalue().strip())
             errout = error.getvalue()
             self.assertTrue("Please specify a report command" in errout.strip())
+
+            # bad args
+            with self.assertRaises(ValueError):
+                cvelib.report.main_report(["influxdb", "--starttime", "-1"])
 
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHAlertsAllFull)
     def test_main_report_gh_alerts(self, _):  # 2nd arg is mock_get
@@ -3405,3 +4075,98 @@ Totals:
         self.assertTrue(
             exp in out.strip(), msg="Could not find '%s' in: %s" % (exp, out)
         )
+
+    @mock.patch("cvelib.quay.getQuayOCIsForOrg")
+    def test_main_report_quay_list(self, mock_getQuayOCIsForOrg):
+        """Test main_report - quay --list"""
+        self._mock_cve_data_mixed()  # for cveDirs
+        os.environ["SEDG_EXPERIMENTAL"] = "1"
+        mock_getQuayOCIsForOrg.return_value = ["valid-repo"]
+        args = ["quay", "--list", "valid-org"]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual("valid-org/valid-repo", output.getvalue().strip())
+
+    @mock.patch("cvelib.quay.getQuayDigestForImage")
+    def test_main_report_quay_list_digest(self, mock_getQuayDigestForImage):
+        """Test main_report - quay --list-digest"""
+        self._mock_cve_data_mixed()  # for cveDirs
+        os.environ["SEDG_EXPERIMENTAL"] = "1"
+        mock_getQuayDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
+        args = ["quay", "--list-digest", "valid-org/valid-repo"]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual("sha256:deadbeef", output.getvalue().strip())
+
+    @mock.patch("cvelib.quay.getQuaySecurityReport")
+    def test_main_report_quay_alerts(self, mock_getQuaySecurityReport):
+        """Test main_report - quay --alerts"""
+        self._mock_cve_data_mixed()  # for cveDirs
+        os.environ["SEDG_EXPERIMENTAL"] = "1"
+        mock_getQuaySecurityReport.return_value = "report"
+        args = ["quay", "--alerts", "--name", "valid-org/valid-repo@sha256:deadbeef"]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual("report", output.getvalue().strip())
+
+    @mock.patch("cvelib.gar.getGAROCIsForProjectLoc")
+    def test_main_report_gar_list(self, mock_getGAROCIsForProjectLoc):
+        """Test main_report - gar --list"""
+        self._mock_cve_data_mixed()  # for cveDirs
+        os.environ["SEDG_EXPERIMENTAL"] = "1"
+        mock_getGAROCIsForProjectLoc.return_value = [
+            "projects/valid-proj/locations/us/repositories/valid-repo/valid-name"
+        ]
+        args = ["gar", "--list", "valid-proj/us"]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual(
+            "valid-proj/us/valid-repo/valid-name", output.getvalue().strip()
+        )
+
+    @mock.patch("cvelib.gar.getGARReposForProjectLoc")
+    def test_main_report_gar_list_repos(self, mock_getGARReposForProjectLoc):
+        """Test main_report - gar --list-repos"""
+        self._mock_cve_data_mixed()  # for cveDirs
+        os.environ["SEDG_EXPERIMENTAL"] = "1"
+        mock_getGARReposForProjectLoc.return_value = [
+            "projects/valid-proj/locations/us/repositories/valid-repo"
+        ]
+        args = ["gar", "--list-repos", "valid-proj/us"]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual("valid-proj/us/valid-repo", output.getvalue().strip())
+
+    @mock.patch("cvelib.gar.getGARDigestForImage")
+    def test_main_report_gar_list_digest(self, mock_getGARDigestForImage):
+        """Test main_report - gar --list-digest"""
+        self._mock_cve_data_mixed()  # for cveDirs
+        os.environ["SEDG_EXPERIMENTAL"] = "1"
+        mock_getGARDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:deadbeef"
+        args = ["gar", "--list-digest", "valid-org/valid-repo"]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual("sha256:deadbeef", output.getvalue().strip())
+
+    @mock.patch("cvelib.gar.getGARSecurityReport")
+    def test_main_report_gar_alerts(self, mock_getGARSecurityReport):
+        """Test main_report - gar --alerts"""
+        self._mock_cve_data_mixed()  # for cveDirs
+        os.environ["SEDG_EXPERIMENTAL"] = "1"
+        mock_getGARSecurityReport.return_value = "report"
+        args = [
+            "gar",
+            "--alerts",
+            "--name",
+            "valid-proj/us/valid-repo/valid-name@sha256:deadbeef",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual("report", output.getvalue().strip())
