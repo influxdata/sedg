@@ -343,7 +343,7 @@ class TestQuay(TestCase):
         mock_get.return_value = mr
         res = cvelib.quay.getQuayDigestForImage("valid-org/valid-repo")
         self.assertEqual(
-            "sha256:3fa5256ad34b31901ca30021c722fc7ba11a66ca070c8442862205696b908ddb",
+            "valid-org/valid-repo@sha256:3fa5256ad34b31901ca30021c722fc7ba11a66ca070c8442862205696b908ddb",
             res,
         )
 
@@ -351,7 +351,7 @@ class TestQuay(TestCase):
         mock_get.return_value = mr
         res = cvelib.quay.getQuayDigestForImage("valid-org/valid-repo:some-tag")
         self.assertEqual(
-            "sha256:2536a15812ba685df76e835aefdc7f512941c12c561e0aed152d17aa025cc820",
+            "valid-org/valid-repo@sha256:2536a15812ba685df76e835aefdc7f512941c12c561e0aed152d17aa025cc820",
             res,
         )
 

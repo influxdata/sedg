@@ -183,7 +183,7 @@ def getQuayDigestForImage(repo_full: str) -> str:
                 latest_d = cur
                 digest = resj["tags"][tag]["manifest_digest"]
 
-    return digest
+    return "%s/%s@%s" % (ns, name, digest)
 
 
 # {

@@ -26,7 +26,6 @@ from typing import (
 )
 
 from cvelib.cve import CVE, checkSyntax, collectCVEData, collectGHAlertUrls
-from cvelib.github import GHDependabot, GHSecret, GHCode
 from cvelib.common import (
     cve_priorities,
     error,
@@ -39,14 +38,10 @@ from cvelib.common import (
     warn,
     _experimental,
 )
-from cvelib.gar import (
-    getGARReposForProjectLoc,
-    getGAROCIsForProjectLoc,
-    getGARDigestForImage,
-    getGARSecurityReport,
-)
+import cvelib.gar
+from cvelib.github import GHDependabot, GHSecret, GHCode
 from cvelib.net import requestGetRaw, ghAPIGetList
-from cvelib.quay import getQuayOCIsForOrg, getQuayDigestForImage, getQuaySecurityReport
+import cvelib.quay
 
 
 #
@@ -343,7 +338,9 @@ def _getGHSecretsScanningEnabled(
     # just need to look through repo_info
     repo_info: Dict[str, Dict[str, Union[bool, str]]] = _getGHReposAll(org)
     for name in sorted(repo_info.keys()):
-        if name in excluded_repos or len(repos) != 0 and name not in repos:
+        if name in excluded_repos:
+            continue
+        elif len(repos) != 0 and name not in repos:
             continue
         elif len(repos) == 0 and _repoArchived(repo_info[name]):
             continue
@@ -390,14 +387,8 @@ def getUpdatedReport(
     updated_urls: List[str] = []
     print("Collecting known issues:")
     for url in sorted(urls.keys()):
-        # TODO: break this out
-        if not rePatterns["github-issue"].match(url):
-            continue  # only support github issues at this time
         # ['https:', '', 'github.com', '<org>', '<repo>', 'issues', '<num>']
         tmp: List[str] = url.split("/")
-
-        if tmp[3] != org:
-            continue
 
         repo: str = tmp[4]
         if repo in excluded_repos:
@@ -422,7 +413,7 @@ def getUpdatedReport(
 
 
 def _printGHAlertsSummary(
-    org: str, repo: str, alert: List[Dict[str, str]], status: str
+    org: str, repo: str, alerts: List[Dict[str, str]], status: str
 ) -> None:
     """Print out the alert summary"""
     if status not in ["resolved", "updated"]:
@@ -430,10 +421,10 @@ def _printGHAlertsSummary(
         return
 
     urls: List[str] = []
-    print("%s %s alerts: %d" % (repo, status, len(alert)))
+    print("%s %s alerts: %d" % (repo, status, len(alerts)))
 
     # for n in alert:
-    for n in sorted(alert, key=lambda i: (i["html_url"], i["created_at"])):
+    for n in sorted(alerts, key=lambda i: (i["html_url"], i["created_at"])):
         url: str = "https://github.com/%s/%s/security/%s" % (org, repo, n["alert_type"])
         if url not in urls:
             urls.append(url)
@@ -453,13 +444,13 @@ def _printGHAlertsSummary(
                 print("    - resolved: %s" % n["resolved_at"])
                 print("    - reason: %s" % n["resolution"])
                 print("    - comment: %s" % n["resolution_comment"])
-                if n["resolved_by"] is not None:
+                if "resolved_by" in n and n["resolved_by"] is not None:
                     print("    - by: %s" % n["resolved_by"])
             else:
                 print("    - dismissed: %s" % n["dismissed_at"])
                 print("    - reason: %s" % n["dismissed_reason"])
                 print("    - comment: %s" % n["dismissed_comment"])
-                if n["dismissed_by"] is not None:
+                if "dismissed_by" in n and n["dismissed_by"] is not None:
                     print("    - by: %s" % n["dismissed_by"])
 
         if n["alert_type"] == "dependabot":
@@ -556,7 +547,7 @@ def _printGHAlertsTemplates(org: str, repo: str, alert: List[Dict[str, str]]) ->
 
 The following alert%s issued:
 %s
-Since a '%s' severity issue is present, tentatively adding the 'security/%s' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. %s
+Since a%s '%s' severity issue is present, tentatively adding the 'security/%s' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. %s
 
 Thanks!
 
@@ -570,6 +561,7 @@ References:
         repo,
         "s were" if plural else " was",
         checklist,
+        "n" if sev.index("unknown") == highest else "",
         sev[highest],
         priority,
         " ".join(sorted(clauses)),
@@ -732,13 +724,196 @@ def _parseAlert(alert: Dict[str, Any]) -> Tuple[str, Dict[str, str]]:
 # https://docs.github.com/en/rest/dependabot/alerts?apiVersion=2022-11-28
 # https://docs.github.com/en/rest/secret-scanning?apiVersion=2022-11-28
 # https://docs.github.com/en/rest/code-scanning?apiVersion=2022-11-28
+#
+# dependabot
+# [
+#   {
+#     "number": 20,
+#     "state": "open",
+#     "dependency": {
+#       "package": {
+#         "ecosystem": "...",
+#         "name": "some-name"
+#       },
+#       "manifest_path": "/path/to/file",
+#       "scope": "runtime"
+#     },
+#     "security_advisory": {
+#       "ghsa_id": "GHSA-...",
+#       "cve_id": "CVE-...",
+#       "summary": "some summary",
+#       "description": "some desc",
+#       "severity": "high",
+#       "identifiers": [
+#         {
+#           "value": "GHSA-...",
+#           "type": "GHSA"
+#         },
+#         {
+#           "value": "CVE-...",
+#           "type": "CVE"
+#         }
+#       ],
+#     "references": [
+#       {
+#         "url": "https://github.com/.../GHSA-..."
+#       },
+#       {
+#         "url": "https://nvd.nist.gov/vuln/detail/CVE-..."
+#       }
+#       "published_at": "2022-02-16T22:36:21Z",
+#       "updated_at": "2023-01-30T05:02:57Z",
+#       "withdrawn_at": null,
+#       "vulnerabilities": [
+#         {
+#           "package": {
+#             "ecosystem": "...",
+#             "name": "some-name"
+#           },
+#           "severity": "high",
+#           "vulnerable_version_range": "< 1.2.3",
+#           "first_patched_version": {
+#             "identifier": "1.2.3"
+#           }
+#         }
+#       ],
+#       "cvss": {
+#         ...
+#       },
+#       "cwes": [
+#         ...
+#       ]
+#     },
+#     "security_vulnerability": {
+#       "package": {
+#         "ecosystem": "...",
+#         "name": "some-name"
+#       },
+#       "severity": "high",
+#       "vulnerable_version_range": "< 1.2.3",
+#       "first_patched_version": {
+#         "identifier": "1.2.3"
+#       }
+#     },
+#     "url": "https://api.github.com/repos/valid-org/valid-repo/dependabot/alerts/20",
+#     "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/20",
+#     "created_at": "2023-05-23T12:17:56Z",
+#     "updated_at": "2023-05-23T12:17:56Z",
+#     "dismissed_at": null,
+#     "dismissed_by": null,
+#     "dismissed_reason": null,
+#     "dismissed_comment": null,
+#     "fixed_at": null,
+#     "auto_dismissed_at": null,
+#     "repository": {
+#       ...
+#       "name": "valid-repo",
+#       "full_name": "valid-org/valid-repo",
+#       "private": false,
+#       "owner": {
+#         ...
+#       },
+#       "html_url": "https://github.com/valid-org/valid-repo",
+#       "url": "https://api.github.com/repos/valid-org/valid-repo",
+#       ...
+#     }
+#   },
+#   ...
+#
+# secret-scanning
+# [
+#   {
+#     "number": 2,
+#     "created_at": "2023-04-20T20:34:12Z",
+#     "updated_at": "2023-04-21T17:01:49Z",
+#     "url": "https://api.github.com/repos/valid-org/enterprise/secret-scanning/alerts/2",
+#     "html_url": "https://github.com/valid-org/enterprise/security/secret-scanning/2",
+#     "locations_url": "https://api.github.com/repos/valid-org/enterprise/secret-scanning/alerts/2/locations",
+#     "state": "resolved",
+#     "secret_type": "some-type",
+#     "secret_type_display_name": "some display",
+#     "secret": "...",
+#     "resolution": "revoked",
+#     "resolved_by": {
+#       "login": "user",
+#       ...
+#     },
+#     "resolved_at": "2023-04-21T17:01:49Z",
+#     "resolution_comment": "https://github.com/valid-org/valid-repo/issues/447",
+#     "push_protection_bypassed": false,
+#     "push_protection_bypassed_by": null,
+#     "push_protection_bypassed_at": null,
+#     "repository": {
+#       ...
+#       "name": "valid-repo",
+#       "full_name": "valid-org/valid-repo",
+#       "private": false,
+#       "owner": {
+#         ...
+#       },
+#       "html_url": "https://github.com/valid-org/valid-repo",
+#       "url": "https://api.github.com/repos/valid-org/valid-repo",
+#       ...
+#     }
+#   },
+#   ...
+#
+# code-scanning
+# [
+#   {
+#     "number": 13,
+#     "created_at": "2023-04-24T22:20:52Z",
+#     "updated_at": "2023-05-25T16:27:42Z",
+#     "url": "https://api.github.com/repos/valid-org/valid-repo/code-scanning/alerts/13",
+#     "html_url": "https://github.com/valid-org/valid-repo/security/code-scanning/13",
+#     "state": "dismissed",
+#     "fixed_at": null,
+#     "dismissed_by": {
+#       "login": "user",
+#       ...
+#     },
+#     "dismissed_at": "2023-04-25T15:50:37Z",
+#     "dismissed_reason": "won't fix",
+#     "dismissed_comment": "This doesn't contain sensitive info.",
+#     "rule": {
+#       "id": "some-id",
+#       "severity": "error",
+#       "description": "some desc",
+#       "name": "some-name",
+#       "tags": [...],
+#       "security_severity_level": "high"
+#     },
+#     "tool": {
+#        ...
+#     },
+#     "most_recent_instance": {
+#        ...
+#     },
+#     ...
+#     "repository": {
+#       ...
+#       "name": "valid-repo",
+#       "full_name": "valid-org/valid-repo",
+#       "private": false,
+#       "owner": {
+#         ...
+#       },
+#       "html_url": "https://github.com/valid-org/valid-repo",
+#       "url": "https://api.github.com/repos/valid-org/valid-repo",
+#       ...
+#     }
+#   },
+#   ...
+#
 def _getGHAlertsAll(
     org: str, alert_types=["code-scanning", "dependabot", "secret-scanning"]
 ) -> Dict[str, List[Dict[str, str]]]:
     """Obtain the list of GitHub alerts for the specified org"""
+
     for a in alert_types:
         if a not in ["code-scanning", "dependabot", "secret-scanning"]:
-            error("Unsupported alert type: %s" % a)
+            error("Unsupported alert type: %s" % a, do_exit=False)
+            return {}
 
     # { "repo": [{ <alert1> }, { <alert2> }] }
     alerts: Dict[str, List[Dict[str, str]]] = {}
@@ -927,8 +1102,6 @@ def _readStatsUniqueCVEs(
                     stats[pkg.software]["tags"][tag].append(cve.candidate)
 
             stats[pkg.software][priority]["num"] += 1
-            if "cves" not in stats[pkg.software][priority]:
-                stats[pkg.software][priority]["cves"] = []
             stats[pkg.software][priority]["cves"].append(cve.candidate)
 
             if (
@@ -1301,12 +1474,10 @@ def _readStatsGHAS(
 ) -> Dict[str, _statsUniqueCVEsPkgSoftware]:
     """Read in stats by GHAS"""
 
-    def _find_adjusted_priority(pkg: str, sev: str) -> str:
-        if priority == "unknown":
-            sev = "medium"
-        if cve_priorities.index(sev) > cve_priorities.index(pkg):
+    def _find_adjusted_priority(priority: str, sev: str) -> str:
+        if cve_priorities.index(sev) > cve_priorities.index(priority):
             return sev
-        return pkg
+        return priority
 
     # TODO: type hint
     stats = {}
@@ -1405,11 +1576,11 @@ def getHumanSummaryGHAS(
 
                 typ: str
                 for typ in stats[repo]:
-                    dependency: str
-                    for dependency in stats[repo][typ]:
+                    affected: str
+                    for affected in stats[repo][typ]:
                         if (
-                            priority not in stats[repo][typ][dependency]
-                            or stats[repo][typ][dependency][priority]["num"] < 1
+                            priority not in stats[repo][typ][affected]
+                            or stats[repo][typ][affected][priority]["num"] < 1
                         ):
                             continue
 
@@ -1417,19 +1588,19 @@ def getHumanSummaryGHAS(
                             lines[priority] = {}
                         if repo not in lines[priority]:
                             lines[priority][repo] = {}
-                        if dependency not in lines[priority][repo]:
-                            lines[priority][repo][dependency] = {
+                        if affected not in lines[priority][repo]:
+                            lines[priority][repo][affected] = {
                                 "typ": typ,
                                 "cves": [],
                                 "num_affected": 0,
                             }
-                        cves: List[str] = stats[repo][typ][dependency][priority]["cves"]
-                        lines[priority][repo][dependency]["cves"] = cves
+                        cves: List[str] = stats[repo][typ][affected][priority]["cves"]
+                        lines[priority][repo][affected]["cves"] = cves
 
-                        num: int = stats[repo][typ][dependency][priority]["num"]
+                        num: int = stats[repo][typ][affected][priority]["num"]
                         totals[priority]["num"] += num
 
-                        lines[priority][repo][dependency]["num_affected"] += num
+                        lines[priority][repo][affected]["num_affected"] += num
                         if repo != last:
                             totals[priority]["num_repos"] += 1
                             last = repo
@@ -1450,18 +1621,18 @@ def getHumanSummaryGHAS(
                 continue
             repo: str
             for repo in sorted(lines[priority]):
-                dependency: str
-                for dependency in sorted(lines[priority][repo]):
+                affected: str
+                for affected in sorted(lines[priority][repo]):
                     num_aff: str = ""
-                    if lines[priority][repo][dependency]["num_affected"] > 1:
+                    if lines[priority][repo][affected]["num_affected"] > 1:
                         num_aff = (
-                            " (%d)" % lines[priority][repo][dependency]["num_affected"]
+                            " (%d)" % lines[priority][repo][affected]["num_affected"]
                         )
 
                     aff = (
-                        (dependency[: maxlen_aff - (3 + len(num_aff))] + "...")
-                        if len(dependency) > (maxlen_aff - len(num_aff))
-                        else dependency
+                        (affected[: maxlen_aff - (3 + len(num_aff))] + "...")
+                        if len(affected) > (maxlen_aff - len(num_aff))
+                        else affected
                     )
                     aff += num_aff
                     print(
@@ -1471,8 +1642,8 @@ def getHumanSummaryGHAS(
                             if len(repo) > maxlen
                             else repo,
                             aff=aff,
-                            cve=", ".join(lines[priority][repo][dependency]["cves"]),
-                            extra="(%s)" % lines[priority][repo][dependency]["typ"],
+                            cve=", ".join(lines[priority][repo][affected]["cves"]),
+                            extra="(%s)" % lines[priority][repo][affected]["typ"],
                         ).rstrip()
                     )
 
@@ -2191,46 +2362,42 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
         if args.list:
             ocis: List[str] = []
             if args.cmd == "quay":
-                ocis: List[str] = getQuayOCIsForOrg(args.list)
+                ocis: List[str] = cvelib.quay.getQuayOCIsForOrg(args.list)
                 for r in sorted(ocis):
                     # ORG/NAME
                     print("%s/%s" % (args.list, r))
             elif args.cmd == "gar":
-                ocis: List[str] = getGAROCIsForProjectLoc(args.list)
+                ocis: List[str] = cvelib.gar.getGAROCIsForProjectLoc(args.list)
                 for r in sorted(ocis):
                     # PROJECT/LOCATION/REPO/NAME
                     print("%s/%s" % (args.list, r.split("/", maxsplit=5)[-1]))
         elif args.cmd == "gar" and args.list_repos:
-            repos: List[str] = getGARReposForProjectLoc(args.list_repos)
+            repos: List[str] = cvelib.gar.getGARReposForProjectLoc(args.list_repos)
             for r in sorted(repos):
                 # PROJECT/LOCATION/REPO
                 print("%s/%s" % (args.list_repos, r.split("/")[-1]))
         elif args.list_digest:
             digest: str = ""
             if args.cmd == "quay":
-                digest = getQuayDigestForImage(args.list_digest)
+                digest = cvelib.quay.getQuayDigestForImage(args.list_digest)
             elif args.cmd == "gar":
-                digest = getGARDigestForImage(args.list_digest)
+                digest = cvelib.gar.getGARDigestForImage(args.list_digest)
 
-            if digest == "":
+            if digest == "":  # pragma: nocover
                 sys.exit(1)
 
-            if "@" in digest:
-                # sha256:...
-                print(digest.split("@")[1])
-            else:
-                print(digest)
+            print(digest.split("@")[1])
         elif args.alerts:
             s: str = ""
             if args.cmd == "quay":
-                s = getQuaySecurityReport(
+                s = cvelib.quay.getQuaySecurityReport(
                     args.name, raw=args.raw, fixable=(not args.all)
                 )
             elif args.cmd == "gar":
-                s = getGARSecurityReport(
+                s = cvelib.gar.getGARSecurityReport(
                     args.name, raw=args.raw, fixable=(not args.all)
                 )
 
-            if s == "":
+            if s == "":  # pragma: nocover
                 sys.exit(1)
             print(s)
