@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: MIT
 
 import copy
-from datetime import datetime
 import json
 import os
 import requests
@@ -223,10 +222,10 @@ def getGARDigestForImage(repo_full: str) -> str:
         % (project, location, repo)
     )
     headers: Dict[str, str] = _createGARHeaders()
-    params: Dict[str, str] = {"pageSize": "1000"}
+    # Ordering by update time sorts the results in descending order with newest
+    # first. This helps optimize the search for the digest
+    params: Dict[str, str] = {"pageSize": "1000", "orderBy": "UPDATE_TIME"}
 
-    digest: str = ""
-    latest_d: Optional[datetime] = None
     while True:
         try:
             r: requests.Response = requestGetRaw(url, headers=headers, params=params)
@@ -258,16 +257,12 @@ def getGARDigestForImage(repo_full: str) -> str:
                 for t in img["tags"]:
                     if tagsearch in t:
                         return img["name"]
-            elif "updateTime" in img:
-                # 2022-10-24T19:09:15.357727Z. Discard 'Z' since %Z doesn't
-                # work reliably, so just strip it off (it is in UTC anyway)
-                # https://bugs.python.org/issue22377
-                cur: datetime = datetime.strptime(
-                    img["updateTime"][:-1], "%Y-%m-%dT%H:%M:%S.%f"
-                )
-                if latest_d is None or cur > latest_d:
-                    latest_d = cur
-                    digest = img["name"]
+            elif tagsearch == "" and "updateTime" in img:
+                # When not searching by a tag name, we are searching for the
+                # latest digest. Since we used 'orderBy=UPDATE_TIME' in the
+                # parameters, we can assume that the first image we see with a
+                # matching name is the latest one
+                return img["name"]
 
         if "nextPageToken" not in resj:
             break
@@ -275,7 +270,7 @@ def getGARDigestForImage(repo_full: str) -> str:
         params["pageToken"] = resj["nextPageToken"]
         # time.sleep(2)  # in case nextPageToken isn't valid yet
 
-    return digest
+    return ""
 
 
 def parse(vulns: List[Dict[str, Any]]) -> List[ScanOCI]:
