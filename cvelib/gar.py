@@ -2,14 +2,18 @@
 #
 # SPDX-License-Identifier: MIT
 
+import argparse
 import copy
+import datetime
+import hashlib
 import json
 import os
 import requests
 import sys
+import textwrap
 from typing import Any, Dict, List, Optional
 
-from cvelib.common import error, warn, rePatterns
+from cvelib.common import error, warn, rePatterns, _experimental
 from cvelib.net import requestGetRaw
 from cvelib.scan import ScanOCI, getScanOCIsReport
 
@@ -103,7 +107,7 @@ def getGARReposForProjectLoc(proj_loc: str) -> List[str]:
 
         if "nextPageToken" not in resj:
             if sys.stdout.isatty():  # pragma: nocover
-                print(" done!")
+                print(" done!", flush=True)
             break
 
         params["pageToken"] = resj["nextPageToken"]
@@ -229,12 +233,7 @@ def getGARDigestForImage(repo_full: str) -> str:
     headers["Content-Type"] = "application/json"
     params: Dict[str, str] = {"pageSize": "100"}
 
-    if sys.stdout.isatty():  # pragma: nocover
-        print("Fetching digest for %s: " % repo_full, end="", flush=True)
     while True:
-        if sys.stdout.isatty():  # pragma: nocover
-            print(".", end="", flush=True)
-
         try:
             r: requests.Response = requestGetRaw(url, headers=headers, params=params)
         except requests.exceptions.RequestException as e:  # pragma: nocover
@@ -251,23 +250,30 @@ def getGARDigestForImage(repo_full: str) -> str:
             return ""
 
         for img in resj["versions"]:
-            if (
-                "name" not in img
-                or "metadata" not in img
-                or "mediaType" not in img["metadata"]
-                or "name" not in img["metadata"]
-            ):
-                continue
-            elif (
-                "metadata" in img
-                and "mediaType" in img["metadata"]
-                and img["metadata"]["mediaType"]
-                != "application/vnd.docker.distribution.manifest.v2+json"
-            ):
-                # not an OCI image
+            # malformed json
+            if "name" not in img:
+                warn("Could not find 'name' in %s" % img)
+                return ""
+            elif "metadata" not in img:
+                warn("Could not find 'metadata' in %s" % img)
+                return ""
+            elif "mediaType" not in img["metadata"]:
+                warn("Could not find 'mediaType' in 'metadata' in %s" % img)
+                return ""
+            elif "name" not in img["metadata"]:
+                warn("Could not find 'name' in 'metadata' in %s" % img)
+                return ""
+
+            # https://github.com/opencontainers/image-spec/blob/main/manifest.md
+            known_types: List[str] = [
+                "application/vnd.oci.image.index.v1+json",
+                "application/vnd.oci.image.manifest.v1+json",
+                "application/vnd.docker.distribution.manifest.v2+json",
+            ]
+            if img["metadata"]["mediaType"] not in known_types:
                 warn(
-                    "Skipping %s (not an OCI)"
-                    % (img["metadata"]["name"].split("/")[-1])
+                    "Skipping %s (mediaType not in '%s')"
+                    % (",".join(known_types), img["metadata"]["name"].split("/")[-1])
                 )
                 continue
 
@@ -276,21 +282,15 @@ def getGARDigestForImage(repo_full: str) -> str:
             if tagsearch != "" and "relatedTags" in img:
                 for t in img["relatedTags"]:
                     if t["name"].endswith("/%s" % tagsearch):
-                        if sys.stdout.isatty():  # pragma: nocover
-                            print(" done!")
                         return img["metadata"]["name"]
             elif tagsearch == "":
                 # When not searching by a tag name, we are searching for the
                 # latest digest. Since we used 'orderBy=UPDATE_TIME+desc', we
                 # we can assume that the first image we see with a matching
                 # name is the latest one
-                if sys.stdout.isatty():  # pragma: nocover
-                    print(" done!")
                 return img["metadata"]["name"]
 
         if "nextPageToken" not in resj:
-            if sys.stdout.isatty():  # pragma: nocover
-                print(" done!")
             break
 
         params["pageToken"] = resj["nextPageToken"]
@@ -453,6 +453,7 @@ def getGARSecurityReport(
     repo_full: str,
     raw: Optional[bool] = False,
     fixable: Optional[bool] = False,
+    quiet: Optional[bool] = False,
 ) -> str:
     """Obtain the security manifest for the specified repo@sha256:..."""
     if "/" not in repo_full or repo_full.count("/") != 3 or "@sha256:" not in repo_full:
@@ -501,7 +502,8 @@ def getGARSecurityReport(
 
         resj = r.json()
         if len(resj) == 0 or ("occurrences" in resj and len(resj["occurrences"]) == 0):
-            warn("no scan results for image")
+            if not quiet:
+                warn("no scan results for image")
             return ""
         elif "occurrences" not in resj:
             error("Could not find 'occurrences' in response: %s" % resj, do_exit=False)
@@ -547,6 +549,165 @@ def getGAROCIsForProjectLoc(proj_loc: str) -> List[str]:
             ocis.append("%s/%s" % (repo, oci))
 
     if sys.stdout.isatty():  # pragma: nocover
-        print(" done!")
+        print(" done!", flush=True)
 
     return sorted(ocis)
+
+
+#
+# CLI mains
+#
+def main_dump_reports():
+    # EXPERIMENTAL: this is subject to change
+    _experimental()
+
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
+        prog="gar-dump-reports",
+        description="Fetch GAR reports and save locally",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=textwrap.dedent(
+            """\
+gar-dump-reports pulls all the latest security reports for OCI images in
+PROJECT/LOCATION and outputs them to:
+
+  /path/to/reports/YY/MM/DD/gar/PROJECT/LOCATION/REPO/IMGNAME/SHA256.json
+
+Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
+
+  $ gar-dump-reports --path /path/to/reports --name foo/us
+        """
+        ),
+    )
+    parser.add_argument(
+        "-p",
+        "--path",
+        dest="path",
+        type=str,
+        help="local PATH to save alerts",
+        default=None,
+        required=True,
+    )
+    parser.add_argument(
+        "--name",
+        dest="name",
+        help="fetch GAR security report for PROJECT/LOC",
+        metavar="PROJECT/LOC",
+        type=str,
+    )
+
+    args: argparse.Namespace = parser.parse_args()
+
+    if "/" not in args.name:
+        error("Please use PROJECT/LOC (eg foo/us) with --name")
+        return ""  # for tests
+
+    # Find latest digest for all images
+    oci_names: List[str] = getGAROCIsForProjectLoc(args.name)
+    ocis: List[str] = []
+    if sys.stdout.isatty():  # pragma: nocover
+        print("Fetching digests for OCI names: ", end="", flush=True)
+    for oci in oci_names:
+        if sys.stdout.isatty():  # pragma: nocover
+            print(".", end="", flush=True)
+
+        name: str = "%s/%s" % (args.name, oci.split("/", maxsplit=5)[-1])
+        digest: str = getGARDigestForImage(name)
+        if digest == "":
+            warn("Could not find digest for %s" % name)
+            continue
+        ocis.append("%s@%s" % (name, digest.split("@")[1]))
+
+    if sys.stdout.isatty():  # pragma: nocover
+        print(" done!", flush=True)
+
+    # gather security reports
+    jsons: Dict[str, Dict[str, Any]] = {}
+    if sys.stdout.isatty():  # pragma: nocover
+        print("Fetching security reports: ", end="", flush=True)
+    for name in ocis:
+        if sys.stdout.isatty():  # pragma: nocover
+            print(".", end="", flush=True)
+
+        tmp: str = getGARSecurityReport(name, raw=True, quiet=True)
+        if "occurrences" in tmp:
+            jsons[name] = json.loads(tmp)
+
+    if sys.stdout.isatty():  # pragma: nocover
+        print(" done!", flush=True)
+
+    dir: str = args.path
+    if not os.path.exists(dir):
+        os.mkdir(dir)
+    if not os.path.isdir(dir):  # pragma: nocover
+        error("'%s' is not a directory" % dir)
+
+    for full_name in jsons.keys():
+        j = jsons[full_name]
+        # GAR API should guarantee this...
+        ok = True
+
+        # look at the first vuln occurrence for details that are shared across
+        # all vuln occurences
+        for i in ["createTime", "resourceUri"]:
+            if i not in j["occurrences"][0]:
+                warn("Could not find '%s' in: %s" % (i, j))
+                ok = False
+        if not ok:
+            continue
+
+        repo_name: str = j["occurrences"][0]["resourceUri"].split("@")[0].split("/")[-2]
+        img_name: str = j["occurrences"][0]["resourceUri"].split("@")[0].split("/")[-1]
+        sha256: str = j["occurrences"][0]["resourceUri"].split("@")[-1].split(":")[-1]
+
+        # use the createTime as part of the hierarchy since it is not expected
+        # to change
+        dobj = datetime.datetime.strptime(
+            j["occurrences"][0]["createTime"], "%Y-%m-%dT%H:%M:%S.%fZ"
+        )
+        # create the directory hierarchy as we go
+        dir = args.path
+        for subdir in [
+            str(dobj.year),
+            "%0.2d" % dobj.month,
+            "%0.2d" % dobj.day,
+            "gar",
+            args.name.split("/")[0],
+            args.name.split("/")[1],
+            repo_name,
+            img_name,
+        ]:
+            dir = os.path.join(dir, subdir)
+            if not os.path.exists(dir):
+                os.mkdir(dir)
+            if not os.path.isdir(dir):  # pragma: nocover
+                error("'%s' is not a directory" % dir)
+
+        created: bool = False
+        fn = os.path.join(dir, "%s.json" % sha256)
+        if not os.path.exists(fn):
+            with open(fn, "w") as fh:
+                print("Created: %s" % os.path.relpath(fn, args.path))
+                json.dump(j, fh, indent=2)
+                # json.dump() doesn't put a newline at the end, so add it
+                fh.seek(os.SEEK_SET, os.SEEK_END)
+                fh.write("\n")
+                created = True
+        if not os.path.isfile(fn):
+            warn("'%s' is not a file" % os.path.relpath(fn, args.path))
+            continue
+
+        # if the sha256 of the original file is different than what we
+        # downloaded, then update the file
+        if not created and os.path.exists(fn):
+            # calculate sha256 of orig file
+            orig_hash: str
+            with open(fn, "r") as fh:
+                orig_hash = hashlib.sha256(fh.read().encode("UTF-8")).hexdigest()
+
+            s: str = json.dumps(j, indent=2) + "\n"
+            hash: str = hashlib.sha256(s.encode("UTF-8")).hexdigest()
+            if orig_hash != hash:
+                os.unlink(fn)
+                with open(fn, "w") as fh:
+                    print("Updated: %s" % os.path.relpath(fn, args.path))
+                    fh.write(s)

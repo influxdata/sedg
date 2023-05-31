@@ -4,6 +4,7 @@
 
 import json
 import os
+import tempfile
 from typing import Any, Dict
 from unittest import TestCase, mock
 
@@ -19,6 +20,7 @@ class TestGAR(TestCase):
         """Setup functions common for all tests"""
         os.environ["SEDG_EXPERIMENTAL"] = "1"
         self.orig_gar_token = None
+        self.tmpdir = None
 
         if "GCLOUD_TOKEN" in os.environ:
             self.orig_ghtoken = os.getenv("GCLOUD_TOKEN")
@@ -30,6 +32,9 @@ class TestGAR(TestCase):
         """Teardown functions common for all tests"""
         if "SEDG_EXPERIMENTAL" in os.environ:
             del os.environ["SEDG_EXPERIMENTAL"]
+
+        if self.tmpdir is not None:
+            cvelib.common.recursive_rm(self.tmpdir)
 
     def test__createGARHeaders(self):
         """Test _createGARHeaders()"""
@@ -470,20 +475,33 @@ class TestGAR(TestCase):
             res,
         )
 
-        # not an OCI
+        # bad mediaType
         d = self._validGARDigestForImage()
-        d["versions"][1]["metadata"][
-            "mediaType"
-        ] = "application/vnd.oci.image.manifest.v1+json"
+        d["versions"][0]["metadata"]["mediaType"] = "something-else"
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.gar.getGARDigestForImage(
                 "valid-proj/us/valid-repo/valid-name:some-tag"
             )
-            self.assertEqual("", res)
         self.assertEqual("", output.getvalue().strip())
-        self.assertTrue("not an OCI" in error.getvalue().strip())
+        self.assertTrue("mediaType not in" in error.getvalue().strip())
+        self.assertEqual(
+            "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
+            res,
+        )
+
+        d = self._validGARDigestForImage()
+        d["versions"][1]["metadata"]["mediaType"] = "something-else"
+        mr = self._mock_response_for_gar(d)
+        mock_get.return_value = mr
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.gar.getGARDigestForImage(
+                "valid-proj/us/valid-repo/valid-name:some-tag"
+            )
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue("mediaType not in" in error.getvalue().strip())
+        self.assertEqual("", res)
 
         # bad invocation
         with tests.testutil.capturedOutput() as (output, error):
@@ -520,41 +538,45 @@ class TestGAR(TestCase):
         del d["versions"][0]["name"]
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
-        res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
-        self.assertEqual(
-            "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
-            res,
-        )
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue("Could not find 'name' in" in error.getvalue().strip())
+        self.assertEqual("", res)
 
         d = self._validGARDigestForImage()
         del d["versions"][0]["metadata"]
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
-        res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
-        self.assertEqual(
-            "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
-            res,
-        )
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue("Could not find 'metadata' in" in error.getvalue().strip())
+        self.assertEqual("", res)
 
         d = self._validGARDigestForImage()
         del d["versions"][0]["metadata"]["mediaType"]
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
-        res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
-        self.assertEqual(
-            "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
-            res,
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue(
+            "Could not find 'mediaType' in 'metadata' in" in error.getvalue().strip()
         )
+        self.assertEqual("", res)
 
         d = self._validGARDigestForImage()
         del d["versions"][0]["metadata"]["name"]
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
-        res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
-        self.assertEqual(
-            "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
-            res,
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue(
+            "Could not find 'name' in 'metadata' in" in error.getvalue().strip()
         )
+        self.assertEqual("", res)
 
     @mock.patch("requests.get")
     def test_getGARSecurityReport(self, mock_get):
@@ -680,3 +702,202 @@ class TestGAR(TestCase):
             cvelib.gar.getGAROCIsForProjectLoc("valid-proj")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Please use PROJECT/LOCATION" in error.getvalue().strip())
+
+    # Note, these are listed in reverse order ot the arguments to test_...
+    @mock.patch("cvelib.gar.getGARSecurityReport")
+    @mock.patch("cvelib.gar.getGARDigestForImage")
+    @mock.patch("cvelib.gar.getGAROCIsForProjectLoc")
+    def test_main_dump_reports(
+        self,
+        mock_getGAROCIsForProjectLoc,
+        mock_getGARDigestForImage,
+        mock_getGARSecurityReport,
+    ):
+        """Test test_main_dump_reports()"""
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
+        os.environ["SEDG_EXPERIMENTAL"] = "1"
+
+        mock_getGAROCIsForProjectLoc.return_value = [
+            "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
+        ]
+        mock_getGARDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
+        mock_getGARSecurityReport.return_value = """{
+  "occurrences": [
+    {
+      "resourceUri": "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@deadbeef",
+      "createTime": "2023-03-15T14:49:29.714201Z",
+      "updateTime": "2023-03-15T14:49:29.714201Z",
+      "vulnerability": {}
+    }
+  ]
+}
+"""
+
+        fn = (
+            self.tmpdir
+            + "/subdir/2023/03/15/gar/valid-proj/us/valid-repo/valid-name/deadbeef.json"
+        )
+        relfn = os.path.relpath(fn, self.tmpdir + "/subdir")
+
+        # create
+        with mock.patch(
+            "argparse._sys.argv",
+            [
+                "_",
+                "--path",
+                self.tmpdir + "/subdir",
+                "--name",
+                "valid-proj/us",
+            ],
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.gar.main_dump_reports()
+        self.assertEqual("Created: %s" % relfn, output.getvalue().strip())
+        self.assertEqual("", error.getvalue().strip())
+
+        # update
+        with open(fn, "w") as fh:
+            fh.write("changed")
+        with mock.patch(
+            "argparse._sys.argv",
+            [
+                "_",
+                "--path",
+                self.tmpdir + "/subdir",
+                "--name",
+                "valid-proj/us",
+            ],
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.gar.main_dump_reports()
+        self.assertEqual("Updated: %s" % relfn, output.getvalue().strip())
+        self.assertEqual("", error.getvalue().strip())
+
+    # Note, these are listed in reverse order ot the arguments to test_...
+    @mock.patch("cvelib.gar.getGARSecurityReport")
+    @mock.patch("cvelib.gar.getGARDigestForImage")
+    @mock.patch("cvelib.gar.getGAROCIsForProjectLoc")
+    def test_main_dump_reports_bad(
+        self,
+        mock_getGAROCIsForProjectLoc,
+        mock_getGARDigestForImage,
+        mock_getGARSecurityReport,
+    ):
+        """Test test_main_dump_reports()"""
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
+        os.environ["SEDG_EXPERIMENTAL"] = "1"
+
+        # bad
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with mock.patch(
+                "argparse._sys.argv",
+                [
+                    "_",
+                    "--path",
+                    self.tmpdir + "/subdir",
+                    "--name",
+                    "valid-proj",
+                ],
+            ):
+                with tests.testutil.capturedOutput() as (output, error):
+                    cvelib.gar.main_dump_reports()
+            self.assertEqual("", output.getvalue().strip())
+            self.assertTrue("Please use PROJECT/LOC" in error.getvalue().strip())
+
+        # no digests
+        mock_getGAROCIsForProjectLoc.return_value = [
+            "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
+        ]
+        mock_getGARDigestForImage.return_value = ""
+        with mock.patch(
+            "argparse._sys.argv",
+            [
+                "_",
+                "--path",
+                self.tmpdir + "/subdir",
+                "--name",
+                "valid-proj/us",
+            ],
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.gar.main_dump_reports()
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: Could not find digest for valid-proj/us/valid-repo/valid-name",
+            error.getvalue().strip(),
+        )
+
+        # bad report
+        mock_getGAROCIsForProjectLoc.return_value = [
+            "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
+        ]
+        mock_getGARDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
+        mock_getGARSecurityReport.return_value = """{
+  "occurrences": [
+    {
+      "resourceUri": "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@deadbeef",
+      "updateTime": "2023-03-15T14:49:29.714201Z",
+      "vulnerability": {}
+    }
+  ]
+}
+"""
+        with mock.patch(
+            "argparse._sys.argv",
+            [
+                "_",
+                "--path",
+                self.tmpdir + "/subdir",
+                "--name",
+                "valid-proj/us",
+            ],
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.gar.main_dump_reports()
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue(
+            "WARN: Could not find 'createTime' in" in error.getvalue().strip()
+        )
+
+        # path exists but isn't a file
+        mock_getGAROCIsForProjectLoc.return_value = [
+            "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
+        ]
+        mock_getGARDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
+        mock_getGARSecurityReport.return_value = """{
+  "occurrences": [
+    {
+      "resourceUri": "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@deadbeef",
+      "createTime": "2023-03-15T14:49:29.714201Z",
+      "updateTime": "2023-03-15T14:49:29.714201Z",
+      "vulnerability": {}
+    }
+  ]
+}
+"""
+        fn = (
+            self.tmpdir
+            + "/subdir/2023/03/15/gar/valid-proj/us/valid-repo/valid-name/deadbeef.json"
+        )
+        os.makedirs(fn)
+        with mock.patch(
+            "argparse._sys.argv",
+            [
+                "_",
+                "--path",
+                self.tmpdir + "/subdir",
+                "--name",
+                "valid-proj/us",
+            ],
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.gar.main_dump_reports()
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue("is not a file" in error.getvalue().strip())
