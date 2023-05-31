@@ -1497,12 +1497,12 @@ foo"""
                 "valid-org", repos=["valid-repo", "disabled-repo"]
             )
         self.assertEqual("", error.getvalue().strip())
-        exp = """code-scanning,disabled,disabled-repo,https://github.com/influxdata/disabled-repo/settings/security_analysis
-code-scanning,enabled,valid-repo,https://github.com/influxdata/valid-repo/settings/security_analysis
-dependabot,disabled,disabled-repo,https://github.com/influxdata/disabled-repo/settings/security_analysis
-dependabot,enabled,valid-repo,https://github.com/influxdata/valid-repo/settings/security_analysis
-secret-scanning,disabled,disabled-repo,https://github.com/influxdata/disabled-repo/settings/security_analysis
-secret-scanning,enabled,valid-repo,https://github.com/influxdata/valid-repo/settings/security_analysis"""
+        exp = """code-scanning,disabled,disabled-repo,https://github.com/valid-org/disabled-repo/settings/security_analysis
+code-scanning,enabled,valid-repo,https://github.com/valid-org/valid-repo/settings/security_analysis
+dependabot,disabled,disabled-repo,https://github.com/valid-org/disabled-repo/settings/security_analysis
+dependabot,enabled,valid-repo,https://github.com/valid-org/valid-repo/settings/security_analysis
+secret-scanning,disabled,disabled-repo,https://github.com/valid-org/disabled-repo/settings/security_analysis
+secret-scanning,enabled,valid-repo,https://github.com/valid-org/valid-repo/settings/security_analysis"""
         self.assertEqual(exp, output.getvalue().strip())
 
     #

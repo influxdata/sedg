@@ -371,8 +371,8 @@ def getGHAlertsStatusReport(
             )
         for repo in sorted(enabled + disabled):
             print(
-                "%s,%s,%s,https://github.com/influxdata/%s/settings/security_analysis"
-                % (alert_type, "enabled" if repo in enabled else "disabled", repo, repo)
+                "%s,%s,%s,https://github.com/%s/%s/settings/security_analysis"
+                % (alert_type, "enabled" if repo in enabled else "disabled", repo, org, repo)
             )
 
 
