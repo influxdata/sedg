@@ -431,8 +431,8 @@ Optionally specify a particular alert type:
             dir = args.path
             for subdir in [
                 str(dobj.year),
-                str(dobj.month),
-                str(dobj.day),
+                "%0.2d" % dobj.month,
+                "%0.2d" % dobj.day,
                 alert_type,
                 args.org,
                 j["repository"]["name"],
