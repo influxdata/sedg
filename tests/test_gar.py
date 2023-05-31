@@ -470,20 +470,33 @@ class TestGAR(TestCase):
             res,
         )
 
-        # not an OCI
+        # bad mediaType
         d = self._validGARDigestForImage()
-        d["versions"][1]["metadata"][
-            "mediaType"
-        ] = "application/vnd.oci.image.manifest.v1+json"
+        d["versions"][0]["metadata"]["mediaType"] = "something-else"
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.gar.getGARDigestForImage(
                 "valid-proj/us/valid-repo/valid-name:some-tag"
             )
-            self.assertEqual("", res)
         self.assertEqual("", output.getvalue().strip())
-        self.assertTrue("not an OCI" in error.getvalue().strip())
+        self.assertTrue("mediaType not in" in error.getvalue().strip())
+        self.assertEqual(
+            "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
+            res,
+        )
+
+        d = self._validGARDigestForImage()
+        d["versions"][1]["metadata"]["mediaType"] = "something-else"
+        mr = self._mock_response_for_gar(d)
+        mock_get.return_value = mr
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.gar.getGARDigestForImage(
+                "valid-proj/us/valid-repo/valid-name:some-tag"
+            )
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue("mediaType not in" in error.getvalue().strip())
+        self.assertEqual("", res)
 
         # bad invocation
         with tests.testutil.capturedOutput() as (output, error):
@@ -520,41 +533,45 @@ class TestGAR(TestCase):
         del d["versions"][0]["name"]
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
-        res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
-        self.assertEqual(
-            "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
-            res,
-        )
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue("Could not find 'name' in" in error.getvalue().strip())
+        self.assertEqual("", res)
 
         d = self._validGARDigestForImage()
         del d["versions"][0]["metadata"]
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
-        res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
-        self.assertEqual(
-            "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
-            res,
-        )
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue("Could not find 'metadata' in" in error.getvalue().strip())
+        self.assertEqual("", res)
 
         d = self._validGARDigestForImage()
         del d["versions"][0]["metadata"]["mediaType"]
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
-        res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
-        self.assertEqual(
-            "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
-            res,
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue(
+            "Could not find 'mediaType' in 'metadata' in" in error.getvalue().strip()
         )
+        self.assertEqual("", res)
 
         d = self._validGARDigestForImage()
         del d["versions"][0]["metadata"]["name"]
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
-        res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
-        self.assertEqual(
-            "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
-            res,
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue(
+            "Could not find 'name' in 'metadata' in" in error.getvalue().strip()
         )
+        self.assertEqual("", res)
 
     @mock.patch("requests.get")
     def test_getGARSecurityReport(self, mock_get):

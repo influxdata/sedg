@@ -251,23 +251,38 @@ def getGARDigestForImage(repo_full: str) -> str:
             return ""
 
         for img in resj["versions"]:
-            if (
-                "name" not in img
-                or "metadata" not in img
-                or "mediaType" not in img["metadata"]
-                or "name" not in img["metadata"]
-            ):
-                continue
-            elif (
-                "metadata" in img
-                and "mediaType" in img["metadata"]
-                and img["metadata"]["mediaType"]
-                != "application/vnd.docker.distribution.manifest.v2+json"
-            ):
-                # not an OCI image
+            # malformed json
+            if "name" not in img:
+                if sys.stdout.isatty():  # pragma: nocover
+                    print(" done!")
+                warn("Could not find 'name' in %s" % img)
+                return ""
+            elif "metadata" not in img:
+                if sys.stdout.isatty():  # pragma: nocover
+                    print(" done!")
+                warn("Could not find 'metadata' in %s" % img)
+                return ""
+            elif "mediaType" not in img["metadata"]:
+                if sys.stdout.isatty():  # pragma: nocover
+                    print(" done!")
+                warn("Could not find 'mediaType' in 'metadata' in %s" % img)
+                return ""
+            elif "name" not in img["metadata"]:
+                if sys.stdout.isatty():  # pragma: nocover
+                    print(" done!")
+                warn("Could not find 'name' in 'metadata' in %s" % img)
+                return ""
+
+            # https://github.com/opencontainers/image-spec/blob/main/manifest.md
+            known_types: List[str] = [
+                "application/vnd.oci.image.index.v1+json",
+                "application/vnd.oci.image.manifest.v1+json",
+                "application/vnd.docker.distribution.manifest.v2+json",
+            ]
+            if img["metadata"]["mediaType"] not in known_types:
                 warn(
-                    "Skipping %s (not an OCI)"
-                    % (img["metadata"]["name"].split("/")[-1])
+                    "Skipping %s (mediaType not in '%s')"
+                    % (",".join(known_types), img["metadata"]["name"].split("/")[-1])
                 )
                 continue
 
