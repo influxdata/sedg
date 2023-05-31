@@ -571,6 +571,22 @@ def getConfigCompatUbuntu() -> bool:
     return False
 
 
+def getConfigTemplateURLs() -> List[str]:
+    """Read template-urls configuration from config"""
+    config: configparser.ConfigParser
+    (config, _) = readConfig()
+    urls: List[str] = []
+    if "Behavior" in config and "template-urls" in config["Behavior"]:
+        for tmp in config["Behavior"]["template-urls"].split(","):
+            # strip quotes if they were used
+            url: str = tmp.strip("\"' ")
+            if not re.search(r"^[a-z]+:\/\/[a-zA-Z0-9]", url):
+                warn("Skipping invalid url from 'template-urls': %s" % url)
+                continue
+            urls.append(url)
+    return urls
+
+
 def verifyDate(
     key: str, date: str, required: bool = False, compatUbuntu: Optional[bool] = False
 ) -> Optional[datetime.date]:

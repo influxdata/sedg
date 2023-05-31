@@ -326,6 +326,52 @@ compat-ubuntu = %s
             self.assertEqual(expOut, output.getvalue().strip())
             self.assertEqual(expErr, error.getvalue().strip())
 
+    def test_getConfigTemplateURLs(self):
+        """Test getConfigTemplateURLs()"""
+        tsts = [
+            # good
+            ("https://url1", ["https://url1"], ""),
+            ("https://url1, https://url2", ["https://url1", "https://url2"], ""),
+            ("'https://url1", ["https://url1"], ""),
+            ("https://url1'", ["https://url1"], ""),
+            ('"https://url1"', ["https://url1"], ""),
+            ("'https://url1'", ["https://url1"], ""),
+            ("'\"https://url1'\"", ["https://url1"], ""),
+            ("https://url1,https://url2", ["https://url1", "https://url2"], ""),
+            ("'https://url1,https://url2'", ["https://url1", "https://url2"], ""),
+            ("slack://url1", ["slack://url1"], ""),
+            ("git://url1", ["git://url1"], ""),
+            # bad
+            ("bad", [], "WARN: Skipping invalid url from 'template-urls': bad"),
+            (
+                "bad,https://url1",
+                ["https://url1"],
+                "WARN: Skipping invalid url from 'template-urls': bad",
+            ),
+            (
+                "https://url1,bad",
+                ["https://url1"],
+                "WARN: Skipping invalid url from 'template-urls': bad",
+            ),
+        ]
+        for val, exp, expErr in tsts:
+            cvelib.common.configCache = None
+            self.orig_xdg_config_home, tmpdir = tests.testutil._newConfigFile(
+                """[Behavior]
+template-urls = %s
+"""
+                % val
+            )
+
+            with tests.testutil.capturedOutput() as (output, error):
+                res = cvelib.common.getConfigTemplateURLs()
+            cvelib.common.recursive_rm(tmpdir)
+
+            self.assertListEqual(exp, res)
+
+            self.assertEqual("", output.getvalue().strip())
+            self.assertEqual(expErr, error.getvalue().strip())
+
     def test_readCVE(self):
         """Test readCve()"""
         self.tmpdir = tests.testutil._createTmpDir()
