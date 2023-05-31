@@ -185,27 +185,28 @@ def getGAROCIForRepo(repo_full: str) -> List[str]:
 # $ curl -H "Content-Type: application/json"
 #        -H "Authorization: Bearer $GCLOUD_TOKEN"
 #        -G
-#        https://artifactregistry.googleapis.com/v1/projects/PROJECT/locations/LOCATION/repositories/REPO/dockerImages
+#        https://artifactregistry.googleapis.com/v1/projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions
+#        --data "orderBy=UPDATE_TIME+desc&view=FULL"
 # {
-#   "dockerImages": [
-#     {
-#       "name":
-#       "projects/PROJECT/locations/LOCATION/repositories/REPO/dockerImages/NAME@sha256:SHA256",
-#       "uri": "LOCATION-docker.pkg.dev/PROJECT/REPO/NAME@sha256:SHA256",
-#       "tags": [
-#         "some-tag"
-#       ],
-#       "imageSizeBytes": "29256171",
-#       "uploadTime": "2023-04-24T12:27:36.896655Z",
-#       "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-#       "buildTime": "2023-04-24T12:27:31.712824072Z",
-#       "updateTime": "2023-04-24T12:27:36.896655Z"
-#     },
-#     ...
-#   ]
-# }
-#
-# https://cloud.google.com/artifact-registry/docs/reference/rest/v1/projects.locations.repositories.dockerImages
+#   "versions": [
+#     "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/REPO/packages/IMGNAME/versions/sha256:17c206abd9115fedb883f172e44ba020baca84e814b1218c0bc402357cd53e23",
+#      "createTime": "2023-05-30T17:24:37.757487Z",
+#      "updateTime": "2023-05-31T14:33:21.360319Z",
+#      "relatedTags": [
+#        {
+#          "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/tags/some-tag",
+#          "version": "projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions/sha256:17c206abd9115fedb883f172e44ba020baca84e814b1218c0bc402357cd53e23"
+#        },
+#        ...
+#      ],
+#      "metadata": {
+#        "imageSizeBytes": "38636295",
+#        "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+#        "buildTime": "2023-05-30T17:24:30.935114729Z",
+#        "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/dockerImages/IMGNAME@sha256:17c206abd9115fedb883f172e44ba020baca84e814b1218c0bc402357cd53e23"
+#      }
+#    },
+# https://cloud.google.com/artifact-registry/docs/reference/rest/v1/projects.locations.repositories.packages.versions
 def getGARDigestForImage(repo_full: str) -> str:
     """Obtain the GAR digest for the specified project, location and repo"""
     if "/" not in repo_full or repo_full.count("/") != 3:
@@ -217,16 +218,23 @@ def getGARDigestForImage(repo_full: str) -> str:
     if ":" in name:
         name, tagsearch = name.split(":", 2)
 
+    # Ordering by update time sorts the results in descending order with newest
+    # first. This helps optimize the search for the digest. FULL view includes
+    # relatedTags.
     url: str = (
-        "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories/%s/dockerImages"
-        % (project, location, repo)
+        "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories/%s/packages/%s/versions?orderBy=UPDATE_TIME+desc&view=FULL"
+        % (project, location, repo, name)
     )
     headers: Dict[str, str] = _createGARHeaders()
-    # Ordering by update time sorts the results in descending order with newest
-    # first. This helps optimize the search for the digest
-    params: Dict[str, str] = {"pageSize": "1000", "orderBy": "UPDATE_TIME"}
+    headers["Content-Type"] = "application/json"
+    params: Dict[str, str] = {"pageSize": "100"}
 
+    if sys.stdout.isatty():  # pragma: nocover
+        print("Fetching digest for %s: " % repo_full, end="", flush=True)
     while True:
+        if sys.stdout.isatty():  # pragma: nocover
+            print(".", end="", flush=True)
+
         try:
             r: requests.Response = requestGetRaw(url, headers=headers, params=params)
         except requests.exceptions.RequestException as e:  # pragma: nocover
@@ -238,33 +246,51 @@ def getGARDigestForImage(repo_full: str) -> str:
             return ""
 
         resj = r.json()
-        if "dockerImages" not in resj:
-            warn("Could not find 'dockerImages' in response: %s" % resj)
+        if "versions" not in resj:
+            warn("Could not find 'versions' in response: %s" % resj)
             return ""
 
-        for img in resj["dockerImages"]:
-            if "name" not in img:
+        for img in resj["versions"]:
+            if (
+                "name" not in img
+                or "metadata" not in img
+                or "mediaType" not in img["metadata"]
+                or "name" not in img["metadata"]
+            ):
                 continue
-            elif not img["name"].split("/")[-1].startswith("%s@" % name):
-                # NOTE: the v1 API does not have a 'filter' query parameter so
-                # we need to fetch all the dockerImages and filter by "name"
-                # ourselves
+            elif (
+                "metadata" in img
+                and "mediaType" in img["metadata"]
+                and img["metadata"]["mediaType"]
+                != "application/vnd.docker.distribution.manifest.v2+json"
+            ):
+                # not an OCI image
+                warn(
+                    "Skipping %s (not an OCI)"
+                    % (img["metadata"]["name"].split("/")[-1])
+                )
                 continue
 
             # if searching by tag, just return the first one (note, "tags" is
             # optional in the json output)
-            if tagsearch != "" and "tags" in img:
-                for t in img["tags"]:
-                    if tagsearch in t:
-                        return img["name"]
-            elif tagsearch == "" and "updateTime" in img:
+            if tagsearch != "" and "relatedTags" in img:
+                for t in img["relatedTags"]:
+                    if t["name"].endswith("/%s" % tagsearch):
+                        if sys.stdout.isatty():  # pragma: nocover
+                            print(" done!")
+                        return img["metadata"]["name"]
+            elif tagsearch == "":
                 # When not searching by a tag name, we are searching for the
-                # latest digest. Since we used 'orderBy=UPDATE_TIME' in the
-                # parameters, we can assume that the first image we see with a
-                # matching name is the latest one
-                return img["name"]
+                # latest digest. Since we used 'orderBy=UPDATE_TIME+desc', we
+                # we can assume that the first image we see with a matching
+                # name is the latest one
+                if sys.stdout.isatty():  # pragma: nocover
+                    print(" done!")
+                return img["metadata"]["name"]
 
         if "nextPageToken" not in resj:
+            if sys.stdout.isatty():  # pragma: nocover
+                print(" done!")
             break
 
         params["pageToken"] = resj["nextPageToken"]
