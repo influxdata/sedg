@@ -46,6 +46,14 @@
     cve-data = /path/to/cve-data
     ```
 
+    Optionally add any template URLs for GitHub alert template text to the
+    `Behavior` section (comma-separated):
+
+    ```
+    [Behavior]
+    template-urls = https://url1,https://url2
+    ```
+
  5. Do stuff
 
     ```

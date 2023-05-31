@@ -32,6 +32,7 @@ from cvelib.common import (
     epochToISO8601,
     getConfigCveDataPaths,
     getConfigCompatUbuntu,
+    getConfigTemplateURLs,
     readFile,
     rePatterns,
     updateProgress,
@@ -371,8 +372,14 @@ def getGHAlertsStatusReport(
             )
         for repo in sorted(enabled + disabled):
             print(
-                "%s,%s,%s,https://github.com/influxdata/%s/settings/security_analysis"
-                % (alert_type, "enabled" if repo in enabled else "disabled", repo, repo)
+                "%s,%s,%s,https://github.com/%s/%s/settings/security_analysis"
+                % (
+                    alert_type,
+                    "enabled" if repo in enabled else "disabled",
+                    repo,
+                    org,
+                    repo,
+                )
             )
 
 
@@ -465,7 +472,9 @@ def _printGHAlertsSummary(
         print("")
 
 
-def _printGHAlertsTemplates(org: str, repo: str, alert: List[Dict[str, str]]) -> None:
+def _printGHAlertsTemplates(
+    org: str, repo: str, alert: List[Dict[str, str]], template_urls: List[str] = []
+) -> None:
     """Print out the alerts issue templates"""
     sev: List[str] = ["unknown", "low", "medium", "high", "critical"]
     clause_txt: Dict[str, str] = {
@@ -552,9 +561,7 @@ Since a%s '%s' severity issue is present, tentatively adding the 'security/%s' l
 Thanks!
 
 References:
- * https://docs.influxdata.io/development/security/issue_handling/
- * https://docs.influxdata.io/development/security/issue_response/#developers
- * %s
+ * %s%s
 """ % (
         "s" if plural else "",
         ", ".join(sorted(alert_types)),
@@ -565,6 +572,7 @@ References:
         sev[highest],
         priority,
         " ".join(sorted(clauses)),
+        "" if len(template_urls) == 0 else "%s\n * " % "\n * ".join(template_urls),
         "\n * ".join(sorted(urls)),
     )
 
@@ -947,6 +955,7 @@ def getGHAlertsReport(
     excluded_repos: List[str] = [],
     with_templates: bool = False,
     alert_types: List[str] = [],
+    template_urls: List[str] = [],
 ) -> None:
     """Show GitHub alerts alerts"""
     since_str: str = epochToISO8601(since)
@@ -1008,7 +1017,7 @@ def getGHAlertsReport(
         print("Alerts:")
         for repo in sorted(updated.keys()):
             if with_templates:
-                _printGHAlertsTemplates(org, repo, updated[repo])
+                _printGHAlertsTemplates(org, repo, updated[repo], template_urls)
                 print("")
             _printGHAlertsSummary(org, repo, updated[repo], "updated")
 
@@ -1017,7 +1026,7 @@ def getGHAlertsReport(
         for repo in sorted(resolved.keys()):
             print("")
             if with_templates:
-                _printGHAlertsTemplates(org, repo, resolved[repo])
+                _printGHAlertsTemplates(org, repo, resolved[repo], template_urls)
                 print("")
             _printGHAlertsSummary(org, repo, resolved[repo], "resolved")
 
@@ -2202,6 +2211,7 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
 
     cveDirs: Dict[str, str] = getConfigCveDataPaths()
     compat: bool = getConfigCompatUbuntu()
+    template_urls: List[str] = getConfigTemplateURLs()
 
     # XXX: skipping this makes things faster, but it is nice to have. For now
     # only with 'gh' since it is already slow
@@ -2326,6 +2336,7 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
                 excluded_repos=excluded_repos,
                 with_templates=args.with_templates,
                 alert_types=alert_types,
+                template_urls=template_urls,
             )
 
         if args.updated:
