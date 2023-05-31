@@ -811,27 +811,96 @@ class TestGAR(TestCase):
             self.assertEqual("", output.getvalue().strip())
             self.assertTrue("Please use PROJECT/LOC" in error.getvalue().strip())
 
+        # no image names
+        mock_getGAROCIsForProjectLoc.return_value = []
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with mock.patch(
+                "argparse._sys.argv",
+                [
+                    "_",
+                    "--path",
+                    self.tmpdir + "/subdir",
+                    "--name",
+                    "valid-proj/us",
+                ],
+            ):
+                with tests.testutil.capturedOutput() as (output, error):
+                    cvelib.gar.main_dump_reports()
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue(
+            "Could not enumerate any OCI image names" in error.getvalue().strip()
+        )
+
         # no digests
         mock_getGAROCIsForProjectLoc.return_value = [
             "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
         ]
         mock_getGARDigestForImage.return_value = ""
-        with mock.patch(
-            "argparse._sys.argv",
-            [
-                "_",
-                "--path",
-                self.tmpdir + "/subdir",
-                "--name",
-                "valid-proj/us",
-            ],
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
         ):
-            with tests.testutil.capturedOutput() as (output, error):
-                cvelib.gar.main_dump_reports()
+            with mock.patch(
+                "argparse._sys.argv",
+                [
+                    "_",
+                    "--path",
+                    self.tmpdir + "/subdir",
+                    "--name",
+                    "valid-proj/us",
+                ],
+            ):
+                with tests.testutil.capturedOutput() as (output, error):
+                    cvelib.gar.main_dump_reports()
         self.assertEqual("", output.getvalue().strip())
-        self.assertEqual(
-            "WARN: Could not find digest for valid-proj/us/valid-repo/valid-name",
-            error.getvalue().strip(),
+        self.assertTrue(
+            "WARN: Could not find digest for valid-proj/us/valid-repo/valid-name"
+            in error.getvalue().strip(),
+        )
+        self.assertTrue(
+            "Could not find any OCI image digests" in error.getvalue().strip(),
+        )
+
+        # no security reports
+        mock_getGAROCIsForProjectLoc.return_value = [
+            "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
+        ]
+        mock_getGARDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
+        mock_getGARSecurityReport.return_value = "{}"
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with mock.patch(
+                "argparse._sys.argv",
+                [
+                    "_",
+                    "--path",
+                    self.tmpdir + "/subdir",
+                    "--name",
+                    "valid-proj/us",
+                ],
+            ):
+                with tests.testutil.capturedOutput() as (output, error):
+                    cvelib.gar.main_dump_reports()
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue(
+            "Could not find any security reports" in error.getvalue().strip()
         )
 
         # bad report

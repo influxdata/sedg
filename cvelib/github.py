@@ -346,7 +346,18 @@ def main_dump_alerts():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent(
             """\
+gh-dump-alerts pulls GitHub security alerts for repos in the GitHub org and
+outputs them to:
 
+  /path/to/alerts/YY/MM/DD/ALERT_TYPE/ORG/REPO/ALERT_NUM.json
+
+Eg, to pull all GitHub security alerts for org 'foo':
+
+  $ gh-dump-alerts --path /path/to/alerts --org foo
+
+Optionally specify a particular alert type:
+
+  $ gh-dump-alerts --path /path/to/alerts --org foo --alert-type dependabot
         """
         ),
     )
@@ -368,9 +379,9 @@ def main_dump_alerts():
         required=True,
     )
     parser.add_argument(
-        "--alerts",
+        "--alert-type",
         default=None,
-        dest="alerts",
+        dest="alert_type",
         help="alert type to fetch. If omitted, default to all",
         type=str,
         choices=["code-scanning", "dependabot", "secret-scanning"],
@@ -382,8 +393,8 @@ def main_dump_alerts():
         error("Please export GitHub personal access token as GHTOKEN")
 
     alert_types: List[str] = ["code-scanning", "secret-scanning", "dependabot"]
-    if args.alerts is not None:
-        alert_types = [args.alerts]
+    if args.alert_type is not None:
+        alert_types = [args.alert_type]
 
     jsons: Dict[str, List[Any]] = {}
     for alert_type in alert_types:
@@ -420,8 +431,8 @@ def main_dump_alerts():
             dir = args.path
             for subdir in [
                 str(dobj.year),
-                str(dobj.month),
-                str(dobj.day),
+                "%0.2d" % dobj.month,
+                "%0.2d" % dobj.day,
                 alert_type,
                 args.org,
                 j["repository"]["name"],

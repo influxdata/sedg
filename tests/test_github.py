@@ -950,7 +950,7 @@ class TestGitHubCommon(TestCase):
         }
         mock_get.return_value = self._mock_response_for_ghAPIGetList([alert])
 
-        fn = self.tmpdir + "/subdir/2021/4/24/dependabot/valid-org/foo/1.json"
+        fn = self.tmpdir + "/subdir/2021/04/24/dependabot/valid-org/foo/1.json"
         relfn = os.path.relpath(fn, self.tmpdir + "/subdir")
 
         # create
@@ -962,7 +962,7 @@ class TestGitHubCommon(TestCase):
                 self.tmpdir + "/subdir",
                 "--org",
                 "valid-org",
-                "--alerts",
+                "--alert-type",
                 "dependabot",
             ],
         ):
@@ -986,7 +986,7 @@ class TestGitHubCommon(TestCase):
                 self.tmpdir + "/subdir",
                 "--org",
                 "valid-org",
-                "--alerts",
+                "--alert-type",
                 "dependabot",
             ],
         ):
@@ -1022,7 +1022,7 @@ class TestGitHubCommon(TestCase):
                 self.tmpdir + "/subdir",
                 "--org",
                 "valid-org",
-                "--alerts",
+                "--alert-type",
                 "dependabot",
             ],
         ):
@@ -1048,7 +1048,7 @@ class TestGitHubCommon(TestCase):
                 self.tmpdir + "/subdir",
                 "--org",
                 "valid-org",
-                "--alerts",
+                "--alert-type",
                 "dependabot",
             ],
         ):
@@ -1058,7 +1058,7 @@ class TestGitHubCommon(TestCase):
         self.assertTrue("WARN: Could not find 'name' in" in error.getvalue().strip())
 
         # path exists but isn't a file
-        fn = self.tmpdir + "/subdir/2021/4/24/dependabot/valid-org/foo/1.json"
+        fn = self.tmpdir + "/subdir/2021/04/24/dependabot/valid-org/foo/1.json"
         relfn = os.path.relpath(fn, self.tmpdir + "/subdir")
         os.makedirs(fn)
         alert = {
@@ -1077,7 +1077,7 @@ class TestGitHubCommon(TestCase):
                 self.tmpdir + "/subdir",
                 "--org",
                 "valid-org",
-                "--alerts",
+                "--alert-type",
                 "dependabot",
             ],
         ):

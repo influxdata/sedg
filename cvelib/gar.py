@@ -583,7 +583,7 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
         "--path",
         dest="path",
         type=str,
-        help="local PATH to save alerts",
+        help="local PATH to save reports",
         default=None,
         required=True,
     )
@@ -603,6 +603,10 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
 
     # Find latest digest for all images
     oci_names: List[str] = getGAROCIsForProjectLoc(args.name)
+    if len(oci_names) == 0:
+        error("Could not enumerate any OCI image names")
+        return  # for tests
+
     ocis: List[str] = []
     if sys.stdout.isatty():  # pragma: nocover
         print("Fetching digests for OCI names: ", end="", flush=True)
@@ -620,6 +624,10 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
     if sys.stdout.isatty():  # pragma: nocover
         print(" done!", flush=True)
 
+    if len(ocis) == 0:
+        error("Could not find any OCI image digests")
+        return  # for tests
+
     # gather security reports
     jsons: Dict[str, Dict[str, Any]] = {}
     if sys.stdout.isatty():  # pragma: nocover
@@ -634,6 +642,10 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
 
     if sys.stdout.isatty():  # pragma: nocover
         print(" done!", flush=True)
+
+    if len(jsons) == 0:
+        error("Could not find any security reports")
+        return  # for tests
 
     dir: str = args.path
     if not os.path.exists(dir):
