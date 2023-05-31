@@ -416,25 +416,35 @@ class TestGAR(TestCase):
     def _validGARDigestForImage(self) -> Dict[str, Any]:
         """Return valid gar v1/projects.locations.repositories.dockerImages as python object"""
         return {
-            "dockerImages": [
+            "versions": [
                 {
-                    "name": "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fbed39525f7c06f6b83c0e8da65f434c6dffba7b7f09917d5a8a31299ed12f0a",
-                    "uri": "us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:fbed39525f7c06f6b83c0e8da65f434c6dffba7b7f09917d5a8a31299ed12f0a",
-                    "imageSizeBytes": "26782679",
-                    "uploadTime": "2023-03-10T11:52:30.111583Z",
-                    "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-                    "buildTime": "2023-03-10T11:52:25.232897621Z",
+                    "name": "projects/valid-proj/locations/us/repositories/valid-repo/packages/valid-name/versions/sha256:fbed39525f7c06f6b83c0e8da65f434c6dffba7b7f09917d5a8a31299ed12f0a",
+                    "createTime": "2023-03-10T11:52:25.232897621Z",
                     "updateTime": "2023-03-10T11:52:30.111583Z",
+                    "relatedTags": [],
+                    "metadata": {
+                        "imageSizeBytes": "26782679",
+                        "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                        "buildTime": "2023-03-10T11:52:25.232897621Z",
+                        "name": "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fbed39525f7c06f6b83c0e8da65f434c6dffba7b7f09917d5a8a31299ed12f0a",
+                    },
                 },
                 {
-                    "name": "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
-                    "uri": "us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
-                    "tags": ["some-tag"],
-                    "imageSizeBytes": "26857843",
-                    "uploadTime": "2023-03-08T13:42:32.039631Z",
-                    "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-                    "buildTime": "2023-03-08T13:42:27.277646198Z",
+                    "name": "projects/valid-proj/locations/us/repositories/valid-repo/packages/valid-name/versions/sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
+                    "createTime": "2023-03-08T13:42:27.277646198Z",
                     "updateTime": "2023-03-08T13:42:32.039631Z",
+                    "relatedTags": [
+                        {
+                            "name": "projects/valid-proj/locations/us/repositories/valid-repo/packages/valid-name/tags/some-tag",
+                            "version": "projects/valid-proj/locations/us/repositories/valid-repo/packages/valid-name/versions/sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
+                        },
+                    ],
+                    "metadata": {
+                        "imageSizeBytes": "26857843",
+                        "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                        "buildTime": "2023-03-08T13:42:27.277646198Z",
+                        "name": "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
+                    },
                 },
             ]
         }
@@ -460,18 +470,20 @@ class TestGAR(TestCase):
             res,
         )
 
-        # not an image url
+        # not an OCI
         d = self._validGARDigestForImage()
-        d["dockerImages"][0][
-            "name"
-        ] = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/other@sha256:fbed39525f7c06f6b83c0e8da65f434c6dffba7b7f09917d5a8a31299ed12f0a"
+        d["versions"][1]["metadata"][
+            "mediaType"
+        ] = "application/vnd.oci.image.manifest.v1+json"
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
-        res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
-        self.assertEqual(
-            "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
-            res,
-        )
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.gar.getGARDigestForImage(
+                "valid-proj/us/valid-repo/valid-name:some-tag"
+            )
+            self.assertEqual("", res)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue("not an OCI" in error.getvalue().strip())
 
         # bad invocation
         with tests.testutil.capturedOutput() as (output, error):
@@ -492,19 +504,50 @@ class TestGAR(TestCase):
 
         # bad response
         d = self._validGARDigestForImage()
-        del d["dockerImages"]
+        del d["versions"]
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
-            "Could not find 'dockerImages' in response" in error.getvalue().strip()
+            "Could not find 'versions' in response" in error.getvalue().strip()
         )
         self.assertEqual(0, len(res))
 
+        # missing elements
         d = self._validGARDigestForImage()
-        del d["dockerImages"][0]["name"]
+        del d["versions"][0]["name"]
+        mr = self._mock_response_for_gar(d)
+        mock_get.return_value = mr
+        res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+        self.assertEqual(
+            "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
+            res,
+        )
+
+        d = self._validGARDigestForImage()
+        del d["versions"][0]["metadata"]
+        mr = self._mock_response_for_gar(d)
+        mock_get.return_value = mr
+        res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+        self.assertEqual(
+            "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
+            res,
+        )
+
+        d = self._validGARDigestForImage()
+        del d["versions"][0]["metadata"]["mediaType"]
+        mr = self._mock_response_for_gar(d)
+        mock_get.return_value = mr
+        res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+        self.assertEqual(
+            "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
+            res,
+        )
+
+        d = self._validGARDigestForImage()
+        del d["versions"][0]["metadata"]["name"]
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
         res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
