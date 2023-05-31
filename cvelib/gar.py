@@ -583,7 +583,7 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
         "--path",
         dest="path",
         type=str,
-        help="local PATH to save alerts",
+        help="local PATH to save reports",
         default=None,
         required=True,
     )
