@@ -962,7 +962,7 @@ class TestGitHubCommon(TestCase):
                 self.tmpdir + "/subdir",
                 "--org",
                 "valid-org",
-                "--alerts",
+                "--alert-type",
                 "dependabot",
             ],
         ):
@@ -986,7 +986,7 @@ class TestGitHubCommon(TestCase):
                 self.tmpdir + "/subdir",
                 "--org",
                 "valid-org",
-                "--alerts",
+                "--alert-type",
                 "dependabot",
             ],
         ):
@@ -1022,7 +1022,7 @@ class TestGitHubCommon(TestCase):
                 self.tmpdir + "/subdir",
                 "--org",
                 "valid-org",
-                "--alerts",
+                "--alert-type",
                 "dependabot",
             ],
         ):
@@ -1048,7 +1048,7 @@ class TestGitHubCommon(TestCase):
                 self.tmpdir + "/subdir",
                 "--org",
                 "valid-org",
-                "--alerts",
+                "--alert-type",
                 "dependabot",
             ],
         ):
@@ -1077,7 +1077,7 @@ class TestGitHubCommon(TestCase):
                 self.tmpdir + "/subdir",
                 "--org",
                 "valid-org",
-                "--alerts",
+                "--alert-type",
                 "dependabot",
             ],
         ):
