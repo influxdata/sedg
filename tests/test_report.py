@@ -2047,8 +2047,6 @@ Since a 'high' severity issue is present, tentatively adding the 'security/high'
 Thanks!
 
 References:
- * https://docs.influxdata.io/development/security/issue_handling/
- * https://docs.influxdata.io/development/security/issue_response/#developers
  * https://github.com/valid-org/valid-repo/security/code-scanning
  * https://github.com/valid-org/valid-repo/security/dependabot
  * https://github.com/valid-org/valid-repo/security/secret-scanning
@@ -2173,8 +2171,6 @@ Since a 'high' severity issue is present, tentatively adding the 'security/high'
 Thanks!
 
 References:
- * https://docs.influxdata.io/development/security/issue_handling/
- * https://docs.influxdata.io/development/security/issue_response/#developers
  * https://github.com/valid-org/valid-repo/security/code-scanning
  * https://github.com/valid-org/valid-repo/security/dependabot
  * https://github.com/valid-org/valid-repo/security/secret-scanning
@@ -2412,8 +2408,6 @@ Since a 'medium' severity issue is present, tentatively adding the 'security/med
 Thanks!
 
 References:
- * https://docs.influxdata.io/development/security/issue_handling/
- * https://docs.influxdata.io/development/security/issue_response/#developers
  * https://github.com/valid-org/valid-repo/security/dependabot
 
 ## end template
@@ -2507,8 +2501,6 @@ Since a 'low' severity issue is present, tentatively adding the 'security/low' l
 Thanks!
 
 References:
- * https://docs.influxdata.io/development/security/issue_handling/
- * https://docs.influxdata.io/development/security/issue_response/#developers
  * https://github.com/valid-org/valid-repo/security/dependabot
 
 ## end template
@@ -2627,8 +2619,6 @@ Since a 'medium' severity issue is present, tentatively adding the 'security/med
 Thanks!
 
 References:
- * https://docs.influxdata.io/development/security/issue_handling/
- * https://docs.influxdata.io/development/security/issue_response/#developers
  * https://github.com/valid-org/valid-repo/security/code-scanning
 
 ## end template
@@ -2684,8 +2674,6 @@ Since a 'high' severity issue is present, tentatively adding the 'security/high'
 Thanks!
 
 References:
- * https://docs.influxdata.io/development/security/issue_handling/
- * https://docs.influxdata.io/development/security/issue_response/#developers
  * https://github.com/valid-org/valid-repo/security/code-scanning
 
 ## end template
@@ -2799,8 +2787,6 @@ Since a 'high' severity issue is present, tentatively adding the 'security/high'
 Thanks!
 
 References:
- * https://docs.influxdata.io/development/security/issue_handling/
- * https://docs.influxdata.io/development/security/issue_response/#developers
  * https://github.com/valid-org/valid-repo/security/secret-scanning
 
 ## end template
@@ -2857,8 +2843,6 @@ Since a 'high' severity issue is present, tentatively adding the 'security/high'
 Thanks!
 
 References:
- * https://docs.influxdata.io/development/security/issue_handling/
- * https://docs.influxdata.io/development/security/issue_response/#developers
  * https://github.com/valid-org/valid-repo/security/secret-scanning
 
 ## end template
@@ -2982,8 +2966,6 @@ Since a 'high' severity issue is present, tentatively adding the 'security/high'
 Thanks!
 
 References:
- * https://docs.influxdata.io/development/security/issue_handling/
- * https://docs.influxdata.io/development/security/issue_response/#developers
  * https://github.com/valid-org/valid-repo/security/code-scanning
  * https://github.com/valid-org/valid-repo/security/dependabot
  * https://github.com/valid-org/valid-repo/security/secret-scanning
@@ -3100,6 +3082,49 @@ git/valid-org_valid-repo: needs-triage
             cvelib.report._printGHAlertsTemplates("valid-org", "valid-repo", alerts)
         self.assertEqual("", error.getvalue().strip())
         self.assertTrue("Since an 'unknown' severity" in output.getvalue().strip())
+
+    def test__printGHAlertsTemplates_with_template_urls(self):
+        """Test _printGHAlertsTemplates() - template_urls"""
+        # these alerts are the ones after _parseAlert
+        alerts = []
+        for g in _getMockedAlertsJSON():
+            alerts.append(cvelib.report._parseAlert(g)[1])
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report._printGHAlertsTemplates("valid-org", "valid-repo", alerts)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertTrue(
+            "## valid-repo template\nPlease address alerts" in output.getvalue().strip()
+        )
+        self.assertTrue(
+            "References:\n * https://github.com/valid-org/valid-repo/security/code-scanning"
+            in output.getvalue().strip()
+        )
+        self.assertTrue(
+            "## valid-repo CVE template\nCandidate: CVE-" in output.getvalue().strip()
+        )
+
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report._printGHAlertsTemplates(
+                "valid-org",
+                "valid-repo",
+                alerts,
+                template_urls=["https://url1", "https://url2"],
+            )
+        self.assertEqual("", error.getvalue().strip())
+        self.assertTrue(
+            "## valid-repo template\nPlease address alerts" in output.getvalue().strip()
+        )
+        self.assertTrue(
+            "References:\n * https://url1\n * https://url2\n * https://github.com/valid-org/valid-repo/security/code-scanning"
+            in output.getvalue().strip()
+        )
+        self.assertTrue(
+            "## valid-repo CVE template\nCandidate: CVE-" in output.getvalue().strip()
+        )
+        self.assertFalse("https://url3" in output.getvalue().strip())
+
+        # adjust the config file for template-urls
+        self._mock_cve_data_mixed()  # this creates self.tmpdir and a config
 
     #
     # getHumanSoftwareInfo()
@@ -3888,15 +3913,22 @@ Totals:
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHAlertsAllFull)
     def test_main_report_gh_alerts(self, _):  # 2nd arg is mock_get
         """Test main_report - gh --alerts"""
-        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-
-        since_stamp_fn = os.path.join(self.tmpdir, "since")
+        self._mock_cve_data_mixed()  # this creates self.tmpdir
+        since_stamp_fn = os.path.join(str(self.tmpdir), "since")
         with open(since_stamp_fn, "w"):  # touch the file
             pass
+
+        # adjust the config file for template-urls
+        with open(os.path.join(str(self.tmpdir), ".config/sedg/sedg.conf"), "a") as fh:
+            fh.write(
+                """
+[Behavior]
+template-urls = https://url1,https://url2
+"""
+            )
+
         # set the access and modification time to 2000-01-01
         os.utime(since_stamp_fn, (946706400, 946706400))
-
-        self._mock_cve_data_mixed()
 
         tsts = [
             (
@@ -3911,6 +3943,20 @@ Totals:
                     "valid-repo",
                 ],
                 "valid-repo updated alerts:",
+            ),
+            (
+                [
+                    "gh",
+                    "--alerts",
+                    "--since",
+                    "1",
+                    "--org",
+                    "valid-org",
+                    "-s",
+                    "valid-repo",
+                    "--with-templates",
+                ],
+                "https://url1\n * https://url2\n *",
             ),
             (
                 [
