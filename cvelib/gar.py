@@ -557,7 +557,7 @@ def getGAROCIsForProjectLoc(proj_loc: str) -> List[str]:
 #
 # CLI mains
 #
-def main_dump_reports():
+def main_gar_dump_reports():
     # EXPERIMENTAL: this is subject to change
     _experimental()
 
