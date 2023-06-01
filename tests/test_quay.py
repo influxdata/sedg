@@ -2,8 +2,10 @@
 #
 # SPDX-License-Identifier: MIT
 
+import datetime
 import json
 import os
+import tempfile
 from unittest import TestCase, mock
 
 import cvelib.common
@@ -560,3 +562,182 @@ class TestQuay(TestCase):
             )
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Could not find 'Features' in" in error.getvalue().strip())
+
+    # Note, these are listed in reverse order ot the arguments to test_...
+    @mock.patch("cvelib.quay.getQuaySecurityReport")
+    @mock.patch("cvelib.quay.getQuayDigestForImage")
+    @mock.patch("cvelib.quay.getQuayOCIsForOrg")
+    def test_main_quay_dump_reports(
+        self,
+        mock_getQuayOCIsForOrg,
+        mock_getQuayDigestForImage,
+        mock_getQuaySecurityReport,
+    ):
+        """Test test_main_quay_dump_reports()"""
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
+        os.environ["SEDG_EXPERIMENTAL"] = "1"
+
+        mock_getQuayOCIsForOrg.return_value = ["valid-repo"]
+        mock_getQuayDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
+        mock_getQuaySecurityReport.return_value = '{"status": "scanned", "data": {}}'
+
+        # create
+        with mock.patch(
+            "argparse._sys.argv",
+            [
+                "_",
+                "--path",
+                self.tmpdir + "/subdir",
+                "--name",
+                "valid-org",
+            ],
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.quay.main_quay_dump_reports()
+
+        today = datetime.datetime.now()
+        fn = (
+            self.tmpdir
+            + "/subdir/%d/%0.2d/%0.2d/quay/valid-org/valid-repo/deadbeef.json"
+            % (today.year, today.month, today.day)
+        )
+        relfn = os.path.relpath(fn, self.tmpdir + "/subdir")
+        self.assertEqual("Created: %s" % relfn, output.getvalue().strip())
+        self.assertEqual("", error.getvalue().strip())
+
+        # exists
+        with open(fn, "w") as fh:
+            fh.write('{"status": "scanned", "data": {}}')
+        with mock.patch(
+            "argparse._sys.argv",
+            [
+                "_",
+                "--path",
+                self.tmpdir + "/subdir",
+                "--name",
+                "valid-org",
+            ],
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.quay.main_quay_dump_reports()
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue("No new security reports" in error.getvalue().strip())
+
+        # duplicate
+        fn = self.tmpdir + "/subdir/YYYY/MM/DD/quay/valid-org/valid-repo/deadbeef.json"
+        os.makedirs(os.path.dirname(fn))
+        with open(fn, "w") as fh:
+            fh.write('{"status": "scanned", "data": {}}')
+        with mock.patch(
+            "argparse._sys.argv",
+            [
+                "_",
+                "--path",
+                self.tmpdir + "/subdir",
+                "--name",
+                "valid-org",
+            ],
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.quay.main_quay_dump_reports()
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue("No new security reports" in error.getvalue().strip())
+
+    # Note, these are listed in reverse order ot the arguments to test_...
+    @mock.patch("cvelib.quay.getQuaySecurityReport")
+    @mock.patch("cvelib.quay.getQuayDigestForImage")
+    @mock.patch("cvelib.quay.getQuayOCIsForOrg")
+    def test_main_quay_dump_reports_bad(
+        self,
+        mock_getQuayOCIsForOrg,
+        mock_getQuayDigestForImage,
+        mock_getQuaySecurityReport,
+    ):
+        """Test test_gar_main_dump_reports()"""
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
+        os.environ["SEDG_EXPERIMENTAL"] = "1"
+
+        # no image names
+        mock_getQuayOCIsForOrg.return_value = []
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with mock.patch(
+                "argparse._sys.argv",
+                [
+                    "_",
+                    "--path",
+                    self.tmpdir + "/subdir",
+                    "--name",
+                    "valid-org",
+                ],
+            ):
+                with tests.testutil.capturedOutput() as (output, error):
+                    cvelib.quay.main_quay_dump_reports()
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue(
+            "Could not enumerate any OCI image names" in error.getvalue().strip()
+        )
+
+        # no digests
+        mock_getQuayOCIsForOrg.return_value = ["valid-repo"]
+        mock_getQuayDigestForImage.return_value = ""
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with mock.patch(
+                "argparse._sys.argv",
+                [
+                    "_",
+                    "--path",
+                    self.tmpdir + "/subdir",
+                    "--name",
+                    "valid-org",
+                ],
+            ):
+                with tests.testutil.capturedOutput() as (output, error):
+                    cvelib.quay.main_quay_dump_reports()
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue(
+            "WARN: Could not find digest for valid-org/valid-repo"
+            in error.getvalue().strip(),
+        )
+        self.assertTrue(
+            "Could not find any OCI image digests" in error.getvalue().strip(),
+        )
+
+        mock_getQuayOCIsForOrg.return_value = ["valid-repo"]
+        mock_getQuayDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
+        mock_getQuaySecurityReport.return_value = "{}"
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with mock.patch(
+                "argparse._sys.argv",
+                [
+                    "_",
+                    "--path",
+                    self.tmpdir + "/subdir",
+                    "--name",
+                    "valid-org",
+                ],
+            ):
+                with tests.testutil.capturedOutput() as (output, error):
+                    cvelib.quay.main_quay_dump_reports()
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue("No new security reports" in error.getvalue().strip())

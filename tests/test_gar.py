@@ -707,13 +707,13 @@ class TestGAR(TestCase):
     @mock.patch("cvelib.gar.getGARSecurityReport")
     @mock.patch("cvelib.gar.getGARDigestForImage")
     @mock.patch("cvelib.gar.getGAROCIsForProjectLoc")
-    def test_main_dump_reports(
+    def test_main_gar_dump_reports(
         self,
         mock_getGAROCIsForProjectLoc,
         mock_getGARDigestForImage,
         mock_getGARSecurityReport,
     ):
-        """Test test_main_dump_reports()"""
+        """Test test_main_gar_dump_reports()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         os.environ["SEDG_EXPERIMENTAL"] = "1"
 
@@ -751,7 +751,7 @@ class TestGAR(TestCase):
             ],
         ):
             with tests.testutil.capturedOutput() as (output, error):
-                cvelib.gar.main_dump_reports()
+                cvelib.gar.main_gar_dump_reports()
         self.assertEqual("Created: %s" % relfn, output.getvalue().strip())
         self.assertEqual("", error.getvalue().strip())
 
@@ -769,7 +769,7 @@ class TestGAR(TestCase):
             ],
         ):
             with tests.testutil.capturedOutput() as (output, error):
-                cvelib.gar.main_dump_reports()
+                cvelib.gar.main_gar_dump_reports()
         self.assertEqual("Updated: %s" % relfn, output.getvalue().strip())
         self.assertEqual("", error.getvalue().strip())
 
@@ -777,13 +777,13 @@ class TestGAR(TestCase):
     @mock.patch("cvelib.gar.getGARSecurityReport")
     @mock.patch("cvelib.gar.getGARDigestForImage")
     @mock.patch("cvelib.gar.getGAROCIsForProjectLoc")
-    def test_main_dump_reports_bad(
+    def test_main_gar_dump_reports_bad(
         self,
         mock_getGAROCIsForProjectLoc,
         mock_getGARDigestForImage,
         mock_getGARSecurityReport,
     ):
-        """Test test_main_dump_reports()"""
+        """Test test_gar_main_dump_reports()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         os.environ["SEDG_EXPERIMENTAL"] = "1"
 
@@ -807,7 +807,7 @@ class TestGAR(TestCase):
                 ],
             ):
                 with tests.testutil.capturedOutput() as (output, error):
-                    cvelib.gar.main_dump_reports()
+                    cvelib.gar.main_gar_dump_reports()
             self.assertEqual("", output.getvalue().strip())
             self.assertTrue("Please use PROJECT/LOC" in error.getvalue().strip())
 
@@ -832,7 +832,7 @@ class TestGAR(TestCase):
                 ],
             ):
                 with tests.testutil.capturedOutput() as (output, error):
-                    cvelib.gar.main_dump_reports()
+                    cvelib.gar.main_gar_dump_reports()
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not enumerate any OCI image names" in error.getvalue().strip()
@@ -862,7 +862,7 @@ class TestGAR(TestCase):
                 ],
             ):
                 with tests.testutil.capturedOutput() as (output, error):
-                    cvelib.gar.main_dump_reports()
+                    cvelib.gar.main_gar_dump_reports()
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "WARN: Could not find digest for valid-proj/us/valid-repo/valid-name"
@@ -897,7 +897,7 @@ class TestGAR(TestCase):
                 ],
             ):
                 with tests.testutil.capturedOutput() as (output, error):
-                    cvelib.gar.main_dump_reports()
+                    cvelib.gar.main_gar_dump_reports()
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not find any security reports" in error.getvalue().strip()
@@ -929,7 +929,7 @@ class TestGAR(TestCase):
             ],
         ):
             with tests.testutil.capturedOutput() as (output, error):
-                cvelib.gar.main_dump_reports()
+                cvelib.gar.main_gar_dump_reports()
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "WARN: Could not find 'createTime' in" in error.getvalue().strip()
@@ -967,6 +967,6 @@ class TestGAR(TestCase):
             ],
         ):
             with tests.testutil.capturedOutput() as (output, error):
-                cvelib.gar.main_dump_reports()
+                cvelib.gar.main_gar_dump_reports()
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("is not a file" in error.getvalue().strip())
