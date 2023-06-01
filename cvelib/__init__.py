@@ -8,6 +8,7 @@ from cvelib.cve import (
 )
 from cvelib.gar import main_gar_dump_reports
 from cvelib.github import main_dump_alerts
+from cvelib.quay import main_quay_dump_reports
 from cvelib.report import main_report
 
 # for setuptools
@@ -16,3 +17,4 @@ cve_check_syntax = main_cve_check_syntax
 cve_report = main_report
 gar_dump_reports = main_gar_dump_reports
 gh_dump_alerts = main_dump_alerts
+quay_dump_reports = main_quay_dump_reports
