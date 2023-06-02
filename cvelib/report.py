@@ -1057,15 +1057,14 @@ def getOCIReports(
             reports[img] = cvelib.gar.getGARSecurityReport(
                 "%s/%s" % (namespace, img), raw=raw, fixable=fixable
             )
-        if reports[img] == "":
-            warn("Empty report for '%s'" % img)
 
     s: str = ""
     # output a list of jsons
     if raw:
         jsons: List[str] = []
         for r in sorted(reports):
-            jsons.append(reports[r])
+            if reports[r] != "":
+                jsons.append(reports[r])
         s = "[%s]" % ",".join(jsons)
     else:
         first: bool = True

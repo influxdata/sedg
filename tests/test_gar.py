@@ -579,7 +579,130 @@ class TestGAR(TestCase):
         self.assertEqual("", res)
 
     @mock.patch("requests.get")
-    def test_getGARSecurityReport(self, mock_get):
+    def test_getGARDiscovery(self, mock_get):
+        """Test getGARDiscovery()"""
+        # clean
+        mr = self._mock_response_for_gar(
+            json.loads(
+                """{
+  "occurrences": [
+    {
+      "kind": "DISCOVERY",
+      "discovery": {
+        "continuousAnalysis": "ACTIVE",
+        "analysisStatus": "FINISHED_SUCCESS"
+      }
+    }
+  ]
+}
+"""
+            )
+        )
+        mock_get.return_value = mr
+        res = cvelib.gar.getGARDiscovery(
+            "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
+        )
+        self.assertEqual("CLEAN", res)
+
+        # inactive
+        mr = self._mock_response_for_gar(
+            json.loads(
+                """{
+  "occurrences": [
+    {
+      "kind": "DISCOVERY",
+      "discovery": {
+        "continuousAnalysis": "INACTIVE",
+        "analysisStatus": "FINISHED_SUCCESS"
+      }
+    }
+  ]
+}
+"""
+            )
+        )
+        mock_get.return_value = mr
+        res = cvelib.gar.getGARDiscovery(
+            "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
+        )
+        self.assertEqual("INACTIVE", res)
+
+        # unsupported
+        mr = self._mock_response_for_gar(
+            json.loads(
+                """{
+  "occurrences": [
+    {
+      "kind": "DISCOVERY",
+      "discovery": {
+        "analysisStatus": "FINISHED_UNSUPPORTED"
+      }
+    }
+  ]
+}
+"""
+            )
+        )
+        mock_get.return_value = mr
+        res = cvelib.gar.getGARDiscovery(
+            "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
+        )
+        self.assertEqual("UNSUPPORTED", res)
+
+        # other
+        mr = self._mock_response_for_gar(
+            json.loads(
+                """{
+  "occurrences": [
+    {
+      "kind": "DISCOVERY",
+      "discovery": {
+        "analysisStatus": "OTHER_STATUS"
+      }
+    }
+  ]
+}
+"""
+            )
+        )
+        mock_get.return_value = mr
+        res = cvelib.gar.getGARDiscovery(
+            "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
+        )
+        self.assertEqual("OTHER_STATUS", res)
+
+        # bad invocation
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.gar.getGARDiscovery("valid-proj/us/valid-repo/valid-name")
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue(
+            "Please use PROJECT/LOCATION/REPO/IMGNAME@sha256:<sha256>"
+            in error.getvalue().strip()
+        )
+
+        # bad status
+        mr = self._mock_response_for_gar({}, status=404)
+        mock_get.return_value = mr
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.gar.getGARDiscovery(
+                "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
+            )
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue("Could not fetch" in error.getvalue().strip())
+        self.assertEqual(0, len(res))
+
+        # bad response
+        mr = self._mock_response_for_gar({})
+        mock_get.return_value = mr
+        res = cvelib.gar.getGARDiscovery(
+            "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
+        )
+        self.assertEqual("invalid json format", res)
+
+    # Note, these are listed in reverse order ot the arguments to test_...
+    @mock.patch("cvelib.gar.getGARDiscovery")
+    @mock.patch("requests.get")
+    def test_getGARSecurityReport(self, mock_get, mock_getGARDiscovery):
         """Test getGARSecurityReport()"""
         mr = self._mock_response_for_gar(self._validGARReport())
         mock_get.return_value = mr
@@ -607,6 +730,24 @@ class TestGAR(TestCase):
         )
         self.assertEqual(0, len(res))
 
+        # clean
+        mr = self._mock_response_for_gar("{}")
+        mock_get.return_value = mr
+        mock_getGARDiscovery.return_value = "CLEAN"
+        res = cvelib.gar.getGARSecurityReport(
+            "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
+        )
+        self.assertEqual("No problems found", res)
+
+        # inactive
+        mr = self._mock_response_for_gar("{}")
+        mock_get.return_value = mr
+        mock_getGARDiscovery.return_value = "INACTIVE"
+        res = cvelib.gar.getGARSecurityReport(
+            "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
+        )
+        self.assertEqual("No scan results for this inactive image", res)
+
         # raw
         mr = self._mock_response_for_gar(self._validGARReport())
         mock_get.return_value = mr
@@ -615,6 +756,21 @@ class TestGAR(TestCase):
         )
         exp = '"occurrences":'
         self.assertTrue(exp in res)
+
+        # raw no scan results
+        mr = self._mock_response_for_gar("{}")
+        mock_get.return_value = mr
+        mock_getGARDiscovery.return_value = "UNSUPPORTED"
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.gar.getGARSecurityReport(
+                "valid-proj/us/valid-repo/valid-name@sha256:deadbeef", raw=True
+            )
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue(
+            "no scan results for valid-repo/valid-name: UNSUPPORTED"
+            in error.getvalue().strip()
+        )
+        self.assertEqual("", res)
 
         # bad invocation
         with tests.testutil.capturedOutput() as (output, error):
@@ -641,12 +797,16 @@ class TestGAR(TestCase):
         del d["occurrences"]
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
+        mock_getGARDiscovery.return_value = "UNSUPPORTED"
         with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.gar.getGARSecurityReport(
                 "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
             )
         self.assertEqual("", output.getvalue().strip())
-        self.assertTrue("no scan results for image" in error.getvalue().strip())
+        self.assertTrue(
+            "no scan results for valid-repo/valid-name: UNSUPPORTED"
+            in error.getvalue().strip()
+        )
 
         d = self._validGARReport()
         d["occurrences"] = []
@@ -657,7 +817,9 @@ class TestGAR(TestCase):
                 "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
             )
         self.assertEqual("", output.getvalue().strip())
-        self.assertTrue("no scan results for image" in error.getvalue().strip())
+        self.assertTrue(
+            "no scan results for valid-repo/valid-name" in error.getvalue().strip()
+        )
 
         d = self._validGARReport()
         del d["occurrences"]
@@ -670,7 +832,8 @@ class TestGAR(TestCase):
             )
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
-            "Could not find 'occurrences' in response" in error.getvalue().strip()
+            "no scan results for valid-repo/valid-name" in error.getvalue().strip(),
+            msg="error=%s" % error.getvalue().strip(),
         )
 
     # Note, these are listed in reverse order ot the arguments to test_...
