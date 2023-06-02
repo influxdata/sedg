@@ -419,6 +419,9 @@ def getUpdatedReport(
             print(" %s (%s)" % (url, ", ".join(urls[url])))
 
 
+#
+# gh --alerts
+#
 def _printGHAlertsSummary(
     org: str, repo: str, alerts: List[Dict[str, str]], status: str
 ) -> None:
@@ -957,7 +960,7 @@ def getGHAlertsReport(
     alert_types: List[str] = [],
     template_urls: List[str] = [],
 ) -> None:
-    """Show GitHub alerts alerts"""
+    """Show GitHub alerts"""
     since_str: str = epochToISO8601(since)
 
     # find updates
@@ -1029,6 +1032,50 @@ def getGHAlertsReport(
                 _printGHAlertsTemplates(org, repo, resolved[repo], template_urls)
                 print("")
             _printGHAlertsSummary(org, repo, resolved[repo], "resolved")
+
+
+def getOCIReports(
+    cves: List[CVE],
+    registry: str,
+    namespace: str,
+    images: List[str] = [],
+    excluded_images: List[str] = [],
+    with_templates: bool = False,
+    template_urls: List[str] = [],
+    raw: bool = False,
+    fixable: bool = True,
+) -> None:
+    """Show OCI reports"""
+    reports: Dict[str, str] = {}
+    for img in images:
+        # XXX: implement as interfaces
+        if registry == "quay":
+            reports[img] = cvelib.quay.getQuaySecurityReport(
+                "%s/%s" % (namespace, img), raw=raw, fixable=fixable
+            )
+        elif registry == "gar":
+            reports[img] = cvelib.gar.getGARSecurityReport(
+                "%s/%s" % (namespace, img), raw=raw, fixable=fixable
+            )
+        if reports[img] == "":
+            warn("Empty report for '%s'" % img)
+
+    s: str = ""
+    # output a list of jsons
+    if raw:
+        jsons: List[str] = []
+        for r in sorted(reports):
+            jsons.append(reports[r])
+        s = "[%s]" % ",".join(jsons)
+    else:
+        first: bool = True
+        for r in sorted(reports):
+            if not first:
+                s += "\n\n"
+            else:
+                first = False
+            s += "# %s\n%s" % (r, reports[r])
+    print(s)
 
 
 #
@@ -2425,21 +2472,37 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
 
             print(digest.split("@")[1])
         elif args.alerts:
-            s: str = ""
-            # TODO: parse csv
-            if args.cmd == "quay":
-                s = cvelib.quay.getQuaySecurityReport(
-                    "%s/%s" % (args.namespace, args.images),
-                    raw=args.raw,
-                    fixable=(not args.all),
-                )
-            elif args.cmd == "gar":
-                s = cvelib.gar.getGARSecurityReport(
-                    "%s/%s" % (args.namespace, args.images),
-                    raw=args.raw,
-                    fixable=(not args.all),
-                )
+            images: List[str] = []
+            if args.images is not None:
+                tmp: Optional[Set[str]] = _parseSoftwareArg(args.images)
+                if tmp is not None:
+                    images = list(tmp)
 
-            if s == "":  # pragma: nocover
-                sys.exit(1)
-            print(s)
+            excluded_images: List[str] = []
+            if args.excluded_images is not None:
+                warn("TODO: implement --excluded-images")
+                tmp: Optional[Set[str]] = _parseSoftwareArg(args.excluded_images)
+                if tmp is not None:
+                    excluded_images = list(tmp)
+
+            # verify images
+            for img in images + excluded_images:
+                c: int = img.count("/")
+                if args.cmd == "gar" and c != 1:
+                    error("image name '%s' should contain one '/'" % img)
+                    return  # for tests
+                elif args.cmd == "quay" and c > 0:
+                    error("image name '%s' should not contain '/'" % img)
+                    return  # for tests
+
+            getOCIReports(
+                cves,
+                registry=args.cmd,
+                namespace=args.namespace,
+                images=images,
+                excluded_images=excluded_images,
+                with_templates=args.with_templates,
+                template_urls=template_urls,
+                raw=args.raw,
+                fixable=(not args.all),
+            )

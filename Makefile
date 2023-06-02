@@ -38,6 +38,9 @@ syntax-check: clean
 style-check: clean
 	./tests/run-black
 
+style-fix: clean
+	black ./cvelib/*py ./tests/*py
+
 # require woke to be installed in CI but not one local system
 inclusivity-check: clean
 	@echo "\n# Check for non-inclusive language"; \
