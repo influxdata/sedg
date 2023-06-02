@@ -2194,6 +2194,12 @@ Example usage:
             and not args.list_digest
         ):
             error("Please specify one of --alerts, --list or --list-digest with 'quay'")
+        elif not args.namespace:
+            error("Please specify --namespace with '%s'" % args.cmd)
+        elif args.cmd == "quay" and args.namespace.count("/") > 0:
+            error("--namespace '%s' should not contain '/'" % args.namespace)
+        elif args.cmd == "gar" and args.namespace.count("/") != 1:
+            error("--namespace '%s' should contain one '/'" % args.namespace)
         elif not args.alerts:
             if args.with_templates:
                 error("Please specify --alerts with --with-templates")
@@ -2201,6 +2207,7 @@ Example usage:
                 error("Please specify --alerts with --all")
             if args.raw:
                 error("Please specify --alerts with --raw")
+        # below here are --alerts specific
         elif args.raw and (args.with_templates or args.all):
             error("--raw not supported with --all or --with-templates")
         elif args.list:
@@ -2209,8 +2216,8 @@ Example usage:
             error("Unsupported option --list-digest with --alerts")
         elif args.cmd == "gar" and args.list_repos:
             error("Unsupported option --list-repos with --alerts")
-        elif not args.namespace:
-            error("Please specify --namespace with '%s'" % args.cmd)
+        elif not args.images and not args.excluded_images:
+            error("Please specify --images or --excluded-images with --alerts")
 
     return args
 
