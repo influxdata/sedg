@@ -419,7 +419,7 @@ class TestGAR(TestCase):
         self.assertEqual("other-name", res[0])
 
     def _validGARDigestForImage(self) -> Dict[str, Any]:
-        """Return valid gar v1/projects.locations.repositories.dockerImages as python object"""
+        """Return valid gar v1/projects.locations.repositories.packages.versions as python object"""
         return {
             "versions": [
                 {
@@ -578,6 +578,60 @@ class TestGAR(TestCase):
         )
         self.assertEqual("", res)
 
+    # Note, these are listed in reverse order ot the arguments to test_...
+    @mock.patch("cvelib.gar.getGARDiscovery")
+    @mock.patch("requests.get")
+    def test_getGARDigestForImage_multiple_no_scan_results(
+        self, mock_get, mock_getGARDiscovery
+    ):
+        """Test getGARDigestForImage() - multiple no scan results"""
+        # valid gar v1/projects.locations.repositories.packages.versions as
+        # python object
+        v = {"versions": []}
+        for i in range(11):
+            v["versions"].append(
+                {
+                    "name": "projects/valid-proj/locations/us/repositories/valid-repo/packages/valid-name/versions/sha256:%0.2d"
+                    % i,
+                    "createTime": "2023-03-%0.2dT11:52:25.232897621Z" % i,
+                    "updateTime": "2023-03-%0.2dT11:52:30.111583Z" % i,
+                    "relatedTags": [],
+                    "metadata": {
+                        "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                        "name": "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:%0.2d"
+                        % i,
+                    },
+                }
+            )
+
+        # unscanned
+        mr = self._mock_response_for_gar(v)
+        mock_get.return_value = mr
+        mock_getGARDiscovery.return_value = "UNSCANNED"
+
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue(
+            "Could not find digest for valid-repo/valid-name with scan results for in 10 most recent images"
+            in error.getvalue().strip()
+        )
+        self.assertEqual("", res)
+
+        # stale
+        mr = self._mock_response_for_gar(v)
+        mock_get.return_value = mr
+        mock_getGARDiscovery.return_value = "INACTIVE"
+
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue(
+            "Could not find digest for valid-repo/valid-name with scan results for in 10 most recent images (images are stale)"
+            in error.getvalue().strip()
+        )
+        self.assertEqual("", res)
+
     @mock.patch("requests.get")
     def test_getGARDiscovery(self, mock_get):
         """Test getGARDiscovery()"""
@@ -671,6 +725,14 @@ class TestGAR(TestCase):
         )
         self.assertEqual("OTHER_STATUS", res)
 
+        # unscanned
+        mr = self._mock_response_for_gar({})
+        mock_get.return_value = mr
+        res = cvelib.gar.getGARDiscovery(
+            "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
+        )
+        self.assertEqual("UNSCANNED", res)
+
         # bad invocation
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.gar.getGARDiscovery("valid-proj/us/valid-repo/valid-name")
@@ -692,7 +754,7 @@ class TestGAR(TestCase):
         self.assertEqual(0, len(res))
 
         # bad response
-        mr = self._mock_response_for_gar({})
+        mr = self._mock_response_for_gar({"bad": "format"})
         mock_get.return_value = mr
         res = cvelib.gar.getGARDiscovery(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
@@ -1027,10 +1089,6 @@ class TestGAR(TestCase):
                 with tests.testutil.capturedOutput() as (output, error):
                     cvelib.gar.main_gar_dump_reports()
         self.assertEqual("", output.getvalue().strip())
-        self.assertTrue(
-            "WARN: Could not find digest for valid-proj/us/valid-repo/valid-name"
-            in error.getvalue().strip(),
-        )
         self.assertTrue(
             "Could not find any OCI image digests" in error.getvalue().strip(),
         )

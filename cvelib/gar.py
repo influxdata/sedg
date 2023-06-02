@@ -233,6 +233,9 @@ def getGARDigestForImage(repo_full: str) -> str:
     headers["Content-Type"] = "application/json"
     params: Dict[str, str] = {"pageSize": "100"}
 
+    max_attempts: int = 10
+    count: int = 0
+    only_stale: bool = True
     while True:
         try:
             r: requests.Response = requestGetRaw(url, headers=headers, params=params)
@@ -250,6 +253,7 @@ def getGARDigestForImage(repo_full: str) -> str:
             return ""
 
         for img in resj["versions"]:
+            count += 1
             # malformed json
             if "name" not in img:
                 warn("Could not find 'name' in %s" % img)
@@ -287,16 +291,42 @@ def getGARDigestForImage(repo_full: str) -> str:
                 # When not searching by a tag name, we are searching for the
                 # latest digest. Since we used 'orderBy=UPDATE_TIME+desc', we
                 # we can assume that the first image we see with a matching
-                # name is the latest one
-                # TODO: use DISCOVERY to find the first supported image with a
-                # finished scan, but limit search to only a handful
-                return img["metadata"]["name"]
+                # name is the latest one. The latest image may not have valid
+                # scan results (not completed, is a cosign image, etc), so try
+                # up to 'max_attempts' times to find an image with usable scan
+                # results.
+                why: str = getGARDiscovery(
+                    "%s@%s" % (repo_full, img["metadata"]["name"].split("@")[-1])
+                )
+                if why != "INACTIVE":
+                    only_stale = False
+                if why not in ["INACTIVE", "UNSUPPORTED", "UNSCANNED"]:
+                    if why not in ["CLEAN", "ACTIVE"]:
+                        # in case we missed something
+                        warn("unexpected result from getGARDiscovery(): %s" % why)
+                    return img["metadata"]["name"]
+                if count > max_attempts:
+                    break
+
+        if tagsearch == "" and count > max_attempts:
+            break
 
         if "nextPageToken" not in resj:
             break
 
         params["pageToken"] = resj["nextPageToken"]
         # time.sleep(2)  # in case nextPageToken isn't valid yet
+
+    if tagsearch == "":
+        extra = ""
+        if only_stale:
+            extra = " (images are stale)"
+        warn(
+            "Could not find digest for %s/%s with scan results for in %d most recent images%s"
+            % (repo, name.split("@")[0], max_attempts, extra)
+        )
+    else:
+        warn("Could not find digest for %s" % name)
 
     return ""
 
@@ -480,7 +510,9 @@ def getGARDiscovery(repo_full: str) -> str:
             return ""
 
         resj = r.json()
-        if len(resj) == 0 or "occurrences" not in resj or len(resj["occurrences"]) == 0:
+        if len(resj) == 0:
+            return "UNSCANNED"
+        elif "occurrences" not in resj or len(resj["occurrences"]) == 0:
             return "invalid json format"
 
         discs += resj["occurrences"]
@@ -737,7 +769,6 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
         name: str = "%s/%s" % (args.name, oci.split("/", maxsplit=5)[-1])
         digest: str = getGARDigestForImage(name)
         if digest == "":
-            warn("Could not find digest for %s" % name)
             continue
         ocis.append("%s@%s" % (name, digest.split("@")[1]))
 
