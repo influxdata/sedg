@@ -1046,24 +1046,35 @@ def getOCIReports(
     fixable: bool = True,
 ) -> None:
     """Show OCI reports"""
+    reports: Dict[str, str] = {}
+    for img in images:
+        # XXX: implement as interfaces
+        if registry == "quay":
+            reports[img] = cvelib.quay.getQuaySecurityReport(
+                "%s/%s" % (namespace, img), raw=raw, fixable=fixable
+            )
+        elif registry == "gar":
+            reports[img] = cvelib.gar.getGARSecurityReport(
+                "%s/%s" % (namespace, img), raw=raw, fixable=fixable
+            )
+        if reports[img] == "":
+            warn("Empty report for '%s'" % img)
 
-    # TODO: parse csv
     s: str = ""
-    if registry == "quay":
-        s = cvelib.quay.getQuaySecurityReport(
-            "%s/%s" % (namespace, images[0]),
-            raw=raw,
-            fixable=fixable,
-        )
-    elif registry == "gar":
-        s = cvelib.gar.getGARSecurityReport(
-            "%s/%s" % (namespace, images[0]),
-            raw=raw,
-            fixable=fixable,
-        )
-
-    if s == "":  # pragma: nocover
-        sys.exit(1)
+    # output a list of jsons
+    if raw:
+        jsons: List[str] = []
+        for r in sorted(reports):
+            jsons.append(reports[r])
+        s = "[%s]" % ",".join(jsons)
+    else:
+        first: bool = True
+        for r in sorted(reports):
+            if not first:
+                s += "\n\n"
+            else:
+                first = False
+            s += "# %s\n%s" % (r, reports[r])
     print(s)
 
 

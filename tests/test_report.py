@@ -4208,7 +4208,25 @@ template-urls = https://url1,https://url2
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
-        self.assertEqual("report", output.getvalue().strip())
+        self.assertEqual(
+            "# valid-repo@sha256:deadbeef\nreport", output.getvalue().strip()
+        )
+
+        # raw
+        mock_getQuaySecurityReport.return_value = "{}"
+        args = [
+            "quay",
+            "--alerts",
+            "--namespace",
+            "valid-org",
+            "--images",
+            "valid-name@sha256:deadbeef",
+            "--raw",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual("[{}]", output.getvalue().strip())
 
         # bad image name
         with mock.patch.object(
@@ -4301,7 +4319,25 @@ template-urls = https://url1,https://url2
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
-        self.assertEqual("report", output.getvalue().strip())
+        self.assertEqual(
+            "# valid-repo/valid-name@sha256:deadbeef\nreport", output.getvalue().strip()
+        )
+
+        # raw
+        mock_getGARSecurityReport.return_value = "{}"
+        args = [
+            "gar",
+            "--alerts",
+            "--namespace",
+            "valid-proj/us",
+            "--images",
+            "valid-repo/valid-name@sha256:deadbeef",
+            "--raw",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual("[{}]", output.getvalue().strip())
 
         # bad image name
         with mock.patch.object(
