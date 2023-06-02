@@ -3686,6 +3686,10 @@ Totals:
                 "Please specify one of --alerts, --list or --list-digest with 'quay'",
             ),
             (
+                ["quay", "--list", "--namespace", "foo/bad"],
+                "--namespace 'foo/bad' should not contain '/'",
+            ),
+            (
                 ["quay", "--list", "--namespace", "foo", "--raw"],
                 "Please specify --alerts with --raw",
             ),
@@ -3752,10 +3756,27 @@ Totals:
                 ],
                 "--raw not supported with --all or --with-templates",
             ),
+            (
+                [
+                    "quay",
+                    "--alerts",
+                    "--namespace",
+                    "foo",
+                ],
+                "Please specify --images or --excluded-images with --alerts",
+            ),
             # gar
             (
                 ["gar"],
                 "Please specify one of --alerts, --list, --list-repos or --list-digest with 'gar'",
+            ),
+            (
+                ["gar", "--list", "--namespace", "foo"],
+                "--namespace 'foo' should contain one '/'",
+            ),
+            (
+                ["gar", "--list", "--namespace", "foo/us/bad"],
+                "--namespace 'foo/us/bad' should contain one '/'",
             ),
             (
                 ["gar", "--list", "--namespace", "foo/us", "--raw"],
@@ -3835,6 +3856,15 @@ Totals:
                     "--with-templates",
                 ],
                 "--raw not supported with --all or --with-templates",
+            ),
+            (
+                [
+                    "gar",
+                    "--alerts",
+                    "--namespace",
+                    "foo/us",
+                ],
+                "Please specify --images or --excluded-images with --alerts",
             ),
         ]
         for args, expErr in tsts:
@@ -4167,7 +4197,14 @@ template-urls = https://url1,https://url2
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
         mock_getQuaySecurityReport.return_value = "report"
-        args = ["quay", "--alerts", "--name", "valid-org/valid-repo@sha256:deadbeef"]
+        args = [
+            "quay",
+            "--alerts",
+            "--namespace",
+            "valid-org",
+            "--images",
+            "valid-repo@sha256:deadbeef",
+        ]
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
@@ -4209,7 +4246,13 @@ template-urls = https://url1,https://url2
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
         mock_getGARDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:deadbeef"
-        args = ["gar", "--list-digest", "valid-org/valid-repo"]
+        args = [
+            "gar",
+            "--namespace",
+            "valid-proj/us",
+            "--list-digest",
+            "valid-repo/valid-name",
+        ]
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
@@ -4224,8 +4267,10 @@ template-urls = https://url1,https://url2
         args = [
             "gar",
             "--alerts",
-            "--name",
-            "valid-proj/us/valid-repo/valid-name@sha256:deadbeef",
+            "--namespace",
+            "valid-proj/us",
+            "--images",
+            "valid-repo/valid-name@sha256:deadbeef",
         ]
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
