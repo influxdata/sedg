@@ -1853,7 +1853,7 @@ Example usage:
   # Show list of GAR repositories
   $ cve-report gar --namespace <project/location> --list-repos
 
-  # Show latest SHA256 digest for image name
+  # Show latest SHA256 digest with a scan result for image name
   $ cve-report gar --namespace <project>/<location> --list-digest <repo>/<name>
   $ cve-report quay --namespace <org> --list-digest <name>
 
