@@ -4210,6 +4210,32 @@ template-urls = https://url1,https://url2
         self.assertEqual("", error.getvalue().strip())
         self.assertEqual("report", output.getvalue().strip())
 
+        # bad image name
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            mock_getQuaySecurityReport.return_value = ""
+            args = [
+                "quay",
+                "--alerts",
+                "--namespace",
+                "valid-org",
+                "--images",
+                "valid-repo/bad@sha256:deadbeef",
+            ]
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.report.main_report(args)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "ERROR: image name 'valid-repo/bad@sha256:deadbeef' should not contain '/'",
+            error.getvalue().strip(),
+        )
+
     @mock.patch("cvelib.gar.getGAROCIsForProjectLoc")
     def test_main_report_gar_list(self, mock_getGAROCIsForProjectLoc):
         """Test main_report - gar --list"""
@@ -4276,3 +4302,29 @@ template-urls = https://url1,https://url2
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
         self.assertEqual("report", output.getvalue().strip())
+
+        # bad image name
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            mock_getGARSecurityReport.return_value = ""
+            args = [
+                "gar",
+                "--alerts",
+                "--namespace",
+                "valid-proj/us",
+                "--images",
+                "valid-name@sha256:deadbeef",
+            ]
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.report.main_report(args)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "ERROR: image name 'valid-name@sha256:deadbeef' should contain one '/'",
+            error.getvalue().strip(),
+        )
