@@ -1801,35 +1801,35 @@ Example usage:
 # OCI reports
 
   # Show list of OCI image names
-  $ cve-report gar --list <project>/<location>  # eg, foo/us
-  $ cve-report quay --list <org>
+  $ cve-report gar --namespace <project>/<location> --list  # eg, foo/us
+  $ cve-report quay --namespace <org> --list
 
   # Show list of GAR repositories
-  $ cve-report gar --list-repos <project/location>
+  $ cve-report gar --namespace <project/location> --list-repos
 
   # Show latest SHA256 digest for image name
-  $ cve-report gar --list-digest <project>/<location>/<repo>/<name>
-  $ cve-report quay --list-digest <org>/<name>
+  $ cve-report gar --namespace <project>/<location> --list-digest <repo>/<name>
+  $ cve-report quay --namespace <org> --list-digest <name>
 
   # Show SHA256 digest for image name with tag
-  $ cve-report gar --list-digest <project>/<location>/<repo>/<name>:<tag>
-  $ cve-report quay --list-digest <org>/<name>:<tag>
+  $ cve-report gar --namespace <project>/<location> --list-digest <repo>/<name>:<tag>
+  $ cve-report quay --namespace <org> --list-digest <name>:<tag>
 
   # Show security report for image name with digest
-  $ cve-report gar --alerts --name <project>/<location>/<repo>/<name>@<digest>
-  $ cve-report quay --alerts --name <org>/<name>@<digest>
+  $ cve-report gar --alerts --namespace <project>/<location> --image-names <repo>/<name>@<digest>
+  $ cve-report quay --alerts --namespace <org> --image-names <name>@<digest>
 
   # Eg, to research the 'foo' project with location 'us' in GAR:
   # - find all the container images
-  $ cve-report gar --list foo/us
+  $ cve-report gar --namespace foo/us --list
   ...
   foo/us/bar/bar
   foo/us/bar/baz
   # - find a digest for an image
-  $ cve-report gar --list-digest foo/us/bar/baz
+  $ cve-report gar --namespace foo/us --list-digest bar/baz
   sha256:791be3...
   # - pull the report for the image with a particular digest
-  $ cve-report gar --alerts --name foo/us/bar/baz@sha256:791be3...
+  $ cve-report gar --alerts --namespace foo/us --image-names bar/baz@sha256:791be3...
   qux   1.2.3-1        needed (low,medium)
   norf  2.3.4+deb11u1  needed (low,medium)
         """
@@ -1890,20 +1890,19 @@ Example usage:
             action="store_true",
         )
 
-    def _add_common_oci(p, what: str, where: str, name: str):
+    def _add_common_oci(p, what: str, where: str, imgname: str):
         p.add_argument(
             "--list",
             dest="list",
-            help="list %s OCI image names for %s" % (what, where),
-            metavar=where,
-            type=str,
+            help="list %s OCI image names" % what,
+            action="store_true",
         )
-        bare_name: str = name.split("@")[0]
+        bare_imgname: str = imgname.split("@")[0]
         p.add_argument(
             "--list-digest",
             dest="list_digest",
             help="list %s OCI image digest (eg, SHA256) for NAME (eg %s)"
-            % (what, bare_name),
+            % (what, "%s" % bare_imgname),
             metavar="NAME",
             type=str,
         )
@@ -1932,11 +1931,29 @@ Example usage:
             action="store_true",
         )
         p.add_argument(
-            "--name",
-            dest="name",
-            help="%s OCI image name (eg %s)" % (what, name),
-            metavar="NAME",
+            "--namespace",
+            dest="namespace",
+            help="%s namespace (eg %s)" % (what, where),
+            metavar=where,
             type=str,
+            default=None,
+        )
+        p.add_argument(
+            "--images",
+            dest="images",
+            help="comma-separated list of %s image names or PATH to file with %s image name list (newline separated) to limit by (eg, '%s,%s:tag,%s')"
+            % (what, what, bare_imgname, bare_imgname, imgname),
+            type=str,
+            metavar="NAMES",
+            default=None,
+        )
+        p.add_argument(
+            "--excluded-images",
+            dest="excluded_images",
+            help="comma-separated list of %s image names to exclude (eg, '%s,%s1')"
+            % (what, bare_imgname, bare_imgname),
+            type=str,
+            metavar="NAMES",
             default=None,
         )
 
@@ -2081,7 +2098,7 @@ Example usage:
 
     # quay
     parser_quay = sub.add_parser("quay")
-    _add_common_oci(parser_quay, "quay.io", "ORG", "ORG/NAME@sha256:SHA256")
+    _add_common_oci(parser_quay, "quay.io", "ORG", "NAME@sha256:SHA256")
 
     # gar
     parser_gar = sub.add_parser("gar")
@@ -2089,14 +2106,13 @@ Example usage:
         parser_gar,
         "GAR",
         "PROJECT/LOCATION",
-        "PROJECT/LOCATION/REPO/NAME@sha256:SHA256",
+        "REPO/NAME@sha256:SHA256",
     )
     parser_gar.add_argument(
         "--list-repos",
         dest="list_repos",
-        help="list GAR repository names for PROJECT/LOCATION",
-        metavar="PROJECT/LOCATION",
-        type=str,
+        help="list GAR repository names",
+        action="store_true",
     )
 
     args: argparse.Namespace = parser.parse_args(sysargs)
@@ -2178,7 +2194,6 @@ Example usage:
             and not args.list_digest
         ):
             error("Please specify one of --alerts, --list or --list-digest with 'quay'")
-
         elif not args.alerts:
             if args.with_templates:
                 error("Please specify --alerts with --with-templates")
@@ -2194,8 +2209,8 @@ Example usage:
             error("Unsupported option --list-digest with --alerts")
         elif args.cmd == "gar" and args.list_repos:
             error("Unsupported option --list-repos with --alerts")
-        elif not args.name:
-            error("Please specify --name with --alerts")
+        elif not args.namespace:
+            error("Please specify --namespace with '%s'" % args.cmd)
 
     return args
 
@@ -2373,26 +2388,30 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
         if args.list:
             ocis: List[str] = []
             if args.cmd == "quay":
-                ocis: List[str] = cvelib.quay.getQuayOCIsForOrg(args.list)
+                ocis: List[str] = cvelib.quay.getQuayOCIsForOrg(args.namespace)
                 for r in sorted(ocis):
                     # ORG/NAME
-                    print("%s/%s" % (args.list, r))
+                    print("%s/%s" % (args.namespace, r))
             elif args.cmd == "gar":
-                ocis: List[str] = cvelib.gar.getGAROCIsForProjectLoc(args.list)
+                ocis: List[str] = cvelib.gar.getGAROCIsForProjectLoc(args.namespace)
                 for r in sorted(ocis):
                     # PROJECT/LOCATION/REPO/NAME
-                    print("%s/%s" % (args.list, r.split("/", maxsplit=5)[-1]))
+                    print("%s/%s" % (args.namespace, r.split("/", maxsplit=5)[-1]))
         elif args.cmd == "gar" and args.list_repos:
-            repos: List[str] = cvelib.gar.getGARReposForProjectLoc(args.list_repos)
+            repos: List[str] = cvelib.gar.getGARReposForProjectLoc(args.namespace)
             for r in sorted(repos):
                 # PROJECT/LOCATION/REPO
-                print("%s/%s" % (args.list_repos, r.split("/")[-1]))
+                print("%s/%s" % (args.namespace, r.split("/")[-1]))
         elif args.list_digest:
             digest: str = ""
             if args.cmd == "quay":
-                digest = cvelib.quay.getQuayDigestForImage(args.list_digest)
+                digest = cvelib.quay.getQuayDigestForImage(
+                    "%s/%s" % (args.namespace, args.list_digest)
+                )
             elif args.cmd == "gar":
-                digest = cvelib.gar.getGARDigestForImage(args.list_digest)
+                digest = cvelib.gar.getGARDigestForImage(
+                    "%s/%s" % (args.namespace, args.list_digest)
+                )
 
             if digest == "":  # pragma: nocover
                 sys.exit(1)
@@ -2400,13 +2419,18 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
             print(digest.split("@")[1])
         elif args.alerts:
             s: str = ""
+            # TODO: parse csv
             if args.cmd == "quay":
                 s = cvelib.quay.getQuaySecurityReport(
-                    args.name, raw=args.raw, fixable=(not args.all)
+                    "%s/%s" % (args.namespace, args.images),
+                    raw=args.raw,
+                    fixable=(not args.all),
                 )
             elif args.cmd == "gar":
                 s = cvelib.gar.getGARSecurityReport(
-                    args.name, raw=args.raw, fixable=(not args.all)
+                    "%s/%s" % (args.namespace, args.images),
+                    raw=args.raw,
+                    fixable=(not args.all),
                 )
 
             if s == "":  # pragma: nocover
