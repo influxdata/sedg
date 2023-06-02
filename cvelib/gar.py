@@ -193,7 +193,7 @@ def getGAROCIForRepo(repo_full: str) -> List[str]:
 #        --data "orderBy=UPDATE_TIME+desc&view=FULL"
 # {
 #   "versions": [
-#     "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/REPO/packages/IMGNAME/versions/sha256:17c206abd9115fedb883f172e44ba020baca84e814b1218c0bc402357cd53e23",
+#     "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions/sha256:17c206abd9115fedb883f172e44ba020baca84e814b1218c0bc402357cd53e23",
 #      "createTime": "2023-05-30T17:24:37.757487Z",
 #      "updateTime": "2023-05-31T14:33:21.360319Z",
 #      "relatedTags": [
@@ -233,6 +233,9 @@ def getGARDigestForImage(repo_full: str) -> str:
     headers["Content-Type"] = "application/json"
     params: Dict[str, str] = {"pageSize": "100"}
 
+    max_attempts: int = 10
+    count: int = 0
+    only_stale: bool = True
     while True:
         try:
             r: requests.Response = requestGetRaw(url, headers=headers, params=params)
@@ -250,6 +253,7 @@ def getGARDigestForImage(repo_full: str) -> str:
             return ""
 
         for img in resj["versions"]:
+            count += 1
             # malformed json
             if "name" not in img:
                 warn("Could not find 'name' in %s" % img)
@@ -287,14 +291,42 @@ def getGARDigestForImage(repo_full: str) -> str:
                 # When not searching by a tag name, we are searching for the
                 # latest digest. Since we used 'orderBy=UPDATE_TIME+desc', we
                 # we can assume that the first image we see with a matching
-                # name is the latest one
-                return img["metadata"]["name"]
+                # name is the latest one. The latest image may not have valid
+                # scan results (not completed, is a cosign image, etc), so try
+                # up to 'max_attempts' times to find an image with usable scan
+                # results.
+                why: str = getGARDiscovery(
+                    "%s@%s" % (repo_full, img["metadata"]["name"].split("@")[-1])
+                )
+                if why != "INACTIVE":
+                    only_stale = False
+                if why not in ["INACTIVE", "UNSUPPORTED", "UNSCANNED"]:
+                    if why not in ["CLEAN", "ACTIVE"]:
+                        # in case we missed something
+                        warn("unexpected result from getGARDiscovery(): %s" % why)
+                    return img["metadata"]["name"]
+                if count > max_attempts:
+                    break
+
+        if tagsearch == "" and count > max_attempts:
+            break
 
         if "nextPageToken" not in resj:
             break
 
         params["pageToken"] = resj["nextPageToken"]
         # time.sleep(2)  # in case nextPageToken isn't valid yet
+
+    if tagsearch == "":
+        extra = ""
+        if only_stale:
+            extra = " (images are stale)"
+        warn(
+            "Could not find digest for %s/%s with scan results for in %d most recent images%s"
+            % (repo, name.split("@")[0], max_attempts, extra)
+        )
+    else:
+        warn("Could not find digest for %s" % name)
 
     return ""
 
@@ -408,6 +440,122 @@ def parse(vulns: List[Dict[str, Any]]) -> List[ScanOCI]:
 # $ curl -H "Content-Type: application/json" \
 #        -H "Authorization: Bearer $GCLOUD_TOKEN"
 #        -G https://containeranalysis.googleapis.com/v1/projects/PROJECT/occurrences
+#        --data-urlencode "filter=(kind=\"DISCOVERY\" AND resourceUrl=\"https://LOCATION-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:SHA256\")"
+# {
+#   "occurrences": [
+#     {
+#       "name": "projects/PROJECT/occurrences/aed05ee4-bf2a-43f8-aad6-22b6bca41e01",
+#       "resourceUri": "https://LOCATION-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:SHA256",
+#       "noteName": "projects/goog-analysis/notes/PACKAGE_VULNERABILITY",
+#       "kind": "DISCOVERY",
+#       "createTime": "2023-03-22T16:11:54.010888Z",
+#       "updateTime": "2023-05-06T19:16:00.813976Z",
+#       "discovery": {
+#         "continuousAnalysis": "INACTIVE",
+#         "analysisStatus": "FINISHED_SUCCESS",
+#         "analysisCompleted": {
+#           "analysisType": [
+#             ...
+#           ]
+#         }
+#       }
+#     }
+#   ]
+# }
+# https://cloud.google.com/container-analysis/docs/reference/rest
+def getGARDiscovery(repo_full: str) -> str:
+    """Obtain the container discovery info for the specified repo@sha256:..."""
+    if "/" not in repo_full or repo_full.count("/") != 3 or "@sha256:" not in repo_full:
+        error("Please use PROJECT/LOCATION/REPO/IMGNAME@sha256:<sha256>", do_exit=False)
+        return ""
+
+    project, location, repo, name = repo_full.split("/", 4)
+
+    url: str = (
+        "https://containeranalysis.googleapis.com/v1/projects/%s/occurrences" % project
+    )
+    resource_url: str = "https://%s-docker.pkg.dev/%s/%s/%s" % (
+        location,
+        project,
+        repo,
+        name,
+    )
+    headers: Dict[str, str] = _createGARHeaders()
+    headers["Content-Type"] = "application/json"
+    params: Dict[str, str] = {
+        "filter": '(kind="DISCOVERY" AND resourceUrl="%s")' % resource_url,
+    }
+
+    # the v1 format is (<noteN> is a discovery note):
+    # {
+    #   "occurrences": [
+    #     { note1 },
+    #     { note2 },
+    #   ],
+    #   "nextPageToken": "..."
+    # }
+    #
+    # Create a list of dictionaries with all the different pages added to a
+    # single list
+    discs: List[Dict[str, Any]] = []
+    while True:
+        try:
+            r: requests.Response = requestGetRaw(url, headers=headers, params=params)
+        except requests.exceptions.RequestException as e:  # pragma: nocover
+            warn("Skipping %s (request error: %s)" % (url, str(e)))
+            return ""
+
+        if r.status_code >= 300:
+            warn("Could not fetch %s" % url)
+            return ""
+
+        resj = r.json()
+        if len(resj) == 0:
+            return "UNSCANNED"
+        elif "occurrences" not in resj or len(resj["occurrences"]) == 0:
+            return "invalid json format"
+
+        discs += resj["occurrences"]
+
+        if "nextPageToken" not in resj:
+            break
+
+        params["pageToken"] = resj["nextPageToken"]
+        # time.sleep(2)  # in case nextPageToken isn't valid yet
+
+    s: str = "reason not detected"
+    status: str = ""
+    continuous: str = ""
+
+    # just look at the first one for now
+    if "discovery" in discs[0] and "analysisStatus" in discs[0]["discovery"]:
+        status: str = discs[0]["discovery"]["analysisStatus"]
+    if "continuousAnalysis" in discs[0]["discovery"]:
+        continuous = discs[0]["discovery"]["continuousAnalysis"]
+
+    # Look for things like:
+    # - the image is clean
+    # - the image is stale (ie, it hasn't been pulled in 30 days)
+    #   https://cloud.google.com/artifact-analysis/docs/enable-container-scanning
+    # - the image is unsupported in some way (eg, layers with only
+    # application/vnd.dev.cosign.simplesigning.v1+json, etc)
+    # - the image hasn't been scanned yet
+    if status == "FINISHED_SUCCESS" and continuous == "ACTIVE":
+        s = "CLEAN"
+    elif status == "FINISHED_SUCCESS" and continuous != "":
+        s = continuous
+    elif status == "FINISHED_UNSUPPORTED":
+        s = "UNSUPPORTED"
+    elif status != "":
+        s = status
+
+    return s
+
+
+# $ export GCLOUD_TOKEN=$(gcloud auth print-access-token)
+# $ curl -H "Content-Type: application/json" \
+#        -H "Authorization: Bearer $GCLOUD_TOKEN"
+#        -G https://containeranalysis.googleapis.com/v1/projects/PROJECT/occurrences
 #        --data-urlencode "filter=(kind=\"VULNERABILITY\" AND resourceUrl=\"https://LOCATION-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:SHA256\")"
 # {
 #   "occurrences": [
@@ -500,14 +648,18 @@ def getGARSecurityReport(
             warn("Could not fetch %s" % url)
             return ""
 
+        # An empty scan result can be due to several reasons so lookup why if
+        # we fail to get a scan result
         resj = r.json()
-        if len(resj) == 0 or ("occurrences" in resj and len(resj["occurrences"]) == 0):
-            if not quiet:
-                warn("no scan results for image")
-            return ""
-        elif "occurrences" not in resj:
-            error("Could not find 'occurrences' in response: %s" % resj, do_exit=False)
-            return ""
+        if len(resj) == 0 or "occurrences" not in resj or len(resj["occurrences"]) == 0:
+            why: str = getGARDiscovery(repo_full)
+            if not quiet and why != "CLEAN":
+                warn("no scan results for %s/%s: %s" % (repo, name.split("@")[0], why))
+            if raw:
+                return ""
+            if why == "CLEAN":
+                return "No problems found"
+            return "No scan results for this %s image" % why.lower()
 
         vulns += resj["occurrences"]
 
@@ -617,7 +769,6 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
         name: str = "%s/%s" % (args.name, oci.split("/", maxsplit=5)[-1])
         digest: str = getGARDigestForImage(name)
         if digest == "":
-            warn("Could not find digest for %s" % name)
             continue
         ocis.append("%s@%s" % (name, digest.split("@")[1]))
 
@@ -659,7 +810,7 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
         ok = True
 
         # look at the first vuln occurrence for details that are shared across
-        # all vuln occurences
+        # all vuln occurrences
         for i in ["createTime", "resourceUri"]:
             if i not in j["occurrences"][0]:
                 warn("Could not find '%s' in: %s" % (i, j))

@@ -1057,15 +1057,14 @@ def getOCIReports(
             reports[img] = cvelib.gar.getGARSecurityReport(
                 "%s/%s" % (namespace, img), raw=raw, fixable=fixable
             )
-        if reports[img] == "":
-            warn("Empty report for '%s'" % img)
 
     s: str = ""
     # output a list of jsons
     if raw:
         jsons: List[str] = []
         for r in sorted(reports):
-            jsons.append(reports[r])
+            if reports[r] != "":
+                jsons.append(reports[r])
         s = "[%s]" % ",".join(jsons)
     else:
         first: bool = True
@@ -1854,7 +1853,7 @@ Example usage:
   # Show list of GAR repositories
   $ cve-report gar --namespace <project/location> --list-repos
 
-  # Show latest SHA256 digest for image name
+  # Show latest SHA256 digest with a scan result for image name
   $ cve-report gar --namespace <project>/<location> --list-digest <repo>/<name>
   $ cve-report quay --namespace <org> --list-digest <name>
 
