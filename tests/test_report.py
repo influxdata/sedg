@@ -3686,25 +3686,26 @@ Totals:
                 "Please specify one of --alerts, --list or --list-digest with 'quay'",
             ),
             (
-                ["quay", "--list", "foo", "--raw"],
+                ["quay", "--list", "--namespace", "foo", "--raw"],
                 "Please specify --alerts with --raw",
             ),
             (
-                ["quay", "--list", "foo", "--all"],
+                ["quay", "--list", "--namespace", "foo", "--all"],
                 "Please specify --alerts with --all",
             ),
             (
-                ["quay", "--list", "foo", "--with-templates"],
+                ["quay", "--list", "--namespace", "foo", "--with-templates"],
                 "Please specify --alerts with --with-templates",
             ),
             (
                 [
                     "quay",
                     "--alerts",
-                    "--name",
-                    "foo/img@sha256:deadbeef",
-                    "--list",
+                    "--namespace",
                     "foo",
+                    "--images",
+                    "img@sha256:deadbeef",
+                    "--list",
                 ],
                 "Unsupported option --list with --alerts",
             ),
@@ -3712,8 +3713,10 @@ Totals:
                 [
                     "quay",
                     "--alerts",
-                    "--name",
-                    "foo/img@sha256:deadbeef",
+                    "--namespace",
+                    "foo",
+                    "--images",
+                    "img@sha256:deadbeef",
                     "--list-digest",
                     "foo/img",
                 ],
@@ -3721,14 +3724,16 @@ Totals:
             ),
             (
                 ["quay", "--alerts"],
-                "Please specify --name with --alerts",
+                "Please specify --namespace with 'quay'",
             ),
             (
                 [
                     "quay",
                     "--alerts",
-                    "--name",
-                    "foo/img@sha256:deadbeef",
+                    "--namespace",
+                    "foo",
+                    "--images",
+                    "img@sha256:deadbeef",
                     "--raw",
                     "--all",
                 ],
@@ -3738,8 +3743,10 @@ Totals:
                 [
                     "quay",
                     "--alerts",
-                    "--name",
-                    "foo/img@sha256:deadbeef",
+                    "--namespace",
+                    "foo",
+                    "--images",
+                    "img@sha256:deadbeef",
                     "--raw",
                     "--with-templates",
                 ],
@@ -3751,25 +3758,26 @@ Totals:
                 "Please specify one of --alerts, --list, --list-repos or --list-digest with 'gar'",
             ),
             (
-                ["gar", "--list", "foo/us", "--raw"],
+                ["gar", "--list", "--namespace", "foo/us", "--raw"],
                 "Please specify --alerts with --raw",
             ),
             (
-                ["gar", "--list", "foo/us", "--all"],
+                ["gar", "--list", "--namespace", "foo/us", "--all"],
                 "Please specify --alerts with --all",
             ),
             (
-                ["gar", "--list", "foo/us", "--with-templates"],
+                ["gar", "--list", "--namespace", "foo/us", "--with-templates"],
                 "Please specify --alerts with --with-templates",
             ),
             (
                 [
                     "gar",
                     "--alerts",
-                    "--name",
-                    "foo/us/repo/img@sha256:deadbeef",
-                    "--list",
+                    "--namespace",
                     "foo/us",
+                    "--images",
+                    "repo/img@sha256:deadbeef",
+                    "--list",
                 ],
                 "Unsupported option --list with --alerts",
             ),
@@ -3777,8 +3785,10 @@ Totals:
                 [
                     "gar",
                     "--alerts",
-                    "--name",
-                    "foo/us/repo/img@sha256:deadbeef",
+                    "--namespace",
+                    "foo/us",
+                    "--images",
+                    "repo/img@sha256:deadbeef",
                     "--list-digest",
                     "foo/us/repo/img",
                 ],
@@ -3788,23 +3798,26 @@ Totals:
                 [
                     "gar",
                     "--alerts",
-                    "--name",
-                    "foo/us/repo/img@sha256:deadbeef",
-                    "--list-repos",
+                    "--namespace",
                     "foo/us",
+                    "--images",
+                    "repo/img@sha256:deadbeef",
+                    "--list-repos",
                 ],
                 "Unsupported option --list-repos with --alerts",
             ),
             (
                 ["gar", "--alerts"],
-                "Please specify --name with --alerts",
+                "Please specify --namespace with 'gar'",
             ),
             (
                 [
                     "gar",
                     "--alerts",
-                    "--name",
-                    "foo/us/repo/img@sha256:deadbeef",
+                    "--namespace",
+                    "foo/us",
+                    "--images",
+                    "repo/img@sha256:deadbeef",
                     "--raw",
                     "--all",
                 ],
@@ -3814,8 +3827,10 @@ Totals:
                 [
                     "gar",
                     "--alerts",
-                    "--name",
-                    "foo/us/repo/img@sha256:deadbeef",
+                    "--namespace",
+                    "foo/us",
+                    "--images",
+                    "repo/img@sha256:deadbeef",
                     "--raw",
                     "--with-templates",
                 ],
@@ -4128,7 +4143,7 @@ template-urls = https://url1,https://url2
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
         mock_getQuayOCIsForOrg.return_value = ["valid-repo"]
-        args = ["quay", "--list", "valid-org"]
+        args = ["quay", "--list", "--namespace", "valid-org"]
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
@@ -4140,7 +4155,7 @@ template-urls = https://url1,https://url2
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
         mock_getQuayDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
-        args = ["quay", "--list-digest", "valid-org/valid-repo"]
+        args = ["quay", "--list-digest", "valid-repo", "--namespace", "valid-org"]
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
@@ -4166,7 +4181,7 @@ template-urls = https://url1,https://url2
         mock_getGAROCIsForProjectLoc.return_value = [
             "projects/valid-proj/locations/us/repositories/valid-repo/valid-name"
         ]
-        args = ["gar", "--list", "valid-proj/us"]
+        args = ["gar", "--list", "--namespace", "valid-proj/us"]
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
@@ -4182,7 +4197,7 @@ template-urls = https://url1,https://url2
         mock_getGARReposForProjectLoc.return_value = [
             "projects/valid-proj/locations/us/repositories/valid-repo"
         ]
-        args = ["gar", "--list-repos", "valid-proj/us"]
+        args = ["gar", "--list-repos", "--namespace", "valid-proj/us"]
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
