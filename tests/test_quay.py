@@ -613,7 +613,7 @@ class TestQuay(TestCase):
         self.assertEqual("Created: %s" % relfn, output.getvalue().strip())
         self.assertEqual("", error.getvalue().strip())
 
-        # exists
+        # updated
         with open(fn, "w") as fh:
             fh.write('{"status": "scanned", "data": {}}')
         with mock.patch(
@@ -628,8 +628,15 @@ class TestQuay(TestCase):
         ):
             with tests.testutil.capturedOutput() as (output, error):
                 cvelib.quay.main_quay_dump_reports()
-        self.assertEqual("", output.getvalue().strip())
-        self.assertTrue("No new security reports" in error.getvalue().strip())
+        today = datetime.datetime.now()
+        fn = (
+            self.tmpdir
+            + "/subdir/%d/%0.2d/%0.2d/quay/valid-org/valid-repo/deadbeef.json"
+            % (today.year, today.month, today.day)
+        )
+        relfn = os.path.relpath(fn, self.tmpdir + "/subdir")
+        self.assertEqual("Updated: %s" % relfn, output.getvalue().strip())
+        self.assertEqual("", error.getvalue().strip())
 
         # duplicate
         fn = self.tmpdir + "/subdir/YYYY/MM/DD/quay/valid-org/valid-repo/deadbeef.json"
@@ -649,7 +656,7 @@ class TestQuay(TestCase):
             with tests.testutil.capturedOutput() as (output, error):
                 cvelib.quay.main_quay_dump_reports()
         self.assertEqual("", output.getvalue().strip())
-        self.assertTrue("No new security reports" in error.getvalue().strip())
+        self.assertTrue("Found duplicate" in error.getvalue().strip())
 
     # Note, these are listed in reverse order ot the arguments to test_...
     @mock.patch("cvelib.quay.getQuaySecurityReport")
