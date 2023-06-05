@@ -185,21 +185,21 @@ def getGAROCIForRepo(repo_full: str) -> List[str]:
     return ocis
 
 
+# find all versions
 # $ export GCLOUD_TOKEN=$(gcloud auth print-access-token)
 # $ curl -H "Content-Type: application/json"
 #        -H "Authorization: Bearer $GCLOUD_TOKEN"
-#        -G
-#        https://artifactregistry.googleapis.com/v1/projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions
+#        -G https://artifactregistry.googleapis.com/v1/projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions
 #        --data "orderBy=UPDATE_TIME+desc&view=FULL"
 # {
 #   "versions": [
-#     "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions/sha256:17c206abd9115fedb883f172e44ba020baca84e814b1218c0bc402357cd53e23",
+#     "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions/sha256:SHA256",
 #      "createTime": "2023-05-30T17:24:37.757487Z",
 #      "updateTime": "2023-05-31T14:33:21.360319Z",
 #      "relatedTags": [
 #        {
 #          "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/tags/some-tag",
-#          "version": "projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions/sha256:17c206abd9115fedb883f172e44ba020baca84e814b1218c0bc402357cd53e23"
+#          "version": "projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions/sha256:SHA256"
 #        },
 #        ...
 #      ],
@@ -207,9 +207,27 @@ def getGAROCIForRepo(repo_full: str) -> List[str]:
 #        "imageSizeBytes": "38636295",
 #        "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
 #        "buildTime": "2023-05-30T17:24:30.935114729Z",
-#        "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/dockerImages/IMGNAME@sha256:17c206abd9115fedb883f172e44ba020baca84e814b1218c0bc402357cd53e23"
+#        "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/dockerImages/IMGNAME@sha256:SHA256"
 #      }
 #    },
+#
+# check specific version
+# $ export GCLOUD_TOKEN=$(gcloud auth print-access-token)
+# $ curl -H "Content-Type: application/json"
+#        -H "Authorization: Bearer $GCLOUD_TOKEN"
+#        -G https://artifactregistry.googleapis.com/v1/projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions/sha256:SHA256
+# {
+#   "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions/sha256:SHA256",
+#   "createTime": "2023-06-01T19:02:27.563679Z",
+#   "updateTime": "2023-06-01T19:02:28.780575Z",
+#   "metadata": {
+#     "buildTime": "2023-06-01T19:02:24.623978679Z",
+#     "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/dockerImages/IMGNAME@sha256:SHA256",
+#     "imageSizeBytes": "35064515",
+#     "mediaType": "application/vnd.docker.distribution.manifest.v2+json"
+#   }
+# }
+#
 # https://cloud.google.com/artifact-registry/docs/reference/rest/v1/projects.locations.repositories.packages.versions
 def getGARDigestForImage(repo_full: str) -> str:
     """Obtain the GAR digest for the specified project, location and repo"""
@@ -219,19 +237,31 @@ def getGARDigestForImage(repo_full: str) -> str:
 
     project, location, repo, name = repo_full.split("/", 4)
     tagsearch: str = ""
-    if ":" in name:
+    sha256: str = ""
+    if "@sha256:" in name:
+        name, sha256 = name.split("@", 2)
+    elif ":" in name:
         name, tagsearch = name.split(":", 2)
 
     # Ordering by update time sorts the results in descending order with newest
     # first. This helps optimize the search for the digest. FULL view includes
     # relatedTags.
-    url: str = (
-        "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories/%s/packages/%s/versions?orderBy=UPDATE_TIME+desc&view=FULL"
-        % (project, location, repo, name)
-    )
+    url: str
+    params: Dict[str, str] = {}
+    if sha256 != "":
+        url = (
+            "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories/%s/packages/%s/versions/%s"
+            % (project, location, repo, name, sha256)
+        )
+    else:
+        url = (
+            "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories/%s/packages/%s/versions?orderBy=UPDATE_TIME+desc&view=FULL"
+            % (project, location, repo, name)
+        )
+        params["pageSize"] = "100"
+
     headers: Dict[str, str] = _createGARHeaders()
     headers["Content-Type"] = "application/json"
-    params: Dict[str, str] = {"pageSize": "100"}
 
     max_attempts: int = 10
     count: int = 0
@@ -247,7 +277,16 @@ def getGARDigestForImage(repo_full: str) -> str:
             warn("Could not fetch %s (%d)" % (url, r.status_code))
             return ""
 
-        resj = r.json()
+        resj: Dict[str, Any] = {}
+        tmp: Dict[str, Any] = r.json()
+        if sha256 != "":
+            # when searching by specific sha256, we get back the specific entry
+            # and not a list of versions, so create a list of one versions
+            resj["versions"] = []
+            resj["versions"].append(tmp)
+        else:
+            resj = tmp
+
         if "versions" not in resj:
             warn("Could not find 'versions' in response: %s" % resj)
             return ""
@@ -296,7 +335,14 @@ def getGARDigestForImage(repo_full: str) -> str:
                 # up to 'max_attempts' times to find an image with usable scan
                 # results.
                 why: str = getGARDiscovery(
-                    "%s@%s" % (repo_full, img["metadata"]["name"].split("@")[-1])
+                    "%s/%s/%s/%s@%s"
+                    % (
+                        project,
+                        location,
+                        repo,
+                        name,
+                        img["metadata"]["name"].split("@")[-1],
+                    )
                 )
                 if why != "INACTIVE":
                     only_stale = False
@@ -511,6 +557,9 @@ def getGARDiscovery(repo_full: str) -> str:
 
         resj = r.json()
         if len(resj) == 0:
+            # does the image exist at all?
+            if getGARDigestForImage(repo_full) == "":
+                return "NONEXISTENT"
             return "UNSCANNED"
         elif "occurrences" not in resj or len(resj["occurrences"]) == 0:
             return "invalid json format"

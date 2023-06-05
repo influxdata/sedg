@@ -465,7 +465,19 @@ class TestGAR(TestCase):
             res,
         )
 
+        # search by sha256
+        mr = self._mock_response_for_gar(self._validGARDigestForImage()["versions"][1])
+        mock_get.return_value = mr
+        res = cvelib.gar.getGARDigestForImage(
+            "valid-proj/us/valid-repo/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a"
+        )
+        self.assertEqual(
+            "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
+            res,
+        )
+
         # search by tag
+        mr = self._mock_response_for_gar(self._validGARDigestForImage())
         mock_get.return_value = mr
         res = cvelib.gar.getGARDigestForImage(
             "valid-proj/us/valid-repo/valid-name:some-tag"
@@ -632,8 +644,10 @@ class TestGAR(TestCase):
         )
         self.assertEqual("", res)
 
+    # Note, these are listed in reverse order ot the arguments to test_...
+    @mock.patch("cvelib.gar.getGARDigestForImage")
     @mock.patch("requests.get")
-    def test_getGARDiscovery(self, mock_get):
+    def test_getGARDiscovery(self, mock_get, mock_getGARDigestForImage):
         """Test getGARDiscovery()"""
         # clean
         mr = self._mock_response_for_gar(
@@ -725,9 +739,19 @@ class TestGAR(TestCase):
         )
         self.assertEqual("OTHER_STATUS", res)
 
+        # nonexistent
+        mr = self._mock_response_for_gar({})
+        mock_get.return_value = mr
+        mock_getGARDigestForImage.return_value = ""
+        res = cvelib.gar.getGARDiscovery(
+            "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
+        )
+        self.assertEqual("NONEXISTENT", res)
+
         # unscanned
         mr = self._mock_response_for_gar({})
         mock_get.return_value = mr
+        mock_getGARDigestForImage.return_value = "sha256:deadbeef"
         res = cvelib.gar.getGARDiscovery(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
         )
