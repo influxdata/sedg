@@ -5,6 +5,7 @@
 import argparse
 import copy
 from datetime import datetime
+import hashlib
 import json
 import os
 import requests
@@ -31,6 +32,8 @@ def _createQuayHeaders() -> Dict[str, str]:
     return copy.deepcopy(headers)
 
 
+# $ curl -H "Authorization: Bearer $QUAY_TOKEN" \
+#        -G "https://quay.io/api/v1/repository?last_modified=true&namespace=ORG"
 # {
 #   "repositories": [
 #     {
@@ -98,6 +101,8 @@ def getQuayOCIsForOrg(namespace: str) -> List[str]:
     return copy.deepcopy(repos)
 
 
+# $ curl -H "Authorization: Bearer $QUAY_TOKEN" \
+#        -G "https://quay.io/api/v1/repository/ORG/IMGNAME?includeTags=true"
 # {
 #   "namespace": "valid-org",
 #   "name": "valid-repo",
@@ -136,9 +141,12 @@ def getQuayDigestForImage(repo_full: str) -> str:
 
     ns: str = ""
     name: str = ""
+    sha256: str = ""
     tagsearch: str = ""
     ns, name = repo_full.split("/", 2)
-    if ":" in name:
+    if "@sha256:" in name:
+        name, sha256 = name.split("@", 2)
+    elif ":" in name:
         name, tagsearch = name.split(":", 2)
 
     repo: str = "%s/%s" % (ns, name)
@@ -174,12 +182,16 @@ def getQuayDigestForImage(repo_full: str) -> str:
                 )
                 return ""
 
-            cur: datetime = datetime.strptime(
-                resj["tags"][tag]["last_modified"], "%a, %d %b %Y %H:%M:%S %z"
-            )
-            if latest_d is None or cur > latest_d:
-                latest_d = cur
-                digest = resj["tags"][tag]["manifest_digest"]
+            if sha256 == "":
+                cur: datetime = datetime.strptime(
+                    resj["tags"][tag]["last_modified"], "%a, %d %b %Y %H:%M:%S %z"
+                )
+                if latest_d is None or cur > latest_d:
+                    latest_d = cur
+                    digest = resj["tags"][tag]["manifest_digest"]
+            elif sha256 == resj["tags"][tag]["manifest_digest"]:
+                digest = sha256
+                break
 
     if digest != "":
         return "%s/%s@%s" % (ns, name, digest)
@@ -282,6 +294,10 @@ def parse(resj: Dict[str, Any], url_prefix: str) -> List[ScanOCI]:
     return ocis
 
 
+# $ curl -H "Authorization: Bearer $QUAY_TOKEN" \
+#        -G
+#        "https://quay.io/api/v1/repository/ORG/IMGNAME/manifest/sha256:SHA256/security?vulnerabilities=true"
+# {
 def getQuaySecurityReport(
     repo_full: str, raw: Optional[bool] = False, fixable: Optional[bool] = False
 ) -> str:
@@ -312,7 +328,7 @@ def getQuaySecurityReport(
 
     resj = r.json()
     if raw:
-        return json.dumps(resj)
+        return json.dumps(resj, sort_keys=True)
 
     if "status" not in resj:
         error("Cound not find 'status' in response: %s" % resj, do_exit=False)
@@ -444,24 +460,17 @@ Eg, to pull all quay.io security scan reports for org 'foo':
         if sys.stdout.isatty():  # pragma: nocover
             print(".", end="", flush=True)
 
-        # see if the filename is in the list and if not, download it
-        sha256: str = name.split("@")[1].split(":")[-1]
-        if sha256 not in json_files:
-            tmp: str = getQuaySecurityReport(name, raw=True)
-            if '"status":' in tmp:
-                j: Dict[str, Any] = json.loads(tmp)
-                if j["status"] in ["queued", "scanned", "unsupported"]:
-                    if j["status"] == "scanned":
-                        jsons[name] = j
-                else:
-                    warn("unexpected scan status: %s" % j["status"])
+        tmp: str = getQuaySecurityReport(name, raw=True)
+        if '"status":' in tmp:
+            j: Dict[str, Any] = json.loads(tmp)
+            if j["status"] in ["queued", "scanned", "unsupported"]:
+                if j["status"] == "scanned":
+                    jsons[name] = j
+            else:
+                warn("unexpected scan status: %s" % j["status"])
 
     if sys.stdout.isatty():  # pragma: nocover
         print(" done!", flush=True)
-
-    if len(jsons) == 0:
-        error("No new security reports", do_exit=False)
-        return
 
     dir: str = args.path
     if not os.path.exists(dir):
@@ -469,34 +478,54 @@ Eg, to pull all quay.io security scan reports for org 'foo':
     if not os.path.isdir(dir):  # pragma: nocover
         error("'%s' is not a directory" % dir)
 
+    count: int = 0
     for full_name in jsons.keys():
         j = jsons[full_name]
 
         repo_name: str = full_name.split("@")[0].split("/")[-1]
         sha256: str = full_name.split("@")[1].split(":")[-1]
 
-        # create report under a dir with today's date
-        dobj: datetime = datetime.now()
-        dir = args.path
-        for subdir in [
-            str(dobj.year),
-            "%0.2d" % dobj.month,
-            "%0.2d" % dobj.day,
-            "quay",
-            args.name,
-            repo_name,
-        ]:
-            dir = os.path.join(dir, subdir)
-            if not os.path.exists(dir):
-                os.mkdir(dir)
-            if not os.path.isdir(dir):  # pragma: nocover
-                error("'%s' is not a directory" % dir)
+        if sha256 not in json_files:  # create under dir with today's date
+            dobj: datetime = datetime.now()
+            dir = args.path
+            for subdir in [
+                str(dobj.year),
+                "%0.2d" % dobj.month,
+                "%0.2d" % dobj.day,
+                "quay",
+                args.name,
+                repo_name,
+            ]:
+                dir = os.path.join(dir, subdir)
+                if not os.path.exists(dir):
+                    os.mkdir(dir)
+                if not os.path.isdir(dir):  # pragma: nocover
+                    error("'%s' is not a directory" % dir)
 
-        fn = os.path.join(dir, "%s.json" % sha256)
-        if not os.path.exists(fn):
-            with open(fn, "w") as fh:
-                print("Created: %s" % os.path.relpath(fn, args.path))
-                json.dump(j, fh, indent=2)
-                # json.dump() doesn't put a newline at the end, so add it
-                fh.seek(os.SEEK_SET, os.SEEK_END)
-                fh.write("\n")
+            fn = os.path.join(dir, "%s.json" % sha256)
+            if not os.path.exists(fn):
+                with open(fn, "w") as fh:
+                    print("Created: %s" % os.path.relpath(fn, args.path))
+                    json.dump(j, fh, sort_keys=True, indent=2)
+                    # json.dump() doesn't put a newline at the end, so add it
+                    fh.seek(os.SEEK_SET, os.SEEK_END)
+                    fh.write("\n")
+                count += 1
+        else:  # compare existing report to what we downloaded
+            fn: str = json_files[sha256]
+            orig_hash: str
+            with open(fn, "r") as fh:
+                orig_hash = hashlib.sha256(fh.read().encode("UTF-8")).hexdigest()
+
+            s: str = json.dumps(j, sort_keys=True, indent=2) + "\n"
+            hash: str = hashlib.sha256(s.encode("UTF-8")).hexdigest()
+            if orig_hash != hash:
+                os.unlink(fn)
+                with open(fn, "w") as fh:
+                    print("Updated: %s" % os.path.relpath(fn, args.path))
+                    fh.write(s)
+                count += 1
+
+    if count == 0:
+        error("No new security reports", do_exit=False)
+        return
