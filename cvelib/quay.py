@@ -430,11 +430,6 @@ Eg, to pull all quay.io security scan reports for org 'foo':
         error("Could not find any OCI image digests")
         return  # for tests
 
-    # gather security reports
-    jsons: Dict[str, Dict[str, Any]] = {}
-    if sys.stdout.isatty():  # pragma: nocover
-        print("Fetching security reports: ", end="", flush=True)
-
     # quay.io doesn't have dates or times in the security report, so we will
     # store them in a folder under today's date. Since the report path comes
     # from the date the report was fetched, we'll first search for the report
@@ -456,22 +451,6 @@ Eg, to pull all quay.io security scan reports for org 'foo':
                     continue
                 json_files[f.split(".")[0]] = tmp
 
-    for name in ocis:
-        if sys.stdout.isatty():  # pragma: nocover
-            print(".", end="", flush=True)
-
-        tmp: str = getQuaySecurityReport(name, raw=True)
-        if '"status":' in tmp:
-            j: Dict[str, Any] = json.loads(tmp)
-            if j["status"] in ["queued", "scanned", "unsupported"]:
-                if j["status"] == "scanned":
-                    jsons[name] = j
-            else:
-                warn("unexpected scan status: %s" % j["status"])
-
-    if sys.stdout.isatty():  # pragma: nocover
-        print(" done!", flush=True)
-
     dir: str = args.path
     if not os.path.exists(dir):
         os.mkdir(dir)
@@ -479,8 +458,19 @@ Eg, to pull all quay.io security scan reports for org 'foo':
         error("'%s' is not a directory" % dir)
 
     count: int = 0
-    for full_name in jsons.keys():
-        j = jsons[full_name]
+    for full_name in ocis:
+        j: Dict[str, Any] = {}
+        tmp: str = getQuaySecurityReport(full_name, raw=True)
+        if '"status":' in tmp:
+            j = json.loads(tmp)
+            if j["status"] not in ["queued", "scanned", "unsupported"]:
+                warn("unexpected scan status: %s" % j["status"])
+
+            if j["status"] != "scanned":
+                j = {}
+
+        if len(j) == 0:
+            continue
 
         repo_name: str = full_name.split("@")[0].split("/")[-1]
         sha256: str = full_name.split("@")[1].split(":")[-1]
@@ -528,4 +518,3 @@ Eg, to pull all quay.io security scan reports for org 'foo':
 
     if count == 0:
         error("No new security reports", do_exit=False)
-        return

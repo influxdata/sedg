@@ -830,33 +830,21 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
         error("Could not find any OCI image digests")
         return  # for tests
 
-    # gather security reports
-    jsons: Dict[str, Dict[str, Any]] = {}
-    if sys.stdout.isatty():  # pragma: nocover
-        print("Fetching security reports: ", end="", flush=True)
-    for name in ocis:
-        if sys.stdout.isatty():  # pragma: nocover
-            print(".", end="", flush=True)
-
-        tmp: str = getGARSecurityReport(name, raw=True, quiet=True)
-        if "occurrences" in tmp:
-            jsons[name] = json.loads(tmp)
-
-    if sys.stdout.isatty():  # pragma: nocover
-        print(" done!", flush=True)
-
-    if len(jsons) == 0:
-        error("Could not find any security reports")
-        return  # for tests
-
     dir: str = args.path
     if not os.path.exists(dir):
         os.mkdir(dir)
     if not os.path.isdir(dir):  # pragma: nocover
         error("'%s' is not a directory" % dir)
 
-    for full_name in jsons.keys():
-        j = jsons[full_name]
+    count: int = 0
+    for full_name in ocis:
+        j: Dict[str, Any] = {}
+        tmp: str = getGARSecurityReport(full_name, raw=True, quiet=True)
+        if "occurrences" in tmp:
+            j = json.loads(tmp)
+        else:
+            continue
+
         # GAR API should guarantee this...
         ok = True
 
@@ -906,6 +894,7 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
                 fh.seek(os.SEEK_SET, os.SEEK_END)
                 fh.write("\n")
                 created = True
+                count += 1
         if not os.path.isfile(fn):
             warn("'%s' is not a file" % os.path.relpath(fn, args.path))
             continue
@@ -925,3 +914,7 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
                 with open(fn, "w") as fh:
                     print("Updated: %s" % os.path.relpath(fn, args.path))
                     fh.write(s)
+                count += 1
+
+    if count == 0:
+        error("No new security reports", do_exit=False)

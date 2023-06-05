@@ -19,6 +19,7 @@ class TestQuay(TestCase):
     def setUp(self):
         """Setup functions common for all tests"""
         os.environ["SEDG_EXPERIMENTAL"] = "1"
+        self.tmpdir = None
         self.orig_quay_cookie = None
         self.orig_quay_token = None
 
@@ -36,6 +37,9 @@ class TestQuay(TestCase):
         """Teardown functions common for all tests"""
         if "SEDG_EXPERIMENTAL" in os.environ:
             del os.environ["SEDG_EXPERIMENTAL"]
+
+        if self.tmpdir is not None:
+            cvelib.common.recursive_rm(self.tmpdir)
 
     def test__createQuayHeaders(self):
         """Test _createQuayHeaders()"""
@@ -761,7 +765,7 @@ class TestQuay(TestCase):
         mock_getQuayOCIsForOrg.return_value = ["valid-repo"]
         mock_getQuayDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
         mock_getQuaySecurityReport.return_value = (
-            '{"status": "supported", "data": null}'
+            '{"status": "unsupported", "data": null}'
         )
         with mock.patch.object(
             cvelib.common.error,

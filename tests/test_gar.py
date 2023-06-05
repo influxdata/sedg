@@ -1144,9 +1144,7 @@ class TestGAR(TestCase):
                 with tests.testutil.capturedOutput() as (output, error):
                     cvelib.gar.main_gar_dump_reports()
         self.assertEqual("", output.getvalue().strip())
-        self.assertTrue(
-            "Could not find any security reports" in error.getvalue().strip()
-        )
+        self.assertTrue("No new security reports" in error.getvalue().strip())
 
         # bad report
         mock_getGAROCIsForProjectLoc.return_value = [
@@ -1179,6 +1177,27 @@ class TestGAR(TestCase):
         self.assertTrue(
             "WARN: Could not find 'createTime' in" in error.getvalue().strip()
         )
+
+        # bad report (no occurrences)
+        mock_getGAROCIsForProjectLoc.return_value = [
+            "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
+        ]
+        mock_getGARDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
+        mock_getGARSecurityReport.return_value = "{}"
+        with mock.patch(
+            "argparse._sys.argv",
+            [
+                "_",
+                "--path",
+                self.tmpdir + "/subdir",
+                "--name",
+                "valid-proj/us",
+            ],
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.gar.main_gar_dump_reports()
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue("No new security reports" in error.getvalue().strip())
 
         # path exists but isn't a file
         mock_getGAROCIsForProjectLoc.return_value = [
