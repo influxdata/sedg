@@ -472,16 +472,13 @@ Eg, to pull all quay.io security scan reports for org 'foo':
     if sys.stdout.isatty():  # pragma: nocover
         print(" done!", flush=True)
 
-    if len(jsons) == 0:
-        error("No new security reports", do_exit=False)
-        return
-
     dir: str = args.path
     if not os.path.exists(dir):
         os.mkdir(dir)
     if not os.path.isdir(dir):  # pragma: nocover
         error("'%s' is not a directory" % dir)
 
+    count: int = 0
     for full_name in jsons.keys():
         j = jsons[full_name]
 
@@ -513,6 +510,7 @@ Eg, to pull all quay.io security scan reports for org 'foo':
                     # json.dump() doesn't put a newline at the end, so add it
                     fh.seek(os.SEEK_SET, os.SEEK_END)
                     fh.write("\n")
+                count += 1
         else:  # compare existing report to what we downloaded
             fn: str = json_files[sha256]
             orig_hash: str
@@ -526,3 +524,8 @@ Eg, to pull all quay.io security scan reports for org 'foo':
                 with open(fn, "w") as fh:
                     print("Updated: %s" % os.path.relpath(fn, args.path))
                     fh.write(s)
+                count += 1
+
+    if count == 0:
+        error("No new security reports", do_exit=False)
+        return
