@@ -357,6 +357,16 @@ class TestQuay(TestCase):
             res,
         )
 
+        # search by sha256
+        mock_get.return_value = mr
+        res = cvelib.quay.getQuayDigestForImage(
+            "valid-org/valid-repo@sha256:2536a15812ba685df76e835aefdc7f512941c12c561e0aed152d17aa025cc820"
+        )
+        self.assertEqual(
+            "valid-org/valid-repo@sha256:2536a15812ba685df76e835aefdc7f512941c12c561e0aed152d17aa025cc820",
+            res,
+        )
+
         # bad invocation
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.quay.getQuayDigestForImage("valid-org")

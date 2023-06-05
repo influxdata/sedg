@@ -31,6 +31,8 @@ def _createQuayHeaders() -> Dict[str, str]:
     return copy.deepcopy(headers)
 
 
+# $ curl -H "Authorization: Bearer $QUAY_TOKEN" \
+#        -G "https://quay.io/api/v1/repository?last_modified=true&namespace=influxdb"
 # {
 #   "repositories": [
 #     {
@@ -136,9 +138,12 @@ def getQuayDigestForImage(repo_full: str) -> str:
 
     ns: str = ""
     name: str = ""
+    sha256: str = ""
     tagsearch: str = ""
     ns, name = repo_full.split("/", 2)
-    if ":" in name:
+    if "@sha256:" in name:
+        name, sha256 = name.split("@", 2)
+    elif ":" in name:
         name, tagsearch = name.split(":", 2)
 
     repo: str = "%s/%s" % (ns, name)
@@ -174,12 +179,16 @@ def getQuayDigestForImage(repo_full: str) -> str:
                 )
                 return ""
 
-            cur: datetime = datetime.strptime(
-                resj["tags"][tag]["last_modified"], "%a, %d %b %Y %H:%M:%S %z"
-            )
-            if latest_d is None or cur > latest_d:
-                latest_d = cur
-                digest = resj["tags"][tag]["manifest_digest"]
+            if sha256 == "":
+                cur: datetime = datetime.strptime(
+                    resj["tags"][tag]["last_modified"], "%a, %d %b %Y %H:%M:%S %z"
+                )
+                if latest_d is None or cur > latest_d:
+                    latest_d = cur
+                    digest = resj["tags"][tag]["manifest_digest"]
+            elif sha256 == resj["tags"][tag]["manifest_digest"]:
+                digest = sha256
+                break
 
     if digest != "":
         return "%s/%s@%s" % (ns, name, digest)
