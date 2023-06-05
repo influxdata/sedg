@@ -348,7 +348,7 @@ def getGARDigestForImage(repo_full: str) -> str:
                 )
                 if why != "INACTIVE":
                     only_stale = False
-                if why not in ["INACTIVE", "UNSUPPORTED", "UNSCANNED"]:
+                if why not in ["INACTIVE", "PENDING", "UNSUPPORTED", "UNSCANNED"]:
                     if why not in ["CLEAN", "ACTIVE"]:
                         # in case we missed something
                         warn("unexpected result from getGARDiscovery(): %s" % why)
