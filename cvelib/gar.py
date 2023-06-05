@@ -248,17 +248,17 @@ def getGARDigestForImage(repo_full: str) -> str:
     # relatedTags.
     url: str
     params: Dict[str, str] = {}
-    if sha256 != "":
-        url = (
-            "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories/%s/packages/%s/versions/%s"
-            % (project, location, repo, name, sha256)
-        )
-    else:
+    if sha256 == "":
         url = (
             "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories/%s/packages/%s/versions?orderBy=UPDATE_TIME+desc&view=FULL"
             % (project, location, repo, name)
         )
         params["pageSize"] = "100"
+    else:
+        url = (
+            "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories/%s/packages/%s/versions/%s"
+            % (project, location, repo, name, sha256)
+        )
 
     headers: Dict[str, str] = _createGARHeaders()
     headers["Content-Type"] = "application/json"
@@ -279,13 +279,13 @@ def getGARDigestForImage(repo_full: str) -> str:
 
         resj: Dict[str, Any] = {}
         tmp: Dict[str, Any] = r.json()
-        if sha256 != "":
+        if sha256 == "":
+            resj = tmp
+        else:
             # when searching by specific sha256, we get back the specific entry
             # and not a list of versions, so create a list of one versions
             resj["versions"] = []
             resj["versions"].append(tmp)
-        else:
-            resj = tmp
 
         if "versions" not in resj:
             warn("Could not find 'versions' in response: %s" % resj)
@@ -326,6 +326,8 @@ def getGARDigestForImage(repo_full: str) -> str:
                 for t in img["relatedTags"]:
                     if t["name"].endswith("/%s" % tagsearch):
                         return img["metadata"]["name"]
+            elif sha256 != "":
+                return img["metadata"]["name"]
             elif tagsearch == "":
                 # When not searching by a tag name, we are searching for the
                 # latest digest. Since we used 'orderBy=UPDATE_TIME+desc', we
@@ -737,7 +739,7 @@ def getGAROCIsForProjectLoc(proj_loc: str) -> List[str]:
     repos: List[str] = getGARReposForProjectLoc(proj_loc)
     ocis: List[str] = []
 
-    if sys.stdout.isatty():  # pragma: nocover
+    if len(repos) > 0 and sys.stdout.isatty():  # pragma: nocover
         print("Fetching list of images for each repo: ", end="", flush=True)
 
     for repo in repos:
@@ -749,7 +751,7 @@ def getGAROCIsForProjectLoc(proj_loc: str) -> List[str]:
         for oci in tmp:
             ocis.append("%s/%s" % (repo, oci))
 
-    if sys.stdout.isatty():  # pragma: nocover
+    if len(repos) > 0 and sys.stdout.isatty():  # pragma: nocover
         print(" done!", flush=True)
 
     return sorted(ocis)
