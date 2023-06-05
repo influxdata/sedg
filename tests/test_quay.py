@@ -391,9 +391,7 @@ class TestQuay(TestCase):
         with tests.testutil.capturedOutput() as (output, error):
             res = cvelib.quay.getQuayDigestForImage("valid-org/valid-repo")
         self.assertEqual("", output.getvalue().strip())
-        self.assertTrue(
-            "No 'tags' found for valid-org/valid-repo" in error.getvalue().strip()
-        )
+        self.assertEqual("", error.getvalue().strip())
         self.assertEqual(0, len(res))
 
         # tags missing last_modified
@@ -741,3 +739,59 @@ class TestQuay(TestCase):
                     cvelib.quay.main_quay_dump_reports()
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("No new security reports" in error.getvalue().strip())
+
+        # unsupported scan status
+        mock_getQuayOCIsForOrg.return_value = ["valid-repo"]
+        mock_getQuayDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
+        mock_getQuaySecurityReport.return_value = (
+            '{"status": "supported", "data": null}'
+        )
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with mock.patch(
+                "argparse._sys.argv",
+                [
+                    "_",
+                    "--path",
+                    self.tmpdir + "/subdir",
+                    "--name",
+                    "valid-org",
+                ],
+            ):
+                with tests.testutil.capturedOutput() as (output, error):
+                    cvelib.quay.main_quay_dump_reports()
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue("No new security reports" in error.getvalue().strip())
+
+        # unknown scan status
+        mock_getQuayOCIsForOrg.return_value = ["valid-repo"]
+        mock_getQuayDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
+        mock_getQuaySecurityReport.return_value = '{"status": "bad", "data": null}'
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with mock.patch(
+                "argparse._sys.argv",
+                [
+                    "_",
+                    "--path",
+                    self.tmpdir + "/subdir",
+                    "--name",
+                    "valid-org",
+                ],
+            ):
+                with tests.testutil.capturedOutput() as (output, error):
+                    cvelib.quay.main_quay_dump_reports()
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue("unexpected scan status: bad" in error.getvalue().strip())

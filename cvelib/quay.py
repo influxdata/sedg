@@ -161,10 +161,6 @@ def getQuayDigestForImage(repo_full: str) -> str:
         warn("Could not find 'tags' in response: %s" % resj)
         return ""
 
-    if len(resj["tags"]) == 0:
-        warn("No 'tags' found for %s" % repo)
-        return ""
-
     digest: str = ""
     if tagsearch != "" and tagsearch in resj["tags"]:
         digest = resj["tags"][tagsearch]["manifest_digest"]
@@ -185,7 +181,10 @@ def getQuayDigestForImage(repo_full: str) -> str:
                 latest_d = cur
                 digest = resj["tags"][tag]["manifest_digest"]
 
-    return "%s/%s@%s" % (ns, name, digest)
+    if digest != "":
+        return "%s/%s@%s" % (ns, name, digest)
+
+    return ""
 
 
 # {
@@ -450,7 +449,12 @@ Eg, to pull all quay.io security scan reports for org 'foo':
         if sha256 not in json_files:
             tmp: str = getQuaySecurityReport(name, raw=True)
             if '"status":' in tmp:
-                jsons[name] = json.loads(tmp)
+                j: Dict[str, Any] = json.loads(tmp)
+                if j["status"] in ["queued", "scanned", "unsupported"]:
+                    if j["status"] == "scanned":
+                        jsons[name] = j
+                else:
+                    warn("unexpected scan status: %s" % j["status"])
 
     if sys.stdout.isatty():  # pragma: nocover
         print(" done!", flush=True)
