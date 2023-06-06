@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 from email.message import EmailMessage
+import json
 import os
 from unittest import TestCase, mock, skipIf
 
@@ -525,6 +526,75 @@ template-urls = %s
                     "invalid TestKey: '%s' %s" % (date, suffix),
                     str(context.exception),
                 )
+
+    def test__sorted_json_deep(self):
+        """Test _sorted_json_deep()"""
+        tsts = [  # input, exp, is_json
+            # basic types
+            # str
+            ("", "", False),
+            ("a", "a", False),
+            # int
+            (1, 1, False),
+            (0, 0, False),
+            (-1, -1, False),
+            # float
+            (1.1, 1.1, False),
+            (0.0, 0.0, False),
+            (-1.1, -1.1, False),
+            # bool
+            (True, True, False),
+            (False, False, False),
+            # type(None)
+            (None, None, False),
+            # list
+            ([], [], False),
+            ([3, 2, 1], [1, 2, 3], False),
+            ([3, "a", 2, 1], [1, 2, 3, "a"], False),
+            ([3, "a", True, 2, 1, 2.1], [1, 2, 2.1, 3, True, "a"], False),
+            # dict
+            ({}, {}, False),
+            ({"z": "y", "x": "w"}, {"x": "w", "z": "y"}, False),
+            ({"a": [3, 2, 1]}, {"a": [1, 2, 3]}, False),
+            # json intended usage
+            # json dict
+            ("{}", "{}", True),
+            ('{"a": "b"}', '{"a": "b"}', True),
+            ('{"c": "d", "a": "b"}', '{"a": "b", "c": "d"}', True),
+            ('{"c": "d", "a": [3, 2, 1]}', '{"a": [1, 2, 3], "c": "d"}', True),
+            (
+                '{"c": "d", "a": {"z": [3, "a", true, 2, 1, 2.1], "y": [6, 5, 4]}}',
+                '{"a": {"y": [4, 5, 6], "z": [1, 2, 2.1, 3, true, "a"]}, "c": "d"}',
+                True,
+            ),
+            # json list
+            ("[]", "[]", True),
+            ('[{"a": "b"}]', '[{"a": "b"}]', True),
+            ('[{"c": "d", "a": "b"}]', '[{"a": "b", "c": "d"}]', True),
+            ('[{"c": "d", "a": [3, 2, 1]}]', '[{"a": [1, 2, 3], "c": "d"}]', True),
+            (
+                '[{"c": "d", "a": {"z": [3, "a", true, 2, 1, 2.1], "y": [6, 5, 4]}}]',
+                '[{"a": {"y": [4, 5, 6], "z": [1, 2, 2.1, 3, true, "a"]}, "c": "d"}]',
+                True,
+            ),
+            (
+                '[{"n": null}, {"c": "d", "a": {"z": [3, "a", true, 2, 1, 2.1], "y": [6, 5, 4]}}]',
+                '[{"a": {"y": [4, 5, 6], "z": [1, 2, 2.1, 3, true, "a"]}, "c": "d"}, {"n": null}]',
+                True,
+            ),
+        ]
+        for inp, exp, is_json in tsts:
+            s = inp
+            if is_json:
+                s = json.loads(inp)
+
+            tmp = cvelib.common._sorted_json_deep(s)
+            res = tmp
+            if is_json:
+                res = json.dumps(tmp, sort_keys=True, indent=2)
+                exp = json.dumps(json.loads(exp), sort_keys=True, indent=2)
+
+            self.assertEqual(exp, res)
 
     def test__experimental(self):
         """Test _experimental()"""

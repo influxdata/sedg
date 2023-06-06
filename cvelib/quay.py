@@ -13,7 +13,7 @@ import sys
 import textwrap
 from typing import Any, Dict, List, Optional
 
-from cvelib.common import error, warn, _experimental
+from cvelib.common import error, warn, _sorted_json_deep, _experimental
 from cvelib.net import requestGetRaw
 from cvelib.scan import ScanOCI, getScanOCIsReport
 
@@ -328,7 +328,7 @@ def getQuaySecurityReport(
 
     resj = r.json()
     if raw:
-        return json.dumps(resj, sort_keys=True)
+        return json.dumps(_sorted_json_deep(resj), sort_keys=True, indent=2)
 
     if "status" not in resj:
         error("Cound not find 'status' in response: %s" % resj, do_exit=False)
@@ -497,7 +497,7 @@ Eg, to pull all quay.io security scan reports for org 'foo':
                 with open(fn, "w") as fh:
                     print("Created: %s" % os.path.relpath(fn, args.path))
                     # sort_keys to make visual comparisons a bit easier
-                    json.dump(j, fh, sort_keys=True, indent=2)
+                    json.dump(_sorted_json_deep(j), fh, sort_keys=True, indent=2)
                     # json.dump() doesn't put a newline at the end, so add it
                     fh.seek(os.SEEK_SET, os.SEEK_END)
                     fh.write("\n")
@@ -509,7 +509,7 @@ Eg, to pull all quay.io security scan reports for org 'foo':
                 orig_hash = hashlib.sha256(fh.read().encode("UTF-8")).hexdigest()
 
             # sort_keys to make visual comparisons a bit easier
-            s: str = json.dumps(j, sort_keys=True, indent=2) + "\n"
+            s: str = json.dumps(_sorted_json_deep(j), sort_keys=True, indent=2) + "\n"
             hash: str = hashlib.sha256(s.encode("UTF-8")).hexdigest()
             if orig_hash != hash:
                 os.unlink(fn)
