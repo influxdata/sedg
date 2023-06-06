@@ -496,6 +496,7 @@ Eg, to pull all quay.io security scan reports for org 'foo':
             if not os.path.exists(fn):
                 with open(fn, "w") as fh:
                     print("Created: %s" % os.path.relpath(fn, args.path))
+                    # sort_keys to make visual comparisons a bit easier
                     json.dump(j, fh, sort_keys=True, indent=2)
                     # json.dump() doesn't put a newline at the end, so add it
                     fh.seek(os.SEEK_SET, os.SEEK_END)
@@ -507,6 +508,7 @@ Eg, to pull all quay.io security scan reports for org 'foo':
             with open(fn, "r") as fh:
                 orig_hash = hashlib.sha256(fh.read().encode("UTF-8")).hexdigest()
 
+            # sort_keys to make visual comparisons a bit easier
             s: str = json.dumps(j, sort_keys=True, indent=2) + "\n"
             hash: str = hashlib.sha256(s.encode("UTF-8")).hexdigest()
             if orig_hash != hash:
