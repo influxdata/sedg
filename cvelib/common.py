@@ -11,7 +11,7 @@ import shutil
 import sys
 import tempfile
 import time
-from typing import Dict, List, Optional, Pattern, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Pattern, Set, Tuple, Union
 
 from email.message import Message
 from email.parser import HeaderParser, Parser
@@ -636,6 +636,39 @@ def verifyDate(
             raise CveException(err)
 
     return dObj
+
+
+def _sorted_json_deep(
+    data: Union[Dict, List, int, bool, str, float, None]
+) -> Union[Dict, List, int, bool, str, float, None]:
+    """Deeply sort data that consists of JSON data types
+
+    Specifically, recursively:
+    - sort lists
+    - sort lists of dictionaries
+    - sort dict values
+
+    dict keys are intentionally not sorted since json.dump's sort_keys is
+    more performant than using an OrderedDict and adding the keys to it in
+    sorted order.
+
+    Intended usage:
+    j = json.load(...)
+    sorted_j = _sorted_json_deep(j)
+    print(json.dumps(sorted_j, sort_keys=True, indent=2))
+    """
+
+    # this is not fast, but it is ok when compared to downloading a json doc
+    if isinstance(data, dict):
+        output: Dict[Any, Any] = {}
+        for k, v in data.items():
+            output[k] = _sorted_json_deep(v)
+        return output
+    elif isinstance(data, list):
+        calc: List[Any] = [_sorted_json_deep(x) for x in data]
+        return sorted(calc, key=str)
+    else:
+        return data
 
 
 def _experimental():

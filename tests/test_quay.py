@@ -619,7 +619,7 @@ class TestQuay(TestCase):
 
         # updated
         with open(fn, "w") as fh:
-            fh.write('{"status": "scanned", "data": {}}')
+            fh.write('{"status": "scanned", "data": {"something": "else"}}')
         with mock.patch(
             "argparse._sys.argv",
             [
@@ -632,21 +632,21 @@ class TestQuay(TestCase):
         ):
             with tests.testutil.capturedOutput() as (output, error):
                 cvelib.quay.main_quay_dump_reports()
-        today = datetime.datetime.now()
-        fn = (
-            self.tmpdir
-            + "/subdir/%d/%0.2d/%0.2d/quay/valid-org/valid-repo/deadbeef.json"
-            % (today.year, today.month, today.day)
-        )
         relfn = os.path.relpath(fn, self.tmpdir + "/subdir")
         self.assertEqual("Updated: %s" % relfn, output.getvalue().strip())
         self.assertEqual("", error.getvalue().strip())
+        os.unlink(fn)
 
-        # duplicate
+        # duplicate (write out equivalent of json.dumps(..., sort_keys=True))
         fn = self.tmpdir + "/subdir/YYYY/MM/DD/quay/valid-org/valid-repo/deadbeef.json"
         os.makedirs(os.path.dirname(fn))
         with open(fn, "w") as fh:
-            fh.write('{"status": "scanned", "data": {}}')
+            fh.write('{\n  "data": {},\n  "status": "scanned"\n}\n')
+        fn2 = self.tmpdir + "/subdir/YYYY/MM/dd/quay/valid-org/valid-repo/deadbeef.json"
+        os.makedirs(os.path.dirname(fn2))
+        with open(fn2, "w") as fh:
+            fh.write('{\n  "data": {},\n  "status": "scanned"\n}\n')
+
         with mock.patch(
             "argparse._sys.argv",
             [

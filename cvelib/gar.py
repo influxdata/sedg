@@ -13,7 +13,7 @@ import sys
 import textwrap
 from typing import Any, Dict, List, Optional
 
-from cvelib.common import error, warn, rePatterns, _experimental
+from cvelib.common import error, warn, rePatterns, _sorted_json_deep, _experimental
 from cvelib.net import requestGetRaw
 from cvelib.scan import ScanOCI, getScanOCIsReport
 
@@ -723,7 +723,9 @@ def getGARSecurityReport(
     # If raw format, output a unified JSON document that has all the
     # vulns in one doc but otherwise looks like that the API returned
     if raw:
-        return "%s" % json.dumps({"occurrences": vulns}, sort_keys=True)
+        return "%s" % json.dumps(
+            _sorted_json_deep({"occurrences": vulns}), sort_keys=True, indent=2
+        )
 
     ocis: List[ScanOCI] = parse(vulns)
     s: str = getScanOCIsReport(ocis, fixable=fixable)
@@ -889,7 +891,8 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
         if not os.path.exists(fn):
             with open(fn, "w") as fh:
                 print("Created: %s" % os.path.relpath(fn, args.path))
-                json.dump(j, fh, sort_keys=True, indent=2)
+                # sort_keys to make visual comparisons a bit easier
+                json.dump(_sorted_json_deep(j), fh, sort_keys=True, indent=2)
                 # json.dump() doesn't put a newline at the end, so add it
                 fh.seek(os.SEEK_SET, os.SEEK_END)
                 fh.write("\n")
@@ -907,7 +910,8 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
             with open(fn, "r") as fh:
                 orig_hash = hashlib.sha256(fh.read().encode("UTF-8")).hexdigest()
 
-            s: str = json.dumps(j, sort_keys=True, indent=2) + "\n"
+            # sort_keys to make visual comparisons a bit easier
+            s: str = json.dumps(_sorted_json_deep(j), sort_keys=True, indent=2) + "\n"
             hash: str = hashlib.sha256(s.encode("UTF-8")).hexdigest()
             if orig_hash != hash:
                 os.unlink(fn)
