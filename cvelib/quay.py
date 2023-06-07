@@ -363,7 +363,7 @@ def getQuaySecurityReport(
     ocis: List[ScanOCI] = []
     s: str = ""
     # do a subset of this with created?
-    for oci in parse(resj, url_prefix):
+    for oci in sorted(parse(resj, url_prefix), key=lambda i: (i.component, i.advisory)):
         if fixable and oci.versionFixed == "unknown":
             continue
         if len(priorities) > 0 and oci.severity not in priorities:

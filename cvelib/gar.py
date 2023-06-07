@@ -733,7 +733,7 @@ def getGARSecurityReport(
     s: str = ""
     ocis: List[ScanOCI] = []
     # do a subset of this with created?
-    for oci in parse(vulns):
+    for oci in sorted(parse(vulns), key=lambda i: (i.component, i.advisory)):
         if fixable and oci.versionFixed == "unknown":
             continue
         if len(priorities) > 0 and oci.severity not in priorities:
