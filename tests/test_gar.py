@@ -790,15 +790,25 @@ class TestGAR(TestCase):
     @mock.patch("requests.get")
     def test_getGARSecurityReport(self, mock_get, mock_getGARDiscovery):
         """Test getGARSecurityReport()"""
+        self.maxDiff = 2048
         mr = self._mock_response_for_gar(self._validGARReport())
         mock_get.return_value = mr
         res = cvelib.gar.getGARSecurityReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
         )
-        exp = "ncurses 6.2+20201114-2 needed (medium)"
+        exp = """valid-proj/us/valid-repo/valid-name report: 1
+ - type: oci
+   component: ncurses
+   detectedIn: cpe:/o:debian:debian_linux:11
+   advisory: https://www.cve.org/CVERecord?id=CVE-2022-29458
+   version: 6.2+20201114-2
+   fixedBy: 6.2+20201114-2+deb11u1
+   severity: medium
+   status: needed
+   url: https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:3fa5256ad34b31901ca30021c722fc7ba11a66ca070c8442862205696b908ddb"""
         self.assertEqual(exp, res)
 
-        # fixable
+        # fixable=True
         d = self._validGARReport()
         del d["occurrences"][0]["vulnerability"]["packageIssue"][0]["fixedVersion"][
             "fullName"
@@ -808,13 +818,23 @@ class TestGAR(TestCase):
         res = cvelib.gar.getGARSecurityReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef", fixable=False
         )
-        exp = "ncurses 6.2+20201114-2 n/a (medium)"
+        exp = """valid-proj/us/valid-repo/valid-name report: 1
+ - type: oci
+   component: ncurses
+   detectedIn: cpe:/o:debian:debian_linux:11
+   advisory: https://www.cve.org/CVERecord?id=CVE-2022-29458
+   version: 6.2+20201114-2
+   fixedBy: unknown
+   severity: medium
+   status: needs-triage
+   url: https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:3fa5256ad34b31901ca30021c722fc7ba11a66ca070c8442862205696b908ddb"""
         self.assertEqual(exp, res)
 
+        # fixable=False
         res = cvelib.gar.getGARSecurityReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef", fixable=True
         )
-        self.assertEqual(0, len(res))
+        self.assertEqual("valid-proj/us/valid-repo/valid-name report: 0", res)
 
         # clean
         mr = self._mock_response_for_gar("{}")

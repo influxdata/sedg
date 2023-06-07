@@ -728,8 +728,16 @@ def getGARSecurityReport(
         )
 
     ocis: List[ScanOCI] = parse(vulns)
-    s: str = getScanOCIsReport(ocis, fixable=fixable)
-    return s
+    s: str = ""
+    count: int = 0
+    # do a subset of this with created?
+    for oci in ocis:
+        if fixable and oci.versionFixed == "unknown":
+            continue
+        s += "%s\n" % oci
+        count += 1
+    s = "%s report: %d\n%s" % (repo_full.split("@")[0], count, s)
+    return s.rstrip()
 
 
 def getGAROCIsForProjectLoc(proj_loc: str) -> List[str]:

@@ -455,10 +455,19 @@ class TestQuay(TestCase):
         mr = self._mock_response_for_quay(self._validQuayReport())
         mock_get.return_value = mr
         res = cvelib.quay.getQuaySecurityReport("valid-org/valid-repo@sha256:deadbeef")
-        exp = "libncurses6 6.2+20201114-2 needed (high)"
+        exp = """valid-org/valid-repo report: 1
+ - type: oci
+   component: libncurses6
+   detectedIn: Debian GNU/Linux 11 (bullseye)
+   advisory: https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-29458
+   version: 6.2+20201114-2
+   fixedBy: 0:6.2+20201114-2+deb11u1
+   severity: high
+   status: needed
+   url: https://quay.io/repository/valid-org/valid-repo/manifest/sha256:deadbeef?tab=vulnerabilities"""
         self.assertEqual(exp, res)
 
-        # fixable
+        # fixable=False
         d = self._validQuayReport()
         d["data"]["Layer"]["Features"][0]["Vulnerabilities"][0]["FixedBy"] = ""
         mr = self._mock_response_for_quay(d)
@@ -466,13 +475,23 @@ class TestQuay(TestCase):
         res = cvelib.quay.getQuaySecurityReport(
             "valid-org/valid-repo@sha256:deadbeef", fixable=False
         )
-        exp = "libncurses6 6.2+20201114-2 n/a (high)"
+        exp = """valid-org/valid-repo report: 1
+ - type: oci
+   component: libncurses6
+   detectedIn: Debian GNU/Linux 11 (bullseye)
+   advisory: https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-29458
+   version: 6.2+20201114-2
+   fixedBy: unknown
+   severity: high
+   status: needs-triage
+   url: https://quay.io/repository/valid-org/valid-repo/manifest/sha256:deadbeef?tab=vulnerabilities"""
         self.assertEqual(exp, res)
 
+        # fixable=True
         res = cvelib.quay.getQuaySecurityReport(
             "valid-org/valid-repo@sha256:deadbeef", fixable=True
         )
-        self.assertEqual(0, len(res))
+        self.assertEqual("valid-org/valid-repo report: 0", res)
 
         # raw
         mr = self._mock_response_for_quay(self._validQuayReport())
