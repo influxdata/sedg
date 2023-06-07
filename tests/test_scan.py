@@ -464,7 +464,7 @@ class TestScanCommon(TestCase):
         ]
 
     def test_getScanOCIsReport(self):
-        """test getScanOCIsReport()"""
+        """Test getScanOCIsReport()"""
         tsts = [
             ([], False, ""),
             ([], True, ""),
@@ -478,4 +478,172 @@ class TestScanCommon(TestCase):
 
         for ocis, fixable, exp in tsts:
             res = cvelib.scan.getScanOCIsReport(ocis, fixable=fixable)
+            self.assertEqual(exp, res)
+
+    def test_getScanOCIsReportTemplates(self):
+        """Test test_getScanOCIsReportTemplates()"""
+        self.maxDiff = 2048
+        tsts = [
+            ("foo", "bar/baz", [], [], ""),
+            (
+                "foo",
+                "bar/baz",
+                self._getValidOCIs(),
+                [],
+                """## bar/baz foo template
+Please address foo alerts in bar/baz:
+
+The following alerts were issued:
+- [ ] [baz](https://www.cve.org/CVERecord?id=CVE-2023-0003) (high)
+- [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0001) (low)
+- [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0002) (medium)
+- [ ] [norf](https://www.cve.org/CVERecord?id=CVE-2023-0004) (negligible)
+
+Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated.
+
+Thanks!
+
+References:
+ * https://blah.com/BAR-a
+
+## end template""",
+            ),
+            (
+                "foo",
+                "bar/baz",
+                [
+                    cvelib.scan.ScanOCI(
+                        {
+                            "component": "foo",
+                            "detectedIn": "myorg/myimg@sha256:deadbeef",
+                            "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0002",
+                            "version": "1.2.2",
+                            "fixedBy": "1.2.3",
+                            "severity": "medium",
+                            "status": "needed",
+                            "url": "https://blah.com/BAR-a",
+                        }
+                    )
+                ],
+                [],
+                """## bar/baz foo template
+Please address foo alert in bar/baz:
+
+The following alert was issued:
+- [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0002) (medium)
+
+Since a 'medium' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated.
+
+Thanks!
+
+References:
+ * https://blah.com/BAR-a
+
+## end template""",
+            ),
+            (
+                "foo",
+                "bar/baz",
+                [
+                    cvelib.scan.ScanOCI(
+                        {
+                            "component": "foo",
+                            "detectedIn": "myorg/myimg@sha256:deadbeef",
+                            "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0002",
+                            "version": "1.2.2",
+                            "fixedBy": "1.2.3",
+                            "severity": "medium",
+                            "status": "needed",
+                            "url": "https://blah.com/BAR-a",
+                        }
+                    )
+                ],
+                ["https://some/url", "https://some/other/url"],
+                """## bar/baz foo template
+Please address foo alert in bar/baz:
+
+The following alert was issued:
+- [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0002) (medium)
+
+Since a 'medium' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated.
+
+Thanks!
+
+References:
+ * https://some/url
+ * https://some/other/url
+ * https://blah.com/BAR-a
+
+## end template""",
+            ),
+            (
+                "foo",
+                "bar/baz",
+                [
+                    cvelib.scan.ScanOCI(
+                        {
+                            "component": "foo",
+                            "detectedIn": "myorg/myimg@sha256:deadbeef",
+                            "advisory": "unavailable",
+                            "version": "1.2.2",
+                            "fixedBy": "1.2.3",
+                            "severity": "medium",
+                            "status": "needed",
+                            "url": "https://blah.com/BAR-a",
+                        }
+                    )
+                ],
+                [],
+                """## bar/baz foo template
+Please address foo alert in bar/baz:
+
+The following alert was issued:
+- [ ] foo (medium)
+
+Since a 'medium' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated.
+
+Thanks!
+
+References:
+ * https://blah.com/BAR-a
+
+## end template""",
+            ),
+            (
+                "foo",
+                "bar/baz",
+                [
+                    cvelib.scan.ScanOCI(
+                        {
+                            "component": "foo",
+                            "detectedIn": "myorg/myimg@sha256:deadbeef",
+                            "advisory": "unavailable",
+                            "version": "1.2.2",
+                            "fixedBy": "1.2.3",
+                            "severity": "unknown",
+                            "status": "needed",
+                            "url": "https://blah.com/BAR-a",
+                        }
+                    )
+                ],
+                [],
+                """## bar/baz foo template
+Please address foo alert in bar/baz:
+
+The following alert was issued:
+- [ ] foo (unknown)
+
+Since a 'unknown' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated.
+
+Thanks!
+
+References:
+ * https://blah.com/BAR-a
+
+## end template""",
+            ),
+        ]
+
+        for reg, name, ocis, template_urls, exp in tsts:
+            res = cvelib.scan.getScanOCIsReportTemplates(reg, name, ocis, template_urls)
             self.assertEqual(exp, res)

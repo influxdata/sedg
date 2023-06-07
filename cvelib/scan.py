@@ -204,3 +204,69 @@ def getScanOCIsReport(ocis: List[ScanOCI], fixable: Optional[bool] = False) -> s
         s += table_f(name=g, vers=grouped[g]["version"], status=status) + "\n"
 
     return s.rstrip()
+
+
+def getScanOCIsReportTemplates(
+    registry: str,
+    name: str,
+    ocis: List[ScanOCI],
+    template_urls: List[str] = [],
+) -> str:
+    """Get the reports templates"""
+    if len(ocis) == 0:
+        return ""
+
+    sev: List[str] = ["unknown", "negligible", "low", "medium", "high", "critical"]
+    oci_references: List[str] = []
+    iss_checklist: List[str] = []
+    highest: int = 0
+    for oci in ocis:
+        cur: int = sev.index(oci.severity)
+        if cur > highest:
+            highest = cur
+
+        if oci.url != "unavailable" and oci.url not in oci_references:
+            oci_references.append(oci.url)
+
+        if oci.advisory == "unavailable":
+            iss_checklist.append("- [ ] %s (%s)" % (oci.component, oci.severity))
+        else:
+            iss_checklist.append(
+                "- [ ] [%s](%s) (%s)" % (oci.component, oci.advisory, oci.severity)
+            )
+
+    priority: str = sev[highest]
+    if priority == "unknown":
+        priority = "medium"
+
+    plural: bool = len(ocis) > 1
+
+    iss_template: str = """## %s %s template
+Please address %s alert%s in %s:
+
+The following alert%s %s issued:
+%s
+
+Since a '%s' severity issue is present, tentatively adding the 'security/%s' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated.
+
+Thanks!
+
+References:
+ * %s%s
+""" % (
+        name.split("@")[0],
+        registry,
+        registry,
+        "s" if plural else "",
+        name.split("@")[0],
+        "s" if plural else "",
+        "were" if plural else "was",
+        "\n".join(sorted(iss_checklist)),
+        sev[highest],
+        priority,
+        "" if len(template_urls) == 0 else "%s\n * " % "\n * ".join(template_urls),
+        "\n * ".join(sorted(oci_references)),
+    )
+    iss_template += "\n## end template"
+
+    return iss_template

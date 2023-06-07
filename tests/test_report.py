@@ -3791,6 +3791,10 @@ Totals:
                 "Please specify --alerts with --with-templates",
             ),
             (
+                ["gar", "--list", "--namespace", "foo/us", "--filter-priority=high"],
+                "Please specify --alerts with --filter-priority",
+            ),
+            (
                 [
                     "gar",
                     "--alerts",
