@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: MIT
 
-from typing import Dict, List, Optional
+import datetime
+from typing import Dict, List, Optional, Tuple
 from yaml import load, CSafeLoader
 
 from cvelib.common import CveException, cve_priorities, rePatterns, _experimental
@@ -206,6 +207,33 @@ def getScanOCIsReport(ocis: List[ScanOCI], fixable: Optional[bool] = False) -> s
     return s.rstrip()
 
 
+def _parseScanURL(url: str) -> Tuple[str, str, str, str]:
+    """Find CVE 'product', 'where', 'software' and 'modifier' from url"""
+    if url == "":
+        return ("", "", "", "")
+
+    product: str = "oci"
+    where: str
+    software: str
+    modifier: str = ""
+
+    tmp = url.split("@")[0].split("/")
+    if url.startswith("https://") and "docker.pkg.dev/" in url:  # gar
+        # https://us-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:...
+        where = tmp[3]
+        software = tmp[4]
+        modifier = tmp[5]
+    elif url.startswith("https://quay.io/repository/"):  # quay.io
+        # https://quay.io/repository/ORG/IMGNAME/manifest/sha256:...
+        where = tmp[4]
+        software = tmp[5]
+    else:
+        where = "TBD"
+        software = "TBD"
+
+    return (product, where, software, modifier)
+
+
 def getScanOCIsReportTemplates(
     registry: str,
     name: str,
@@ -219,8 +247,10 @@ def getScanOCIsReportTemplates(
     sev: List[str] = ["unknown", "negligible", "low", "medium", "high", "critical"]
     oci_references: List[str] = []
     iss_checklist: List[str] = []
+    cve_items: Dict[str, int] = {}
+    scan_reports: str = ""
     highest: int = 0
-    for oci in ocis:
+    for oci in sorted(ocis, key=lambda i: (i.component, i.advisory)):
         cur: int = sev.index(oci.severity)
         if cur > highest:
             highest = cur
@@ -235,11 +265,19 @@ def getScanOCIsReportTemplates(
                 "- [ ] [%s](%s) (%s)" % (oci.component, oci.advisory, oci.severity)
             )
 
+        c: str = "- [ ] %s (%s)" % (oci.component, oci.severity)
+        if c not in cve_items:
+            cve_items[c] = 1
+        else:
+            cve_items[c] += 1
+
+        scan_reports += "%s\n" % oci
+
+    plural: bool = len(ocis) > 1
+
     priority: str = sev[highest]
     if priority == "unknown":
         priority = "medium"
-
-    plural: bool = len(ocis) > 1
 
     iss_template: str = """## %s %s template
 Please address %s alert%s in %s:
@@ -269,4 +307,63 @@ References:
     )
     iss_template += "\n## end template"
 
-    return iss_template
+    cve_checklist: str = ""
+    for i in sorted(cve_items.keys()):
+        if cve_items[i] > 1:
+            cve_checklist += " %s\n" % (i.replace("(", "(%d " % (cve_items[i])))
+        else:
+            cve_checklist += " %s\n" % i
+
+    pkg_stanzas: List[str] = []
+    for url in oci_references:
+        # TODO: where override
+        (prod, where, soft, mod) = _parseScanURL(url)
+        s: str = "Patches_%s:\n%s/%s_%s%s: needs-triage" % (
+            soft,
+            prod,
+            where,
+            soft,
+            ("" if mod == "" else "/%s" % mod),
+        )
+        pkg_stanzas.append(s)
+
+    now: datetime.datetime = datetime.datetime.now()
+    cve_template: str = """## %s CVE template
+Candidate: %s
+OpenDate: %s
+CloseDate:
+PublicDate:
+CRD:
+References:
+ %s
+Description:
+ Please address alert%s in %s
+%sScan-Reports:
+%s
+Notes:
+Mitigation:
+Bugs:
+Priority: %s
+Discovered-by: %s
+Assigned-to:
+CVSS:
+
+%s
+""" % (
+        name.split("@")[0],
+        "CVE-%d-NNNN" % now.year,
+        "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
+        # "\n ".join(references + sorted(advisories)),
+        "\n ".join(oci_references),
+        "s" if plural else "",
+        name.split("@")[0],
+        cve_checklist,
+        scan_reports.rstrip(),
+        priority,
+        registry.lower(),
+        "\n".join(pkg_stanzas),
+    )
+
+    cve_template += "\n## end CVE template"
+
+    return "%s\n\n%s" % (iss_template, cve_template)
