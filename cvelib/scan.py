@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: MIT
 
 import datetime
-from typing import Dict, List, Optional, Tuple
+import re
+from typing import Dict, List, Optional, Pattern, Tuple
 from yaml import load, CSafeLoader
 
 from cvelib.common import CveException, cve_priorities, rePatterns, _experimental
@@ -17,7 +18,7 @@ from cvelib.common import CveException, cve_priorities, rePatterns, _experimenta
 #    fixedBy: <version>
 #    severity: negligible|low|medium|high|critical
 #    status: needs-triage|needed|released|dismissed (tolerable|code-not-used; name)
-#    url: https://quay.io/..., https://...cloud.google.com, ... (scan report)
+#    url: https://quay.io/..., https://...-docker.pkg.dev/, ... (scan report)
 
 
 class ScanOCI(object):
@@ -218,7 +219,9 @@ def _parseScanURL(url: str) -> Tuple[str, str, str, str]:
     modifier: str = ""
 
     tmp = url.split("@")[0].split("/")
-    if url.startswith("https://") and "docker.pkg.dev/" in url:  # gar
+    # https://cloud.google.com/artifact-registry/docs/repositories/repo-locations
+    pat: Pattern[str] = re.compile(r"^https://[a-z\-]+-docker\.pkg\.dev/")
+    if pat.search(url):
         # https://us-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:...
         where = tmp[3]
         software = tmp[4]
