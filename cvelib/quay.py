@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 
 from cvelib.common import error, warn, _sorted_json_deep, _experimental
 from cvelib.net import requestGetRaw
-from cvelib.scan import ScanOCI, getScanOCIsReport
+from cvelib.scan import ScanOCI, getScanOCIsReportTemplates
 
 
 def _createQuayHeaders() -> Dict[str, str]:
@@ -299,7 +299,12 @@ def parse(resj: Dict[str, Any], url_prefix: str) -> List[ScanOCI]:
 #        "https://quay.io/api/v1/repository/ORG/IMGNAME/manifest/sha256:SHA256/security?vulnerabilities=true"
 # {
 def getQuaySecurityReport(
-    repo_full: str, raw: Optional[bool] = False, fixable: Optional[bool] = False
+    repo_full: str,
+    raw: bool = False,
+    fixable: bool = True,
+    with_templates: bool = False,
+    template_urls: List[str] = [],
+    priorities: List[str] = [],
 ) -> str:
     """Obtain the security manifest for the specified repo@sha256:..."""
     if "/" not in repo_full or "@sha256:" not in repo_full:
@@ -355,9 +360,31 @@ def getQuaySecurityReport(
 
     url_prefix: str = "https://quay.io/repository/%s/manifest/%s" % (repo, sha256)
 
-    ocis: List[ScanOCI] = parse(resj, url_prefix)
-    s: str = getScanOCIsReport(ocis, fixable=fixable)
-    return s
+    ocis: List[ScanOCI] = []
+    s: str = ""
+    # do a subset of this with created?
+    for oci in sorted(parse(resj, url_prefix), key=lambda i: (i.component, i.advisory)):
+        if fixable and oci.versionFixed == "unknown":
+            continue
+        if len(priorities) > 0 and oci.severity not in priorities:
+            continue
+        ocis.append(oci)
+        s += "%s\n" % oci
+
+    s = "%s report: %d\n%s" % (repo_full.split("@")[0], len(ocis), s)
+
+    if with_templates:
+        s = "%s\n\n%s" % (
+            getScanOCIsReportTemplates(
+                "quay.io",
+                repo_full,
+                ocis,
+                template_urls=template_urls,
+            ),
+            s,
+        )
+
+    return s.rstrip()
 
 
 #

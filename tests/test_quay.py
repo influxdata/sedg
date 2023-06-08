@@ -452,13 +452,31 @@ class TestQuay(TestCase):
     @mock.patch("requests.get")
     def test_getQuaySecurityReport(self, mock_get):
         """Test getQuaySecurityReport()"""
+        self.maxDiff = 2048
+
         mr = self._mock_response_for_quay(self._validQuayReport())
         mock_get.return_value = mr
         res = cvelib.quay.getQuaySecurityReport("valid-org/valid-repo@sha256:deadbeef")
-        exp = "libncurses6 6.2+20201114-2 needed (high)"
+        exp = """valid-org/valid-repo report: 1
+ - type: oci
+   component: libncurses6
+   detectedIn: Debian GNU/Linux 11 (bullseye)
+   advisory: https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-29458
+   version: 6.2+20201114-2
+   fixedBy: 0:6.2+20201114-2+deb11u1
+   severity: high
+   status: needed
+   url: https://quay.io/repository/valid-org/valid-repo/manifest/sha256:deadbeef?tab=vulnerabilities"""
         self.assertEqual(exp, res)
+        self.assertFalse("## valid-org/valid-repo quay.io template" in res)
 
-        # fixable
+        # with_templates=True
+        res = cvelib.quay.getQuaySecurityReport(
+            "valid-org/valid-repo@sha256:deadbeef", with_templates=True
+        )
+        self.assertTrue("## valid-org/valid-repo quay.io template" in res)
+
+        # fixable=False
         d = self._validQuayReport()
         d["data"]["Layer"]["Features"][0]["Vulnerabilities"][0]["FixedBy"] = ""
         mr = self._mock_response_for_quay(d)
@@ -466,13 +484,56 @@ class TestQuay(TestCase):
         res = cvelib.quay.getQuaySecurityReport(
             "valid-org/valid-repo@sha256:deadbeef", fixable=False
         )
-        exp = "libncurses6 6.2+20201114-2 n/a (high)"
+        exp = """valid-org/valid-repo report: 1
+ - type: oci
+   component: libncurses6
+   detectedIn: Debian GNU/Linux 11 (bullseye)
+   advisory: https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-29458
+   version: 6.2+20201114-2
+   fixedBy: unknown
+   severity: high
+   status: needs-triage
+   url: https://quay.io/repository/valid-org/valid-repo/manifest/sha256:deadbeef?tab=vulnerabilities"""
         self.assertEqual(exp, res)
 
+        # fixable=True
         res = cvelib.quay.getQuaySecurityReport(
             "valid-org/valid-repo@sha256:deadbeef", fixable=True
         )
-        self.assertEqual(0, len(res))
+        self.assertEqual("valid-org/valid-repo report: 0", res)
+
+        # priorities
+        d = self._validQuayReport()
+        mr = self._mock_response_for_quay(d)
+        mock_get.return_value = mr
+        res = cvelib.quay.getQuaySecurityReport(
+            "valid-org/valid-repo@sha256:deadbeef",
+            priorities=["negligible"],
+        )
+        self.assertEqual("valid-org/valid-repo report: 0", res)
+
+        # priorities - present
+        d = self._validQuayReport()
+        d["data"]["Layer"]["Features"][0]["Vulnerabilities"][0][
+            "Severity"
+        ] = "Negligible"
+        mr = self._mock_response_for_quay(d)
+        mock_get.return_value = mr
+        res = cvelib.quay.getQuaySecurityReport(
+            "valid-org/valid-repo@sha256:deadbeef",
+            priorities=["negligible"],
+        )
+        exp = """valid-org/valid-repo report: 1
+ - type: oci
+   component: libncurses6
+   detectedIn: Debian GNU/Linux 11 (bullseye)
+   advisory: https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-29458
+   version: 6.2+20201114-2
+   fixedBy: 0:6.2+20201114-2+deb11u1
+   severity: negligible
+   status: needed
+   url: https://quay.io/repository/valid-org/valid-repo/manifest/sha256:deadbeef?tab=vulnerabilities"""
+        self.assertEqual(exp, res)
 
         # raw
         mr = self._mock_response_for_quay(self._validQuayReport())
@@ -672,7 +733,7 @@ class TestQuay(TestCase):
         mock_getQuayDigestForImage,
         mock_getQuaySecurityReport,
     ):
-        """Test test_gar_main_dump_reports()"""
+        """Test test_quay_main_dump_reports()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         os.environ["SEDG_EXPERIMENTAL"] = "1"
 

@@ -11,11 +11,11 @@ import os
 import requests
 import sys
 import textwrap
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from cvelib.common import error, warn, rePatterns, _sorted_json_deep, _experimental
 from cvelib.net import requestGetRaw
-from cvelib.scan import ScanOCI, getScanOCIsReport
+from cvelib.scan import ScanOCI, getScanOCIsReportTemplates
 
 
 def _createGARHeaders() -> Dict[str, str]:
@@ -650,9 +650,12 @@ def getGARDiscovery(repo_full: str) -> str:
 # https://cloud.google.com/container-analysis/docs/reference/rest
 def getGARSecurityReport(
     repo_full: str,
-    raw: Optional[bool] = False,
-    fixable: Optional[bool] = False,
-    quiet: Optional[bool] = False,
+    raw: bool = False,
+    fixable: bool = True,
+    with_templates: bool = False,
+    quiet: bool = False,
+    template_urls: List[str] = [],
+    priorities: List[str] = [],
 ) -> str:
     """Obtain the security manifest for the specified repo@sha256:..."""
     if "/" not in repo_full or repo_full.count("/") != 3 or "@sha256:" not in repo_full:
@@ -727,9 +730,31 @@ def getGARSecurityReport(
             _sorted_json_deep({"occurrences": vulns}), sort_keys=True, indent=2
         )
 
-    ocis: List[ScanOCI] = parse(vulns)
-    s: str = getScanOCIsReport(ocis, fixable=fixable)
-    return s
+    s: str = ""
+    ocis: List[ScanOCI] = []
+    # do a subset of this with created?
+    for oci in sorted(parse(vulns), key=lambda i: (i.component, i.advisory)):
+        if fixable and oci.versionFixed == "unknown":
+            continue
+        if len(priorities) > 0 and oci.severity not in priorities:
+            continue
+        ocis.append(oci)
+        s += "%s\n" % oci
+
+    s = "%s report: %d\n%s" % (repo_full.split("@")[0], len(ocis), s)
+
+    if with_templates:
+        s = "%s\n\n%s" % (
+            getScanOCIsReportTemplates(
+                "GAR",
+                repo_full,
+                ocis,
+                template_urls=template_urls,
+            ),
+            s,
+        )
+
+    return s.rstrip()
 
 
 def getGAROCIsForProjectLoc(proj_loc: str) -> List[str]:

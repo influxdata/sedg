@@ -25,7 +25,13 @@ from typing import (
     Union,
 )
 
-from cvelib.cve import CVE, checkSyntax, collectCVEData, collectGHAlertUrls
+from cvelib.cve import (
+    CVE,
+    checkSyntax,
+    collectCVEData,
+    collectGHAlertUrls,
+    _parseFilterPriorities,
+)
 from cvelib.common import (
     cve_priorities,
     error,
@@ -1044,18 +1050,35 @@ def getOCIReports(
     template_urls: List[str] = [],
     raw: bool = False,
     fixable: bool = True,
+    filter_priority: Optional[str] = None,
 ) -> None:
     """Show OCI reports"""
+
+    # if no priority filter, default to all priorities
+    priorities: List[str] = cve_priorities
+    if filter_priority is not None:
+        priorities = _parseFilterPriorities(filter_priority)
+
     reports: Dict[str, str] = {}
     for img in images:
         # XXX: implement as interfaces
         if registry == "quay":
             reports[img] = cvelib.quay.getQuaySecurityReport(
-                "%s/%s" % (namespace, img), raw=raw, fixable=fixable
+                "%s/%s" % (namespace, img),
+                raw=raw,
+                fixable=fixable,
+                with_templates=with_templates,
+                template_urls=template_urls,
+                priorities=priorities,
             )
         elif registry == "gar":
             reports[img] = cvelib.gar.getGARSecurityReport(
-                "%s/%s" % (namespace, img), raw=raw, fixable=fixable
+                "%s/%s" % (namespace, img),
+                raw=raw,
+                fixable=fixable,
+                with_templates=with_templates,
+                template_urls=template_urls,
+                priorities=priorities,
             )
 
     s: str = ""
@@ -1959,6 +1982,14 @@ Example usage:
             action="store_true",
         )
         p.add_argument(
+            "--filter-priority",
+            dest="filter_priority",
+            help="comma-separated list of PRIORITYs to limit by (eg 'critical,high' or '-negligible')",
+            metavar="PRIORITY",
+            type=str,
+            default=None,
+        )
+        p.add_argument(
             "--with-templates",
             dest="with_templates",
             help="show issue templates with %s security reports" % what,
@@ -2253,6 +2284,8 @@ Example usage:
                 error("Please specify --alerts with --all")
             if args.raw:
                 error("Please specify --alerts with --raw")
+            if args.filter_priority:
+                error("Please specify --alerts with --filter-priority")
         # below here are --alerts specific
         elif args.raw and (args.with_templates or args.all):
             error("--raw not supported with --all or --with-templates")
@@ -2504,4 +2537,5 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
                 template_urls=template_urls,
                 raw=args.raw,
                 fixable=(not args.all),
+                filter_priority=args.filter_priority,
             )

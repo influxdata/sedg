@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 
+import datetime
 import os
 from unittest import TestCase
 
@@ -464,7 +465,7 @@ class TestScanCommon(TestCase):
         ]
 
     def test_getScanOCIsReport(self):
-        """test getScanOCIsReport()"""
+        """Test getScanOCIsReport()"""
         tsts = [
             ([], False, ""),
             ([], True, ""),
@@ -478,4 +479,408 @@ class TestScanCommon(TestCase):
 
         for ocis, fixable, exp in tsts:
             res = cvelib.scan.getScanOCIsReport(ocis, fixable=fixable)
+            self.assertEqual(exp, res)
+
+    def test__parseScanURL(self):
+        """Test _parseScanURL()"""
+        tsts = [
+            # url, expProduct, expWhere, expSoftware, expModifier
+            ("", "", "", "", ""),
+            ("https://other", "oci", "TBD", "TBD", ""),
+            ("unavailable", "oci", "TBD", "TBD", ""),
+            (
+                "https://us-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:deadbeef",
+                "oci",
+                "PROJECT",
+                "REPO",
+                "IMGNAME",
+            ),
+            (
+                "https://quay.io/repository/ORG/IMGNAME/manifest/sha256:deadbeef",
+                "oci",
+                "ORG",
+                "IMGNAME",
+                "",
+            ),
+        ]
+
+        for url, expP, expW, expS, expM in tsts:
+            (resP, resW, resS, resM) = cvelib.scan._parseScanURL(url)
+            self.assertEqual(expP, resP, msg="url=%s" % url)
+            self.assertEqual(expW, resW, msg="url=%s" % url)
+            self.assertEqual(expS, resS, msg="url=%s" % url)
+            self.assertEqual(expM, resM, msg="url=%s" % url)
+
+    def test_getScanOCIsReportTemplates(self):
+        """Test test_getScanOCIsReportTemplates()"""
+        now: datetime.datetime = datetime.datetime.now()
+        self.maxDiff = 8196
+        tsts = [
+            ("foo", "bar/baz", [], [], ""),
+            (
+                "foo",
+                "bar/baz",
+                self._getValidOCIs(),
+                [],
+                """## bar/baz foo template
+Please address foo alerts in bar/baz:
+
+The following alerts were issued:
+- [ ] [baz](https://www.cve.org/CVERecord?id=CVE-2023-0003) (high)
+- [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0001) (low)
+- [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0002) (medium)
+- [ ] [norf](https://www.cve.org/CVERecord?id=CVE-2023-0004) (negligible)
+
+Since a 'high' severity issue is present, tentatively adding the 'security/high' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated.
+
+Thanks!
+
+References:
+ * https://blah.com/BAR-a
+
+## end template
+
+## bar/baz CVE template
+Candidate: CVE-%d-NNNN
+OpenDate: %0.2d-%0.2d-%0.2d
+CloseDate:
+PublicDate:
+CRD:
+References:
+ https://blah.com/BAR-a
+Description:
+ Please address alerts in bar/baz
+ - [ ] baz (high)
+ - [ ] foo (low)
+ - [ ] foo (medium)
+ - [ ] norf (negligible)
+Scan-Reports:
+ - type: oci
+   component: baz
+   detectedIn: myorg/myimg@sha256:deadbeef
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0003
+   version: 2.3.4
+   fixedBy: unavailable
+   severity: high
+   status: needs-triage
+   url: https://blah.com/BAR-a
+ - type: oci
+   component: foo
+   detectedIn: myorg/myimg@sha256:deadbeef
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.2
+   fixedBy: 1.2.2
+   severity: low
+   status: released
+   url: https://blah.com/BAR-a
+ - type: oci
+   component: foo
+   detectedIn: myorg/myimg@sha256:deadbeef
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   version: 1.2.2
+   fixedBy: 1.2.3
+   severity: medium
+   status: needed
+   url: https://blah.com/BAR-a
+ - type: oci
+   component: norf
+   detectedIn: myorg/myimg@sha256:deadbeef
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0004
+   version: 2.3.4
+   fixedBy: 2.3.4
+   severity: negligible
+   status: released
+   url: https://blah.com/BAR-a
+Notes:
+Mitigation:
+Bugs:
+Priority: high
+Discovered-by: foo
+Assigned-to:
+CVSS:
+
+Patches_TBD:
+oci/TBD_TBD: needs-triage
+
+## end CVE template"""
+                % (now.year, now.year, now.month, now.day),
+            ),
+            (
+                "foo",
+                "bar/baz",
+                [
+                    cvelib.scan.ScanOCI(
+                        {
+                            "component": "foo",
+                            "detectedIn": "myorg/myimg@sha256:deadbeef",
+                            "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0002",
+                            "version": "1.2.2",
+                            "fixedBy": "1.2.3",
+                            "severity": "medium",
+                            "status": "needed",
+                            "url": "https://blah.com/BAR-a",
+                        }
+                    )
+                ],
+                [],
+                """## bar/baz foo template
+Please address foo alert in bar/baz:
+
+The following alert was issued:
+- [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0002) (medium)
+
+Since a 'medium' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated.
+
+Thanks!
+
+References:
+ * https://blah.com/BAR-a
+
+## end template
+
+## bar/baz CVE template
+Candidate: CVE-%d-NNNN
+OpenDate: %0.2d-%0.2d-%0.2d
+CloseDate:
+PublicDate:
+CRD:
+References:
+ https://blah.com/BAR-a
+Description:
+ Please address alert in bar/baz
+ - [ ] foo (medium)
+Scan-Reports:
+ - type: oci
+   component: foo
+   detectedIn: myorg/myimg@sha256:deadbeef
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   version: 1.2.2
+   fixedBy: 1.2.3
+   severity: medium
+   status: needed
+   url: https://blah.com/BAR-a
+Notes:
+Mitigation:
+Bugs:
+Priority: medium
+Discovered-by: foo
+Assigned-to:
+CVSS:
+
+Patches_TBD:
+oci/TBD_TBD: needs-triage
+
+## end CVE template"""
+                % (now.year, now.year, now.month, now.day),
+            ),
+            (
+                "foo",
+                "bar/baz",
+                [
+                    cvelib.scan.ScanOCI(
+                        {
+                            "component": "foo",
+                            "detectedIn": "myorg/myimg@sha256:deadbeef",
+                            "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0002",
+                            "version": "1.2.2",
+                            "fixedBy": "1.2.3",
+                            "severity": "medium",
+                            "status": "needed",
+                            "url": "https://blah.com/BAR-a",
+                        }
+                    )
+                ],
+                ["https://some/url", "https://some/other/url"],
+                """## bar/baz foo template
+Please address foo alert in bar/baz:
+
+The following alert was issued:
+- [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0002) (medium)
+
+Since a 'medium' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated.
+
+Thanks!
+
+References:
+ * https://some/url
+ * https://some/other/url
+ * https://blah.com/BAR-a
+
+## end template
+
+## bar/baz CVE template
+Candidate: CVE-%d-NNNN
+OpenDate: %0.2d-%0.2d-%0.2d
+CloseDate:
+PublicDate:
+CRD:
+References:
+ https://blah.com/BAR-a
+Description:
+ Please address alert in bar/baz
+ - [ ] foo (medium)
+Scan-Reports:
+ - type: oci
+   component: foo
+   detectedIn: myorg/myimg@sha256:deadbeef
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   version: 1.2.2
+   fixedBy: 1.2.3
+   severity: medium
+   status: needed
+   url: https://blah.com/BAR-a
+Notes:
+Mitigation:
+Bugs:
+Priority: medium
+Discovered-by: foo
+Assigned-to:
+CVSS:
+
+Patches_TBD:
+oci/TBD_TBD: needs-triage
+
+## end CVE template"""
+                % (now.year, now.year, now.month, now.day),
+            ),
+            (
+                "foo",
+                "bar/baz",
+                [
+                    cvelib.scan.ScanOCI(
+                        {
+                            "component": "foo",
+                            "detectedIn": "myorg/myimg@sha256:deadbeef",
+                            "advisory": "unavailable",
+                            "version": "1.2.2",
+                            "fixedBy": "1.2.3",
+                            "severity": "medium",
+                            "status": "needed",
+                            "url": "https://blah.com/BAR-a",
+                        }
+                    )
+                ],
+                [],
+                """## bar/baz foo template
+Please address foo alert in bar/baz:
+
+The following alert was issued:
+- [ ] foo (medium)
+
+Since a 'medium' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated.
+
+Thanks!
+
+References:
+ * https://blah.com/BAR-a
+
+## end template
+
+## bar/baz CVE template
+Candidate: CVE-%d-NNNN
+OpenDate: %0.2d-%0.2d-%0.2d
+CloseDate:
+PublicDate:
+CRD:
+References:
+ https://blah.com/BAR-a
+Description:
+ Please address alert in bar/baz
+ - [ ] foo (medium)
+Scan-Reports:
+ - type: oci
+   component: foo
+   detectedIn: myorg/myimg@sha256:deadbeef
+   advisory: unavailable
+   version: 1.2.2
+   fixedBy: 1.2.3
+   severity: medium
+   status: needed
+   url: https://blah.com/BAR-a
+Notes:
+Mitigation:
+Bugs:
+Priority: medium
+Discovered-by: foo
+Assigned-to:
+CVSS:
+
+Patches_TBD:
+oci/TBD_TBD: needs-triage
+
+## end CVE template"""
+                % (now.year, now.year, now.month, now.day),
+            ),
+            (
+                "foo",
+                "bar/baz",
+                [
+                    cvelib.scan.ScanOCI(
+                        {
+                            "component": "foo",
+                            "detectedIn": "myorg/myimg@sha256:deadbeef",
+                            "advisory": "unavailable",
+                            "version": "1.2.2",
+                            "fixedBy": "1.2.3",
+                            "severity": "unknown",
+                            "status": "needed",
+                            "url": "https://blah.com/BAR-a",
+                        }
+                    )
+                ],
+                [],
+                """## bar/baz foo template
+Please address foo alert in bar/baz:
+
+The following alert was issued:
+- [ ] foo (unknown)
+
+Since a 'unknown' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated.
+
+Thanks!
+
+References:
+ * https://blah.com/BAR-a
+
+## end template
+
+## bar/baz CVE template
+Candidate: CVE-%d-NNNN
+OpenDate: %0.2d-%0.2d-%0.2d
+CloseDate:
+PublicDate:
+CRD:
+References:
+ https://blah.com/BAR-a
+Description:
+ Please address alert in bar/baz
+ - [ ] foo (unknown)
+Scan-Reports:
+ - type: oci
+   component: foo
+   detectedIn: myorg/myimg@sha256:deadbeef
+   advisory: unavailable
+   version: 1.2.2
+   fixedBy: 1.2.3
+   severity: unknown
+   status: needed
+   url: https://blah.com/BAR-a
+Notes:
+Mitigation:
+Bugs:
+Priority: medium
+Discovered-by: foo
+Assigned-to:
+CVSS:
+
+Patches_TBD:
+oci/TBD_TBD: needs-triage
+
+## end CVE template"""
+                % (now.year, now.year, now.month, now.day),
+            ),
+        ]
+
+        for reg, name, ocis, template_urls, exp in tsts:
+            res = cvelib.scan.getScanOCIsReportTemplates(reg, name, ocis, template_urls)
             self.assertEqual(exp, res)
