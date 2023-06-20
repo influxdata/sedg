@@ -6,14 +6,14 @@ commands:
     steps:
       - restore_cache:
           name: Restore python cache
-          key: deps1-{{ .Branch }}-{{ checksum "setup.cfg" }}
+          key: deps1.1-{{ .Branch }}-{{ checksum "setup.cfg" }}
 
   cache_save:
     description: Save python cache
     steps:
       - save_cache:
           name: Save python cache
-          key: deps1-{{ .Branch }}-{{ checksum "setup.cfg" }}
+          key: deps1.1-{{ .Branch }}-{{ checksum "setup.cfg" }}
           paths:
             - ".venv"
 
