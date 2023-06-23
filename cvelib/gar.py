@@ -15,7 +15,7 @@ from typing import Any, Dict, List
 
 from cvelib.common import error, warn, rePatterns, _sorted_json_deep, _experimental
 from cvelib.net import requestGetRaw
-from cvelib.scan import ScanOCI, getScanOCIsReportTemplates
+from cvelib.scan import ScanOCI, getScanOCIsReportTemplates, SecurityReportInterface
 
 
 def _createGARHeaders() -> Dict[str, str]:
@@ -30,90 +30,6 @@ def _createGARHeaders() -> Dict[str, str]:
         headers["Authorization"] = "Bearer %s" % os.environ["GCLOUD_TOKEN"]
 
     return copy.deepcopy(headers)
-
-
-# $ export GCLOUD_TOKEN=$(gcloud auth print-access-token)
-# $ curl -H "Content-Type: application/json"
-#        -H "Authorization: Bearer $GCLOUD_TOKEN"
-#        -G
-#        https://artifactregistry.googleapis.com/v1/projects/PROJECT/locations/LOCATION/repositories
-# {
-#   "repositories": [
-#     {
-#       "name": "projects/PROJECT/locations/LOCATION/repositories/REPO",
-#       "format": "DOCKER",
-#       "description": "some description",
-#       "labels": {
-#         "environment": "blah",
-#         "managed": "blah",
-#         "owner": "some-team"
-#       },
-#       "createTime": "2022-09-08T09:37:11.523595Z",
-#       "updateTime": "2023-03-15T15:05:30.392141Z",
-#       "mode": "STANDARD_REPOSITORY",
-#       "sizeBytes": "9210399480"
-#     }
-#   }
-# ]
-#
-# https://cloud.google.com/artifact-registry/docs/reference/rest
-# https://cloud.google.com/artifact-registry/docs/reference/rest/v1/projects.locations.repositories/list
-def getGARReposForProjectLoc(proj_loc: str) -> List[str]:
-    """Obtain the list of GAR repos for the specified project and location"""
-    if "/" not in proj_loc:
-        error("Please use PROJECT/LOCATION", do_exit=False)
-        return []
-    project, location = proj_loc.split("/", 2)
-
-    url: str = (
-        "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories"
-        % (project, location)
-    )
-    headers: Dict[str, str] = _createGARHeaders()
-    params: Dict[str, str] = {"pageSize": "1000"}
-
-    repos: List[str] = []
-
-    if sys.stdout.isatty():  # pragma: nocover
-        print("Fetching list of repos: ", end="", flush=True)
-
-    while True:
-        if sys.stdout.isatty():  # pragma: nocover
-            print(".", end="", flush=True)
-
-        try:
-            r: requests.Response = requestGetRaw(url, headers=headers, params=params)
-        except requests.exceptions.RequestException as e:  # pragma: nocover
-            warn("Skipping %s (request error: %s)" % (url, str(e)))
-            return []
-
-        if r.status_code >= 300:
-            warn("Could not fetch %s (%d)" % (url, r.status_code))
-            return []
-
-        resj = r.json()
-        if "repositories" not in resj:
-            warn("Could not find 'repositories' in response: %s" % resj)
-            return []
-
-        for repo in resj["repositories"]:
-            if "name" not in repo:
-                warn("Could not find 'name' in response for repo: %s" % repo)
-                continue
-
-            name: str = repo["name"]
-            if name not in repos:
-                repos.append(repo["name"])
-
-        if "nextPageToken" not in resj:
-            if sys.stdout.isatty():  # pragma: nocover
-                print(" done!", flush=True)
-            break
-
-        params["pageToken"] = resj["nextPageToken"]
-        # time.sleep(2)  # in case nextPageToken isn't valid yet
-
-    return copy.deepcopy(repos)
 
 
 # $ export GCLOUD_TOKEN=$(gcloud auth print-access-token)
@@ -183,200 +99,6 @@ def getGAROCIForRepo(repo_full: str) -> List[str]:
         # time.sleep(2)  # in case nextPageToken isn't valid yet
 
     return ocis
-
-
-# find all versions
-# $ export GCLOUD_TOKEN=$(gcloud auth print-access-token)
-# $ curl -H "Content-Type: application/json"
-#        -H "Authorization: Bearer $GCLOUD_TOKEN"
-#        -G https://artifactregistry.googleapis.com/v1/projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions
-#        --data "orderBy=UPDATE_TIME+desc&view=FULL"
-# {
-#   "versions": [
-#     "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions/sha256:SHA256",
-#      "createTime": "2023-05-30T17:24:37.757487Z",
-#      "updateTime": "2023-05-31T14:33:21.360319Z",
-#      "relatedTags": [
-#        {
-#          "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/tags/some-tag",
-#          "version": "projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions/sha256:SHA256"
-#        },
-#        ...
-#      ],
-#      "metadata": {
-#        "imageSizeBytes": "38636295",
-#        "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-#        "buildTime": "2023-05-30T17:24:30.935114729Z",
-#        "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/dockerImages/IMGNAME@sha256:SHA256"
-#      }
-#    },
-#
-# check specific version
-# $ export GCLOUD_TOKEN=$(gcloud auth print-access-token)
-# $ curl -H "Content-Type: application/json"
-#        -H "Authorization: Bearer $GCLOUD_TOKEN"
-#        -G https://artifactregistry.googleapis.com/v1/projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions/sha256:SHA256
-# {
-#   "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions/sha256:SHA256",
-#   "createTime": "2023-06-01T19:02:27.563679Z",
-#   "updateTime": "2023-06-01T19:02:28.780575Z",
-#   "metadata": {
-#     "buildTime": "2023-06-01T19:02:24.623978679Z",
-#     "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/dockerImages/IMGNAME@sha256:SHA256",
-#     "imageSizeBytes": "35064515",
-#     "mediaType": "application/vnd.docker.distribution.manifest.v2+json"
-#   }
-# }
-#
-# https://cloud.google.com/artifact-registry/docs/reference/rest/v1/projects.locations.repositories.packages.versions
-def getGARDigestForImage(repo_full: str) -> str:
-    """Obtain the GAR digest for the specified project, location and repo"""
-    if "/" not in repo_full or repo_full.count("/") != 3:
-        error("Please use PROJECT/LOCATION/REPO/IMGNAME", do_exit=False)
-        return ""
-
-    project, location, repo, name = repo_full.split("/", 4)
-    tagsearch: str = ""
-    sha256: str = ""
-    if "@sha256:" in name:
-        name, sha256 = name.split("@", 2)
-    elif ":" in name:
-        name, tagsearch = name.split(":", 2)
-
-    # Ordering by update time sorts the results in descending order with newest
-    # first. This helps optimize the search for the digest. FULL view includes
-    # relatedTags.
-    url: str
-    params: Dict[str, str] = {}
-    if sha256 == "":
-        url = (
-            "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories/%s/packages/%s/versions?orderBy=UPDATE_TIME+desc&view=FULL"
-            % (project, location, repo, name)
-        )
-        params["pageSize"] = "100"
-    else:
-        url = (
-            "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories/%s/packages/%s/versions/%s"
-            % (project, location, repo, name, sha256)
-        )
-
-    headers: Dict[str, str] = _createGARHeaders()
-    headers["Content-Type"] = "application/json"
-
-    max_attempts: int = 10
-    count: int = 0
-    only_stale: bool = True
-    while True:
-        try:
-            r: requests.Response = requestGetRaw(url, headers=headers, params=params)
-        except requests.exceptions.RequestException as e:  # pragma: nocover
-            warn("Skipping %s (request error: %s)" % (url, str(e)))
-            return ""
-
-        if r.status_code >= 300:
-            warn("Could not fetch %s (%d)" % (url, r.status_code))
-            return ""
-
-        resj: Dict[str, Any] = {}
-        tmp: Dict[str, Any] = r.json()
-        if sha256 == "":
-            resj = tmp
-        else:
-            # when searching by specific sha256, we get back the specific entry
-            # and not a list of versions, so create a list of one versions
-            resj["versions"] = []
-            resj["versions"].append(tmp)
-
-        if "versions" not in resj:
-            warn("Could not find 'versions' in response: %s" % resj)
-            return ""
-
-        for img in resj["versions"]:
-            count += 1
-            # malformed json
-            if "name" not in img:
-                warn("Could not find 'name' in %s" % img)
-                return ""
-            elif "metadata" not in img:
-                warn("Could not find 'metadata' in %s" % img)
-                return ""
-            elif "mediaType" not in img["metadata"]:
-                warn("Could not find 'mediaType' in 'metadata' in %s" % img)
-                return ""
-            elif "name" not in img["metadata"]:
-                warn("Could not find 'name' in 'metadata' in %s" % img)
-                return ""
-
-            # https://github.com/opencontainers/image-spec/blob/main/manifest.md
-            known_types: List[str] = [
-                "application/vnd.oci.image.index.v1+json",
-                "application/vnd.oci.image.manifest.v1+json",
-                "application/vnd.docker.distribution.manifest.v2+json",
-            ]
-            if img["metadata"]["mediaType"] not in known_types:
-                warn(
-                    "Skipping %s (mediaType not in '%s')"
-                    % (",".join(known_types), img["metadata"]["name"].split("/")[-1])
-                )
-                continue
-
-            # if searching by tag, just return the first one (note, "tags" is
-            # optional in the json output)
-            if tagsearch != "" and "relatedTags" in img:
-                for t in img["relatedTags"]:
-                    if t["name"].endswith("/%s" % tagsearch):
-                        return img["metadata"]["name"]
-            elif sha256 != "":
-                return img["metadata"]["name"]
-            elif tagsearch == "":
-                # When not searching by a tag name, we are searching for the
-                # latest digest. Since we used 'orderBy=UPDATE_TIME+desc', we
-                # we can assume that the first image we see with a matching
-                # name is the latest one. The latest image may not have valid
-                # scan results (not completed, is a cosign image, etc), so try
-                # up to 'max_attempts' times to find an image with usable scan
-                # results.
-                why: str = getGARDiscovery(
-                    "%s/%s/%s/%s@%s"
-                    % (
-                        project,
-                        location,
-                        repo,
-                        name,
-                        img["metadata"]["name"].split("@")[-1],
-                    )
-                )
-                if why != "INACTIVE":
-                    only_stale = False
-                if why not in ["INACTIVE", "PENDING", "UNSUPPORTED", "UNSCANNED"]:
-                    if why not in ["CLEAN", "ACTIVE"]:
-                        # in case we missed something
-                        warn("unexpected result from getGARDiscovery(): %s" % why)
-                    return img["metadata"]["name"]
-                if count > max_attempts:
-                    break
-
-        if tagsearch == "" and count > max_attempts:
-            break
-
-        if "nextPageToken" not in resj:
-            break
-
-        params["pageToken"] = resj["nextPageToken"]
-        # time.sleep(2)  # in case nextPageToken isn't valid yet
-
-    if tagsearch == "":
-        extra = ""
-        if only_stale:
-            extra = " (images are stale)"
-        warn(
-            "Could not find digest for %s/%s with scan results for in %d most recent images%s"
-            % (repo, name.split("@")[0], max_attempts, extra)
-        )
-    else:
-        warn("Could not find digest for %s" % name)
-
-    return ""
 
 
 def parse(vulns: List[Dict[str, Any]]) -> List[ScanOCI]:
@@ -546,6 +268,7 @@ def getGARDiscovery(repo_full: str) -> str:
     # Create a list of dictionaries with all the different pages added to a
     # single list
     discs: List[Dict[str, Any]] = []
+    sr = GARSecurityReportNew()
     while True:
         try:
             r: requests.Response = requestGetRaw(url, headers=headers, params=params)
@@ -560,7 +283,7 @@ def getGARDiscovery(repo_full: str) -> str:
         resj = r.json()
         if len(resj) == 0:
             # does the image exist at all?
-            if getGARDigestForImage(repo_full) == "":
+            if sr.getDigestForImage(repo_full) == "":
                 return "NONEXISTENT"
             return "UNSCANNED"
         elif "occurrences" not in resj or len(resj["occurrences"]) == 0:
@@ -603,185 +326,486 @@ def getGARDiscovery(repo_full: str) -> str:
     return s
 
 
-# $ export GCLOUD_TOKEN=$(gcloud auth print-access-token)
-# $ curl -H "Content-Type: application/json" \
-#        -H "Authorization: Bearer $GCLOUD_TOKEN"
-#        -G https://containeranalysis.googleapis.com/v1/projects/PROJECT/occurrences
-#        --data-urlencode "filter=(kind=\"VULNERABILITY\" AND resourceUrl=\"https://LOCATION-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:SHA256\")"
-# {
-#   "occurrences": [
-#     {
-#       "resourceUri": "https://LOCATION-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256...",
-#       "vulnerability": {
-#         "severity": "...",
-#         "packageIssue": [
-#           {
-#             "packageType": "OS|GO_STDLIB",
-#             "affectedCpeUri": "<detectedIn for OS>",
-#             "affectedPackage": "<component name>",
-#             "affectedVersion": {
-#               "fullName": "<affected version>",
-#               ...
-#             },
-#             "fixedVersion": {
-#               "fullName": "<fixed version>",
-#               ...
-#             },
-#             "fileLocation": [
-#               {
-#                 "filePath": "<detectedIn of GO_STDLIB>",
-#               },
-#               ...
-#             ],
-#             ...
-#           },
-#           ...
-#         ],
-#         "shortDescription": "<if CVE..., used for advisory url>",
-#         ...
-#       },
-#       ...
-#     },
-#     ...
-#   ]
-# }
-#
-# https://cloud.google.com/container-analysis/docs/investigate-vulnerabilities
-# https://cloud.google.com/container-analysis/docs/reference/rest
-def getGARSecurityReport(
-    repo_full: str,
-    raw: bool = False,
-    fixable: bool = True,
-    with_templates: bool = False,
-    quiet: bool = False,
-    template_urls: List[str] = [],
-    priorities: List[str] = [],
-) -> str:
-    """Obtain the security manifest for the specified repo@sha256:..."""
-    if "/" not in repo_full or repo_full.count("/") != 3 or "@sha256:" not in repo_full:
-        error("Please use PROJECT/LOCATION/REPO/IMGNAME@sha256:<sha256>", do_exit=False)
-        return ""
-
-    project, location, repo, name = repo_full.split("/", 4)
-
-    url: str = (
-        "https://containeranalysis.googleapis.com/v1/projects/%s/occurrences" % project
-    )
-    resource_url: str = "https://%s-docker.pkg.dev/%s/%s/%s" % (
-        location,
-        project,
-        repo,
-        name,
-    )
-    headers: Dict[str, str] = _createGARHeaders()
-    headers["Content-Type"] = "application/json"
-    params: Dict[str, str] = {
-        "filter": '(kind="VULNERABILITY" AND resourceUrl="%s")' % resource_url,
-    }
-
-    # the v1 format is (<noteN> is a vulnerability note):
+class GARSecurityReportNew(SecurityReportInterface):
+    # find all versions
+    # $ export GCLOUD_TOKEN=$(gcloud auth print-access-token)
+    # $ curl -H "Content-Type: application/json"
+    #        -H "Authorization: Bearer $GCLOUD_TOKEN"
+    #        -G https://artifactregistry.googleapis.com/v1/projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions
+    #        --data "orderBy=UPDATE_TIME+desc&view=FULL"
     # {
-    #   "occurrences": [
-    #     { note1 },
-    #     { note2 },
-    #   ],
-    #   "nextPageToken": "..."
+    #   "versions": [
+    #     "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions/sha256:SHA256",
+    #      "createTime": "2023-05-30T17:24:37.757487Z",
+    #      "updateTime": "2023-05-31T14:33:21.360319Z",
+    #      "relatedTags": [
+    #        {
+    #          "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/tags/some-tag",
+    #          "version": "projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions/sha256:SHA256"
+    #        },
+    #        ...
+    #      ],
+    #      "metadata": {
+    #        "imageSizeBytes": "38636295",
+    #        "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+    #        "buildTime": "2023-05-30T17:24:30.935114729Z",
+    #        "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/dockerImages/IMGNAME@sha256:SHA256"
+    #      }
+    #    },
+    #
+    # check specific version
+    # $ export GCLOUD_TOKEN=$(gcloud auth print-access-token)
+    # $ curl -H "Content-Type: application/json"
+    #        -H "Authorization: Bearer $GCLOUD_TOKEN"
+    #        -G https://artifactregistry.googleapis.com/v1/projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions/sha256:SHA256
+    # {
+    #   "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/packages/IMGNAME/versions/sha256:SHA256",
+    #   "createTime": "2023-06-01T19:02:27.563679Z",
+    #   "updateTime": "2023-06-01T19:02:28.780575Z",
+    #   "metadata": {
+    #     "buildTime": "2023-06-01T19:02:24.623978679Z",
+    #     "name": "projects/PROJECT/locations/LOCATION/repositories/REPO/dockerImages/IMGNAME@sha256:SHA256",
+    #     "imageSizeBytes": "35064515",
+    #     "mediaType": "application/vnd.docker.distribution.manifest.v2+json"
+    #   }
     # }
     #
-    # Create a list of dictionaries with all the different pages added to a
-    # single list
-    vulns: List[Dict[str, Any]] = []
-    while True:
-        try:
-            r: requests.Response = requestGetRaw(url, headers=headers, params=params)
-        except requests.exceptions.RequestException as e:  # pragma: nocover
-            warn("Skipping %s (request error: %s)" % (url, str(e)))
+    # https://cloud.google.com/artifact-registry/docs/reference/rest/v1/projects.locations.repositories.packages.versions
+    def getDigestForImage(self, repo_full: str) -> str:
+        """Obtain the GAR digest for the specified project, location and repo"""
+        if "/" not in repo_full or repo_full.count("/") != 3:
+            error("Please use PROJECT/LOCATION/REPO/IMGNAME", do_exit=False)
             return ""
 
-        if r.status_code >= 300:
-            warn("Could not fetch %s" % url)
-            return ""
+        project, location, repo, name = repo_full.split("/", 4)
+        tagsearch: str = ""
+        sha256: str = ""
+        if "@sha256:" in name:
+            name, sha256 = name.split("@", 2)
+        elif ":" in name:
+            name, tagsearch = name.split(":", 2)
 
-        # An empty scan result can be due to several reasons so lookup why if
-        # we fail to get a scan result
-        resj = r.json()
-        if len(resj) == 0 or "occurrences" not in resj or len(resj["occurrences"]) == 0:
-            why: str = getGARDiscovery(repo_full)
-            if not quiet and why != "CLEAN":
-                warn("no scan results for %s/%s: %s" % (repo, name.split("@")[0], why))
-            if raw:
+        # Ordering by update time sorts the results in descending order with newest
+        # first. This helps optimize the search for the digest. FULL view includes
+        # relatedTags.
+        url: str
+        params: Dict[str, str] = {}
+        if sha256 == "":
+            url = (
+                "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories/%s/packages/%s/versions?orderBy=UPDATE_TIME+desc&view=FULL"
+                % (project, location, repo, name)
+            )
+            params["pageSize"] = "100"
+        else:
+            url = (
+                "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories/%s/packages/%s/versions/%s"
+                % (project, location, repo, name, sha256)
+            )
+
+        headers: Dict[str, str] = _createGARHeaders()
+        headers["Content-Type"] = "application/json"
+
+        max_attempts: int = 10
+        count: int = 0
+        only_stale: bool = True
+        while True:
+            try:
+                r: requests.Response = requestGetRaw(
+                    url, headers=headers, params=params
+                )
+            except requests.exceptions.RequestException as e:  # pragma: nocover
+                warn("Skipping %s (request error: %s)" % (url, str(e)))
                 return ""
-            if why == "CLEAN":
-                return "No problems found"
-            return "No scan results for this %s image" % why.lower()
 
-        vulns += resj["occurrences"]
+            if r.status_code >= 300:
+                warn("Could not fetch %s (%d)" % (url, r.status_code))
+                return ""
 
-        if "nextPageToken" not in resj:
-            break
+            resj: Dict[str, Any] = {}
+            tmp: Dict[str, Any] = r.json()
+            if sha256 == "":
+                resj = tmp
+            else:
+                # when searching by specific sha256, we get back the specific entry
+                # and not a list of versions, so create a list of one versions
+                resj["versions"] = []
+                resj["versions"].append(tmp)
 
-        params["pageToken"] = resj["nextPageToken"]
-        # time.sleep(2)  # in case nextPageToken isn't valid yet
+            if "versions" not in resj:
+                warn("Could not find 'versions' in response: %s" % resj)
+                return ""
 
-    # If raw format, output a unified JSON document that has all the
-    # vulns in one doc but otherwise looks like that the API returned
-    if raw:
-        return "%s" % json.dumps(
-            _sorted_json_deep({"occurrences": vulns}), sort_keys=True, indent=2
+            for img in resj["versions"]:
+                count += 1
+                # malformed json
+                if "name" not in img:
+                    warn("Could not find 'name' in %s" % img)
+                    return ""
+                elif "metadata" not in img:
+                    warn("Could not find 'metadata' in %s" % img)
+                    return ""
+                elif "mediaType" not in img["metadata"]:
+                    warn("Could not find 'mediaType' in 'metadata' in %s" % img)
+                    return ""
+                elif "name" not in img["metadata"]:
+                    warn("Could not find 'name' in 'metadata' in %s" % img)
+                    return ""
+
+                # https://github.com/opencontainers/image-spec/blob/main/manifest.md
+                known_types: List[str] = [
+                    "application/vnd.oci.image.index.v1+json",
+                    "application/vnd.oci.image.manifest.v1+json",
+                    "application/vnd.docker.distribution.manifest.v2+json",
+                ]
+                if img["metadata"]["mediaType"] not in known_types:
+                    warn(
+                        "Skipping %s (mediaType not in '%s')"
+                        % (
+                            ",".join(known_types),
+                            img["metadata"]["name"].split("/")[-1],
+                        )
+                    )
+                    continue
+
+                # if searching by tag, just return the first one (note, "tags" is
+                # optional in the json output)
+                if tagsearch != "" and "relatedTags" in img:
+                    for t in img["relatedTags"]:
+                        if t["name"].endswith("/%s" % tagsearch):
+                            return img["metadata"]["name"]
+                elif sha256 != "":
+                    return img["metadata"]["name"]
+                elif tagsearch == "":
+                    # When not searching by a tag name, we are searching for the
+                    # latest digest. Since we used 'orderBy=UPDATE_TIME+desc', we
+                    # we can assume that the first image we see with a matching
+                    # name is the latest one. The latest image may not have valid
+                    # scan results (not completed, is a cosign image, etc), so try
+                    # up to 'max_attempts' times to find an image with usable scan
+                    # results.
+                    why: str = getGARDiscovery(
+                        "%s/%s/%s/%s@%s"
+                        % (
+                            project,
+                            location,
+                            repo,
+                            name,
+                            img["metadata"]["name"].split("@")[-1],
+                        )
+                    )
+                    if why != "INACTIVE":
+                        only_stale = False
+                    if why not in ["INACTIVE", "PENDING", "UNSUPPORTED", "UNSCANNED"]:
+                        if why not in ["CLEAN", "ACTIVE"]:
+                            # in case we missed something
+                            warn("unexpected result from getGARDiscovery(): %s" % why)
+                        return img["metadata"]["name"]
+                    if count > max_attempts:
+                        break
+
+            if tagsearch == "" and count > max_attempts:
+                break
+
+            if "nextPageToken" not in resj:
+                break
+
+            params["pageToken"] = resj["nextPageToken"]
+            # time.sleep(2)  # in case nextPageToken isn't valid yet
+
+        if tagsearch == "":
+            extra = ""
+            if only_stale:
+                extra = " (images are stale)"
+            warn(
+                "Could not find digest for %s/%s with scan results for in %d most recent images%s"
+                % (repo, name.split("@")[0], max_attempts, extra)
+            )
+        else:
+            warn("Could not find digest for %s" % name)
+
+        return ""
+
+    def getOCIsForNamespace(self, proj_loc: str) -> List[str]:
+        """Obtain the list of GAR OCIs for the specified project and location"""
+        if "/" not in proj_loc:
+            error("Please use PROJECT/LOCATION", do_exit=False)
+            return []
+
+        repos: List[str] = self.getReposForNamespace(proj_loc)
+        ocis: List[str] = []
+
+        if len(repos) > 0 and sys.stdout.isatty():  # pragma: nocover
+            print("Fetching list of images for each repo: ", end="", flush=True)
+
+        for repo in repos:
+            if sys.stdout.isatty():  # pragma: nocover
+                print(".", end="", flush=True)
+
+            tmp: List[str] = getGAROCIForRepo("%s/%s" % (proj_loc, repo.split("/")[-1]))
+            oci: str = ""
+            for oci in tmp:
+                ocis.append("%s/%s" % (repo, oci))
+
+        if len(repos) > 0 and sys.stdout.isatty():  # pragma: nocover
+            print(" done!", flush=True)
+
+        return sorted(ocis)
+
+    # $ export GCLOUD_TOKEN=$(gcloud auth print-access-token)
+    # $ curl -H "Content-Type: application/json" \
+    #        -H "Authorization: Bearer $GCLOUD_TOKEN"
+    #        -G https://containeranalysis.googleapis.com/v1/projects/PROJECT/occurrences
+    #        --data-urlencode "filter=(kind=\"VULNERABILITY\" AND resourceUrl=\"https://LOCATION-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:SHA256\")"
+    # {
+    #   "occurrences": [
+    #     {
+    #       "resourceUri": "https://LOCATION-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256...",
+    #       "vulnerability": {
+    #         "severity": "...",
+    #         "packageIssue": [
+    #           {
+    #             "packageType": "OS|GO_STDLIB",
+    #             "affectedCpeUri": "<detectedIn for OS>",
+    #             "affectedPackage": "<component name>",
+    #             "affectedVersion": {
+    #               "fullName": "<affected version>",
+    #               ...
+    #             },
+    #             "fixedVersion": {
+    #               "fullName": "<fixed version>",
+    #               ...
+    #             },
+    #             "fileLocation": [
+    #               {
+    #                 "filePath": "<detectedIn of GO_STDLIB>",
+    #               },
+    #               ...
+    #             ],
+    #             ...
+    #           },
+    #           ...
+    #         ],
+    #         "shortDescription": "<if CVE..., used for advisory url>",
+    #         ...
+    #       },
+    #       ...
+    #     },
+    #     ...
+    #   ]
+    # }
+    #
+    # https://cloud.google.com/container-analysis/docs/investigate-vulnerabilities
+    # https://cloud.google.com/container-analysis/docs/reference/rest
+    def getSecurityReport(
+        self,
+        repo_full: str,
+        raw: bool = False,
+        fixable: bool = True,
+        with_templates: bool = False,
+        quiet: bool = False,
+        template_urls: List[str] = [],
+        priorities: List[str] = [],
+    ) -> str:
+        """Obtain the security manifest for the specified repo@sha256:..."""
+        if (
+            "/" not in repo_full
+            or repo_full.count("/") != 3
+            or "@sha256:" not in repo_full
+        ):
+            error(
+                "Please use PROJECT/LOCATION/REPO/IMGNAME@sha256:<sha256>",
+                do_exit=False,
+            )
+            return ""
+
+        project, location, repo, name = repo_full.split("/", 4)
+
+        url: str = (
+            "https://containeranalysis.googleapis.com/v1/projects/%s/occurrences"
+            % project
         )
-
-    s: str = ""
-    ocis: List[ScanOCI] = []
-    # do a subset of this with created?
-    for oci in sorted(parse(vulns), key=lambda i: (i.component, i.advisory)):
-        if fixable and oci.versionFixed == "unknown":
-            continue
-        if len(priorities) > 0 and oci.severity not in priorities:
-            continue
-        ocis.append(oci)
-        s += "%s\n" % oci
-
-    s = "%s report: %d\n%s" % (repo_full.split("@")[0], len(ocis), s)
-
-    if with_templates:
-        s = "%s\n\n%s" % (
-            getScanOCIsReportTemplates(
-                "GAR",
-                repo_full,
-                ocis,
-                template_urls=template_urls,
-            ),
-            s,
+        resource_url: str = "https://%s-docker.pkg.dev/%s/%s/%s" % (
+            location,
+            project,
+            repo,
+            name,
         )
+        headers: Dict[str, str] = _createGARHeaders()
+        headers["Content-Type"] = "application/json"
+        params: Dict[str, str] = {
+            "filter": '(kind="VULNERABILITY" AND resourceUrl="%s")' % resource_url,
+        }
 
-    return s.rstrip()
+        # the v1 format is (<noteN> is a vulnerability note):
+        # {
+        #   "occurrences": [
+        #     { note1 },
+        #     { note2 },
+        #   ],
+        #   "nextPageToken": "..."
+        # }
+        #
+        # Create a list of dictionaries with all the different pages added to a
+        # single list
+        vulns: List[Dict[str, Any]] = []
+        while True:
+            try:
+                r: requests.Response = requestGetRaw(
+                    url, headers=headers, params=params
+                )
+            except requests.exceptions.RequestException as e:  # pragma: nocover
+                warn("Skipping %s (request error: %s)" % (url, str(e)))
+                return ""
 
+            if r.status_code >= 300:
+                warn("Could not fetch %s" % url)
+                return ""
 
-def getGAROCIsForProjectLoc(proj_loc: str) -> List[str]:
-    """Obtain the list of GAR OCIs for the specified project and location"""
-    if "/" not in proj_loc:
-        error("Please use PROJECT/LOCATION", do_exit=False)
-        return []
+            # An empty scan result can be due to several reasons so lookup why if
+            # we fail to get a scan result
+            resj = r.json()
+            if (
+                len(resj) == 0
+                or "occurrences" not in resj
+                or len(resj["occurrences"]) == 0
+            ):
+                why: str = getGARDiscovery(repo_full)
+                if not quiet and why != "CLEAN":
+                    warn(
+                        "no scan results for %s/%s: %s"
+                        % (repo, name.split("@")[0], why)
+                    )
+                if raw:
+                    return ""
+                if why == "CLEAN":
+                    return "No problems found"
+                return "No scan results for this %s image" % why.lower()
 
-    repos: List[str] = getGARReposForProjectLoc(proj_loc)
-    ocis: List[str] = []
+            vulns += resj["occurrences"]
 
-    if len(repos) > 0 and sys.stdout.isatty():  # pragma: nocover
-        print("Fetching list of images for each repo: ", end="", flush=True)
+            if "nextPageToken" not in resj:
+                break
 
-    for repo in repos:
+            params["pageToken"] = resj["nextPageToken"]
+            # time.sleep(2)  # in case nextPageToken isn't valid yet
+
+        # If raw format, output a unified JSON document that has all the
+        # vulns in one doc but otherwise looks like that the API returned
+        if raw:
+            return "%s" % json.dumps(
+                _sorted_json_deep({"occurrences": vulns}), sort_keys=True, indent=2
+            )
+
+        s: str = ""
+        ocis: List[ScanOCI] = []
+        # do a subset of this with created?
+        for oci in sorted(parse(vulns), key=lambda i: (i.component, i.advisory)):
+            if fixable and oci.versionFixed == "unknown":
+                continue
+            if len(priorities) > 0 and oci.severity not in priorities:
+                continue
+            ocis.append(oci)
+            s += "%s\n" % oci
+
+        s = "%s report: %d\n%s" % (repo_full.split("@")[0], len(ocis), s)
+
+        if with_templates:
+            s = "%s\n\n%s" % (
+                getScanOCIsReportTemplates(
+                    "GAR",
+                    repo_full,
+                    ocis,
+                    template_urls=template_urls,
+                ),
+                s,
+            )
+
+        return s.rstrip()
+
+    # $ export GCLOUD_TOKEN=$(gcloud auth print-access-token)
+    # $ curl -H "Content-Type: application/json"
+    #        -H "Authorization: Bearer $GCLOUD_TOKEN"
+    #        -G
+    #        https://artifactregistry.googleapis.com/v1/projects/PROJECT/locations/LOCATION/repositories
+    # {
+    #   "repositories": [
+    #     {
+    #       "name": "projects/PROJECT/locations/LOCATION/repositories/REPO",
+    #       "format": "DOCKER",
+    #       "description": "some description",
+    #       "labels": {
+    #         "environment": "blah",
+    #         "managed": "blah",
+    #         "owner": "some-team"
+    #       },
+    #       "createTime": "2022-09-08T09:37:11.523595Z",
+    #       "updateTime": "2023-03-15T15:05:30.392141Z",
+    #       "mode": "STANDARD_REPOSITORY",
+    #       "sizeBytes": "9210399480"
+    #     }
+    #   }
+    # ]
+    #
+    # https://cloud.google.com/artifact-registry/docs/reference/rest
+    # https://cloud.google.com/artifact-registry/docs/reference/rest/v1/projects.locations.repositories/list
+    def getReposForNamespace(self, proj_loc: str) -> List[str]:
+        """Obtain the list of GAR repos for the specified project and location"""
+        if "/" not in proj_loc:
+            error("Please use PROJECT/LOCATION", do_exit=False)
+            return []
+        project, location = proj_loc.split("/", 2)
+
+        url: str = (
+            "https://artifactregistry.googleapis.com/v1/projects/%s/locations/%s/repositories"
+            % (project, location)
+        )
+        headers: Dict[str, str] = _createGARHeaders()
+        params: Dict[str, str] = {"pageSize": "1000"}
+
+        repos: List[str] = []
+
         if sys.stdout.isatty():  # pragma: nocover
-            print(".", end="", flush=True)
+            print("Fetching list of repos: ", end="", flush=True)
 
-        tmp: List[str] = getGAROCIForRepo("%s/%s" % (proj_loc, repo.split("/")[-1]))
-        oci: str = ""
-        for oci in tmp:
-            ocis.append("%s/%s" % (repo, oci))
+        while True:
+            if sys.stdout.isatty():  # pragma: nocover
+                print(".", end="", flush=True)
 
-    if len(repos) > 0 and sys.stdout.isatty():  # pragma: nocover
-        print(" done!", flush=True)
+            try:
+                r: requests.Response = requestGetRaw(
+                    url, headers=headers, params=params
+                )
+            except requests.exceptions.RequestException as e:  # pragma: nocover
+                warn("Skipping %s (request error: %s)" % (url, str(e)))
+                return []
 
-    return sorted(ocis)
+            if r.status_code >= 300:
+                warn("Could not fetch %s (%d)" % (url, r.status_code))
+                return []
+
+            resj = r.json()
+            if "repositories" not in resj:
+                warn("Could not find 'repositories' in response: %s" % resj)
+                return []
+
+            for repo in resj["repositories"]:
+                if "name" not in repo:
+                    warn("Could not find 'name' in response for repo: %s" % repo)
+                    continue
+
+                name: str = repo["name"]
+                if name not in repos:
+                    repos.append(repo["name"])
+
+            if "nextPageToken" not in resj:
+                if sys.stdout.isatty():  # pragma: nocover
+                    print(" done!", flush=True)
+                break
+
+            params["pageToken"] = resj["nextPageToken"]
+            # time.sleep(2)  # in case nextPageToken isn't valid yet
+
+        return copy.deepcopy(repos)
 
 
 #
@@ -827,12 +851,14 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
 
     args: argparse.Namespace = parser.parse_args()
 
+    sr = GARSecurityReportNew()
+
     if "/" not in args.name:
         error("Please use PROJECT/LOC (eg foo/us) with --name")
         return ""  # for tests
 
     # Find latest digest for all images
-    oci_names: List[str] = getGAROCIsForProjectLoc(args.name)
+    oci_names: List[str] = sr.getOCIsForNamespace(args.name)
     if len(oci_names) == 0:
         error("Could not enumerate any OCI image names")
         return  # for tests
@@ -845,7 +871,7 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
             print(".", end="", flush=True)
 
         name: str = "%s/%s" % (args.name, oci.split("/", maxsplit=5)[-1])
-        digest: str = getGARDigestForImage(name)
+        digest: str = sr.getDigestForImage(name)
         if digest == "":
             continue
         ocis.append("%s@%s" % (name, digest.split("@")[1]))
@@ -866,7 +892,7 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
     count: int = 0
     for full_name in ocis:
         j: Dict[str, Any] = {}
-        tmp: str = getGARSecurityReport(full_name, raw=True, quiet=True)
+        tmp: str = sr.getSecurityReport(full_name, raw=True, quiet=True)
         if "occurrences" in tmp:
             j = json.loads(tmp)
         else:
