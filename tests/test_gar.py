@@ -305,11 +305,12 @@ class TestGAR(TestCase):
         }
 
     @mock.patch("requests.get")
-    def test_getGARReposForProjectLoc(self, mock_get):
-        """Test getGARReposForProjectLoc()"""
+    def test_getReposForNamespace(self, mock_get):
+        """Test getReposForNamespace()"""
         mr = self._mock_response_for_gar(self._validGARReposForProjectLoc())
         mock_get.return_value = mr
-        res = cvelib.gar.getGARReposForProjectLoc("valid-proj/us")
+        gsr = cvelib.gar.GARSecurityReportNew()
+        res = gsr.getReposForNamespace("valid-proj/us")
         self.assertEqual(1, len(res))
         self.assertEqual(
             "projects/valid-proj/locations/us/repositories/valid-repo", res[0]
@@ -317,7 +318,7 @@ class TestGAR(TestCase):
 
         # bad invocation
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.gar.getGARReposForProjectLoc("blah")
+            gsr.getReposForNamespace("blah")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Please use PROJECT/LOCATION" in error.getvalue().strip())
 
@@ -325,7 +326,7 @@ class TestGAR(TestCase):
         mr = self._mock_response_for_gar({}, status=401)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.gar.getGARReposForProjectLoc("valid-proj/us")
+            res = gsr.getReposForNamespace("valid-proj/us")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Could not fetch" in error.getvalue().strip())
         self.assertEqual(0, len(res))
@@ -336,7 +337,7 @@ class TestGAR(TestCase):
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.gar.getGARReposForProjectLoc("valid-proj/us")
+            res = gsr.getReposForNamespace("valid-proj/us")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not find 'repositories' in response" in error.getvalue().strip()
@@ -348,7 +349,7 @@ class TestGAR(TestCase):
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.gar.getGARReposForProjectLoc("valid-proj/us")
+            res = gsr.getReposForNamespace("valid-proj/us")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not find 'name' in response for repo" in error.getvalue().strip()
@@ -455,11 +456,12 @@ class TestGAR(TestCase):
         }
 
     @mock.patch("requests.get")
-    def test_getGARDigestForImage(self, mock_get):
-        """Test getGARDigestForImage()"""
+    def test_getDigestForImage(self, mock_get):
+        """Test getDigestForImage()"""
         mr = self._mock_response_for_gar(self._validGARDigestForImage())
         mock_get.return_value = mr
-        res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+        gsr = cvelib.gar.GARSecurityReportNew()
+        res = gsr.getDigestForImage("valid-proj/us/valid-repo/valid-name")
         self.assertEqual(
             "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fbed39525f7c06f6b83c0e8da65f434c6dffba7b7f09917d5a8a31299ed12f0a",
             res,
@@ -468,7 +470,7 @@ class TestGAR(TestCase):
         # search by sha256
         mr = self._mock_response_for_gar(self._validGARDigestForImage()["versions"][1])
         mock_get.return_value = mr
-        res = cvelib.gar.getGARDigestForImage(
+        res = gsr.getDigestForImage(
             "valid-proj/us/valid-repo/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a"
         )
         self.assertEqual(
@@ -479,9 +481,7 @@ class TestGAR(TestCase):
         # search by tag
         mr = self._mock_response_for_gar(self._validGARDigestForImage())
         mock_get.return_value = mr
-        res = cvelib.gar.getGARDigestForImage(
-            "valid-proj/us/valid-repo/valid-name:some-tag"
-        )
+        res = gsr.getDigestForImage("valid-proj/us/valid-repo/valid-name:some-tag")
         self.assertEqual(
             "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
             res,
@@ -493,9 +493,7 @@ class TestGAR(TestCase):
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.gar.getGARDigestForImage(
-                "valid-proj/us/valid-repo/valid-name:some-tag"
-            )
+            res = gsr.getDigestForImage("valid-proj/us/valid-repo/valid-name:some-tag")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("mediaType not in" in error.getvalue().strip())
         self.assertEqual(
@@ -508,16 +506,14 @@ class TestGAR(TestCase):
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.gar.getGARDigestForImage(
-                "valid-proj/us/valid-repo/valid-name:some-tag"
-            )
+            res = gsr.getDigestForImage("valid-proj/us/valid-repo/valid-name:some-tag")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("mediaType not in" in error.getvalue().strip())
         self.assertEqual("", res)
 
         # bad invocation
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.gar.getGARDigestForImage("valid-proj")
+            gsr.getDigestForImage("valid-proj")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Please use PROJECT/LOCATION/REPO/IMGNAME" in error.getvalue().strip()
@@ -527,7 +523,7 @@ class TestGAR(TestCase):
         mr = self._mock_response_for_gar({}, status=404)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+            res = gsr.getDigestForImage("valid-proj/us/valid-repo/valid-name")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Could not fetch" in error.getvalue().strip())
         self.assertEqual(0, len(res))
@@ -538,7 +534,7 @@ class TestGAR(TestCase):
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+            res = gsr.getDigestForImage("valid-proj/us/valid-repo/valid-name")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not find 'versions' in response" in error.getvalue().strip()
@@ -551,7 +547,7 @@ class TestGAR(TestCase):
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+            res = gsr.getDigestForImage("valid-proj/us/valid-repo/valid-name")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Could not find 'name' in" in error.getvalue().strip())
         self.assertEqual("", res)
@@ -561,7 +557,7 @@ class TestGAR(TestCase):
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+            res = gsr.getDigestForImage("valid-proj/us/valid-repo/valid-name")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Could not find 'metadata' in" in error.getvalue().strip())
         self.assertEqual("", res)
@@ -571,7 +567,7 @@ class TestGAR(TestCase):
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+            res = gsr.getDigestForImage("valid-proj/us/valid-repo/valid-name")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not find 'mediaType' in 'metadata' in" in error.getvalue().strip()
@@ -583,7 +579,7 @@ class TestGAR(TestCase):
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+            res = gsr.getDigestForImage("valid-proj/us/valid-repo/valid-name")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not find 'name' in 'metadata' in" in error.getvalue().strip()
@@ -593,10 +589,10 @@ class TestGAR(TestCase):
     # Note, these are listed in reverse order ot the arguments to test_...
     @mock.patch("cvelib.gar.getGARDiscovery")
     @mock.patch("requests.get")
-    def test_getGARDigestForImage_multiple_no_scan_results(
+    def test_getDigestForImage_multiple_no_scan_results(
         self, mock_get, mock_getGARDiscovery
     ):
-        """Test getGARDigestForImage() - multiple no scan results"""
+        """Test getDigestForImage() - multiple no scan results"""
         # valid gar v1/projects.locations.repositories.packages.versions as
         # python object
         v = {"versions": []}
@@ -621,8 +617,9 @@ class TestGAR(TestCase):
         mock_get.return_value = mr
         mock_getGARDiscovery.return_value = "UNSCANNED"
 
+        gsr = cvelib.gar.GARSecurityReportNew()
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+            res = gsr.getDigestForImage("valid-proj/us/valid-repo/valid-name")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not find digest for valid-repo/valid-name with scan results for in 10 most recent images"
@@ -636,7 +633,7 @@ class TestGAR(TestCase):
         mock_getGARDiscovery.return_value = "INACTIVE"
 
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.gar.getGARDigestForImage("valid-proj/us/valid-repo/valid-name")
+            res = gsr.getDigestForImage("valid-proj/us/valid-repo/valid-name")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not find digest for valid-repo/valid-name with scan results for in 10 most recent images (images are stale)"
@@ -645,9 +642,9 @@ class TestGAR(TestCase):
         self.assertEqual("", res)
 
     # Note, these are listed in reverse order ot the arguments to test_...
-    @mock.patch("cvelib.gar.getGARDigestForImage")
+    @mock.patch("cvelib.gar.GARSecurityReportNew.getDigestForImage")
     @mock.patch("requests.get")
-    def test_getGARDiscovery(self, mock_get, mock_getGARDigestForImage):
+    def test_getGARDiscovery(self, mock_get, mock_getDigestForImage):
         """Test getGARDiscovery()"""
         # clean
         mr = self._mock_response_for_gar(
@@ -742,7 +739,7 @@ class TestGAR(TestCase):
         # nonexistent
         mr = self._mock_response_for_gar({})
         mock_get.return_value = mr
-        mock_getGARDigestForImage.return_value = ""
+        mock_getDigestForImage.return_value = ""
         res = cvelib.gar.getGARDiscovery(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
         )
@@ -751,7 +748,7 @@ class TestGAR(TestCase):
         # unscanned
         mr = self._mock_response_for_gar({})
         mock_get.return_value = mr
-        mock_getGARDigestForImage.return_value = "sha256:deadbeef"
+        mock_getDigestForImage.return_value = "sha256:deadbeef"
         res = cvelib.gar.getGARDiscovery(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
         )
@@ -788,13 +785,14 @@ class TestGAR(TestCase):
     # Note, these are listed in reverse order ot the arguments to test_...
     @mock.patch("cvelib.gar.getGARDiscovery")
     @mock.patch("requests.get")
-    def test_getGARSecurityReport(self, mock_get, mock_getGARDiscovery):
-        """Test getGARSecurityReport()"""
+    def test_getSecurityReport(self, mock_get, mock_getGARDiscovery):
+        """Test getSecurityReport()"""
         self.maxDiff = 2048
 
         mr = self._mock_response_for_gar(self._validGARReport())
         mock_get.return_value = mr
-        res = cvelib.gar.getGARSecurityReport(
+        gsr = cvelib.gar.GARSecurityReportNew()
+        res = gsr.getSecurityReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
         )
         exp = """valid-proj/us/valid-repo/valid-name report: 1
@@ -811,7 +809,7 @@ class TestGAR(TestCase):
         self.assertFalse("## valid-proj/us/valid-repo/valid-name GAR template" in res)
 
         # with_templates=True
-        res = cvelib.gar.getGARSecurityReport(
+        res = gsr.getSecurityReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef", with_templates=True
         )
         self.assertTrue("## valid-proj/us/valid-repo/valid-name GAR template" in res)
@@ -823,7 +821,7 @@ class TestGAR(TestCase):
         ]
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
-        res = cvelib.gar.getGARSecurityReport(
+        res = gsr.getSecurityReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef", fixable=False
         )
         exp = """valid-proj/us/valid-repo/valid-name report: 1
@@ -839,7 +837,7 @@ class TestGAR(TestCase):
         self.assertEqual(exp, res)
 
         # fixable=False
-        res = cvelib.gar.getGARSecurityReport(
+        res = gsr.getSecurityReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef", fixable=True
         )
         self.assertEqual("valid-proj/us/valid-repo/valid-name report: 0", res)
@@ -848,7 +846,7 @@ class TestGAR(TestCase):
         d = self._validGARReport()
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
-        res = cvelib.gar.getGARSecurityReport(
+        res = gsr.getSecurityReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef",
             priorities=["negligible"],
         )
@@ -861,7 +859,7 @@ class TestGAR(TestCase):
         ] = "NEGLIGIBLE"
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
-        res = cvelib.gar.getGARSecurityReport(
+        res = gsr.getSecurityReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef",
             priorities=["negligible"],
         )
@@ -881,7 +879,7 @@ class TestGAR(TestCase):
         mr = self._mock_response_for_gar("{}")
         mock_get.return_value = mr
         mock_getGARDiscovery.return_value = "CLEAN"
-        res = cvelib.gar.getGARSecurityReport(
+        res = gsr.getSecurityReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
         )
         self.assertEqual("No problems found", res)
@@ -890,7 +888,7 @@ class TestGAR(TestCase):
         mr = self._mock_response_for_gar("{}")
         mock_get.return_value = mr
         mock_getGARDiscovery.return_value = "INACTIVE"
-        res = cvelib.gar.getGARSecurityReport(
+        res = gsr.getSecurityReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
         )
         self.assertEqual("No scan results for this inactive image", res)
@@ -898,7 +896,7 @@ class TestGAR(TestCase):
         # raw
         mr = self._mock_response_for_gar(self._validGARReport())
         mock_get.return_value = mr
-        res = cvelib.gar.getGARSecurityReport(
+        res = gsr.getSecurityReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef", raw=True
         )
         exp = '"occurrences":'
@@ -909,7 +907,7 @@ class TestGAR(TestCase):
         mock_get.return_value = mr
         mock_getGARDiscovery.return_value = "UNSUPPORTED"
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.gar.getGARSecurityReport(
+            res = gsr.getSecurityReport(
                 "valid-proj/us/valid-repo/valid-name@sha256:deadbeef", raw=True
             )
         self.assertEqual("", output.getvalue().strip())
@@ -921,7 +919,7 @@ class TestGAR(TestCase):
 
         # bad invocation
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.gar.getGARSecurityReport("valid-proj/us/valid-repo/valid-name")
+            gsr.getSecurityReport("valid-proj/us/valid-repo/valid-name")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Please use PROJECT/LOCATION/REPO/IMGNAME@sha256:<sha256>"
@@ -932,7 +930,7 @@ class TestGAR(TestCase):
         mr = self._mock_response_for_gar({}, status=404)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.gar.getGARSecurityReport(
+            res = gsr.getSecurityReport(
                 "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
             )
         self.assertEqual("", output.getvalue().strip())
@@ -946,7 +944,7 @@ class TestGAR(TestCase):
         mock_get.return_value = mr
         mock_getGARDiscovery.return_value = "UNSUPPORTED"
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.gar.getGARSecurityReport(
+            res = gsr.getSecurityReport(
                 "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
             )
         self.assertEqual("", output.getvalue().strip())
@@ -960,7 +958,7 @@ class TestGAR(TestCase):
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.gar.getGARSecurityReport(
+            res = gsr.getSecurityReport(
                 "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
             )
         self.assertEqual("", output.getvalue().strip())
@@ -974,7 +972,7 @@ class TestGAR(TestCase):
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.gar.getGARSecurityReport(
+            res = gsr.getSecurityReport(
                 "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
             )
         self.assertEqual("", output.getvalue().strip())
@@ -985,17 +983,18 @@ class TestGAR(TestCase):
 
     # Note, these are listed in reverse order ot the arguments to test_...
     @mock.patch("cvelib.gar.getGAROCIForRepo")
-    @mock.patch("cvelib.gar.getGARReposForProjectLoc")
-    def test_getGAROCIsForProjectLoc(
-        self, mock_getGARReposForProjectLoc, mock_getGAROCIForRepo
+    @mock.patch("cvelib.gar.GARSecurityReportNew.getReposForNamespace")
+    def test_getOCIsForNamespace(
+        self, mock_getReposForNamespace, mock_getGAROCIForRepo
     ):
-        """Test getGAROCIsForProjectLoc()"""
-        mock_getGARReposForProjectLoc.return_value = [
+        """Test getOCIsForNamespace()"""
+        mock_getReposForNamespace.return_value = [
             "projects/valid-proj/locations/us/repositories/valid-repo"
         ]
         mock_getGAROCIForRepo.return_value = ["valid-name", "other-name"]
 
-        res = cvelib.gar.getGAROCIsForProjectLoc("valid-proj/us")
+        gsr = cvelib.gar.GARSecurityReportNew()
+        res = gsr.getOCIsForNamespace("valid-proj/us")
         self.assertEqual(2, len(res))
         # these are sorted
         self.assertEqual(
@@ -1009,29 +1008,29 @@ class TestGAR(TestCase):
 
         # bad invocation
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.gar.getGAROCIsForProjectLoc("valid-proj")
+            gsr.getOCIsForNamespace("valid-proj")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Please use PROJECT/LOCATION" in error.getvalue().strip())
 
     # Note, these are listed in reverse order ot the arguments to test_...
-    @mock.patch("cvelib.gar.getGARSecurityReport")
-    @mock.patch("cvelib.gar.getGARDigestForImage")
-    @mock.patch("cvelib.gar.getGAROCIsForProjectLoc")
+    @mock.patch("cvelib.gar.GARSecurityReportNew.getSecurityReport")
+    @mock.patch("cvelib.gar.GARSecurityReportNew.getDigestForImage")
+    @mock.patch("cvelib.gar.GARSecurityReportNew.getOCIsForNamespace")
     def test_main_gar_dump_reports(
         self,
-        mock_getGAROCIsForProjectLoc,
-        mock_getGARDigestForImage,
-        mock_getGARSecurityReport,
+        mock_getOCIsForNamespace,
+        mock_getDigestForImage,
+        mock_getSecurityReport,
     ):
         """Test test_main_gar_dump_reports()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         os.environ["SEDG_EXPERIMENTAL"] = "1"
 
-        mock_getGAROCIsForProjectLoc.return_value = [
+        mock_getOCIsForNamespace.return_value = [
             "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
         ]
-        mock_getGARDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
-        mock_getGARSecurityReport.return_value = """{
+        mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
+        mock_getSecurityReport.return_value = """{
   "occurrences": [
     {
       "resourceUri": "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@deadbeef",
@@ -1084,14 +1083,14 @@ class TestGAR(TestCase):
         self.assertEqual("", error.getvalue().strip())
 
     # Note, these are listed in reverse order ot the arguments to test_...
-    @mock.patch("cvelib.gar.getGARSecurityReport")
-    @mock.patch("cvelib.gar.getGARDigestForImage")
-    @mock.patch("cvelib.gar.getGAROCIsForProjectLoc")
+    @mock.patch("cvelib.gar.GARSecurityReportNew.getSecurityReport")
+    @mock.patch("cvelib.gar.GARSecurityReportNew.getDigestForImage")
+    @mock.patch("cvelib.gar.GARSecurityReportNew.getOCIsForNamespace")
     def test_main_gar_dump_reports_bad(
         self,
-        mock_getGAROCIsForProjectLoc,
-        mock_getGARDigestForImage,
-        mock_getGARSecurityReport,
+        mock_getOCIsForNamespace,
+        mock_getDigestForImage,
+        mock_getSecurityReport,
     ):
         """Test test_gar_main_dump_reports()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
@@ -1122,7 +1121,7 @@ class TestGAR(TestCase):
             self.assertTrue("Please use PROJECT/LOC" in error.getvalue().strip())
 
         # no image names
-        mock_getGAROCIsForProjectLoc.return_value = []
+        mock_getOCIsForNamespace.return_value = []
         with mock.patch.object(
             cvelib.common.error,
             "__defaults__",
@@ -1149,10 +1148,10 @@ class TestGAR(TestCase):
         )
 
         # no digests
-        mock_getGAROCIsForProjectLoc.return_value = [
+        mock_getOCIsForNamespace.return_value = [
             "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
         ]
-        mock_getGARDigestForImage.return_value = ""
+        mock_getDigestForImage.return_value = ""
         with mock.patch.object(
             cvelib.common.error,
             "__defaults__",
@@ -1179,11 +1178,11 @@ class TestGAR(TestCase):
         )
 
         # no security reports
-        mock_getGAROCIsForProjectLoc.return_value = [
+        mock_getOCIsForNamespace.return_value = [
             "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
         ]
-        mock_getGARDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
-        mock_getGARSecurityReport.return_value = "{}"
+        mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
+        mock_getSecurityReport.return_value = "{}"
         with mock.patch.object(
             cvelib.common.error,
             "__defaults__",
@@ -1208,11 +1207,11 @@ class TestGAR(TestCase):
         self.assertTrue("No new security reports" in error.getvalue().strip())
 
         # bad report
-        mock_getGAROCIsForProjectLoc.return_value = [
+        mock_getOCIsForNamespace.return_value = [
             "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
         ]
-        mock_getGARDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
-        mock_getGARSecurityReport.return_value = """{
+        mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
+        mock_getSecurityReport.return_value = """{
   "occurrences": [
     {
       "resourceUri": "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@deadbeef",
@@ -1240,11 +1239,11 @@ class TestGAR(TestCase):
         )
 
         # bad report (no occurrences)
-        mock_getGAROCIsForProjectLoc.return_value = [
+        mock_getOCIsForNamespace.return_value = [
             "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
         ]
-        mock_getGARDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
-        mock_getGARSecurityReport.return_value = "{}"
+        mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
+        mock_getSecurityReport.return_value = "{}"
         with mock.patch(
             "argparse._sys.argv",
             [
@@ -1261,11 +1260,11 @@ class TestGAR(TestCase):
         self.assertTrue("No new security reports" in error.getvalue().strip())
 
         # path exists but isn't a file
-        mock_getGAROCIsForProjectLoc.return_value = [
+        mock_getOCIsForNamespace.return_value = [
             "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
         ]
-        mock_getGARDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
-        mock_getGARSecurityReport.return_value = """{
+        mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
+        mock_getSecurityReport.return_value = """{
   "occurrences": [
     {
       "resourceUri": "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@deadbeef",

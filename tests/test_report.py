@@ -4171,36 +4171,36 @@ template-urls = https://url1,https://url2
             exp in out.strip(), msg="Could not find '%s' in: %s" % (exp, out)
         )
 
-    @mock.patch("cvelib.quay.getQuayOCIsForOrg")
-    def test_main_report_quay_list(self, mock_getQuayOCIsForOrg):
+    @mock.patch("cvelib.quay.QuaySecurityReportNew.getOCIsForNamespace")
+    def test_main_report_quay_list(self, mock_getOCIsForNamespace):
         """Test main_report - quay --list"""
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
-        mock_getQuayOCIsForOrg.return_value = ["valid-repo"]
+        mock_getOCIsForNamespace.return_value = ["valid-repo"]
         args = ["quay", "--list", "--namespace", "valid-org"]
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
         self.assertEqual("valid-org/valid-repo", output.getvalue().strip())
 
-    @mock.patch("cvelib.quay.getQuayDigestForImage")
-    def test_main_report_quay_list_digest(self, mock_getQuayDigestForImage):
+    @mock.patch("cvelib.quay.QuaySecurityReportNew.getDigestForImage")
+    def test_main_report_quay_list_digest(self, mock_getDigestForImage):
         """Test main_report - quay --list-digest"""
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
-        mock_getQuayDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
+        mock_getDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
         args = ["quay", "--list-digest", "valid-repo", "--namespace", "valid-org"]
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
         self.assertEqual("sha256:deadbeef", output.getvalue().strip())
 
-    @mock.patch("cvelib.quay.getQuaySecurityReport")
-    def test_main_report_quay_alerts(self, mock_getQuaySecurityReport):
+    @mock.patch("cvelib.quay.QuaySecurityReportNew.getSecurityReport")
+    def test_main_report_quay_alerts(self, mock_getSecurityReport):
         """Test main_report - quay --alerts"""
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
-        mock_getQuaySecurityReport.return_value = "report"
+        mock_getSecurityReport.return_value = "report"
         args = [
             "quay",
             "--alerts",
@@ -4217,7 +4217,7 @@ template-urls = https://url1,https://url2
         )
 
         # raw
-        mock_getQuaySecurityReport.return_value = "{}"
+        mock_getSecurityReport.return_value = "{}"
         args = [
             "quay",
             "--alerts",
@@ -4241,7 +4241,7 @@ template-urls = https://url1,https://url2
                 False,
             ),
         ):
-            mock_getQuaySecurityReport.return_value = ""
+            mock_getSecurityReport.return_value = ""
             args = [
                 "quay",
                 "--alerts",
@@ -4258,12 +4258,12 @@ template-urls = https://url1,https://url2
             error.getvalue().strip(),
         )
 
-    @mock.patch("cvelib.gar.getGAROCIsForProjectLoc")
-    def test_main_report_gar_list(self, mock_getGAROCIsForProjectLoc):
+    @mock.patch("cvelib.gar.GARSecurityReportNew.getOCIsForNamespace")
+    def test_main_report_gar_list(self, mock_getOCIsForNamespace):
         """Test main_report - gar --list"""
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
-        mock_getGAROCIsForProjectLoc.return_value = [
+        mock_getOCIsForNamespace.return_value = [
             "projects/valid-proj/locations/us/repositories/valid-repo/valid-name"
         ]
         args = ["gar", "--list", "--namespace", "valid-proj/us"]
@@ -4274,12 +4274,12 @@ template-urls = https://url1,https://url2
             "valid-proj/us/valid-repo/valid-name", output.getvalue().strip()
         )
 
-    @mock.patch("cvelib.gar.getGARReposForProjectLoc")
-    def test_main_report_gar_list_repos(self, mock_getGARReposForProjectLoc):
+    @mock.patch("cvelib.gar.GARSecurityReportNew.getReposForNamespace")
+    def test_main_report_gar_list_repos(self, mock_getReposForNamespace):
         """Test main_report - gar --list-repos"""
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
-        mock_getGARReposForProjectLoc.return_value = [
+        mock_getReposForNamespace.return_value = [
             "projects/valid-proj/locations/us/repositories/valid-repo"
         ]
         args = ["gar", "--list-repos", "--namespace", "valid-proj/us"]
@@ -4288,12 +4288,12 @@ template-urls = https://url1,https://url2
         self.assertEqual("", error.getvalue().strip())
         self.assertEqual("valid-proj/us/valid-repo", output.getvalue().strip())
 
-    @mock.patch("cvelib.gar.getGARDigestForImage")
-    def test_main_report_gar_list_digest(self, mock_getGARDigestForImage):
+    @mock.patch("cvelib.gar.GARSecurityReportNew.getDigestForImage")
+    def test_main_report_gar_list_digest(self, mock_getDigestForImage):
         """Test main_report - gar --list-digest"""
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
-        mock_getGARDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:deadbeef"
+        mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:deadbeef"
         args = [
             "gar",
             "--namespace",
@@ -4306,12 +4306,12 @@ template-urls = https://url1,https://url2
         self.assertEqual("", error.getvalue().strip())
         self.assertEqual("sha256:deadbeef", output.getvalue().strip())
 
-    @mock.patch("cvelib.gar.getGARSecurityReport")
-    def test_main_report_gar_alerts(self, mock_getGARSecurityReport):
+    @mock.patch("cvelib.gar.GARSecurityReportNew.getSecurityReport")
+    def test_main_report_gar_alerts(self, mock_getSecurityReport):
         """Test main_report - gar --alerts"""
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
-        mock_getGARSecurityReport.return_value = "report"
+        mock_getSecurityReport.return_value = "report"
         args = [
             "gar",
             "--alerts",
@@ -4328,7 +4328,7 @@ template-urls = https://url1,https://url2
         )
 
         # raw
-        mock_getGARSecurityReport.return_value = "{}"
+        mock_getSecurityReport.return_value = "{}"
         args = [
             "gar",
             "--alerts",
@@ -4352,7 +4352,7 @@ template-urls = https://url1,https://url2
                 False,
             ),
         ):
-            mock_getGARSecurityReport.return_value = ""
+            mock_getSecurityReport.return_value = ""
             args = [
                 "gar",
                 "--alerts",

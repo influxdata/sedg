@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 
 from cvelib.common import error, warn, _sorted_json_deep, _experimental
 from cvelib.net import requestGetRaw
-from cvelib.scan import ScanOCI, getScanOCIsReportTemplates
+from cvelib.scan import ScanOCI, getScanOCIsReportTemplates, SecurityReportInterface
 
 
 def _createQuayHeaders() -> Dict[str, str]:
@@ -30,173 +30,6 @@ def _createQuayHeaders() -> Dict[str, str]:
         headers["Authorization"] = "Bearer %s" % os.environ["QUAY_TOKEN"]
 
     return copy.deepcopy(headers)
-
-
-# $ curl -H "Authorization: Bearer $QUAY_TOKEN" \
-#        -G "https://quay.io/api/v1/repository?last_modified=true&namespace=ORG"
-# {
-#   "repositories": [
-#     {
-#       "namespace": "foo",
-#       "name": "bar",
-#       "description": null,
-#       "is_public": false,
-#       "kind": "image",
-#       "state": "NORMAL",
-#       "last_modified": 1684472852,
-#       "is_starred": false
-#     },
-#     ...
-#   ],
-#   "next_page": "gAAAAA..."
-# }
-def getQuayOCIsForOrg(namespace: str) -> List[str]:
-    """Obtain the list of Quay repos for the specified namespace"""
-    url: str = "https://quay.io/api/v1/repository"
-    headers: Dict[str, str] = _createQuayHeaders()
-    params: Dict[str, str] = {
-        "namespace": namespace,
-        "last_modified": "true",
-    }
-
-    repos: List[str] = []
-
-    if sys.stdout.isatty():
-        print("Fetching list of repos: ", end="", flush=True)
-    while True:
-        if sys.stdout.isatty():
-            print(".", end="", flush=True)
-
-        try:
-            r: requests.Response = requestGetRaw(url, headers=headers, params=params)
-        except requests.exceptions.RequestException as e:  # pragma: nocover
-            warn("Skipping %s (request error: %s)" % (url, str(e)))
-            return []
-
-        if r.status_code >= 300:
-            warn("Could not fetch %s" % url)
-            return []
-
-        resj = r.json()
-        if "repositories" not in resj:
-            warn("Could not find 'repositories' in response: %s" % resj)
-            return []
-
-        for repo in resj["repositories"]:
-            if "name" not in repo:
-                warn("Could not find 'name' in response for repo: %s" % repo)
-                continue
-
-            name: str = repo["name"]
-            if name not in repos:
-                repos.append(repo["name"])
-
-        if "next_page" not in resj:
-            if sys.stdout.isatty():
-                print(" done!")
-            break
-
-        params["next_page"] = resj["next_page"]
-
-    return copy.deepcopy(repos)
-
-
-# $ curl -H "Authorization: Bearer $QUAY_TOKEN" \
-#        -G "https://quay.io/api/v1/repository/ORG/IMGNAME?includeTags=true"
-# {
-#   "namespace": "valid-org",
-#   "name": "valid-repo",
-#   "kind": "image",
-#   "description": "",
-#   "is_public": true,
-#   "is_organization": true,
-#   "is_starred": false,
-#   "status_token": "",
-#   "trust_enabled": false,
-#   "tag_expiration_s": 1209600,
-#   "is_free_account": false,
-#   "state": "NORMAL",
-#   "tags": {
-#     "latest": {
-#       "name": "latest",
-#       "size": 270353940,
-#       "last_modified": "Wed, 15 Mar 2023 15:05:28 -0000",
-#       "manifest_digest": "sha256:3fa5256ad34b31901ca30021c722fc7ba11a66ca070c8442862205696b908ddb"
-#     },
-#     "f7d94bbcf4f202b9f9d8f72c37d5650d7756f188": {
-#       "name": "f7d94bbcf4f202b9f9d8f72c37d5650d7756f188",
-#       "size": 573662556,
-#       "last_modified": "Tue, 14 Jun 2022 12:07:42 -0000",
-#       "manifest_digest": "sha256:2536a15812ba685df76e835aefdc7f512941c12c561e0aed152d17aa025cc820"
-#     },
-#   },
-#   "can_write": false,
-#   "can_admin": false
-# }
-def getQuayDigestForImage(repo_full: str) -> str:
-    """Obtain the digest for the the specified repo"""
-    if "/" not in repo_full:
-        error("Please use ORG/NAME", do_exit=False)
-        return ""
-
-    ns: str = ""
-    name: str = ""
-    sha256: str = ""
-    tagsearch: str = ""
-    ns, name = repo_full.split("/", 2)
-    if "@sha256:" in name:
-        name, sha256 = name.split("@", 2)
-    elif ":" in name:
-        name, tagsearch = name.split(":", 2)
-
-    repo: str = "%s/%s" % (ns, name)
-    url: str = "https://quay.io/api/v1/repository/%s" % repo
-    headers: Dict[str, str] = _createQuayHeaders()
-    params: Dict[str, str] = {"includeTags": "true"}
-
-    try:
-        r: requests.Response = requestGetRaw(url, headers=headers, params=params)
-    except requests.exceptions.RequestException as e:  # pragma: nocover
-        warn("Skipping %s (request error: %s)" % (url, str(e)))
-        return ""
-
-    if r.status_code >= 300:
-        warn("Could not fetch %s" % url)
-        return ""
-
-    resj = r.json()
-    if "tags" not in resj:
-        warn("Could not find 'tags' in response: %s" % resj)
-        return ""
-
-    digest: str = ""
-    if tagsearch != "" and tagsearch in resj["tags"]:
-        digest = resj["tags"][tagsearch]["manifest_digest"]
-
-    if digest == "":
-        latest_d: Optional[datetime] = None
-        for tag in resj["tags"]:
-            if "last_modified" not in resj["tags"][tag]:
-                warn(
-                    "Could not find 'last_modified' in response: %s" % resj["tags"][tag]
-                )
-                return ""
-
-            if sha256 == "":
-                cur: datetime = datetime.strptime(
-                    resj["tags"][tag]["last_modified"], "%a, %d %b %Y %H:%M:%S %z"
-                )
-                if latest_d is None or cur > latest_d:
-                    latest_d = cur
-                    digest = resj["tags"][tag]["manifest_digest"]
-            elif sha256 == resj["tags"][tag]["manifest_digest"]:
-                digest = sha256
-                break
-
-    if digest != "":
-        return "%s/%s@%s" % (ns, name, digest)
-
-    return ""
 
 
 # {
@@ -294,97 +127,284 @@ def parse(resj: Dict[str, Any], url_prefix: str) -> List[ScanOCI]:
     return ocis
 
 
-# $ curl -H "Authorization: Bearer $QUAY_TOKEN" \
-#        -G
-#        "https://quay.io/api/v1/repository/ORG/IMGNAME/manifest/sha256:SHA256/security?vulnerabilities=true"
-# {
-def getQuaySecurityReport(
-    repo_full: str,
-    raw: bool = False,
-    fixable: bool = True,
-    with_templates: bool = False,
-    template_urls: List[str] = [],
-    priorities: List[str] = [],
-) -> str:
-    """Obtain the security manifest for the specified repo@sha256:..."""
-    if "/" not in repo_full or "@sha256:" not in repo_full:
-        error("Please use ORG/NAME@sha256:<sha256>", do_exit=False)
+class QuaySecurityReportNew(SecurityReportInterface):
+    # $ curl -H "Authorization: Bearer $QUAY_TOKEN" \
+    #        -G "https://quay.io/api/v1/repository/ORG/IMGNAME?includeTags=true"
+    # {
+    #   "namespace": "valid-org",
+    #   "name": "valid-repo",
+    #   "kind": "image",
+    #   "description": "",
+    #   "is_public": true,
+    #   "is_organization": true,
+    #   "is_starred": false,
+    #   "status_token": "",
+    #   "trust_enabled": false,
+    #   "tag_expiration_s": 1209600,
+    #   "is_free_account": false,
+    #   "state": "NORMAL",
+    #   "tags": {
+    #     "latest": {
+    #       "name": "latest",
+    #       "size": 270353940,
+    #       "last_modified": "Wed, 15 Mar 2023 15:05:28 -0000",
+    #       "manifest_digest": "sha256:3fa5256ad34b31901ca30021c722fc7ba11a66ca070c8442862205696b908ddb"
+    #     },
+    #     "f7d94bbcf4f202b9f9d8f72c37d5650d7756f188": {
+    #       "name": "f7d94bbcf4f202b9f9d8f72c37d5650d7756f188",
+    #       "size": 573662556,
+    #       "last_modified": "Tue, 14 Jun 2022 12:07:42 -0000",
+    #       "manifest_digest": "sha256:2536a15812ba685df76e835aefdc7f512941c12c561e0aed152d17aa025cc820"
+    #     },
+    #   },
+    #   "can_write": false,
+    #   "can_admin": false
+    # }
+    def getDigestForImage(self, repo_full: str) -> str:
+        """Obtain the digest for the the specified repo"""
+        if "/" not in repo_full:
+            error("Please use ORG/NAME", do_exit=False)
+            return ""
+
+        ns: str = ""
+        name: str = ""
+        sha256: str = ""
+        tagsearch: str = ""
+        ns, name = repo_full.split("/", 2)
+        if "@sha256:" in name:
+            name, sha256 = name.split("@", 2)
+        elif ":" in name:
+            name, tagsearch = name.split(":", 2)
+
+        repo: str = "%s/%s" % (ns, name)
+        url: str = "https://quay.io/api/v1/repository/%s" % repo
+        headers: Dict[str, str] = _createQuayHeaders()
+        params: Dict[str, str] = {"includeTags": "true"}
+
+        try:
+            r: requests.Response = requestGetRaw(url, headers=headers, params=params)
+        except requests.exceptions.RequestException as e:  # pragma: nocover
+            warn("Skipping %s (request error: %s)" % (url, str(e)))
+            return ""
+
+        if r.status_code >= 300:
+            warn("Could not fetch %s" % url)
+            return ""
+
+        resj = r.json()
+        if "tags" not in resj:
+            warn("Could not find 'tags' in response: %s" % resj)
+            return ""
+
+        digest: str = ""
+        if tagsearch != "" and tagsearch in resj["tags"]:
+            digest = resj["tags"][tagsearch]["manifest_digest"]
+
+        if digest == "":
+            latest_d: Optional[datetime] = None
+            for tag in resj["tags"]:
+                if "last_modified" not in resj["tags"][tag]:
+                    warn(
+                        "Could not find 'last_modified' in response: %s"
+                        % resj["tags"][tag]
+                    )
+                    return ""
+
+                if sha256 == "":
+                    cur: datetime = datetime.strptime(
+                        resj["tags"][tag]["last_modified"], "%a, %d %b %Y %H:%M:%S %z"
+                    )
+                    if latest_d is None or cur > latest_d:
+                        latest_d = cur
+                        digest = resj["tags"][tag]["manifest_digest"]
+                elif sha256 == resj["tags"][tag]["manifest_digest"]:
+                    digest = sha256
+                    break
+
+        if digest != "":
+            return "%s/%s@%s" % (ns, name, digest)
+
         return ""
 
-    repo: str
-    sha256: str
-    repo, sha256 = repo_full.split("@", 2)
-    url: str = "https://quay.io/api/v1/repository/%s/manifest/%s/security" % (
-        repo,
-        sha256,
-    )
-    headers: Dict[str, str] = _createQuayHeaders()
-    params: Dict[str, str] = {"vulnerabilities": "true"}
+    # $ curl -H "Authorization: Bearer $QUAY_TOKEN" \
+    #        -G "https://quay.io/api/v1/repository?last_modified=true&namespace=ORG"
+    # {
+    #   "repositories": [
+    #     {
+    #       "namespace": "foo",
+    #       "name": "bar",
+    #       "description": null,
+    #       "is_public": false,
+    #       "kind": "image",
+    #       "state": "NORMAL",
+    #       "last_modified": 1684472852,
+    #       "is_starred": false
+    #     },
+    #     ...
+    #   ],
+    #   "next_page": "gAAAAA..."
+    # }
+    def getOCIsForNamespace(self, namespace: str) -> List[str]:
+        """Obtain the list of Quay repos for the specified namespace"""
+        url: str = "https://quay.io/api/v1/repository"
+        headers: Dict[str, str] = _createQuayHeaders()
+        params: Dict[str, str] = {
+            "namespace": namespace,
+            "last_modified": "true",
+        }
 
-    try:
-        r: requests.Response = requestGetRaw(url, headers=headers, params=params)
-    except requests.exceptions.RequestException as e:  # pragma: nocover
-        warn("Skipping %s (request error: %s)" % (url, str(e)))
-        return ""
+        repos: List[str] = []
 
-    if r.status_code >= 300:
-        warn("Could not fetch %s" % url)
-        return ""
+        if sys.stdout.isatty():
+            print("Fetching list of repos: ", end="", flush=True)
+        while True:
+            if sys.stdout.isatty():
+                print(".", end="", flush=True)
 
-    resj = r.json()
-    if raw:
-        return json.dumps(_sorted_json_deep(resj), sort_keys=True, indent=2)
+            try:
+                r: requests.Response = requestGetRaw(
+                    url, headers=headers, params=params
+                )
+            except requests.exceptions.RequestException as e:  # pragma: nocover
+                warn("Skipping %s (request error: %s)" % (url, str(e)))
+                return []
 
-    if "status" not in resj:
-        error("Cound not find 'status' in response: %s" % resj, do_exit=False)
-        return ""
-    elif resj["status"] != "scanned":
-        error(
-            "Could not process report due to status: %s" % resj["status"], do_exit=False
+            if r.status_code >= 300:
+                warn("Could not fetch %s" % url)
+                return []
+
+            resj = r.json()
+            if "repositories" not in resj:
+                warn("Could not find 'repositories' in response: %s" % resj)
+                return []
+
+            for repo in resj["repositories"]:
+                if "name" not in repo:
+                    warn("Could not find 'name' in response for repo: %s" % repo)
+                    continue
+
+                name: str = repo["name"]
+                if name not in repos:
+                    repos.append(repo["name"])
+
+            if "next_page" not in resj:
+                if sys.stdout.isatty():
+                    print(" done!")
+                break
+
+            params["next_page"] = resj["next_page"]
+
+        return copy.deepcopy(repos)
+
+    # $ curl -H "Authorization: Bearer $QUAY_TOKEN" \
+    #        -G
+    #        "https://quay.io/api/v1/repository/ORG/IMGNAME/manifest/sha256:SHA256/security?vulnerabilities=true"
+    # {
+
+    def getSecurityReport(
+        self,
+        repo_full: str,
+        raw: bool = False,
+        fixable: bool = True,
+        with_templates: bool = False,
+        template_urls: List[str] = [],
+        priorities: List[str] = [],
+    ) -> str:
+        """Obtain the security manifest for the specified repo@sha256:..."""
+        if "/" not in repo_full or "@sha256:" not in repo_full:
+            error("Please use ORG/NAME@sha256:<sha256>", do_exit=False)
+            return ""
+
+        repo: str
+        sha256: str
+        repo, sha256 = repo_full.split("@", 2)
+        url: str = "https://quay.io/api/v1/repository/%s/manifest/%s/security" % (
+            repo,
+            sha256,
         )
-        return ""
+        headers: Dict[str, str] = _createQuayHeaders()
+        params: Dict[str, str] = {"vulnerabilities": "true"}
 
-    if "data" not in resj:
-        error("Could not find 'data' in %s" % resj, do_exit=False)
-        return ""
-    elif resj["data"] is None:
-        error("Could not process report due to no data in %s" % resj, do_exit=False)
-        return ""
+        try:
+            r: requests.Response = requestGetRaw(url, headers=headers, params=params)
+        except requests.exceptions.RequestException as e:  # pragma: nocover
+            warn("Skipping %s (request error: %s)" % (url, str(e)))
+            return ""
 
-    if "Layer" not in resj["data"]:
-        error("Could not find 'Layer' in %s" % resj["data"], do_exit=False)
-        return ""
-    if "Features" not in resj["data"]["Layer"]:
-        error("Could not find 'Features' in %s" % resj["data"]["Layer"], do_exit=False)
-        return ""
+        if r.status_code >= 300:
+            warn("Could not fetch %s" % url)
+            return ""
 
-    url_prefix: str = "https://quay.io/repository/%s/manifest/%s" % (repo, sha256)
+        resj = r.json()
+        if raw:
+            return json.dumps(_sorted_json_deep(resj), sort_keys=True, indent=2)
 
-    ocis: List[ScanOCI] = []
-    s: str = ""
-    # do a subset of this with created?
-    for oci in sorted(parse(resj, url_prefix), key=lambda i: (i.component, i.advisory)):
-        if fixable and oci.versionFixed == "unknown":
-            continue
-        if len(priorities) > 0 and oci.severity not in priorities:
-            continue
-        ocis.append(oci)
-        s += "%s\n" % oci
+        if "status" not in resj:
+            error("Cound not find 'status' in response: %s" % resj, do_exit=False)
+            return ""
+        elif resj["status"] != "scanned":
+            error(
+                "Could not process report due to status: %s" % resj["status"],
+                do_exit=False,
+            )
+            return ""
 
-    s = "%s report: %d\n%s" % (repo_full.split("@")[0], len(ocis), s)
+        if "data" not in resj:
+            error("Could not find 'data' in %s" % resj, do_exit=False)
+            return ""
+        elif resj["data"] is None:
+            error(
+                "Could not process report due to no data in %s" % resj,
+                do_exit=False,
+            )
+            return ""
 
-    if with_templates:
-        s = "%s\n\n%s" % (
-            getScanOCIsReportTemplates(
-                "quay.io",
-                repo_full,
-                ocis,
-                template_urls=template_urls,
-            ),
-            s,
+        if "Layer" not in resj["data"]:
+            error("Could not find 'Layer' in %s" % resj["data"], do_exit=False)
+            return ""
+        if "Features" not in resj["data"]["Layer"]:
+            error(
+                "Could not find 'Features' in %s" % resj["data"]["Layer"],
+                do_exit=False,
+            )
+            return ""
+
+        url_prefix: str = "https://quay.io/repository/%s/manifest/%s" % (
+            repo,
+            sha256,
         )
 
-    return s.rstrip()
+        ocis: List[ScanOCI] = []
+        s: str = ""
+        # do a subset of this with created?
+        for oci in sorted(
+            parse(resj, url_prefix), key=lambda i: (i.component, i.advisory)
+        ):
+            if fixable and oci.versionFixed == "unknown":
+                continue
+            if len(priorities) > 0 and oci.severity not in priorities:
+                continue
+            ocis.append(oci)
+            s += "%s\n" % oci
+
+        s = "%s report: %d\n%s" % (repo_full.split("@")[0], len(ocis), s)
+
+        if with_templates:
+            s = "%s\n\n%s" % (
+                getScanOCIsReportTemplates(
+                    "quay.io",
+                    repo_full,
+                    ocis,
+                    template_urls=template_urls,
+                ),
+                s,
+            )
+
+        return s.rstrip()
+
+    def getReposForNamespace(self, _: str) -> List[str]:  # pragma: nocover
+        # quay.io doesn't have a concept of repos within namespaces
+        raise NotImplementedError
 
 
 #
@@ -430,8 +450,10 @@ Eg, to pull all quay.io security scan reports for org 'foo':
 
     args: argparse.Namespace = parser.parse_args()
 
+    sr = QuaySecurityReportNew()
+
     # Find latest digest for all images
-    oci_names: List[str] = getQuayOCIsForOrg(args.name)
+    oci_names: List[str] = sr.getOCIsForNamespace(args.name)
     if len(oci_names) == 0:
         error("Could not enumerate any OCI image names")
         return  # for tests
@@ -444,7 +466,7 @@ Eg, to pull all quay.io security scan reports for org 'foo':
             print(".", end="", flush=True)
 
         name: str = "%s/%s" % (args.name, oci.split("/", maxsplit=5)[-1])
-        digest: str = getQuayDigestForImage(name)
+        digest: str = sr.getDigestForImage(name)
         if digest == "":
             warn("Could not find digest for %s" % name)
             continue
@@ -487,7 +509,7 @@ Eg, to pull all quay.io security scan reports for org 'foo':
     count: int = 0
     for full_name in ocis:
         j: Dict[str, Any] = {}
-        tmp: str = getQuaySecurityReport(full_name, raw=True)
+        tmp: str = sr.getSecurityReport(full_name, raw=True)
         if '"status":' in tmp:
             j = json.loads(tmp)
             if j["status"] not in ["queued", "scanned", "unsupported"]:

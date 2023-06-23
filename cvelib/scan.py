@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 
+import abc
 import datetime
 import re
 from typing import Dict, List, Optional, Pattern, Tuple
@@ -370,3 +371,48 @@ CVSS:
     cve_template += "\n## end CVE template"
 
     return "%s\n\n%s" % (iss_template, cve_template)
+
+
+# Interface for work with different OCI scan report objects
+class SecurityReportInterface(metaclass=abc.ABCMeta):
+    @classmethod
+    def __subclasshook__(cls, subclass):  # pragma: nocover
+        return (
+            hasattr(subclass, "getDigestForImage")
+            and callable(subclass.getDigestForImage)
+            and hasattr(subclass, "getOCIsForNamespace")
+            and callable(subclass.getOCIsForNamespace)
+            and hasattr(subclass, "getReposForNamespace")
+            and callable(subclass.getReposForNamespace)
+            and hasattr(subclass, "getSecurityReport")
+            and callable(subclass.getSecurityReport)
+            or NotImplementedError
+        )
+
+    @abc.abstractmethod
+    def getDigestForImage(self, repo_full: str) -> str:  # pragma: nocover
+        """Obtain the digest for the specified repo"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def getOCIsForNamespace(self, namespace: str) -> List[str]:  # pragma: nocover
+        """Obtain the list of OCIs for the specified namespace"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def getReposForNamespace(self, namespace: str) -> List[str]:  # pragma: nocover
+        """Obtain the list of repos for the specified namespace"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def getSecurityReport(
+        self,
+        repo_full: str,
+        raw: bool = False,
+        fixable: bool = True,
+        with_templates: bool = False,
+        template_urls: List[str] = [],
+        priorities: List[str] = [],
+    ) -> str:  # pragma: nocover
+        """Obtain the security manifest for the specified repo"""
+        raise NotImplementedError

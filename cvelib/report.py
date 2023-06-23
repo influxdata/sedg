@@ -49,6 +49,7 @@ import cvelib.gar
 from cvelib.github import GHDependabot, GHSecret, GHCode
 from cvelib.net import requestGetRaw, ghAPIGetList
 import cvelib.quay
+import cvelib.scan
 
 
 #
@@ -1040,9 +1041,10 @@ def getGHAlertsReport(
             _printGHAlertsSummary(org, repo, resolved[repo], "resolved")
 
 
+# ???: Put in SecurityReportInterface as a default implementation?
 def getOCIReports(
     cves: List[CVE],
-    registry: str,
+    sr: cvelib.scan.SecurityReportInterface,
     namespace: str,
     images: List[str] = [],
     excluded_images: List[str] = [],
@@ -1061,25 +1063,14 @@ def getOCIReports(
 
     reports: Dict[str, str] = {}
     for img in images:
-        # XXX: implement as interfaces
-        if registry == "quay":
-            reports[img] = cvelib.quay.getQuaySecurityReport(
-                "%s/%s" % (namespace, img),
-                raw=raw,
-                fixable=fixable,
-                with_templates=with_templates,
-                template_urls=template_urls,
-                priorities=priorities,
-            )
-        elif registry == "gar":
-            reports[img] = cvelib.gar.getGARSecurityReport(
-                "%s/%s" % (namespace, img),
-                raw=raw,
-                fixable=fixable,
-                with_templates=with_templates,
-                template_urls=template_urls,
-                priorities=priorities,
-            )
+        reports[img] = sr.getSecurityReport(
+            "%s/%s" % (namespace, img),
+            raw=raw,
+            fixable=fixable,
+            with_templates=with_templates,
+            template_urls=template_urls,
+            priorities=priorities,
+        )
 
     s: str = ""
     # output a list of jsons
@@ -2471,34 +2462,32 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
     elif args.cmd in ["quay", "gar"]:
         # EXPERIMENTAL: this script and APIs subject to change
         _experimental()
+
+        sr: cvelib.scan.SecurityReportInterface
+        if args.cmd == "quay":
+            sr = cvelib.quay.QuaySecurityReportNew()
+        else:
+            sr = cvelib.gar.GARSecurityReportNew()
+
         if args.list:
-            ocis: List[str] = []
+            ocis: List[str] = sr.getOCIsForNamespace(args.namespace)
             if args.cmd == "quay":
-                ocis: List[str] = cvelib.quay.getQuayOCIsForOrg(args.namespace)
                 for r in sorted(ocis):
                     # ORG/NAME
                     print("%s/%s" % (args.namespace, r))
             elif args.cmd == "gar":
-                ocis: List[str] = cvelib.gar.getGAROCIsForProjectLoc(args.namespace)
                 for r in sorted(ocis):
                     # PROJECT/LOCATION/REPO/NAME
                     print("%s/%s" % (args.namespace, r.split("/", maxsplit=5)[-1]))
         elif args.cmd == "gar" and args.list_repos:
-            repos: List[str] = cvelib.gar.getGARReposForProjectLoc(args.namespace)
+            repos: List[str] = sr.getReposForNamespace(args.namespace)
             for r in sorted(repos):
                 # PROJECT/LOCATION/REPO
                 print("%s/%s" % (args.namespace, r.split("/")[-1]))
         elif args.list_digest:
-            digest: str = ""
-            if args.cmd == "quay":
-                digest = cvelib.quay.getQuayDigestForImage(
-                    "%s/%s" % (args.namespace, args.list_digest)
-                )
-            elif args.cmd == "gar":
-                digest = cvelib.gar.getGARDigestForImage(
-                    "%s/%s" % (args.namespace, args.list_digest)
-                )
-
+            digest: str = sr.getDigestForImage(
+                "%s/%s" % (args.namespace, args.list_digest)
+            )
             if digest == "":  # pragma: nocover
                 sys.exit(1)
 
@@ -2529,7 +2518,7 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
 
             getOCIReports(
                 cves,
-                registry=args.cmd,
+                sr=sr,
                 namespace=args.namespace,
                 images=images,
                 excluded_images=excluded_images,

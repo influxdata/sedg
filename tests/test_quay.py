@@ -241,8 +241,8 @@ class TestQuay(TestCase):
         return mr
 
     @mock.patch("requests.get")
-    def test_getQuayOCIsForOrg(self, mock_get):
-        """Test getQuayOCIsForOrg()"""
+    def test_getOCIsForNamespace(self, mock_get):
+        """Test getOCIsForNamespace()"""
         mr = self._mock_response_for_quay(
             {
                 "repositories": [
@@ -261,7 +261,8 @@ class TestQuay(TestCase):
             ns="valid-org",
         )
         mock_get.return_value = mr
-        res = cvelib.quay.getQuayOCIsForOrg("valid-org")
+        qsr = cvelib.quay.QuaySecurityReportNew()
+        res = qsr.getOCIsForNamespace("valid-org")
         self.assertEqual(1, len(res))
         self.assertEqual("valid-repo", res[0])
 
@@ -269,7 +270,7 @@ class TestQuay(TestCase):
         mr = self._mock_response_for_quay({}, ns="valid-org")
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.quay.getQuayOCIsForOrg("valid-org")
+            res = qsr.getOCIsForNamespace("valid-org")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not find 'repositories' in response" in error.getvalue().strip()
@@ -280,7 +281,7 @@ class TestQuay(TestCase):
         mr = self._mock_response_for_quay({}, ns="valid-org", status=404)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.quay.getQuayOCIsForOrg("valid-org")
+            res = qsr.getOCIsForNamespace("valid-org")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Could not fetch" in error.getvalue().strip())
         self.assertEqual(0, len(res))
@@ -304,7 +305,7 @@ class TestQuay(TestCase):
         )
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.quay.getQuayOCIsForOrg("valid-org")
+            res = qsr.getOCIsForNamespace("valid-org")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not find 'name' in response for repo" in error.getvalue().strip()
@@ -312,8 +313,8 @@ class TestQuay(TestCase):
         self.assertEqual(0, len(res))
 
     @mock.patch("requests.get")
-    def test_getQuayDigestForImage(self, mock_get):
-        """Test getQuayDigestForImage()"""
+    def test_getDigestForImage(self, mock_get):
+        """Test getDigestForImage()"""
         mr = self._mock_response_for_quay(
             {
                 "namespace": "valid-org",
@@ -347,7 +348,8 @@ class TestQuay(TestCase):
             },
         )
         mock_get.return_value = mr
-        res = cvelib.quay.getQuayDigestForImage("valid-org/valid-repo")
+        qsr = cvelib.quay.QuaySecurityReportNew()
+        res = qsr.getDigestForImage("valid-org/valid-repo")
         self.assertEqual(
             "valid-org/valid-repo@sha256:3fa5256ad34b31901ca30021c722fc7ba11a66ca070c8442862205696b908ddb",
             res,
@@ -355,7 +357,7 @@ class TestQuay(TestCase):
 
         # search by tag
         mock_get.return_value = mr
-        res = cvelib.quay.getQuayDigestForImage("valid-org/valid-repo:some-tag")
+        res = qsr.getDigestForImage("valid-org/valid-repo:some-tag")
         self.assertEqual(
             "valid-org/valid-repo@sha256:2536a15812ba685df76e835aefdc7f512941c12c561e0aed152d17aa025cc820",
             res,
@@ -363,7 +365,7 @@ class TestQuay(TestCase):
 
         # search by sha256
         mock_get.return_value = mr
-        res = cvelib.quay.getQuayDigestForImage(
+        res = qsr.getDigestForImage(
             "valid-org/valid-repo@sha256:2536a15812ba685df76e835aefdc7f512941c12c561e0aed152d17aa025cc820"
         )
         self.assertEqual(
@@ -373,7 +375,7 @@ class TestQuay(TestCase):
 
         # bad invocation
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.quay.getQuayDigestForImage("valid-org")
+            qsr.getDigestForImage("valid-org")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Please use ORG/NAME" in error.getvalue().strip())
 
@@ -381,7 +383,7 @@ class TestQuay(TestCase):
         mr = self._mock_response_for_quay({}, status=404)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.quay.getQuayDigestForImage("valid-org/valid-repo")
+            res = qsr.getDigestForImage("valid-org/valid-repo")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Could not fetch" in error.getvalue().strip())
         self.assertEqual(0, len(res))
@@ -392,7 +394,7 @@ class TestQuay(TestCase):
         )
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.quay.getQuayDigestForImage("valid-org/valid-repo")
+            res = qsr.getDigestForImage("valid-org/valid-repo")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Could not find 'tags' in response" in error.getvalue().strip())
         self.assertEqual(0, len(res))
@@ -403,7 +405,7 @@ class TestQuay(TestCase):
         )
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.quay.getQuayDigestForImage("valid-org/valid-repo")
+            res = qsr.getDigestForImage("valid-org/valid-repo")
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual("", error.getvalue().strip())
         self.assertEqual(0, len(res))
@@ -442,7 +444,7 @@ class TestQuay(TestCase):
         )
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.quay.getQuayDigestForImage("valid-org/valid-repo")
+            res = qsr.getDigestForImage("valid-org/valid-repo")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not find 'last_modified' in response" in error.getvalue().strip()
@@ -450,13 +452,14 @@ class TestQuay(TestCase):
         self.assertEqual(0, len(res))
 
     @mock.patch("requests.get")
-    def test_getQuaySecurityReport(self, mock_get):
-        """Test getQuaySecurityReport()"""
+    def test_getSecurityReport(self, mock_get):
+        """Test getSecurityReport()"""
         self.maxDiff = 2048
 
         mr = self._mock_response_for_quay(self._validQuayReport())
         mock_get.return_value = mr
-        res = cvelib.quay.getQuaySecurityReport("valid-org/valid-repo@sha256:deadbeef")
+        qsr = cvelib.quay.QuaySecurityReportNew()
+        res = qsr.getSecurityReport("valid-org/valid-repo@sha256:deadbeef")
         exp = """valid-org/valid-repo report: 1
  - type: oci
    component: libncurses6
@@ -471,7 +474,7 @@ class TestQuay(TestCase):
         self.assertFalse("## valid-org/valid-repo quay.io template" in res)
 
         # with_templates=True
-        res = cvelib.quay.getQuaySecurityReport(
+        res = qsr.getSecurityReport(
             "valid-org/valid-repo@sha256:deadbeef", with_templates=True
         )
         self.assertTrue("## valid-org/valid-repo quay.io template" in res)
@@ -481,7 +484,7 @@ class TestQuay(TestCase):
         d["data"]["Layer"]["Features"][0]["Vulnerabilities"][0]["FixedBy"] = ""
         mr = self._mock_response_for_quay(d)
         mock_get.return_value = mr
-        res = cvelib.quay.getQuaySecurityReport(
+        res = qsr.getSecurityReport(
             "valid-org/valid-repo@sha256:deadbeef", fixable=False
         )
         exp = """valid-org/valid-repo report: 1
@@ -497,7 +500,7 @@ class TestQuay(TestCase):
         self.assertEqual(exp, res)
 
         # fixable=True
-        res = cvelib.quay.getQuaySecurityReport(
+        res = qsr.getSecurityReport(
             "valid-org/valid-repo@sha256:deadbeef", fixable=True
         )
         self.assertEqual("valid-org/valid-repo report: 0", res)
@@ -506,7 +509,7 @@ class TestQuay(TestCase):
         d = self._validQuayReport()
         mr = self._mock_response_for_quay(d)
         mock_get.return_value = mr
-        res = cvelib.quay.getQuaySecurityReport(
+        res = qsr.getSecurityReport(
             "valid-org/valid-repo@sha256:deadbeef",
             priorities=["negligible"],
         )
@@ -519,7 +522,7 @@ class TestQuay(TestCase):
         ] = "Negligible"
         mr = self._mock_response_for_quay(d)
         mock_get.return_value = mr
-        res = cvelib.quay.getQuaySecurityReport(
+        res = qsr.getSecurityReport(
             "valid-org/valid-repo@sha256:deadbeef",
             priorities=["negligible"],
         )
@@ -538,15 +541,13 @@ class TestQuay(TestCase):
         # raw
         mr = self._mock_response_for_quay(self._validQuayReport())
         mock_get.return_value = mr
-        res = cvelib.quay.getQuaySecurityReport(
-            "valid-org/valid-repo@sha256:deadbeef", raw=True
-        )
+        res = qsr.getSecurityReport("valid-org/valid-repo@sha256:deadbeef", raw=True)
         exp = '"status": "scanned"'
         self.assertTrue(exp in res)
 
         # bad invocation
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.quay.getQuaySecurityReport("valid-org/valid-repo")
+            qsr.getSecurityReport("valid-org/valid-repo")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Please use ORG/NAME@sha256:<sha256>" in error.getvalue().strip()
@@ -556,9 +557,7 @@ class TestQuay(TestCase):
         mr = self._mock_response_for_quay({}, status=404)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.quay.getQuaySecurityReport(
-                "valid-org/valid-repo@sha256:deadbeef"
-            )
+            res = qsr.getSecurityReport("valid-org/valid-repo@sha256:deadbeef")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Could not fetch" in error.getvalue().strip())
         self.assertEqual(0, len(res))
@@ -569,9 +568,7 @@ class TestQuay(TestCase):
         mr = self._mock_response_for_quay(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.quay.getQuaySecurityReport(
-                "valid-org/valid-repo@sha256:deadbeef"
-            )
+            res = qsr.getSecurityReport("valid-org/valid-repo@sha256:deadbeef")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Cound not find 'status' in response" in error.getvalue().strip()
@@ -582,9 +579,7 @@ class TestQuay(TestCase):
         mr = self._mock_response_for_quay(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.quay.getQuaySecurityReport(
-                "valid-org/valid-repo@sha256:deadbeef"
-            )
+            res = qsr.getSecurityReport("valid-org/valid-repo@sha256:deadbeef")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not process report due to status: wrong" in error.getvalue().strip()
@@ -595,9 +590,7 @@ class TestQuay(TestCase):
         mr = self._mock_response_for_quay(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.quay.getQuaySecurityReport(
-                "valid-org/valid-repo@sha256:deadbeef"
-            )
+            res = qsr.getSecurityReport("valid-org/valid-repo@sha256:deadbeef")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Could not find 'data' in" in error.getvalue().strip())
 
@@ -606,9 +599,7 @@ class TestQuay(TestCase):
         mr = self._mock_response_for_quay(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.quay.getQuaySecurityReport(
-                "valid-org/valid-repo@sha256:deadbeef"
-            )
+            res = qsr.getSecurityReport("valid-org/valid-repo@sha256:deadbeef")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not process report due to no data in" in error.getvalue().strip()
@@ -619,9 +610,7 @@ class TestQuay(TestCase):
         mr = self._mock_response_for_quay(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.quay.getQuaySecurityReport(
-                "valid-org/valid-repo@sha256:deadbeef"
-            )
+            res = qsr.getSecurityReport("valid-org/valid-repo@sha256:deadbeef")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Could not find 'Layer' in" in error.getvalue().strip())
 
@@ -630,29 +619,27 @@ class TestQuay(TestCase):
         mr = self._mock_response_for_quay(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.quay.getQuaySecurityReport(
-                "valid-org/valid-repo@sha256:deadbeef"
-            )
+            res = qsr.getSecurityReport("valid-org/valid-repo@sha256:deadbeef")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Could not find 'Features' in" in error.getvalue().strip())
 
     # Note, these are listed in reverse order ot the arguments to test_...
-    @mock.patch("cvelib.quay.getQuaySecurityReport")
-    @mock.patch("cvelib.quay.getQuayDigestForImage")
-    @mock.patch("cvelib.quay.getQuayOCIsForOrg")
+    @mock.patch("cvelib.quay.QuaySecurityReportNew.getSecurityReport")
+    @mock.patch("cvelib.quay.QuaySecurityReportNew.getDigestForImage")
+    @mock.patch("cvelib.quay.QuaySecurityReportNew.getOCIsForNamespace")
     def test_main_quay_dump_reports(
         self,
-        mock_getQuayOCIsForOrg,
-        mock_getQuayDigestForImage,
-        mock_getQuaySecurityReport,
+        mock_getOCIsForNamespace,
+        mock_getDigestForImage,
+        mock_getSecurityReport,
     ):
         """Test test_main_quay_dump_reports()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         os.environ["SEDG_EXPERIMENTAL"] = "1"
 
-        mock_getQuayOCIsForOrg.return_value = ["valid-repo"]
-        mock_getQuayDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
-        mock_getQuaySecurityReport.return_value = '{"status": "scanned", "data": {}}'
+        mock_getOCIsForNamespace.return_value = ["valid-repo"]
+        mock_getDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
+        mock_getSecurityReport.return_value = '{"status": "scanned", "data": {}}'
 
         # create
         with mock.patch(
@@ -724,21 +711,21 @@ class TestQuay(TestCase):
         self.assertTrue("Found duplicate" in error.getvalue().strip())
 
     # Note, these are listed in reverse order ot the arguments to test_...
-    @mock.patch("cvelib.quay.getQuaySecurityReport")
-    @mock.patch("cvelib.quay.getQuayDigestForImage")
-    @mock.patch("cvelib.quay.getQuayOCIsForOrg")
+    @mock.patch("cvelib.quay.QuaySecurityReportNew.getSecurityReport")
+    @mock.patch("cvelib.quay.QuaySecurityReportNew.getDigestForImage")
+    @mock.patch("cvelib.quay.QuaySecurityReportNew.getOCIsForNamespace")
     def test_main_quay_dump_reports_bad(
         self,
-        mock_getQuayOCIsForOrg,
-        mock_getQuayDigestForImage,
-        mock_getQuaySecurityReport,
+        mock_getOCIsForNamespace,
+        mock_getDigestForImage,
+        mock_getSecurityReport,
     ):
         """Test test_quay_main_dump_reports()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         # no image names
-        mock_getQuayOCIsForOrg.return_value = []
+        mock_getOCIsForNamespace.return_value = []
         with mock.patch.object(
             cvelib.common.error,
             "__defaults__",
@@ -765,8 +752,8 @@ class TestQuay(TestCase):
         )
 
         # no digests
-        mock_getQuayOCIsForOrg.return_value = ["valid-repo"]
-        mock_getQuayDigestForImage.return_value = ""
+        mock_getOCIsForNamespace.return_value = ["valid-repo"]
+        mock_getDigestForImage.return_value = ""
         with mock.patch.object(
             cvelib.common.error,
             "__defaults__",
@@ -796,9 +783,9 @@ class TestQuay(TestCase):
             "Could not find any OCI image digests" in error.getvalue().strip(),
         )
 
-        mock_getQuayOCIsForOrg.return_value = ["valid-repo"]
-        mock_getQuayDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
-        mock_getQuaySecurityReport.return_value = "{}"
+        mock_getOCIsForNamespace.return_value = ["valid-repo"]
+        mock_getDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
+        mock_getSecurityReport.return_value = "{}"
         with mock.patch.object(
             cvelib.common.error,
             "__defaults__",
@@ -823,11 +810,9 @@ class TestQuay(TestCase):
         self.assertTrue("No new security reports" in error.getvalue().strip())
 
         # unsupported scan status
-        mock_getQuayOCIsForOrg.return_value = ["valid-repo"]
-        mock_getQuayDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
-        mock_getQuaySecurityReport.return_value = (
-            '{"status": "unsupported", "data": null}'
-        )
+        mock_getOCIsForNamespace.return_value = ["valid-repo"]
+        mock_getDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
+        mock_getSecurityReport.return_value = '{"status": "unsupported", "data": null}'
         with mock.patch.object(
             cvelib.common.error,
             "__defaults__",
@@ -852,9 +837,9 @@ class TestQuay(TestCase):
         self.assertTrue("No new security reports" in error.getvalue().strip())
 
         # unknown scan status
-        mock_getQuayOCIsForOrg.return_value = ["valid-repo"]
-        mock_getQuayDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
-        mock_getQuaySecurityReport.return_value = '{"status": "bad", "data": null}'
+        mock_getOCIsForNamespace.return_value = ["valid-repo"]
+        mock_getDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
+        mock_getSecurityReport.return_value = '{"status": "bad", "data": null}'
         with mock.patch.object(
             cvelib.common.error,
             "__defaults__",
