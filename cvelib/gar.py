@@ -493,7 +493,7 @@ class GARSecurityReportNew(SecurityReportInterface):
                             img["metadata"]["name"].split("@")[-1],
                         )
                     )
-                    if why != "INACTIVE":
+                    if only_stale and why not in ["INACTIVE", "UNSCANNED"]:
                         only_stale = False
                     if why not in ["INACTIVE", "PENDING", "UNSUPPORTED", "UNSCANNED"]:
                         if why not in ["CLEAN", "ACTIVE"]:

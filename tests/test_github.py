@@ -274,6 +274,7 @@ class TestGitHubDependabot(TestCase):
             ("dismissed (tolerable; username)", None),
             ("dismissed (inaccurate; username)", None),
             ("dismissed (code-not-used; username)", None),
+            ("dismissed (auto; username)", None),
             # invalid
             (
                 "fixed",
@@ -281,15 +282,15 @@ class TestGitHubDependabot(TestCase):
             ),
             (
                 "dismissed",
-                "invalid dependabot status: dismissed. Use 'dismissed (started|no-bandwidth|tolerable|inaccurate|code-not-used; <github username>)",
+                "invalid dependabot status: dismissed. Use 'dismissed (started|no-bandwidth|tolerable|inaccurate|code-not-used|auto; <github username>)",
             ),
             (
                 "dismissed (tolerable)",
-                "invalid dependabot status: dismissed (tolerable). Use 'dismissed (started|no-bandwidth|tolerable|inaccurate|code-not-used; <github username>)",
+                "invalid dependabot status: dismissed (tolerable). Use 'dismissed (started|no-bandwidth|tolerable|inaccurate|code-not-used|auto; <github username>)",
             ),
             (
                 "dismissed (tolerable; Jane Doe)",
-                "invalid dependabot status: dismissed (tolerable; Jane Doe). Use 'dismissed (started|no-bandwidth|tolerable|inaccurate|code-not-used; <github username>)",
+                "invalid dependabot status: dismissed (tolerable; Jane Doe). Use 'dismissed (started|no-bandwidth|tolerable|inaccurate|code-not-used|auto; <github username>)",
             ),
         ]
 

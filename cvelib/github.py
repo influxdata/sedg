@@ -107,7 +107,7 @@ class GHDependabot(object):
         if not rePatterns["github-dependabot-status"].search(s):
             if "dismissed" in s:
                 raise CveException(
-                    "invalid dependabot status: %s. Use 'dismissed (started|no-bandwidth|tolerable|inaccurate|code-not-used; <github username>)"
+                    "invalid dependabot status: %s. Use 'dismissed (started|no-bandwidth|tolerable|inaccurate|code-not-used|auto; <github username>)"
                     % s
                 )
             raise CveException(

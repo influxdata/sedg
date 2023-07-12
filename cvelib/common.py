@@ -182,7 +182,7 @@ rePatterns: Dict[str, Pattern[str]] = {
     "github-severity": re.compile(r"^(low|medium|high|critical)$"),
     # dismissed requires a reason and github username
     "github-dependabot-status": re.compile(
-        r"^(needs-triage|needed|released|removed|dismissed \((started|no-bandwidth|tolerable|inaccurate|code-not-used); [a-zA-Z0-9\-]+\))$",
+        r"^(needs-triage|needed|released|removed|dismissed \((started|no-bandwidth|tolerable|inaccurate|code-not-used|auto); [a-zA-Z0-9\-]+\))$",
     ),
     "github-dependabot-alert": re.compile(
         r"^(unavailable$|https://github.com/[a-z0-9+.-]{1,40}/[a-zA-Z0-9+._-]{1,%(software_len)d}/security/dependabot/[0-9]{1,12})"
