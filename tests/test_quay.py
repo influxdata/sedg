@@ -264,7 +264,8 @@ class TestQuay(TestCase):
         qsr = cvelib.quay.QuaySecurityReportNew()
         res = qsr.getOCIsForNamespace("valid-org")
         self.assertEqual(1, len(res))
-        self.assertEqual("valid-repo", res[0])
+        self.assertEqual("valid-repo", res[0][0])
+        self.assertEqual(1684472852, res[0][1])
 
         # empty
         mr = self._mock_response_for_quay({}, ns="valid-org")
@@ -637,7 +638,7 @@ class TestQuay(TestCase):
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         os.environ["SEDG_EXPERIMENTAL"] = "1"
 
-        mock_getOCIsForNamespace.return_value = ["valid-repo"]
+        mock_getOCIsForNamespace.return_value = [("valid-repo", 1684472852)]
         mock_getDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
         mock_getSecurityReport.return_value = '{"status": "scanned", "data": {}}'
 
@@ -752,7 +753,7 @@ class TestQuay(TestCase):
         )
 
         # no digests
-        mock_getOCIsForNamespace.return_value = ["valid-repo"]
+        mock_getOCIsForNamespace.return_value = [("valid-repo", 1684472852)]
         mock_getDigestForImage.return_value = ""
         with mock.patch.object(
             cvelib.common.error,
@@ -783,7 +784,7 @@ class TestQuay(TestCase):
             "Could not find any OCI image digests" in error.getvalue().strip(),
         )
 
-        mock_getOCIsForNamespace.return_value = ["valid-repo"]
+        mock_getOCIsForNamespace.return_value = [("valid-repo", 1684472852)]
         mock_getDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
         mock_getSecurityReport.return_value = "{}"
         with mock.patch.object(
@@ -810,7 +811,7 @@ class TestQuay(TestCase):
         self.assertTrue("No new security reports" in error.getvalue().strip())
 
         # unsupported scan status
-        mock_getOCIsForNamespace.return_value = ["valid-repo"]
+        mock_getOCIsForNamespace.return_value = [("valid-repo", 1684472852)]
         mock_getDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
         mock_getSecurityReport.return_value = '{"status": "unsupported", "data": null}'
         with mock.patch.object(
@@ -837,7 +838,7 @@ class TestQuay(TestCase):
         self.assertTrue("No new security reports" in error.getvalue().strip())
 
         # unknown scan status
-        mock_getOCIsForNamespace.return_value = ["valid-repo"]
+        mock_getOCIsForNamespace.return_value = [("valid-repo", 1684472852)]
         mock_getDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
         mock_getSecurityReport.return_value = '{"status": "bad", "data": null}'
         with mock.patch.object(

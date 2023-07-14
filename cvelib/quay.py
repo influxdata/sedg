@@ -11,7 +11,7 @@ import os
 import requests
 import sys
 import textwrap
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from cvelib.common import error, warn, _sorted_json_deep, _experimental
 from cvelib.net import requestGetRaw
@@ -244,7 +244,7 @@ class QuaySecurityReportNew(SecurityReportInterface):
     #   ],
     #   "next_page": "gAAAAA..."
     # }
-    def getOCIsForNamespace(self, namespace: str) -> List[str]:
+    def getOCIsForNamespace(self, namespace: str) -> List[Tuple[str, int]]:
         """Obtain the list of Quay repos for the specified namespace"""
         url: str = "https://quay.io/api/v1/repository"
         headers: Dict[str, str] = _createQuayHeaders()
@@ -253,7 +253,7 @@ class QuaySecurityReportNew(SecurityReportInterface):
             "last_modified": "true",
         }
 
-        repos: List[str] = []
+        repos: List[Tuple[str, int]] = []
 
         if sys.stdout.isatty():
             print("Fetching list of repos: ", end="", flush=True)
@@ -284,8 +284,11 @@ class QuaySecurityReportNew(SecurityReportInterface):
                     continue
 
                 name: str = repo["name"]
+                m: int = 0
+                if "last_modified" in repo and repo["last_modified"] is not None:
+                    m = repo["last_modified"]
                 if name not in repos:
-                    repos.append(repo["name"])
+                    repos.append((repo["name"], m))
 
             if "next_page" not in resj:
                 if sys.stdout.isatty():
@@ -453,7 +456,7 @@ Eg, to pull all quay.io security scan reports for org 'foo':
     sr = QuaySecurityReportNew()
 
     # Find latest digest for all images
-    oci_names: List[str] = sr.getOCIsForNamespace(args.name)
+    oci_names: List[Tuple[str, int]] = sr.getOCIsForNamespace(args.name)
     if len(oci_names) == 0:
         error("Could not enumerate any OCI image names")
         return  # for tests
@@ -461,7 +464,7 @@ Eg, to pull all quay.io security scan reports for org 'foo':
     ocis: List[str] = []
     if sys.stdout.isatty():  # pragma: nocover
         print("Fetching digests for OCI names: ", end="", flush=True)
-    for oci in oci_names:
+    for (oci, _) in oci_names:
         if sys.stdout.isatty():  # pragma: nocover
             print(".", end="", flush=True)
 

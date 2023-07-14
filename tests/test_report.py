@@ -4176,12 +4176,25 @@ template-urls = https://url1,https://url2
         """Test main_report - quay --list"""
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
-        mock_getOCIsForNamespace.return_value = ["valid-repo"]
+        mock_getOCIsForNamespace.return_value = [("valid-repo", 1684472852)]
         args = ["quay", "--list", "--namespace", "valid-org"]
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
-        self.assertEqual("valid-org/valid-repo", output.getvalue().strip())
+        self.assertEqual(
+            "valid-org/valid-repo (last updated: 2023-05-19 05:07:32)",
+            output.getvalue().strip(),
+        )
+
+        mock_getOCIsForNamespace.return_value = [("empty-repo", 0)]
+        args = ["quay", "--list", "--namespace", "valid-org"]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual(
+            "valid-org/empty-repo (last updated: unknown)",
+            output.getvalue().strip(),
+        )
 
     @mock.patch("cvelib.quay.QuaySecurityReportNew.getDigestForImage")
     def test_main_report_quay_list_digest(self, mock_getDigestForImage):
@@ -4264,14 +4277,18 @@ template-urls = https://url1,https://url2
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
         mock_getOCIsForNamespace.return_value = [
-            "projects/valid-proj/locations/us/repositories/valid-repo/valid-name"
+            (
+                "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
+                1684472852,
+            ),
         ]
         args = ["gar", "--list", "--namespace", "valid-proj/us"]
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
         self.assertEqual(
-            "valid-proj/us/valid-repo/valid-name", output.getvalue().strip()
+            "valid-proj/us/valid-repo/valid-name (last updated: 2023-05-19 05:07:32)",
+            output.getvalue().strip(),
         )
 
     @mock.patch("cvelib.gar.GARSecurityReportNew.getReposForNamespace")
