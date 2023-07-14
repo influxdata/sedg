@@ -2470,15 +2470,25 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
             sr = cvelib.gar.GARSecurityReportNew()
 
         if args.list:
-            ocis: List[str] = sr.getOCIsForNamespace(args.namespace)
+
+            def formatDate(t: int) -> str:
+                s: str = "unknown"
+                if t > 0:
+                    s = str(datetime.datetime.utcfromtimestamp(t))
+                return "(last updated: %s)" % s
+
+            ocis: List[Tuple[str, int]] = sr.getOCIsForNamespace(args.namespace)
             if args.cmd == "quay":
-                for r in sorted(ocis):
+                for (r, m) in sorted(ocis):
                     # ORG/NAME
-                    print("%s/%s" % (args.namespace, r))
+                    print("%s/%s %s" % (args.namespace, r, formatDate(m)))
             elif args.cmd == "gar":
-                for r in sorted(ocis):
+                for (r, m) in sorted(ocis):
                     # PROJECT/LOCATION/REPO/NAME
-                    print("%s/%s" % (args.namespace, r.split("/", maxsplit=5)[-1]))
+                    print(
+                        "%s/%s %s"
+                        % (args.namespace, r.split("/", maxsplit=5)[-1], formatDate(m))
+                    )
         elif args.cmd == "gar" and args.list_repos:
             repos: List[str] = sr.getReposForNamespace(args.namespace)
             for r in sorted(repos):

@@ -395,8 +395,10 @@ class SecurityReportInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def getOCIsForNamespace(self, namespace: str) -> List[str]:  # pragma: nocover
-        """Obtain the list of OCIs for the specified namespace"""
+    def getOCIsForNamespace(
+        self, namespace: str
+    ) -> List[Tuple[str, int]]:  # pragma: nocover
+        """Obtain the list of OCIs with modification time in seconds for the specified namespace"""
         raise NotImplementedError
 
     @abc.abstractmethod

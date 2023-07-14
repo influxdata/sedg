@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 
+import datetime
 import json
 import os
 import tempfile
@@ -380,8 +381,24 @@ class TestGAR(TestCase):
         mock_get.return_value = mr
         res = cvelib.gar.getGAROCIForRepo("valid-proj/us/valid-repo")
         self.assertEqual(2, len(res))
-        self.assertEqual("valid-name", res[0])
-        self.assertEqual("other-name", res[1])
+        self.assertEqual("valid-name", res[0][0])
+        self.assertEqual(
+            int(
+                datetime.datetime.strptime(
+                    "2023-04-11T15:07:35.322255Z", "%Y-%m-%dT%H:%M:%S.%fZ"
+                ).strftime("%s")
+            ),
+            res[0][1],
+        )
+        self.assertEqual("other-name", res[1][0])
+        self.assertEqual(
+            int(
+                datetime.datetime.strptime(
+                    "2023-04-11T16:34:44.792867Z", "%Y-%m-%dT%H:%M:%S.%fZ"
+                ).strftime("%s")
+            ),
+            res[1][1],
+        )
 
         # bad invocation
         with tests.testutil.capturedOutput() as (output, error):
@@ -417,7 +434,15 @@ class TestGAR(TestCase):
         mock_get.return_value = mr
         res = cvelib.gar.getGAROCIForRepo("valid-proj/us/valid-repo")
         self.assertEqual(1, len(res))
-        self.assertEqual("other-name", res[0])
+        self.assertEqual("other-name", res[0][0])
+        self.assertEqual(
+            int(
+                datetime.datetime.strptime(
+                    "2023-04-11T16:34:44.792867Z", "%Y-%m-%dT%H:%M:%S.%fZ"
+                ).strftime("%s")
+            ),
+            res[0][1],
+        )
 
     def _validGARDigestForImage(self) -> Dict[str, Any]:
         """Return valid gar v1/projects.locations.repositories.packages.versions as python object"""
@@ -991,7 +1016,10 @@ class TestGAR(TestCase):
         mock_getReposForNamespace.return_value = [
             "projects/valid-proj/locations/us/repositories/valid-repo"
         ]
-        mock_getGAROCIForRepo.return_value = ["valid-name", "other-name"]
+        mock_getGAROCIForRepo.return_value = [
+            ("valid-name", 1684472852),
+            ("other-name", 1681248884),
+        ]
 
         gsr = cvelib.gar.GARSecurityReportNew()
         res = gsr.getOCIsForNamespace("valid-proj/us")
@@ -999,11 +1027,11 @@ class TestGAR(TestCase):
         # these are sorted
         self.assertEqual(
             "projects/valid-proj/locations/us/repositories/valid-repo/other-name",
-            res[0],
+            res[0][0],
         )
         self.assertEqual(
             "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
-            res[1],
+            res[1][0],
         )
 
         # bad invocation
@@ -1027,7 +1055,10 @@ class TestGAR(TestCase):
         os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         mock_getOCIsForNamespace.return_value = [
-            "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
+            (
+                "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
+                1684472852,
+            ),
         ]
         mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
         mock_getSecurityReport.return_value = """{
@@ -1149,7 +1180,10 @@ class TestGAR(TestCase):
 
         # no digests
         mock_getOCIsForNamespace.return_value = [
-            "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
+            (
+                "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
+                1684472852,
+            ),
         ]
         mock_getDigestForImage.return_value = ""
         with mock.patch.object(
@@ -1179,7 +1213,10 @@ class TestGAR(TestCase):
 
         # no security reports
         mock_getOCIsForNamespace.return_value = [
-            "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
+            (
+                "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
+                1684472852,
+            ),
         ]
         mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
         mock_getSecurityReport.return_value = "{}"
@@ -1208,7 +1245,10 @@ class TestGAR(TestCase):
 
         # bad report
         mock_getOCIsForNamespace.return_value = [
-            "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
+            (
+                "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
+                1684472852,
+            ),
         ]
         mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
         mock_getSecurityReport.return_value = """{
@@ -1240,7 +1280,10 @@ class TestGAR(TestCase):
 
         # bad report (no occurrences)
         mock_getOCIsForNamespace.return_value = [
-            "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
+            (
+                "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
+                1684472852,
+            ),
         ]
         mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
         mock_getSecurityReport.return_value = "{}"
@@ -1261,7 +1304,10 @@ class TestGAR(TestCase):
 
         # path exists but isn't a file
         mock_getOCIsForNamespace.return_value = [
-            "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
+            (
+                "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
+                1684472852,
+            ),
         ]
         mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
         mock_getSecurityReport.return_value = """{

@@ -11,7 +11,7 @@ import os
 import requests
 import sys
 import textwrap
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from cvelib.common import error, warn, rePatterns, _sorted_json_deep, _experimental
 from cvelib.net import requestGetRaw
@@ -53,7 +53,7 @@ def _createGARHeaders() -> Dict[str, str]:
 # }
 #
 # https://cloud.google.com/artifact-registry/docs/reference/rest/v1/projects.locations.repositories.packages
-def getGAROCIForRepo(repo_full: str) -> List[str]:
+def getGAROCIForRepo(repo_full: str) -> List[Tuple[str, int]]:
     """Obtain the list of GAR OCIs for the specified project, location and repo"""
     if "/" not in repo_full or repo_full.count("/") != 2:
         error("Please use PROJECT/LOCATION/REPO", do_exit=False)
@@ -67,7 +67,7 @@ def getGAROCIForRepo(repo_full: str) -> List[str]:
     headers: Dict[str, str] = _createGARHeaders()
     params: Dict[str, str] = {"pageSize": "1000"}
 
-    ocis: List[str] = []
+    ocis: List[Tuple[str, int]] = []
     while True:
         try:
             r: requests.Response = requestGetRaw(url, headers=headers, params=params)
@@ -89,8 +89,11 @@ def getGAROCIForRepo(repo_full: str) -> List[str]:
                 continue
 
             name: str = img["name"].split("/")[-1]
+            dobj = datetime.datetime.strptime(
+                img["updateTime"], "%Y-%m-%dT%H:%M:%S.%fZ"
+            )
             if name not in ocis:
-                ocis.append(name)
+                ocis.append((name, int(dobj.strftime("%s"))))
 
         if "nextPageToken" not in resj:
             break
@@ -525,14 +528,14 @@ class GARSecurityReportNew(SecurityReportInterface):
 
         return ""
 
-    def getOCIsForNamespace(self, proj_loc: str) -> List[str]:
+    def getOCIsForNamespace(self, proj_loc: str) -> List[Tuple[str, int]]:
         """Obtain the list of GAR OCIs for the specified project and location"""
         if "/" not in proj_loc:
             error("Please use PROJECT/LOCATION", do_exit=False)
             return []
 
         repos: List[str] = self.getReposForNamespace(proj_loc)
-        ocis: List[str] = []
+        ocis: List[Tuple[str, int]] = []
 
         if len(repos) > 0 and sys.stdout.isatty():  # pragma: nocover
             print("Fetching list of images for each repo: ", end="", flush=True)
@@ -541,10 +544,12 @@ class GARSecurityReportNew(SecurityReportInterface):
             if sys.stdout.isatty():  # pragma: nocover
                 print(".", end="", flush=True)
 
-            tmp: List[str] = getGAROCIForRepo("%s/%s" % (proj_loc, repo.split("/")[-1]))
+            tmp: List[Tuple[str, int]] = getGAROCIForRepo(
+                "%s/%s" % (proj_loc, repo.split("/")[-1])
+            )
             oci: str = ""
-            for oci in tmp:
-                ocis.append("%s/%s" % (repo, oci))
+            for (oci, last_modified) in tmp:
+                ocis.append(("%s/%s" % (repo, oci), last_modified))
 
         if len(repos) > 0 and sys.stdout.isatty():  # pragma: nocover
             print(" done!", flush=True)
@@ -858,7 +863,7 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
         return ""  # for tests
 
     # Find latest digest for all images
-    oci_names: List[str] = sr.getOCIsForNamespace(args.name)
+    oci_names: List[Tuple[str, int]] = sr.getOCIsForNamespace(args.name)
     if len(oci_names) == 0:
         error("Could not enumerate any OCI image names")
         return  # for tests
@@ -866,7 +871,7 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
     ocis: List[str] = []
     if sys.stdout.isatty():  # pragma: nocover
         print("Fetching digests for OCI names: ", end="", flush=True)
-    for oci in oci_names:
+    for (oci, _) in oci_names:
         if sys.stdout.isatty():  # pragma: nocover
             print(".", end="", flush=True)
 
