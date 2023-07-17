@@ -509,8 +509,16 @@ $ cve-report influxdb
 cveLog,priority=medium,status=needed,product=git id="CVE-2020-1234",software="foo",modifier="" 1633040641675003246
 ...
 
-# or pipe into 'influx write':
+# or pipe into 'influx write' (InfluxData Cloud 2 or InfluxDB 2.x):
 $ cve-report influxdb | influx write --host $URL --org-id $ORGID --bucket-id $BUCKETID --token $TOKEN
+
+# or pipe into 'curl' (omit '&org=$INFLUX_ORG' when not using InfluxData Cloud
+# 2 and InfluxDB 2.x (eg, InfluxData Cloud Dedicated))
+$ export INFLUX_URL=https://...
+$ export INFLUX_BUCKET=...
+$ export INFLUX_ORG=...
+$  export INFLUX_TOKEN=...
+$ cve-report influxdb | curl --header "Authorization: Bearer $INFLUX_TOKEN" --header "Content-Type: text/plain; charset=utf-8" --header "Accept: application/json" --request POST "$INFLUX_HOST/api/v2/write?bucket=$INFLUX_BUCKET&org=$INFLUX_ORG" --data-binary @-
 ```
 
 For now, paste this into 'Add Data/Line Protocol' whenever you make relevant
