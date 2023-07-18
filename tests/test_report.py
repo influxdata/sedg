@@ -4229,6 +4229,60 @@ template-urls = https://url1,https://url2
             "# valid-repo@sha256:deadbeef\nreport", output.getvalue().strip()
         )
 
+        # --excluded-images
+        mock_getSecurityReport.return_value = "report"
+        args = [
+            "quay",
+            "--alerts",
+            "--namespace",
+            "valid-org",
+            "--images",
+            "valid-repo@sha256:deadbeef",
+            "--excluded-images",
+            "valid-repo",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual("", output.getvalue().strip())
+
+        mock_getSecurityReport.return_value = "report"
+        args = [
+            "quay",
+            "--alerts",
+            "--namespace",
+            "valid-org",
+            "--images",
+            "valid-repo@sha256:deadbeef,other-repo@sha256:deadbeef",
+            "--excluded-images",
+            "other-repo",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual(
+            "# valid-repo@sha256:deadbeef\nreport", output.getvalue().strip()
+        )
+
+        # --filter-priority parsing
+        mock_getSecurityReport.return_value = "report"
+        args = [
+            "quay",
+            "--alerts",
+            "--filter-priority",
+            "critical,high",
+            "--namespace",
+            "valid-org",
+            "--images",
+            "valid-repo@sha256:deadbeef",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual(
+            "# valid-repo@sha256:deadbeef\nreport", output.getvalue().strip()
+        )
+
         # raw
         mock_getSecurityReport.return_value = "{}"
         args = [

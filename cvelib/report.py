@@ -1063,6 +1063,12 @@ def getOCIReports(
 
     reports: Dict[str, str] = {}
     for img in images:
+        if (
+            img in excluded_images
+            or img.rsplit(":", maxsplit=1)[0].rsplit("@", maxsplit=1)[0]
+            in excluded_images
+        ):
+            continue
         reports[img] = sr.getSecurityReport(
             "%s/%s" % (namespace, img),
             raw=raw,
@@ -2511,7 +2517,6 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
 
             excluded_images: List[str] = []
             if args.excluded_images is not None:
-                warn("TODO: implement --excluded-images")
                 tmp: Optional[Set[str]] = _parseSoftwareArg(args.excluded_images)
                 if tmp is not None:
                     excluded_images = list(tmp)
