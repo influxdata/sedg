@@ -452,6 +452,42 @@ class TestQuay(TestCase):
         )
         self.assertEqual(0, len(res))
 
+    def test_parseImageDigest(self):
+        """Test parseImageDigest"""
+        tsts = [
+            # org, repo, sha256, expErr
+            ("valid-org", "valid-repo", "sha256:deadbeef", ""),
+            ("valid-org", "valid-repo", "bad", "does not contain '@sha256:"),
+            ("valid-org", "valid-repo", "@sha256:@", "should have 1 '@'"),
+            ("valid-org", "valid-repo/bad", "sha256:deadbeef", "should have 1 '/'"),
+        ]
+        qsr = cvelib.quay.QuaySecurityReportNew()
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            for org, repo, sha, expErr in tsts:
+                digest = "%s/%s@%s" % (org, repo, sha)
+                with tests.testutil.capturedOutput() as (output, error):
+                    r1, r2, r3 = qsr.parseImageDigest(digest)
+
+                self.assertEqual("", output.getvalue().strip())
+                if expErr != "":
+                    self.assertEqual("", r1)
+                    self.assertEqual("", r2)
+                    self.assertEqual("", r3)
+                    self.assertTrue(expErr in error.getvalue().strip())
+                else:
+                    self.assertEqual("", output.getvalue().strip())
+                    self.assertEqual("", error.getvalue().strip())
+                    self.assertEqual(org, r1)
+                    self.assertEqual(repo, r2)
+                    self.assertEqual(sha, r3)
+
     @mock.patch("requests.get")
     def test_getSecurityReport(self, mock_get):
         """Test getSecurityReport()"""

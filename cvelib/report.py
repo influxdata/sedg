@@ -1069,6 +1069,15 @@ def getOCIReports(
             in excluded_images
         ):
             continue
+        if "@sha256:" not in img:
+            # search for tag or latest
+            digest: str = sr.getDigestForImage("%s/%s" % (namespace, img))
+            if digest == "" or "/" not in digest:
+                warn("Could not find digest for %s" % img)
+                continue
+            _, repo, sha256 = sr.parseImageDigest(digest)
+            img = "%s@%s" % (repo, sha256)
+
         reports[img] = sr.getSecurityReport(
             "%s/%s" % (namespace, img),
             raw=raw,
