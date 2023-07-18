@@ -380,6 +380,8 @@ class SecurityReportInterface(metaclass=abc.ABCMeta):
         return (
             hasattr(subclass, "getDigestForImage")
             and callable(subclass.getDigestForImage)
+            and hasattr(subclass, "parseImageDigest")
+            and callable(subclass.parseImageDigest)
             and hasattr(subclass, "getOCIsForNamespace")
             and callable(subclass.getOCIsForNamespace)
             and hasattr(subclass, "getReposForNamespace")
@@ -392,6 +394,11 @@ class SecurityReportInterface(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def getDigestForImage(self, repo_full: str) -> str:  # pragma: nocover
         """Obtain the digest for the specified repo"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def parseImageDigest(self, digest: str) -> Tuple[str, str, str]:  # pragma: nocover
+        """Parse the image digest into a (namespace, repo, sha256) tuple"""
         raise NotImplementedError
 
     @abc.abstractmethod

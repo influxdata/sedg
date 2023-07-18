@@ -4208,15 +4208,111 @@ template-urls = https://url1,https://url2
         self.assertEqual("", error.getvalue().strip())
         self.assertEqual("sha256:deadbeef", output.getvalue().strip())
 
+    # Note, these are listed in reverse order ot the arguments to test_...
+    @mock.patch("cvelib.quay.QuaySecurityReportNew.getDigestForImage")
     @mock.patch("cvelib.quay.QuaySecurityReportNew.getSecurityReport")
-    def test_main_report_quay_alerts(self, mock_getSecurityReport):
+    def test_main_report_quay_alerts(
+        self, mock_getSecurityReport, mock_getDigestForImage
+    ):
         """Test main_report - quay --alerts"""
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
+
+        # with image digest
         mock_getSecurityReport.return_value = "report"
         args = [
             "quay",
             "--alerts",
+            "--namespace",
+            "valid-org",
+            "--images",
+            "valid-repo@sha256:deadbeef",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual(
+            "# valid-repo@sha256:deadbeef\nreport", output.getvalue().strip()
+        )
+
+        # without image digest
+        mock_getSecurityReport.return_value = "report"
+        mock_getDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef0123"
+        args = [
+            "quay",
+            "--alerts",
+            "--namespace",
+            "valid-org",
+            "--images",
+            "valid-repo",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual(
+            "# valid-repo@sha256:deadbeef0123\nreport", output.getvalue().strip()
+        )
+
+        # without image digest, bad result
+        mock_getSecurityReport.return_value = "report"
+        mock_getDigestForImage.return_value = "bad"
+        args = [
+            "quay",
+            "--alerts",
+            "--namespace",
+            "valid-org",
+            "--images",
+            "valid-repo",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: Could not find digest for valid-repo", error.getvalue().strip()
+        )
+
+        # --excluded-images
+        mock_getSecurityReport.return_value = "report"
+        args = [
+            "quay",
+            "--alerts",
+            "--namespace",
+            "valid-org",
+            "--images",
+            "valid-repo@sha256:deadbeef",
+            "--excluded-images",
+            "valid-repo",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual("", output.getvalue().strip())
+
+        mock_getSecurityReport.return_value = "report"
+        args = [
+            "quay",
+            "--alerts",
+            "--namespace",
+            "valid-org",
+            "--images",
+            "valid-repo@sha256:deadbeef,other-repo@sha256:deadbeef",
+            "--excluded-images",
+            "other-repo",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual(
+            "# valid-repo@sha256:deadbeef\nreport", output.getvalue().strip()
+        )
+
+        # --filter-priority parsing
+        mock_getSecurityReport.return_value = "report"
+        args = [
+            "quay",
+            "--alerts",
+            "--filter-priority",
+            "critical,high",
             "--namespace",
             "valid-org",
             "--images",
@@ -4323,11 +4419,17 @@ template-urls = https://url1,https://url2
         self.assertEqual("", error.getvalue().strip())
         self.assertEqual("sha256:deadbeef", output.getvalue().strip())
 
+    # Note, these are listed in reverse order ot the arguments to test_...
+    @mock.patch("cvelib.gar.GARSecurityReportNew.getDigestForImage")
     @mock.patch("cvelib.gar.GARSecurityReportNew.getSecurityReport")
-    def test_main_report_gar_alerts(self, mock_getSecurityReport):
+    def test_main_report_gar_alerts(
+        self, mock_getSecurityReport, mock_getDigestForImage
+    ):
         """Test main_report - gar --alerts"""
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
+
+        # with image digest
         mock_getSecurityReport.return_value = "report"
         args = [
             "gar",
@@ -4342,6 +4444,44 @@ template-urls = https://url1,https://url2
         self.assertEqual("", error.getvalue().strip())
         self.assertEqual(
             "# valid-repo/valid-name@sha256:deadbeef\nreport", output.getvalue().strip()
+        )
+
+        # without image digest
+        mock_getSecurityReport.return_value = "report"
+        mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:deadbeef0123"
+        args = [
+            "gar",
+            "--alerts",
+            "--namespace",
+            "valid-proj/us",
+            "--images",
+            "valid-repo/valid-name",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual(
+            "# valid-repo/valid-name@sha256:deadbeef0123\nreport",
+            output.getvalue().strip(),
+        )
+
+        # without image digest, bad result
+        mock_getSecurityReport.return_value = "report"
+        mock_getDigestForImage.return_value = "bad"
+        args = [
+            "gar",
+            "--alerts",
+            "--namespace",
+            "valid-proj/us",
+            "--images",
+            "valid-repo/valid-name",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: Could not find digest for valid-repo/valid-name",
+            error.getvalue().strip(),
         )
 
         # raw

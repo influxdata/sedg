@@ -666,6 +666,73 @@ class TestGAR(TestCase):
         )
         self.assertEqual("", res)
 
+    def test_parseImageDigest(self):
+        """Test parseImageDigest"""
+        tsts = [
+            # project, location, repo, imgname, sha256, expErr
+            (
+                "valid-proj",
+                "valid-loc",
+                "valid-repo",
+                "valid-img",
+                "sha256:deadbeef",
+                "",
+            ),
+            (
+                "valid-proj",
+                "valid-loc",
+                "valid-repo",
+                "valid-img",
+                "bad",
+                "does not contain '@sha256:",
+            ),
+            (
+                "valid-proj",
+                "valid-loc",
+                "valid-repo",
+                "valid-img",
+                "@sha256:@",
+                "should have 1 '@'",
+            ),
+            (
+                "valid-proj",
+                "valid-loc",
+                "valid-repo",
+                "valid-img/bad",
+                "sha256:deadbeef",
+                "should have 7 '/'",
+            ),
+        ]
+        gsr = cvelib.gar.GARSecurityReportNew()
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            for proj, loc, repo, img, sha, expErr in tsts:
+                digest = (
+                    "projects/%s/locations/%s/repositories/%s/dockerImages/%s@%s"
+                    % (proj, loc, repo, img, sha)
+                )
+                with tests.testutil.capturedOutput() as (output, error):
+                    r1, r2, r3 = gsr.parseImageDigest(digest)
+
+                self.assertEqual("", output.getvalue().strip())
+                if expErr != "":
+                    self.assertEqual("", r1)
+                    self.assertEqual("", r2)
+                    self.assertEqual("", r3)
+                    self.assertTrue(expErr in error.getvalue().strip())
+                else:
+                    self.assertEqual("", output.getvalue().strip())
+                    self.assertEqual("", error.getvalue().strip())
+                    self.assertEqual("%s/%s" % (proj, loc), r1)
+                    self.assertEqual("%s/%s" % (repo, img), r2)
+                    self.assertEqual(sha, r3)
+
     # Note, these are listed in reverse order ot the arguments to test_...
     @mock.patch("cvelib.gar.GARSecurityReportNew.getDigestForImage")
     @mock.patch("requests.get")

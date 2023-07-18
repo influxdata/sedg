@@ -528,6 +528,28 @@ class GARSecurityReportNew(SecurityReportInterface):
 
         return ""
 
+    def parseImageDigest(self, digest: str) -> Tuple[str, str, str]:
+        """Parse the image digest into a (namespace, repo, sha256) tuple"""
+        if "@sha256:" not in digest:
+            error("Malformed digest '%s' (does not contain '@sha256:')" % digest)
+            return ("", "", "")
+        elif digest.count("@") != 1:
+            error("Malformed digest '%s' (should have 1 '@')" % digest)
+            return ("", "", "")
+
+        pre: str = ""
+        sha256: str = ""
+        pre, sha256 = digest.split("@")
+        if pre.count("/") != 7:
+            error("Malformed digest '%s' (should have 7 '/')" % digest)
+            return ("", "", "")
+
+        tmp: List[str]
+        tmp = pre.split("/")
+        ns: str = "%s/%s" % (tmp[1], tmp[3])
+        repo: str = "%s/%s" % (tmp[5], tmp[7])
+        return (ns, repo, sha256)
+
     def getOCIsForNamespace(self, proj_loc: str) -> List[Tuple[str, int]]:
         """Obtain the list of GAR OCIs for the specified project and location"""
         if "/" not in proj_loc:

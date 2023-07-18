@@ -226,6 +226,28 @@ class QuaySecurityReportNew(SecurityReportInterface):
 
         return ""
 
+    def parseImageDigest(self, digest: str) -> Tuple[str, str, str]:
+        """Parse the image digest into a (namespace, repo, sha256) tuple"""
+        if "@sha256:" not in digest:
+            error("Malformed digest '%s' (does not contain '@sha256:')" % digest)
+            return ("", "", "")
+        elif digest.count("@") != 1:
+            error("Malformed digest '%s' (should have 1 '@')" % digest)
+            return ("", "", "")
+
+        tmp: str = ""
+        sha256: str = ""
+        tmp, sha256 = digest.split("@")
+
+        if tmp.count("/") != 1:
+            error("Malformed digest '%s' (should have 1 '/')" % digest)
+            return ("", "", "")
+
+        ns: str = ""
+        repo: str = ""
+        ns, repo = tmp.split("/")
+        return (ns, repo, sha256)
+
     # $ curl -H "Authorization: Bearer $QUAY_TOKEN" \
     #        -G "https://quay.io/api/v1/repository?last_modified=true&namespace=ORG"
     # {
