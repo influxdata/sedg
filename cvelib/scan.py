@@ -221,15 +221,16 @@ def _parseScanURL(url: str) -> Tuple[str, str, str, str]:
 
     tmp = url.split("@")[0].split("/")
     # https://cloud.google.com/artifact-registry/docs/repositories/repo-locations
-    pat: Pattern[str] = re.compile(r"^https://[a-z\-]+-docker\.pkg\.dev/")
+    pat: Pattern[str] = re.compile(r"^https://[a-z0-9\-]+-docker\.pkg\.dev/")
     if pat.search(url):
         # https://us-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:...
-        where = tmp[3]
+        w = "%s.%s" % (tmp[2].rsplit("-", maxsplit=1)[0], tmp[3])
+        where = "gar-%s" % w
         software = tmp[4]
         modifier = tmp[5]
     elif url.startswith("https://quay.io/repository/"):  # quay.io
         # https://quay.io/repository/ORG/IMGNAME/manifest/sha256:...
-        where = tmp[4]
+        where = "quay-%s" % tmp[4]
         software = tmp[5]
     else:
         where = "TBD"

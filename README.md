@@ -55,10 +55,10 @@
     ```
 
     Optionally add OCI product overrides. By default, `cve-report gar|quay`
-    security scan reports will use `oci/<GAR_LOCATION-GAR_PROJECT>` or
-    `oci/<QUAY_ORG>` depending on where the security report is coming from. Use
-    `oci-cve-override-where` to override this behavior to always use
-    `oci/<OCI_WHERE>`. Eg:
+    security scan reports will use `oci/gar-<GAR_LOCATION>.<GAR_PROJECT>` or
+    `oci/quay-<QUAY_ORG>` depending on where the security report is coming
+    from. Use `oci-cve-override-where` to override this behavior to always use
+    `oci/gar-<OCI_WHERE>` or `oci/quay-<OCI_WHERE>`. Eg:
 
     ```
     [Behavior]
