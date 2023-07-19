@@ -209,7 +209,7 @@ def getScanOCIsReport(ocis: List[ScanOCI], fixable: Optional[bool] = False) -> s
     return s.rstrip()
 
 
-def _parseScanURL(url: str) -> Tuple[str, str, str, str]:
+def _parseScanURL(url: str, where_override: str = "") -> Tuple[str, str, str, str]:
     """Find CVE 'product', 'where', 'software' and 'modifier' from url"""
     if url == "":
         return ("", "", "", "")
@@ -225,15 +225,22 @@ def _parseScanURL(url: str) -> Tuple[str, str, str, str]:
     if pat.search(url):
         # https://us-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:...
         w = "%s.%s" % (tmp[2].rsplit("-", maxsplit=1)[0], tmp[3])
+        if where_override != "":
+            w = where_override
         where = "gar-%s" % w
         software = tmp[4]
         modifier = tmp[5]
     elif url.startswith("https://quay.io/repository/"):  # quay.io
         # https://quay.io/repository/ORG/IMGNAME/manifest/sha256:...
-        where = "quay-%s" % tmp[4]
+        w = tmp[4]
+        if where_override != "":
+            w = where_override
+        where = "quay-%s" % w
         software = tmp[5]
     else:
         where = "TBD"
+        if where_override != "":
+            where = where_override
         software = "TBD"
 
     return (product, where, software, modifier)
@@ -244,6 +251,7 @@ def getScanOCIsReportTemplates(
     name: str,
     ocis: List[ScanOCI],
     template_urls: List[str] = [],
+    oci_where_override: str = "",
 ) -> str:
     """Get the reports templates"""
     if len(ocis) == 0:
@@ -322,7 +330,7 @@ References:
     pkg_stanzas: List[str] = []
     for url in oci_references:
         # TODO: where override
-        (prod, where, soft, mod) = _parseScanURL(url)
+        (prod, where, soft, mod) = _parseScanURL(url, where_override=oci_where_override)
         s: str = "Patches_%s:\n%s/%s_%s%s: needs-triage" % (
             soft,
             prod,
@@ -423,6 +431,7 @@ class SecurityReportInterface(metaclass=abc.ABCMeta):
         with_templates: bool = False,
         template_urls: List[str] = [],
         priorities: List[str] = [],
+        oci_where_override: str = "",
     ) -> str:  # pragma: nocover
         """Obtain the security manifest for the specified repo"""
         raise NotImplementedError

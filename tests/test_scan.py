@@ -484,12 +484,14 @@ class TestScanCommon(TestCase):
     def test__parseScanURL(self):
         """Test _parseScanURL()"""
         tsts = [
-            # url, expProduct, expWhere, expSoftware, expModifier
-            ("", "", "", "", ""),
-            ("https://other", "oci", "TBD", "TBD", ""),
-            ("unavailable", "oci", "TBD", "TBD", ""),
+            # url, where_override, expProduct, expWhere, expSoftware, expModifier
+            ("", "", "", "", "", ""),
+            ("https://other", "", "oci", "TBD", "TBD", ""),
+            ("https://other", "some-override", "oci", "some-override", "TBD", ""),
+            ("unavailable", "", "oci", "TBD", "TBD", ""),
             (
                 "https://us-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:deadbeef",
+                "",
                 "oci",
                 "gar-us.PROJECT",
                 "REPO",
@@ -504,16 +506,35 @@ class TestScanCommon(TestCase):
                 "IMGNAME",
             ),
             (
+                "https://us-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:deadbeef",
+                "proj-override",
+                "oci",
+                "gar-proj-override",
+                "REPO",
+                "IMGNAME",
+            ),
+            (
                 "https://quay.io/repository/ORG/IMGNAME/manifest/sha256:deadbeef",
+                "",
                 "oci",
                 "quay-ORG",
                 "IMGNAME",
                 "",
             ),
+            (
+                "https://quay.io/repository/ORG/IMGNAME/manifest/sha256:deadbeef",
+                "org-override",
+                "oci",
+                "quay-org-override",
+                "IMGNAME",
+                "",
+            ),
         ]
 
-        for url, expP, expW, expS, expM in tsts:
-            (resP, resW, resS, resM) = cvelib.scan._parseScanURL(url)
+        for url, whr, expP, expW, expS, expM in tsts:
+            (resP, resW, resS, resM) = cvelib.scan._parseScanURL(
+                url, where_override=whr
+            )
             self.assertEqual(expP, resP, msg="url=%s" % url)
             self.assertEqual(expW, resW, msg="url=%s" % url)
             self.assertEqual(expS, resS, msg="url=%s" % url)
@@ -523,13 +544,15 @@ class TestScanCommon(TestCase):
         """Test test_getScanOCIsReportTemplates()"""
         now: datetime.datetime = datetime.datetime.now()
         self.maxDiff = 8196
+        # alert_name, pkg_name, oci_reports, template_urls, where_override, expected
         tsts = [
-            ("foo", "bar/baz", [], [], ""),
+            ("foo", "bar/baz", [], [], "", ""),
             (
                 "foo",
                 "bar/baz",
                 self._getValidOCIs(),
                 [],
+                "",
                 """## bar/baz foo template
 Please address foo alerts in bar/baz:
 
@@ -631,6 +654,7 @@ oci/TBD_TBD: needs-triage
                     )
                 ],
                 [],
+                "",
                 """## bar/baz foo template
 Please address foo alert in bar/baz:
 
@@ -699,6 +723,7 @@ oci/TBD_TBD: needs-triage
                     )
                 ],
                 ["https://some/url", "https://some/other/url"],
+                "",
                 """## bar/baz foo template
 Please address foo alert in bar/baz:
 
@@ -769,6 +794,7 @@ oci/TBD_TBD: needs-triage
                     )
                 ],
                 [],
+                "",
                 """## bar/baz foo template
 Please address foo alert in bar/baz:
 
@@ -837,6 +863,7 @@ oci/TBD_TBD: needs-triage
                     )
                 ],
                 [],
+                "",
                 """## bar/baz foo template
 Please address foo alert in bar/baz:
 
@@ -887,8 +914,79 @@ oci/TBD_TBD: needs-triage
 ## end CVE template"""
                 % (now.year, now.year, now.month, now.day),
             ),
+            (
+                "foo",
+                "bar/baz",
+                [
+                    cvelib.scan.ScanOCI(
+                        {
+                            "component": "foo",
+                            "detectedIn": "myorg/myimg@sha256:deadbeef",
+                            "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0002",
+                            "version": "1.2.2",
+                            "fixedBy": "1.2.3",
+                            "severity": "medium",
+                            "status": "needed",
+                            "url": "https://blah.com/BAR-a",
+                        }
+                    )
+                ],
+                [],
+                "some-override",
+                """## bar/baz foo template
+Please address foo alert in bar/baz:
+
+The following alert was issued:
+- [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0002) (medium)
+
+Since a 'medium' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated.
+
+Thanks!
+
+References:
+ * https://blah.com/BAR-a
+
+## end template
+
+## bar/baz CVE template
+Candidate: CVE-%d-NNNN
+OpenDate: %0.2d-%0.2d-%0.2d
+CloseDate:
+PublicDate:
+CRD:
+References:
+ https://blah.com/BAR-a
+Description:
+ Please address alert in bar/baz
+ - [ ] foo (medium)
+Scan-Reports:
+ - type: oci
+   component: foo
+   detectedIn: myorg/myimg@sha256:deadbeef
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   version: 1.2.2
+   fixedBy: 1.2.3
+   severity: medium
+   status: needed
+   url: https://blah.com/BAR-a
+Notes:
+Mitigation:
+Bugs:
+Priority: medium
+Discovered-by: foo
+Assigned-to:
+CVSS:
+
+Patches_TBD:
+oci/some-override_TBD: needs-triage
+
+## end CVE template"""
+                % (now.year, now.year, now.month, now.day),
+            ),
         ]
 
-        for reg, name, ocis, template_urls, exp in tsts:
-            res = cvelib.scan.getScanOCIsReportTemplates(reg, name, ocis, template_urls)
+        for alert_name, pkg_name, oci_reports, template_urls, whr, exp in tsts:
+            res = cvelib.scan.getScanOCIsReportTemplates(
+                alert_name, pkg_name, oci_reports, template_urls, oci_where_override=whr
+            )
             self.assertEqual(exp, res)
