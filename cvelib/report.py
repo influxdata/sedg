@@ -1467,7 +1467,7 @@ def getHumanSummary(
 # Note: the concept of 'team' will be handled within the flux
 def _readStatsLineProtocol(
     cves: List[CVE],
-    measurement="cveLog",
+    measurement="cvelog",
     base_timestamp: Optional[int] = None,
     pkgs: Optional[Set[str]] = None,
 ) -> List[str]:

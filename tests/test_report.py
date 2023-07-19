@@ -3910,11 +3910,11 @@ Totals:
             ),
             (
                 ["influxdb"],
-                'cveLog,priority=high,status=needed,product=git,where=org id="CVE-2022-GH2#bar",software="bar",modifier="" ',
+                'cvelog,priority=high,status=needed,product=git,where=org id="CVE-2022-GH2#bar",software="bar",modifier="" ',
             ),
             (
                 ["influxdb", "--starttime", "1"],
-                'cveLog,priority=high,status=needed,product=git,where=org id="CVE-2022-GH2#bar",software="bar",modifier="" ',
+                'cvelog,priority=high,status=needed,product=git,where=org id="CVE-2022-GH2#bar",software="bar",modifier="" ',
             ),
             (["sw"], "bar:\n  high:\n    CVE-2022-GH2#bar\n  low:\n    CVE-2022-0002"),
             (
