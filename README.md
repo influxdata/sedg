@@ -506,7 +506,7 @@ suitable for sending to InfluxDB. Eg:
 
 ```
 $ cve-report influxdb
-cveLog,priority=medium,status=needed,product=git id="CVE-2020-1234",software="foo",modifier="" 1633040641675003246
+cvelog,priority=medium,status=needed,product=git id="CVE-2020-1234",software="foo",modifier="" 1633040641675003246
 ...
 
 # or pipe into 'influx write' (InfluxData Cloud 2 or InfluxDB 2.x):
@@ -546,7 +546,7 @@ TODO: there is also a telegraf/github plugin that could be investigated.
 ```
 from(bucket: "sec-issues")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] == "cveLog" and r["_field"] == "id")
+  |> filter(fn: (r) => r["_measurement"] == "cvelog" and r["_field"] == "id")
   |> keep(columns: ["_time", "_value", "_field", "priority"])
   |> window(every: 1d)
   |> unique()
@@ -570,7 +570,7 @@ Grouped by software:
 import "strings"
 from(bucket: "sec-issues")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] == "cveLog" and (r["_field"] == "id" or r["_field"] == "software"))
+  |> filter(fn: (r) => r["_measurement"] == "cvelog" and (r["_field"] == "id" or r["_field"] == "software"))
   |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
   |> map(fn: (r) => ({
     r with
@@ -593,7 +593,7 @@ Old (grouped by priority):
 import "strings"
 from(bucket: "sec-issues")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] == "cveLog" and (r["_field"] == "id" or r["_field"] == "software"))
+  |> filter(fn: (r) => r["_measurement"] == "cvelog" and (r["_field"] == "id" or r["_field"] == "software"))
   |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
   |> map(fn: (r) => ({
     r with
@@ -611,7 +611,7 @@ from(bucket: "sec-issues")
 import "strings"
 from(bucket: "sec-issues")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] == "cveLog" and (r["_field"] == "id" or r["_field"] == "software"))
+  |> filter(fn: (r) => r["_measurement"] == "cvelog" and (r["_field"] == "id" or r["_field"] == "software"))
   |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
   |> map(fn: (r) => ({
     r with
@@ -661,7 +661,7 @@ highlvl = 0
 // have to keep doing it. We'll filter down more as we go.
 data = from(bucket: "jdstrand-sec-stats")
   |> range(start: -30d, stop: now())
-  |> filter(fn: (r) => r["_measurement"] == "cveLog" and r["_field"] == "id")
+  |> filter(fn: (r) => r["_measurement"] == "cvelog" and r["_field"] == "id")
 
 getLatest = (tables=<-) => {
   row = tables

@@ -101,7 +101,7 @@
             "shape": "chronograf-v2",
             "queries": [
               {
-                "text": "from(bucket: \"sec-stats\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cveLog\" and r[\"_field\"] == \"id\")\n  |> group(columns: [\"priority\"])\n  |> window(every: 1d)\n  |> unique()\n  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)",
+                "text": "from(bucket: \"sec-stats\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cvelog\" and r[\"_field\"] == \"id\")\n  |> group(columns: [\"priority\"])\n  |> window(every: 1d)\n  |> unique()\n  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)",
                 "editMode": "advanced",
                 "name": "",
                 "builderConfig": {
@@ -213,7 +213,7 @@
             "shape": "chronograf-v2",
             "queries": [
               {
-                "text": "import \"strings\"\nfrom(bucket: \"sec-stats\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cveLog\" and (r[\"_field\"] == \"id\" or r[\"_field\"] == \"software\"))\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({\n    r with\n    tuple: strings.joinStr(arr: [r.software, r.priority], v: \":\"),\n    _value: strings.joinStr(arr: [r.software, r.priority, r.id], v: \":\")\n  }))\n  |> drop(columns: [\"id\", \"product\", \"status\", \"software\"])\n  |> group(columns: [\"tuple\"])\n  |> window(every: 1d)\n  |> unique()\n  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)\n  // https://community.influxdata.com/t/advice-how-to-carry-forward-data-from-the-previous-day/21895\n//  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)\n//  |> aggregateWindow(every: 1d, fn: (tables=<-, column=\"_value\") => tables)\n//  |> fill(usePrevious: true)\n",
+                "text": "import \"strings\"\nfrom(bucket: \"sec-stats\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cvelog\" and (r[\"_field\"] == \"id\" or r[\"_field\"] == \"software\"))\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({\n    r with\n    tuple: strings.joinStr(arr: [r.software, r.priority], v: \":\"),\n    _value: strings.joinStr(arr: [r.software, r.priority, r.id], v: \":\")\n  }))\n  |> drop(columns: [\"id\", \"product\", \"status\", \"software\"])\n  |> group(columns: [\"tuple\"])\n  |> window(every: 1d)\n  |> unique()\n  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)\n  // https://community.influxdata.com/t/advice-how-to-carry-forward-data-from-the-previous-day/21895\n//  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)\n//  |> aggregateWindow(every: 1d, fn: (tables=<-, column=\"_value\") => tables)\n//  |> fill(usePrevious: true)\n",
                 "editMode": "advanced",
                 "name": "",
                 "builderConfig": {
@@ -325,7 +325,7 @@
             "shape": "chronograf-v2",
             "queries": [
               {
-                "text": "import \"strings\"\nfrom(bucket: \"sec-stats\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cveLog\" and (r[\"_field\"] == \"id\" or r[\"_field\"] == \"software\"))\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({\n    r with\n    _value: strings.joinStr(arr: [r.software, r.id, r.priority], v: \":\")\n  }))\n  |> drop(columns: [\"id\", \"product\", \"status\"])\n  |> group(columns: [\"software\"])\n  |> window(every: 1d)\n  |> unique()\n  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)\n  // https://community.influxdata.com/t/advice-how-to-carry-forward-data-from-the-previous-day/21895\n//  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)\n//  |> aggregateWindow(every: 1d, fn: (tables=<-, column=\"_value\") => tables)\n//  |> fill(usePrevious: true)",
+                "text": "import \"strings\"\nfrom(bucket: \"sec-stats\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cvelog\" and (r[\"_field\"] == \"id\" or r[\"_field\"] == \"software\"))\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({\n    r with\n    _value: strings.joinStr(arr: [r.software, r.id, r.priority], v: \":\")\n  }))\n  |> drop(columns: [\"id\", \"product\", \"status\"])\n  |> group(columns: [\"software\"])\n  |> window(every: 1d)\n  |> unique()\n  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)\n  // https://community.influxdata.com/t/advice-how-to-carry-forward-data-from-the-previous-day/21895\n//  |> aggregateWindow(every: 1d, createEmpty: false, fn: count)\n//  |> aggregateWindow(every: 1d, fn: (tables=<-, column=\"_value\") => tables)\n//  |> fill(usePrevious: true)",
                 "editMode": "advanced",
                 "name": "",
                 "builderConfig": {
