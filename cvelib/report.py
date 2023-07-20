@@ -2522,6 +2522,16 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
 
             print(digest.split("@")[1])
         elif args.alerts:
+            filter_product: str = "oci/%s" % cvelib.scan.formatWhereFromNamespace(
+                args.cmd, args.namespace, oci_where_override
+            )
+            cves = collectCVEData(
+                cveDirs,
+                compat,
+                untriagedOk=True,
+                filter_product=filter_product,
+            )
+
             images: List[str] = []
             if args.images is not None:
                 tmp: Optional[Set[str]] = _parseSoftwareArg(args.images)
