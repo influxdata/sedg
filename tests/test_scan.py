@@ -481,32 +481,52 @@ class TestScanCommon(TestCase):
             res = cvelib.scan.getScanOCIsReport(ocis, fixable=fixable)
             self.assertEqual(exp, res)
 
+    def test_formatWhereFromNamespace(self):
+        """Test formatWhereFromNamespace()"""
+        tsts = [
+            # oci_type, namespace, where_override, exp
+            ("", "", "", "unknown"),
+            ("other", "", "", "unknown"),
+            ("other", "blah", "", "unknown"),
+            ("other", "blah", "ovr", "ovr"),
+            ("gar", "proj/us", "", "gar-us.proj"),
+            ("gar", "proj/us-west1", "", "gar-us-west1.proj"),
+            ("gar", "proj/us", "ovr", "gar-ovr"),
+            ("quay", "org", "", "quay-org"),
+            ("quay", "org", "ovr", "quay-ovr"),
+            ("other", "b@d", "", "unknown"),
+        ]
+
+        for oci_type, ns, whr, exp in tsts:
+            res = cvelib.scan.formatWhereFromNamespace(oci_type, ns, whr)
+            self.assertEqual(exp, res)
+
     def test__parseScanURL(self):
         """Test _parseScanURL()"""
         tsts = [
             # url, where_override, expProduct, expWhere, expSoftware, expModifier
             ("", "", "", "", "", ""),
-            ("https://other", "", "oci", "TBD", "TBD", ""),
+            ("https://other", "", "oci", "unknown", "TBD", ""),
             ("https://other", "some-override", "oci", "some-override", "TBD", ""),
-            ("unavailable", "", "oci", "TBD", "TBD", ""),
+            ("unavailable", "", "oci", "unknown", "TBD", ""),
             (
-                "https://us-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:deadbeef",
+                "https://us-docker.pkg.dev/project/REPO/IMGNAME@sha256:deadbeef",
                 "",
                 "oci",
-                "gar-us.PROJECT",
+                "gar-us.project",
                 "REPO",
                 "IMGNAME",
             ),
             (
-                "https://us-west1-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:deadbeef",
+                "https://us-west1-docker.pkg.dev/project/REPO/IMGNAME@sha256:deadbeef",
                 "",
                 "oci",
-                "gar-us-west1.PROJECT",
+                "gar-us-west1.project",
                 "REPO",
                 "IMGNAME",
             ),
             (
-                "https://us-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:deadbeef",
+                "https://us-docker.pkg.dev/project/REPO/IMGNAME@sha256:deadbeef",
                 "proj-override",
                 "oci",
                 "gar-proj-override",
@@ -514,15 +534,15 @@ class TestScanCommon(TestCase):
                 "IMGNAME",
             ),
             (
-                "https://quay.io/repository/ORG/IMGNAME/manifest/sha256:deadbeef",
+                "https://quay.io/repository/org/IMGNAME/manifest/sha256:deadbeef",
                 "",
                 "oci",
-                "quay-ORG",
+                "quay-org",
                 "IMGNAME",
                 "",
             ),
             (
-                "https://quay.io/repository/ORG/IMGNAME/manifest/sha256:deadbeef",
+                "https://quay.io/repository/org/IMGNAME/manifest/sha256:deadbeef",
                 "org-override",
                 "oci",
                 "quay-org-override",
@@ -631,7 +651,7 @@ Assigned-to:
 CVSS:
 
 Patches_TBD:
-oci/TBD_TBD: needs-triage
+oci/unknown_TBD: needs-triage
 
 ## end CVE template"""
                 % (now.year, now.year, now.month, now.day),
@@ -700,7 +720,7 @@ Assigned-to:
 CVSS:
 
 Patches_TBD:
-oci/TBD_TBD: needs-triage
+oci/unknown_TBD: needs-triage
 
 ## end CVE template"""
                 % (now.year, now.year, now.month, now.day),
@@ -771,7 +791,7 @@ Assigned-to:
 CVSS:
 
 Patches_TBD:
-oci/TBD_TBD: needs-triage
+oci/unknown_TBD: needs-triage
 
 ## end CVE template"""
                 % (now.year, now.year, now.month, now.day),
@@ -840,7 +860,7 @@ Assigned-to:
 CVSS:
 
 Patches_TBD:
-oci/TBD_TBD: needs-triage
+oci/unknown_TBD: needs-triage
 
 ## end CVE template"""
                 % (now.year, now.year, now.month, now.day),
@@ -909,7 +929,7 @@ Assigned-to:
 CVSS:
 
 Patches_TBD:
-oci/TBD_TBD: needs-triage
+oci/unknown_TBD: needs-triage
 
 ## end CVE template"""
                 % (now.year, now.year, now.month, now.day),

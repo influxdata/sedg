@@ -8,7 +8,7 @@ import re
 from typing import Dict, List, Optional, Pattern, Tuple
 from yaml import load, CSafeLoader
 
-from cvelib.common import CveException, cve_priorities, rePatterns, _experimental
+from cvelib.common import CveException, cve_priorities, rePatterns, warn, _experimental
 
 # Scan-Reports:
 #  - type: oci
@@ -209,6 +209,34 @@ def getScanOCIsReport(ocis: List[ScanOCI], fixable: Optional[bool] = False) -> s
     return s.rstrip()
 
 
+def formatWhereFromNamespace(
+    oci_type: str, namespace: str, where_override: str = ""
+) -> str:
+    where: str = "unknown"
+    if oci_type == "gar":
+        w: str = where_override
+        if where_override == "":
+            proj, loc = namespace.split("/", maxsplit=1)
+            w = "%s.%s" % (loc, proj)
+        where = "gar-%s" % w
+    elif oci_type == "quay":
+        w: str = where_override
+        if where_override == "":
+            w = namespace
+        where = "quay-%s" % w
+    elif where_override != "":
+        where = where_override
+
+    if not rePatterns["pkg-where"].search(where):
+        warn(
+            "improper format for '%s' (should contain [a-z0-9+.-] with max length of 40)"
+            % where
+        )
+        where = "unknown"
+
+    return where
+
+
 def _parseScanURL(url: str, where_override: str = "") -> Tuple[str, str, str, str]:
     """Find CVE 'product', 'where', 'software' and 'modifier' from url"""
     if url == "":
@@ -224,23 +252,16 @@ def _parseScanURL(url: str, where_override: str = "") -> Tuple[str, str, str, st
     pat: Pattern[str] = re.compile(r"^https://[a-z0-9\-]+-docker\.pkg\.dev/")
     if pat.search(url):
         # https://us-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:...
-        w = "%s.%s" % (tmp[2].rsplit("-", maxsplit=1)[0], tmp[3])
-        if where_override != "":
-            w = where_override
-        where = "gar-%s" % w
+        namespace = "%s/%s" % (tmp[3], tmp[2].rsplit("-", maxsplit=1)[0])
+        where = formatWhereFromNamespace("gar", namespace, where_override)
         software = tmp[4]
         modifier = tmp[5]
     elif url.startswith("https://quay.io/repository/"):  # quay.io
         # https://quay.io/repository/ORG/IMGNAME/manifest/sha256:...
-        w = tmp[4]
-        if where_override != "":
-            w = where_override
-        where = "quay-%s" % w
+        where = formatWhereFromNamespace("quay", tmp[4], where_override)
         software = tmp[5]
     else:
-        where = "TBD"
-        if where_override != "":
-            where = where_override
+        where = formatWhereFromNamespace("", "", where_override)
         software = "TBD"
 
     return (product, where, software, modifier)
@@ -329,7 +350,6 @@ References:
 
     pkg_stanzas: List[str] = []
     for url in oci_references:
-        # TODO: where override
         (prod, where, soft, mod) = _parseScanURL(url, where_override=oci_where_override)
         s: str = "Patches_%s:\n%s/%s_%s%s: needs-triage" % (
             soft,
