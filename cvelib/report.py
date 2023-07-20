@@ -38,6 +38,7 @@ from cvelib.common import (
     epochToISO8601,
     getConfigCveDataPaths,
     getConfigCompatUbuntu,
+    getConfigOciCveOverrideWhere,
     getConfigTemplateURLs,
     readFile,
     rePatterns,
@@ -1053,6 +1054,7 @@ def getOCIReports(
     raw: bool = False,
     fixable: bool = True,
     filter_priority: Optional[str] = None,
+    oci_where_override: str = "",
 ) -> None:
     """Show OCI reports"""
 
@@ -1085,6 +1087,7 @@ def getOCIReports(
             with_templates=with_templates,
             template_urls=template_urls,
             priorities=priorities,
+            oci_where_override=oci_where_override,
         )
 
     s: str = ""
@@ -2319,6 +2322,7 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
     cveDirs: Dict[str, str] = getConfigCveDataPaths()
     compat: bool = getConfigCompatUbuntu()
     template_urls: List[str] = getConfigTemplateURLs()
+    oci_where_override: str = getConfigOciCveOverrideWhere()
 
     # XXX: skipping this makes things faster, but it is nice to have. For now
     # only with 'gh' since it is already slow
@@ -2551,4 +2555,5 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
                 raw=args.raw,
                 fixable=(not args.all),
                 filter_priority=args.filter_priority,
+                oci_where_override=oci_where_override,
             )

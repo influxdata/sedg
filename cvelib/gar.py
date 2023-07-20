@@ -632,6 +632,7 @@ class GARSecurityReportNew(SecurityReportInterface):
         quiet: bool = False,
         template_urls: List[str] = [],
         priorities: List[str] = [],
+        oci_where_override: str = "",
     ) -> str:
         """Obtain the security manifest for the specified repo@sha256:..."""
         if (
@@ -743,6 +744,7 @@ class GARSecurityReportNew(SecurityReportInterface):
                     repo_full,
                     ocis,
                     template_urls=template_urls,
+                    oci_where_override=oci_where_override,
                 ),
                 s,
             )

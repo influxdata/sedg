@@ -334,6 +334,7 @@ class QuaySecurityReportNew(SecurityReportInterface):
         with_templates: bool = False,
         template_urls: List[str] = [],
         priorities: List[str] = [],
+        oci_where_override: str = "",
     ) -> str:
         """Obtain the security manifest for the specified repo@sha256:..."""
         if "/" not in repo_full or "@sha256:" not in repo_full:
@@ -421,6 +422,7 @@ class QuaySecurityReportNew(SecurityReportInterface):
                     repo_full,
                     ocis,
                     template_urls=template_urls,
+                    oci_where_override=oci_where_override,
                 ),
                 s,
             )
