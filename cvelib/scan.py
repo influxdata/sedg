@@ -164,7 +164,10 @@ def parse(s: str) -> List[ScanOCI]:
 #
 # common report output for list of ScanOCIs
 #
-def getScanOCIsReport(ocis: List[ScanOCI], fixable: Optional[bool] = False) -> str:
+# XXX: as of 2023-07-20, this is unused
+def getScanOCIsReportUnused(
+    ocis: List[ScanOCI], fixable: Optional[bool] = False
+) -> str:
     """Show list of ScanOCIs objects"""
     max_name: int = 0
     max_vers: int = 0
@@ -268,7 +271,7 @@ def _parseScanURL(url: str, where_override: str = "") -> Tuple[str, str, str, st
 
 
 def getScanOCIsReportTemplates(
-    registry: str,
+    report_type: str,
     name: str,
     ocis: List[ScanOCI],
     template_urls: List[str] = [],
@@ -277,6 +280,12 @@ def getScanOCIsReportTemplates(
     """Get the reports templates"""
     if len(ocis) == 0:
         return ""
+
+    registry: str = report_type
+    if report_type == "gar":
+        registry = "GAR"
+    elif report_type == "quay":
+        registry = "quay.io"
 
     sev: List[str] = ["unknown", "negligible", "low", "medium", "high", "critical"]
     oci_references: List[str] = []
@@ -404,6 +413,8 @@ CVSS:
 
 # Interface for work with different OCI scan report objects
 class SecurityReportInterface(metaclass=abc.ABCMeta):
+    name: str
+
     @classmethod
     def __subclasshook__(cls, subclass):  # pragma: nocover
         return (
@@ -415,8 +426,8 @@ class SecurityReportInterface(metaclass=abc.ABCMeta):
             and callable(subclass.getOCIsForNamespace)
             and hasattr(subclass, "getReposForNamespace")
             and callable(subclass.getReposForNamespace)
-            and hasattr(subclass, "getSecurityReport")
-            and callable(subclass.getSecurityReport)
+            and hasattr(subclass, "fetchScanReport")
+            and callable(subclass.fetchScanReport)
             or NotImplementedError
         )
 
@@ -443,15 +454,51 @@ class SecurityReportInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def getSecurityReport(
+    def fetchScanReport(
         self,
         repo_full: str,
         raw: bool = False,
         fixable: bool = True,
-        with_templates: bool = False,
-        template_urls: List[str] = [],
+        quiet: bool = True,  # remove?
         priorities: List[str] = [],
-        oci_where_override: str = "",
-    ) -> str:  # pragma: nocover
+    ) -> Tuple[List[ScanOCI], str]:  # pragma: nocover
         """Obtain the security manifest for the specified repo"""
         raise NotImplementedError
+
+
+def getScanReport(
+    sr: SecurityReportInterface,
+    repo_full: str,
+    raw: bool = False,
+    fixable: bool = True,
+    with_templates: bool = False,
+    quiet: bool = False,
+    template_urls: List[str] = [],
+    priorities: List[str] = [],
+    oci_where_override: str = "",
+) -> str:
+    """Obtain the security manifest for the specified repo@sha256:..."""
+    ocis, msg = sr.fetchScanReport(repo_full, raw, fixable, quiet, priorities)
+    if msg != "":
+        return msg
+    elif raw:
+        return ""
+
+    s: str = ""
+    for oci in ocis:
+        s += "%s\n" % oci
+    s = "%s report: %d\n%s" % (repo_full.split("@")[0], len(ocis), s)
+
+    if with_templates:
+        s = "%s\n\n%s" % (
+            getScanOCIsReportTemplates(
+                sr.name,
+                repo_full,
+                ocis,
+                template_urls=template_urls,
+                oci_where_override=oci_where_override,
+            ),
+            s,
+        )
+
+    return s.rstrip()

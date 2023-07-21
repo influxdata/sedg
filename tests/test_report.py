@@ -4210,16 +4210,14 @@ template-urls = https://url1,https://url2
 
     # Note, these are listed in reverse order ot the arguments to test_...
     @mock.patch("cvelib.quay.QuaySecurityReportNew.getDigestForImage")
-    @mock.patch("cvelib.quay.QuaySecurityReportNew.getSecurityReport")
-    def test_main_report_quay_alerts(
-        self, mock_getSecurityReport, mock_getDigestForImage
-    ):
+    @mock.patch("cvelib.scan.getScanReport")
+    def test_main_report_quay_alerts(self, mock_getScanReport, mock_getDigestForImage):
         """Test main_report - quay --alerts"""
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         # with image digest
-        mock_getSecurityReport.return_value = "report"
+        mock_getScanReport.return_value = "report"
         args = [
             "quay",
             "--alerts",
@@ -4236,7 +4234,7 @@ template-urls = https://url1,https://url2
         )
 
         # without image digest
-        mock_getSecurityReport.return_value = "report"
+        mock_getScanReport.return_value = "report"
         mock_getDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef0123"
         args = [
             "quay",
@@ -4254,7 +4252,7 @@ template-urls = https://url1,https://url2
         )
 
         # without image digest, bad result
-        mock_getSecurityReport.return_value = "report"
+        mock_getScanReport.return_value = "report"
         mock_getDigestForImage.return_value = "bad"
         args = [
             "quay",
@@ -4272,7 +4270,7 @@ template-urls = https://url1,https://url2
         )
 
         # --excluded-images
-        mock_getSecurityReport.return_value = "report"
+        mock_getScanReport.return_value = "report"
         args = [
             "quay",
             "--alerts",
@@ -4288,7 +4286,7 @@ template-urls = https://url1,https://url2
         self.assertEqual("", error.getvalue().strip())
         self.assertEqual("", output.getvalue().strip())
 
-        mock_getSecurityReport.return_value = "report"
+        mock_getScanReport.return_value = "report"
         args = [
             "quay",
             "--alerts",
@@ -4307,7 +4305,7 @@ template-urls = https://url1,https://url2
         )
 
         # --filter-priority parsing
-        mock_getSecurityReport.return_value = "report"
+        mock_getScanReport.return_value = "report"
         args = [
             "quay",
             "--alerts",
@@ -4326,7 +4324,7 @@ template-urls = https://url1,https://url2
         )
 
         # raw
-        mock_getSecurityReport.return_value = "{}"
+        mock_getScanReport.return_value = "{}"
         args = [
             "quay",
             "--alerts",
@@ -4350,7 +4348,7 @@ template-urls = https://url1,https://url2
                 False,
             ),
         ):
-            mock_getSecurityReport.return_value = ""
+            mock_getScanReport.return_value = ""
             args = [
                 "quay",
                 "--alerts",
@@ -4421,16 +4419,14 @@ template-urls = https://url1,https://url2
 
     # Note, these are listed in reverse order ot the arguments to test_...
     @mock.patch("cvelib.gar.GARSecurityReportNew.getDigestForImage")
-    @mock.patch("cvelib.gar.GARSecurityReportNew.getSecurityReport")
-    def test_main_report_gar_alerts(
-        self, mock_getSecurityReport, mock_getDigestForImage
-    ):
+    @mock.patch("cvelib.scan.getScanReport")
+    def test_main_report_gar_alerts(self, mock_getScanReport, mock_getDigestForImage):
         """Test main_report - gar --alerts"""
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         # with image digest
-        mock_getSecurityReport.return_value = "report"
+        mock_getScanReport.return_value = "report"
         args = [
             "gar",
             "--alerts",
@@ -4447,7 +4443,7 @@ template-urls = https://url1,https://url2
         )
 
         # without image digest
-        mock_getSecurityReport.return_value = "report"
+        mock_getScanReport.return_value = "report"
         mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:deadbeef0123"
         args = [
             "gar",
@@ -4466,7 +4462,7 @@ template-urls = https://url1,https://url2
         )
 
         # without image digest, bad result
-        mock_getSecurityReport.return_value = "report"
+        mock_getScanReport.return_value = "report"
         mock_getDigestForImage.return_value = "bad"
         args = [
             "gar",
@@ -4485,7 +4481,7 @@ template-urls = https://url1,https://url2
         )
 
         # raw
-        mock_getSecurityReport.return_value = "{}"
+        mock_getScanReport.return_value = "{}"
         args = [
             "gar",
             "--alerts",
@@ -4509,7 +4505,7 @@ template-urls = https://url1,https://url2
                 False,
             ),
         ):
-            mock_getSecurityReport.return_value = ""
+            mock_getScanReport.return_value = ""
             args = [
                 "gar",
                 "--alerts",

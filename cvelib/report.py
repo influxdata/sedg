@@ -8,6 +8,7 @@ import datetime
 from enum import Enum
 import os
 import pathlib
+import re
 import requests
 import sys
 import textwrap
@@ -18,6 +19,7 @@ from typing import (
     List,
     Mapping,
     Optional,
+    Pattern,
     Sequence,
     Set,
     Tuple,
@@ -30,6 +32,7 @@ from cvelib.cve import (
     checkSyntax,
     collectCVEData,
     collectGHAlertUrls,
+    collectOciAdvisoryUrls,
     _parseFilterPriorities,
 )
 from cvelib.common import (
@@ -1063,6 +1066,10 @@ def getOCIReports(
     if filter_priority is not None:
         priorities = _parseFilterPriorities(filter_priority)
 
+    # XXX: do we still need this?
+    # collect the advisories we know about
+    knownAdvisories: Set[str] = collectOciAdvisoryUrls(cves)
+
     reports: Dict[str, str] = {}
     for img in images:
         if (
@@ -1080,7 +1087,8 @@ def getOCIReports(
             _, repo, sha256 = sr.parseImageDigest(digest)
             img = "%s@%s" % (repo, sha256)
 
-        reports[img] = sr.getSecurityReport(
+        reports[img] = cvelib.scan.getScanReport(
+            sr,
             "%s/%s" % (namespace, img),
             raw=raw,
             fixable=fixable,
@@ -1089,6 +1097,32 @@ def getOCIReports(
             priorities=priorities,
             oci_where_override=oci_where_override,
         )
+
+    # FIXME: should work on ScanOCIs or similar instead of grepping for strings
+    pat: Pattern = re.compile(r"sha256:.*")
+    new = []
+    ext = []
+    for cve in cves:
+        # construct a partial url from the CVE data
+        for rep in cve.scan_reports:
+            purl: str = pat.sub("", rep.url)
+            for img in reports:
+                if (
+                    "\n   advisory: %s\n" % rep.advisory in reports[img]
+                    and "\n   url: %s" % purl in reports[img]
+                ):
+                    if cve not in ext:
+                        ext.append(reports[img])
+                elif cve not in new:
+                    new.append(reports[img])
+
+    # print("# New reports")
+    # for r in new:
+    #    print(r)
+    # print("\n# Existing reports")
+    # for r in ext:
+    #    print(r)
+    # print("\nPrevious")
 
     s: str = ""
     # output a list of jsons

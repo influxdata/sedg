@@ -1572,7 +1572,7 @@ def collectCVEData(
 
 
 def collectGHAlertUrls(cves: List[CVE]) -> Tuple[Set[str], Set[str]]:
-    """Collect all known urls"""
+    """Collect all known alerts urls"""
     urls: List[str] = []
     dupes: List[str] = []
     for cve in cves:
@@ -1585,6 +1585,17 @@ def collectGHAlertUrls(cves: List[CVE]) -> Tuple[Set[str], Set[str]]:
             elif a.url != "unavailable" and a.url not in dupes:
                 dupes.append(a.url)
     return set(urls), set(dupes)
+
+
+def collectOciAdvisoryUrls(cves: List[CVE]) -> Set[str]:
+    """Collect all known advisory urls"""
+    urls: List[str] = []
+    for cve in cves:
+        a: cvelib.scan.ScanOCI
+        for a in cve.scan_reports:
+            if a.advisory not in urls:
+                urls.append(a.advisory)
+    return set(urls)
 
 
 #

@@ -464,8 +464,8 @@ class TestScanCommon(TestCase):
             ),
         ]
 
-    def test_getScanOCIsReport(self):
-        """Test getScanOCIsReport()"""
+    def test_getScanOCIsReportUnused(self):
+        """Test getScanOCIsReportUnused()"""
         tsts = [
             ([], False, ""),
             ([], True, ""),
@@ -478,7 +478,7 @@ class TestScanCommon(TestCase):
         ]
 
         for ocis, fixable, exp in tsts:
-            res = cvelib.scan.getScanOCIsReport(ocis, fixable=fixable)
+            res = cvelib.scan.getScanOCIsReportUnused(ocis, fixable=fixable)
             self.assertEqual(exp, res)
 
     def test_formatWhereFromNamespace(self):
