@@ -12,6 +12,7 @@ import cvelib.common
 import cvelib.cve
 import cvelib.github
 import cvelib.report
+import cvelib.scan
 import tests.testutil
 
 
@@ -1085,6 +1086,71 @@ cve-data = %s
         d["Priority"] = "negligible"
         d["CloseDate"] = "2021-06-29"
         _write_cve(os.path.join(cveDirs["retired"], d["Candidate"]), d)
+
+        return cveDirs
+
+    def _mock_cve_data_scans_mixed(self):
+        """Generate a List[cvelib.cve.CVE] with scan reports"""
+
+        def _write_cve(cve_fn, d):
+            content = tests.testutil.cveContentFromDict(d)
+            with open(cve_fn, "w") as fp:
+                fp.write("%s" % content)
+
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
+        content = (
+            """[Locations]
+cve-data = %s
+"""
+            % self.tmpdir
+        )
+        self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
+            content, self.tmpdir
+        )
+
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
+
+        # regular CVE - foo
+        d = self._cve_template(
+            cand="CVE-2022-0001",
+            references=["https://www.cve.org/CVERecord?id=CVE-2022-0001"],
+        )
+        d["upstream_foo"] = "needs-triage"
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+
+        # scan-report
+        d = self._cve_template(
+            cand="CVE-2022-GH2#foo",
+            references=["https://github.com/org/foo/issues/2"],
+        )
+        d["Priority"] = "medium"
+        d["oci/gar-us.valid-proj_valid-repo/valid-name"] = "needed"
+        d["Discovered-by"] = "gar"
+        d[
+            "Scan-Reports"
+        ] = """
+ - type: oci
+   component: curl
+   detectedIn: cpe:/o:debian:debian_linux:11
+   advisory: https://www.cve.org/CVERecord?id=CVE-2022-32221
+   version: 7.74.0-1.3+deb11u2
+   fixedBy: 7.74.0-1.3+deb11u5
+   severity: critical
+   status: needed
+   url: https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef
+ - type: oci
+   component: libtasn1-6
+   detectedIn: cpe:/o:debian:debian_linux:11
+   advisory: https://www.cve.org/CVERecord?id=CVE-2021-46848
+   version: 4.16.0-2
+   fixedBy: 4.16.0-2+deb11u1
+   severity: critical
+   status: needed
+   url: https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef"""
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
 
         return cveDirs
 
@@ -4208,16 +4274,38 @@ template-urls = https://url1,https://url2
         self.assertEqual("", error.getvalue().strip())
         self.assertEqual("sha256:deadbeef", output.getvalue().strip())
 
+    def _getValidScanOCI(self, quay=False, gar=False):
+        """Returns a ScanOCI"""
+        url = "https://blah.com/BAR-a"
+        if quay:
+            url = "https://quay.io/repository/valid-org/valid-repo/manifest/sha256:deadbeef"
+        elif gar:
+            url = "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef"
+
+        data = {
+            "component": "foo",
+            "detectedIn": "Some Distro",
+            "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+            "version": "1.2.2",
+            "fixedBy": "1.2.3",
+            "severity": "medium",
+            "status": "needed",
+            "url": url,
+        }
+        return cvelib.scan.ScanOCI(data)
+
     # Note, these are listed in reverse order ot the arguments to test_...
     @mock.patch("cvelib.quay.QuaySecurityReportNew.getDigestForImage")
-    @mock.patch("cvelib.scan.getScanReport")
-    def test_main_report_quay_alerts(self, mock_getScanReport, mock_getDigestForImage):
+    @mock.patch("cvelib.quay.QuaySecurityReportNew.fetchScanReport")
+    def test_main_report_quay_alerts(
+        self, mock_fetchScanReport, mock_getDigestForImage
+    ):
         """Test main_report - quay --alerts"""
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         # with image digest
-        mock_getScanReport.return_value = "report"
+        mock_fetchScanReport.return_value = [self._getValidScanOCI(quay=True)], ""
         args = [
             "quay",
             "--alerts",
@@ -4229,12 +4317,13 @@ template-urls = https://url1,https://url2
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
-        self.assertEqual(
-            "# valid-repo@sha256:deadbeef\nreport", output.getvalue().strip()
+        self.assertTrue(
+            "# New reports\n\nvalid-org/valid-repo report: 1" in output.getvalue(),
+            msg="output is:\n%s" % output.getvalue().strip(),
         )
 
         # without image digest
-        mock_getScanReport.return_value = "report"
+        mock_fetchScanReport.return_value = [self._getValidScanOCI(quay=True)], ""
         mock_getDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef0123"
         args = [
             "quay",
@@ -4247,12 +4336,13 @@ template-urls = https://url1,https://url2
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
-        self.assertEqual(
-            "# valid-repo@sha256:deadbeef0123\nreport", output.getvalue().strip()
+        self.assertTrue(
+            "# New reports\n\nvalid-org/valid-repo report: 1" in output.getvalue(),
+            msg="output is:\n%s" % output.getvalue().strip(),
         )
 
         # without image digest, bad result
-        mock_getScanReport.return_value = "report"
+        mock_fetchScanReport.return_value = [], ""
         mock_getDigestForImage.return_value = "bad"
         args = [
             "quay",
@@ -4270,7 +4360,7 @@ template-urls = https://url1,https://url2
         )
 
         # --excluded-images
-        mock_getScanReport.return_value = "report"
+        mock_fetchScanReport.return_value = [], ""
         args = [
             "quay",
             "--alerts",
@@ -4286,7 +4376,7 @@ template-urls = https://url1,https://url2
         self.assertEqual("", error.getvalue().strip())
         self.assertEqual("", output.getvalue().strip())
 
-        mock_getScanReport.return_value = "report"
+        mock_fetchScanReport.return_value = [self._getValidScanOCI(quay=True)], ""
         args = [
             "quay",
             "--alerts",
@@ -4300,12 +4390,13 @@ template-urls = https://url1,https://url2
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
-        self.assertEqual(
-            "# valid-repo@sha256:deadbeef\nreport", output.getvalue().strip()
+        self.assertTrue(
+            "# New reports\n\nvalid-org/valid-repo report: 1" in output.getvalue(),
+            msg="output is:\n%s" % output.getvalue().strip(),
         )
 
         # --filter-priority parsing
-        mock_getScanReport.return_value = "report"
+        mock_fetchScanReport.return_value = [self._getValidScanOCI(quay=True)], ""
         args = [
             "quay",
             "--alerts",
@@ -4319,12 +4410,13 @@ template-urls = https://url1,https://url2
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
-        self.assertEqual(
-            "# valid-repo@sha256:deadbeef\nreport", output.getvalue().strip()
+        self.assertTrue(
+            "# New reports\n\nvalid-org/valid-repo report: 1" in output.getvalue(),
+            msg="output is:\n%s" % output.getvalue().strip(),
         )
 
         # raw
-        mock_getScanReport.return_value = "{}"
+        mock_fetchScanReport.return_value = [], "{}"
         args = [
             "quay",
             "--alerts",
@@ -4348,7 +4440,7 @@ template-urls = https://url1,https://url2
                 False,
             ),
         ):
-            mock_getScanReport.return_value = ""
+            mock_fetchScanReport.return_value = ""
             args = [
                 "quay",
                 "--alerts",
@@ -4419,14 +4511,14 @@ template-urls = https://url1,https://url2
 
     # Note, these are listed in reverse order ot the arguments to test_...
     @mock.patch("cvelib.gar.GARSecurityReportNew.getDigestForImage")
-    @mock.patch("cvelib.scan.getScanReport")
-    def test_main_report_gar_alerts(self, mock_getScanReport, mock_getDigestForImage):
+    @mock.patch("cvelib.gar.GARSecurityReportNew.fetchScanReport")
+    def test_main_report_gar_alerts(self, mock_fetchScanReport, mock_getDigestForImage):
         """Test main_report - gar --alerts"""
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         # with image digest
-        mock_getScanReport.return_value = "report"
+        mock_fetchScanReport.return_value = [self._getValidScanOCI(gar=True)], ""
         args = [
             "gar",
             "--alerts",
@@ -4438,12 +4530,14 @@ template-urls = https://url1,https://url2
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
-        self.assertEqual(
-            "# valid-repo/valid-name@sha256:deadbeef\nreport", output.getvalue().strip()
+        self.assertTrue(
+            "# New reports\n\nvalid-proj/us/valid-repo/valid-name report: 1"
+            in output.getvalue(),
+            msg="output is:\n%s" % output.getvalue().strip(),
         )
 
         # without image digest
-        mock_getScanReport.return_value = "report"
+        mock_fetchScanReport.return_value = [self._getValidScanOCI(gar=True)], ""
         mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:deadbeef0123"
         args = [
             "gar",
@@ -4456,13 +4550,14 @@ template-urls = https://url1,https://url2
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
-        self.assertEqual(
-            "# valid-repo/valid-name@sha256:deadbeef0123\nreport",
-            output.getvalue().strip(),
+        self.assertTrue(
+            "# New reports\n\nvalid-proj/us/valid-repo/valid-name report: 1"
+            in output.getvalue(),
+            msg="output is:\n%s" % output.getvalue().strip(),
         )
 
         # without image digest, bad result
-        mock_getScanReport.return_value = "report"
+        mock_fetchScanReport.return_value = [], ""
         mock_getDigestForImage.return_value = "bad"
         args = [
             "gar",
@@ -4481,7 +4576,7 @@ template-urls = https://url1,https://url2
         )
 
         # raw
-        mock_getScanReport.return_value = "{}"
+        mock_fetchScanReport.return_value = [], "{}"
         args = [
             "gar",
             "--alerts",
@@ -4505,7 +4600,7 @@ template-urls = https://url1,https://url2
                 False,
             ),
         ):
-            mock_getScanReport.return_value = ""
+            mock_fetchScanReport.return_value = ""
             args = [
                 "gar",
                 "--alerts",
@@ -4520,4 +4615,193 @@ template-urls = https://url1,https://url2
         self.assertEqual(
             "ERROR: image name 'valid-name@sha256:deadbeef' should contain one '/'",
             error.getvalue().strip(),
+        )
+
+    @mock.patch("cvelib.gar.GARSecurityReportNew.fetchScanReport")
+    def test_main_report_gar_alerts_existing(self, mock_fetchScanReport):
+        """Test main_report - gar --alerts - existing"""
+        self._mock_cve_data_scans_mixed()  # for cveDirs
+        os.environ["SEDG_EXPERIMENTAL"] = "1"
+
+        # 1 new, 2 exist with precise oci match
+        ocis = [
+            cvelib.scan.ScanOCI(
+                {
+                    "component": "curl",
+                    "detectedIn": "cpe:/o:debian:debian_linux:11",
+                    "advisory": "https://www.cve.org/CVERecord?id=CVE-2022-32221",
+                    "version": "7.74.0-1.3+deb11u2",
+                    "fixedBy": "7.74.0-1.3+deb11u5",
+                    "severity": "critical",
+                    "status": "needed",
+                    "url": "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef",
+                }
+            ),
+            cvelib.scan.ScanOCI(
+                {
+                    "component": "libtasn1-6",
+                    "detectedIn": "cpe:/o:debian:debian_linux:11",
+                    "advisory": "https://www.cve.org/CVERecord?id=CVE-2021-46848",
+                    "version": "4.16.0-2",
+                    "fixedBy": "4.16.0-2+deb11u1",
+                    "severity": "critical",
+                    "status": "needed",
+                    "url": "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef",
+                }
+            ),
+            cvelib.scan.ScanOCI(
+                {
+                    "component": "foo",
+                    "detectedIn": "Some Distro",
+                    "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+                    "version": "1.2.2",
+                    "fixedBy": "1.2.3",
+                    "severity": "medium",
+                    "status": "needed",
+                    "url": "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef",
+                }
+            ),
+        ]
+
+        mock_fetchScanReport.return_value = ocis, ""
+        args = [
+            "gar",
+            "--alerts",
+            "--namespace",
+            "valid-proj/us",
+            "--images",
+            "valid-repo/valid-name@sha256:deadbeef0001",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        res = output.getvalue().strip()
+        self.assertTrue(
+            "# New reports\n\nvalid-proj/us/valid-repo/valid-name report: 1" in res,
+            msg="output is:\n%s" % res,
+        )
+        self.assertFalse(
+            "   advisory: https://www.cve.org/CVERecord?id=CVE-2022-32221" in res,
+            msg="output is:\n%s" % res,
+        )
+        self.assertFalse(
+            "   advisory: https://www.cve.org/CVERecord?id=CVE-2021-46848" in res,
+            msg="output is:\n%s" % res,
+        )
+        self.assertTrue(
+            "   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001" in res,
+            msg="output is:\n%s" % res,
+        )
+        self.assertTrue(
+            "   url: https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef"
+            in res,
+            msg="output is:\n%s" % res,
+        )
+
+        # 0 new, 2 exist with precise oci match
+        ocis = [
+            cvelib.scan.ScanOCI(
+                {
+                    "component": "curl",
+                    "detectedIn": "cpe:/o:debian:debian_linux:11",
+                    "advisory": "https://www.cve.org/CVERecord?id=CVE-2022-32221",
+                    "version": "7.74.0-1.3+deb11u2",
+                    "fixedBy": "7.74.0-1.3+deb11u5",
+                    "severity": "critical",
+                    "status": "needed",
+                    "url": "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef",
+                }
+            ),
+            cvelib.scan.ScanOCI(
+                {
+                    "component": "libtasn1-6",
+                    "detectedIn": "cpe:/o:debian:debian_linux:11",
+                    "advisory": "https://www.cve.org/CVERecord?id=CVE-2021-46848",
+                    "version": "4.16.0-2",
+                    "fixedBy": "4.16.0-2+deb11u1",
+                    "severity": "critical",
+                    "status": "needed",
+                    "url": "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef",
+                }
+            ),
+        ]
+
+        mock_fetchScanReport.return_value = ocis, ""
+        args = [
+            "gar",
+            "--alerts",
+            "--namespace",
+            "valid-proj/us",
+            "--images",
+            "valid-repo/valid-name@sha256:deadbeef0001",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        res = output.getvalue().strip()
+        self.assertFalse("# New report" in res, msg="output is:\n%s" % res)
+        self.assertFalse("# Updated report" in res, msg="output is:\n%s" % res)
+        self.assertFalse(
+            "   advisory: https://www.cve.org/CVERecord?id=CVE-2022-32221" in res,
+            msg="output is:\n%s" % res,
+        )
+        self.assertFalse(
+            "   advisory: https://www.cve.org/CVERecord?id=CVE-2021-46848" in res,
+            msg="output is:\n%s" % res,
+        )
+
+        # 0 new, 2 exist with fuzzy oci match for one
+        ocis = [
+            cvelib.scan.ScanOCI(
+                {
+                    "component": "curl",
+                    "detectedIn": "cpe:/o:debian:debian_linux:11",
+                    "advisory": "https://www.cve.org/CVERecord?id=CVE-2022-32221",
+                    "version": "7.74.0-1.3+deb11u2",
+                    "fixedBy": "7.74.0-1.3+deb11u5",
+                    "severity": "high",
+                    "status": "needed",
+                    "url": "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef",
+                }
+            ),
+            cvelib.scan.ScanOCI(
+                {
+                    "component": "libtasn1-6",
+                    "detectedIn": "cpe:/o:debian:debian_linux:11",
+                    "advisory": "https://www.cve.org/CVERecord?id=CVE-2021-46848",
+                    "version": "4.16.0-2",
+                    "fixedBy": "4.16.0-2+deb11u1",
+                    "severity": "critical",
+                    "status": "needed",
+                    "url": "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef",
+                }
+            ),
+        ]
+
+        mock_fetchScanReport.return_value = ocis, ""
+        args = [
+            "gar",
+            "--alerts",
+            "--namespace",
+            "valid-proj/us",
+            "--images",
+            "valid-repo/valid-name@sha256:deadbeef0001",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        res = output.getvalue().strip()
+        print(res)
+        self.assertTrue("# Updated reports" in res, msg="output is:\n%s" % res)
+        self.assertTrue(
+            "   advisory: https://www.cve.org/CVERecord?id=CVE-2022-32221" in res,
+            msg="output is:\n%s" % res,
+        )
+        self.assertTrue(
+            "   severity: high" in res,
+            msg="output is:\n%s" % res,
+        )
+        self.assertFalse(
+            "   advisory: https://www.cve.org/CVERecord?id=CVE-2021-46848" in res,
+            msg="output is:\n%s" % res,
         )

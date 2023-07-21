@@ -132,6 +132,23 @@ class ScanOCI(object):
         self.url = s
 
 
+def matches(a: ScanOCI, b: ScanOCI) -> Tuple[bool, bool]:
+    """Test if self and b match in meaningful ways. Returns fuzzy and precise
+    tuple"""
+    if a.advisory != b.advisory or a.component != b.component:
+        return False, False
+
+    if (
+        a.detectedIn != b.detectedIn
+        or a.versionAffected != b.versionAffected
+        or a.versionFixed != b.versionFixed
+        or a.severity != b.severity
+    ):
+        return True, False
+
+    return True, True
+
+
 def parse(s: str) -> List[ScanOCI]:
     """Parse a string and return a list of ScanOCIs"""
     if s == "":
@@ -159,6 +176,61 @@ def parse(s: str) -> List[ScanOCI]:
             )
 
     return mans
+
+
+# Interface for work with different OCI scan report objects
+class SecurityReportInterface(metaclass=abc.ABCMeta):
+    name: str
+
+    @classmethod
+    def __subclasshook__(cls, subclass):  # pragma: nocover
+        return (
+            hasattr(subclass, "getDigestForImage")
+            and callable(subclass.getDigestForImage)
+            and hasattr(subclass, "parseImageDigest")
+            and callable(subclass.parseImageDigest)
+            and hasattr(subclass, "getOCIsForNamespace")
+            and callable(subclass.getOCIsForNamespace)
+            and hasattr(subclass, "getReposForNamespace")
+            and callable(subclass.getReposForNamespace)
+            and hasattr(subclass, "fetchScanReport")
+            and callable(subclass.fetchScanReport)
+            or NotImplementedError
+        )
+
+    @abc.abstractmethod
+    def getDigestForImage(self, repo_full: str) -> str:  # pragma: nocover
+        """Obtain the digest for the specified repo"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def parseImageDigest(self, digest: str) -> Tuple[str, str, str]:  # pragma: nocover
+        """Parse the image digest into a (namespace, repo, sha256) tuple"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def getOCIsForNamespace(
+        self, namespace: str
+    ) -> List[Tuple[str, int]]:  # pragma: nocover
+        """Obtain the list of OCIs with modification time in seconds for the specified namespace"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def getReposForNamespace(self, namespace: str) -> List[str]:  # pragma: nocover
+        """Obtain the list of repos for the specified namespace"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def fetchScanReport(
+        self,
+        repo_full: str,
+        raw: bool = False,
+        fixable: bool = True,
+        quiet: bool = True,  # remove?
+        priorities: List[str] = [],
+    ) -> Tuple[List[ScanOCI], str]:  # pragma: nocover
+        """Obtain the security manifest for the specified repo"""
+        raise NotImplementedError
 
 
 #
@@ -411,61 +483,39 @@ CVSS:
     return "%s\n\n%s" % (iss_template, cve_template)
 
 
-# Interface for work with different OCI scan report objects
-class SecurityReportInterface(metaclass=abc.ABCMeta):
-    name: str
+def getScanOCIsReport(
+    ocis: Dict[str, List[ScanOCI]],
+    scan_type: str,
+    with_templates: bool = False,
+    template_urls: List[str] = [],
+    oci_where_override: str = "",
+) -> str:
+    """Obtain the security manifest for the specified repo@sha256:..."""
+    out: str = ""
+    for repo_full in sorted(ocis.keys()):
+        s: str = ""
+        for oci in ocis[repo_full]:
+            s += "%s\n" % oci
+        s = "%s report: %d\n%s" % (repo_full.split("@")[0], len(ocis), s)
 
-    @classmethod
-    def __subclasshook__(cls, subclass):  # pragma: nocover
-        return (
-            hasattr(subclass, "getDigestForImage")
-            and callable(subclass.getDigestForImage)
-            and hasattr(subclass, "parseImageDigest")
-            and callable(subclass.parseImageDigest)
-            and hasattr(subclass, "getOCIsForNamespace")
-            and callable(subclass.getOCIsForNamespace)
-            and hasattr(subclass, "getReposForNamespace")
-            and callable(subclass.getReposForNamespace)
-            and hasattr(subclass, "fetchScanReport")
-            and callable(subclass.fetchScanReport)
-            or NotImplementedError
-        )
+        if with_templates:
+            s = "%s\n\n%s" % (
+                getScanOCIsReportTemplates(
+                    scan_type,
+                    repo_full,
+                    ocis[repo_full],
+                    template_urls=template_urls,
+                    oci_where_override=oci_where_override,
+                ),
+                s,
+            )
 
-    @abc.abstractmethod
-    def getDigestForImage(self, repo_full: str) -> str:  # pragma: nocover
-        """Obtain the digest for the specified repo"""
-        raise NotImplementedError
+        out += "%s%s" % (("" if out == "" else "\n\n"), s.rstrip())
 
-    @abc.abstractmethod
-    def parseImageDigest(self, digest: str) -> Tuple[str, str, str]:  # pragma: nocover
-        """Parse the image digest into a (namespace, repo, sha256) tuple"""
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def getOCIsForNamespace(
-        self, namespace: str
-    ) -> List[Tuple[str, int]]:  # pragma: nocover
-        """Obtain the list of OCIs with modification time in seconds for the specified namespace"""
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def getReposForNamespace(self, namespace: str) -> List[str]:  # pragma: nocover
-        """Obtain the list of repos for the specified namespace"""
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def fetchScanReport(
-        self,
-        repo_full: str,
-        raw: bool = False,
-        fixable: bool = True,
-        quiet: bool = True,  # remove?
-        priorities: List[str] = [],
-    ) -> Tuple[List[ScanOCI], str]:  # pragma: nocover
-        """Obtain the security manifest for the specified repo"""
-        raise NotImplementedError
+    return out
 
 
+# XXX: no longer used
 def getScanReport(
     sr: SecurityReportInterface,
     repo_full: str,

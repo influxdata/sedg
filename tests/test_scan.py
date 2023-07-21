@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 
+import copy
 import datetime
 import os
 from unittest import TestCase
@@ -382,6 +383,45 @@ class TestScanCommon(TestCase):
    url: https://blah.com/CORGE-a
 """
 
+    def test_matches(self):
+        """Test matches()"""
+        a_data = {
+            "component": "foo",
+            "detectedIn": "Some Distro",
+            "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+            "version": "1.2.2",
+            "fixedBy": "1.2.3",
+            "severity": "medium",
+            "status": "needed",
+            "url": "https://blah.com/BAR-a",
+        }
+
+        b_same = copy.deepcopy(a_data)
+        b_diff = copy.deepcopy(a_data)
+        b_diff["component"] = "other"
+        b_imprecise = copy.deepcopy(a_data)
+        b_imprecise["severity"] = "high"
+        b_close = copy.deepcopy(a_data)
+        b_close["status"] = "needs-triage"
+
+        tsts = [
+            # a, b, expectedFuzzy, expectedPrecise
+            (cvelib.scan.ScanOCI(a_data), cvelib.scan.ScanOCI(b_same), True, True),
+            (cvelib.scan.ScanOCI(a_data), cvelib.scan.ScanOCI(b_close), True, True),
+            (
+                cvelib.scan.ScanOCI(a_data),
+                cvelib.scan.ScanOCI(b_imprecise),
+                True,
+                False,
+            ),
+            (cvelib.scan.ScanOCI(a_data), cvelib.scan.ScanOCI(b_diff), False, False),
+        ]
+
+        for a, b, expF, expP in tsts:
+            f, p = cvelib.scan.matches(a, b)
+            self.assertEqual(expF, f)
+            self.assertEqual(expP, p)
+
     def test_parse(self):
         """Test parse()"""
         tsts = [
@@ -487,6 +527,7 @@ class TestScanCommon(TestCase):
             # oci_type, namespace, where_override, exp
             ("", "", "", "unknown"),
             ("other", "", "", "unknown"),
+            ("other", "", "ovr", "ovr"),
             ("other", "blah", "", "unknown"),
             ("other", "blah", "ovr", "ovr"),
             ("gar", "proj/us", "", "gar-us.proj"),
@@ -495,6 +536,7 @@ class TestScanCommon(TestCase):
             ("quay", "org", "", "quay-org"),
             ("quay", "org", "ovr", "quay-ovr"),
             ("other", "b@d", "", "unknown"),
+            ("other", "", "b@d", "unknown"),
         ]
 
         for oci_type, ns, whr, exp in tsts:

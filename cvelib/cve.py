@@ -1587,6 +1587,7 @@ def collectGHAlertUrls(cves: List[CVE]) -> Tuple[Set[str], Set[str]]:
     return set(urls), set(dupes)
 
 
+# XXX: unused
 def collectOciAdvisoryUrls(cves: List[CVE]) -> Set[str]:
     """Collect all known advisory urls"""
     urls: List[str] = []

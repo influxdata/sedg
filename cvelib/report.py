@@ -32,7 +32,6 @@ from cvelib.cve import (
     checkSyntax,
     collectCVEData,
     collectGHAlertUrls,
-    collectOciAdvisoryUrls,
     _parseFilterPriorities,
 )
 from cvelib.common import (
@@ -1045,7 +1044,6 @@ def getGHAlertsReport(
             _printGHAlertsSummary(org, repo, resolved[repo], "resolved")
 
 
-# ???: Put in SecurityReportInterface as a default implementation?
 def getOCIReports(
     cves: List[CVE],
     sr: cvelib.scan.SecurityReportInterface,
@@ -1060,17 +1058,14 @@ def getOCIReports(
     oci_where_override: str = "",
 ) -> None:
     """Show OCI reports"""
-
     # if no priority filter, default to all priorities
-    priorities: List[str] = cve_priorities
+    priorities: List[str] = cve_priorities + ["unknown"]
     if filter_priority is not None:
         priorities = _parseFilterPriorities(filter_priority)
 
-    # XXX: do we still need this?
-    # collect the advisories we know about
-    knownAdvisories: Set[str] = collectOciAdvisoryUrls(cves)
-
-    reports: Dict[str, str] = {}
+    # fetch the scan report as list of ScanOCIs
+    scan_ocis: Dict[str, List[cvelib.scan.ScanOCI]] = {}
+    scan_raws: Dict[str, str] = {}
     for img in images:
         if (
             img in excluded_images
@@ -1087,60 +1082,124 @@ def getOCIReports(
             _, repo, sha256 = sr.parseImageDigest(digest)
             img = "%s@%s" % (repo, sha256)
 
-        reports[img] = cvelib.scan.getScanReport(
-            sr,
-            "%s/%s" % (namespace, img),
-            raw=raw,
-            fixable=fixable,
-            with_templates=with_templates,
-            template_urls=template_urls,
-            priorities=priorities,
-            oci_where_override=oci_where_override,
-        )
+        if raw:
+            _, json = sr.fetchScanReport(
+                "%s/%s" % (namespace, img),
+                raw=raw,
+                fixable=fixable,
+                priorities=priorities,
+            )
+            scan_raws[img] = json
+        else:
+            scan_ocis[img], msg = sr.fetchScanReport(
+                "%s/%s" % (namespace, img),
+                raw=raw,
+                fixable=fixable,
+                priorities=priorities,
+            )
+            if msg != "":
+                warn(msg)
 
-    # FIXME: should work on ScanOCIs or similar instead of grepping for strings
-    pat: Pattern = re.compile(r"sha256:.*")
-    new = []
-    ext = []
-    for cve in cves:
-        # construct a partial url from the CVE data
-        for rep in cve.scan_reports:
-            purl: str = pat.sub("", rep.url)
-            for img in reports:
-                if (
-                    "\n   advisory: %s\n" % rep.advisory in reports[img]
-                    and "\n   url: %s" % purl in reports[img]
-                ):
-                    if cve not in ext:
-                        ext.append(reports[img])
-                elif cve not in new:
-                    new.append(reports[img])
-
-    # print("# New reports")
-    # for r in new:
-    #    print(r)
-    # print("\n# Existing reports")
-    # for r in ext:
-    #    print(r)
-    # print("\nPrevious")
-
-    s: str = ""
     # output a list of jsons
     if raw:
         jsons: List[str] = []
-        for r in sorted(reports):
-            if reports[r] != "":
-                jsons.append(reports[r])
-        s = "[%s]" % ",".join(jsons)
-    else:
-        first: bool = True
-        for r in sorted(reports):
-            if not first:
-                s += "\n\n"
+        for j in sorted(scan_raws):
+            if scan_raws[j] != "":
+                jsons.append(scan_raws[j])
+        print("[%s]" % ",".join(jsons))
+        return
+
+    new: Dict[str, List[cvelib.scan.ScanOCI]] = {}
+    upd: Dict[str, List[cvelib.scan.ScanOCI]] = {}
+    # ext: Dict[str, List[cvelib.scan.ScanOCI]] = {}
+
+    pat: Pattern = re.compile(r"sha256:.*")
+    for img in scan_ocis:
+        repo_full: str = "%s/%s" % (namespace, img)
+        for oci in scan_ocis[img]:
+            prod, whr, sw, mod = cvelib.scan._parseScanURL(
+                oci.url, where_override=oci_where_override
+            )
+            found: bool = False
+            updated: bool = False
+            # TODO: capture the CVE file and suggest updates to it
+            for cve in cves:
+                # skip CVE files without package stanzas that apply to the oci
+                # URL
+                for pkg in cve.pkgs:
+                    if (
+                        pkg.product == prod
+                        and pkg.where == whr
+                        and pkg.software == sw
+                        and pkg.modifier == mod
+                    ):
+                        # there is a pkg match in the CVE file for the scan
+                        # report url, so now see if there are any existing
+                        # advisory/url combinations in the CVE file
+                        for cverep in cve.scan_reports:
+                            purl: str = pat.sub("", cverep.url)
+                            fuzzy, precise = cvelib.scan.matches(cverep, oci)
+                            if fuzzy and oci.url.startswith(purl):
+                                found = True
+                                if not precise:
+                                    updated = True
+                                break
+                    if found:
+                        break
+
+            if found:
+                # if repo_full not in ext:
+                #    ext[repo_full] = []
+                # if oci not in ext[repo_full]:
+                #    ext[repo_full].append(oci)
+                if updated:
+                    if repo_full not in upd:
+                        upd[repo_full] = []
+                    if oci not in upd[repo_full]:
+                        upd[repo_full].append(oci)
             else:
-                first = False
-            s += "# %s\n%s" % (r, reports[r])
-    print(s)
+                if repo_full not in new:
+                    new[repo_full] = []
+                if oci not in new[repo_full]:
+                    new[repo_full].append(oci)
+
+    if len(new) > 0:
+        print("# New reports\n")
+        print(
+            cvelib.scan.getScanOCIsReport(
+                new,
+                sr.name,
+                with_templates=with_templates,
+                template_urls=template_urls,
+                oci_where_override=oci_where_override,
+            )
+        )
+
+    if len(upd) > 0:
+        print("\n# Updated reports\n")
+        print(
+            cvelib.scan.getScanOCIsReport(
+                upd,
+                sr.name,
+                with_templates=with_templates,
+                template_urls=template_urls,
+                oci_where_override=oci_where_override,
+            )
+        )
+
+    # print("\n# Existing reports\n")
+    # if len(ext) > 0:
+    #    print(
+    #        cvelib.scan.getScanOCIsReport(
+    #            ext,
+    #            sr.name,
+    #            with_templates=with_templates,
+    #            template_urls=template_urls,
+    #            oci_where_override=oci_where_override,
+    #        )
+    #    )
+    # else:
+    #    print("No existing reports")
 
 
 #
