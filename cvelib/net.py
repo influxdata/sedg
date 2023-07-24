@@ -17,6 +17,7 @@ def requestGetRaw(
     """Wrapper around requests.get()"""
     # use the requests-cache module only if it is installed. Disable caching
     # with SEDG_REQUESTS_CACHE=none
+    requests_cache = None
     if (
         "SEDG_REQUESTS_CACHE" not in os.environ
         or os.environ["SEDG_REQUESTS_CACHE"] != "none"
@@ -68,7 +69,22 @@ def requestGetRaw(
         hdrs["Authorization"] = "Bearer %s" % os.getenv("GHTOKEN")
 
     # print("DEBUG: url=%s, headers=%s, params=%s" % (url, hdrs, params))
-    return requests.get(url, headers=hdrs, params=params)
+    res: requests.Response
+    try:
+        res = requests.get(url, headers=hdrs, params=params)
+    except AttributeError as e:  # pragma: nocover
+        # For some reason, requests to GitHub sometimes traceback with
+        # AttibuteError: 'dict' object has no attribute 'raw' when
+        # requests_cache is in use. Let's try to work around that by retrying
+        # without the cache
+        if requests_cache is None:
+            raise
+        warn("requests_cache errored with AttibuteError: %s" % e)
+        warn("Retrying %s without caching" % url)
+        requests_cache.patcher.uninstall_cache()
+        res = requests.get(url, headers=hdrs, params=params)
+
+    return res
 
 
 # TODO: type hint the return value (it's tricky)
