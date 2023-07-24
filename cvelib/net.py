@@ -81,7 +81,7 @@ def requestGetRaw(
             raise
         warn("requests_cache errored with AttibuteError: %s" % e)
         warn("Retrying %s without caching" % url)
-        requests_cache.patcher.uninstall_cache()
+        hdrs["Cache-Control"] = "no-cache"
         res = requests.get(url, headers=hdrs, params=params)
 
     return res
