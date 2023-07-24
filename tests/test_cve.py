@@ -36,6 +36,9 @@ class TestCve(TestCase):
             self.orig_xdg_config_home = None
         cvelib.common.configCache = None
 
+        if "SEDG_EXPERIMENTAL" in os.environ:
+            del os.environ["SEDG_EXPERIMENTAL"]
+
         if self.orig_readCve is not None:
             cvelib.common.readCve = self.orig_readCve
             self.orig_readCve = None
@@ -116,6 +119,7 @@ class TestCve(TestCase):
     def test_onDiskFormat(self):
         """Test onDiskFormat()"""
         self.maxDiff = 4096
+        os.environ["SEDG_EXPERIMENTAL"] = "1"
         tmpl = self._cve_template()
         tmpl[
             "GitHub-Advanced-Security"
