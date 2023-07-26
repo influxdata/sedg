@@ -467,7 +467,6 @@ CVSS:
         name.split("@")[0],
         "CVE-%d-NNNN" % now.year,
         "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
-        # "\n ".join(references + sorted(advisories)),
         "\n ".join(oci_references),
         "s" if plural else "",
         name.split("@")[0],

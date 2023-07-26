@@ -845,15 +845,28 @@ oci/unknown_TBD: needs-triage
                             "status": "needed",
                             "url": "https://blah.com/BAR-a",
                         }
-                    )
+                    ),
+                    cvelib.scan.ScanOCI(
+                        {
+                            "component": "foo",
+                            "detectedIn": "Distro 1.0",
+                            "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0003",
+                            "version": "1.2.2",
+                            "fixedBy": "1.2.3",
+                            "severity": "medium",
+                            "status": "needed",
+                            "url": "https://blah.com/BAR-a",
+                        }
+                    ),
                 ],
                 [],
                 "",
                 """## bar/baz foo template
-Please address foo alert in bar/baz:
+Please address foo alerts in bar/baz:
 
-The following alert was issued:
+The following alerts were issued:
 - [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0002) (medium)
+- [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0003) (medium)
 
 Since a 'medium' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated.
 
@@ -873,13 +886,22 @@ CRD:
 References:
  https://blah.com/BAR-a
 Description:
- Please address alert in bar/baz
- - [ ] foo (medium)
+ Please address alerts in bar/baz
+ - [ ] foo (2 medium)
 Scan-Reports:
  - type: oci
    component: foo
    detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   version: 1.2.2
+   fixedBy: 1.2.3
+   severity: medium
+   status: needed
+   url: https://blah.com/BAR-a
+ - type: oci
+   component: foo
+   detectedIn: Distro 1.0
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0003
    version: 1.2.2
    fixedBy: 1.2.3
    severity: medium
