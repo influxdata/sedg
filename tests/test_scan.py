@@ -602,6 +602,138 @@ class TestScanCommon(TestCase):
             self.assertEqual(expS, resS, msg="url=%s" % url)
             self.assertEqual(expM, resM, msg="url=%s" % url)
 
+    def test_getScanOCIsReport(self):
+        """Test getScanOCIsReport()"""
+        now: datetime.datetime = datetime.datetime.now()
+        self.maxDiff = 8196
+        # oci_reports, scan_type, with_templates, template_urls, where_override, expected
+        tsts = [
+            (
+                {
+                    "some-repo": [
+                        cvelib.scan.ScanOCI(
+                            {
+                                "component": "foo",
+                                "detectedIn": "Distro 1.0",
+                                "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+                                "version": "1.2.2",
+                                "fixedBy": "1.2.2",
+                                "severity": "low",
+                                "status": "released",
+                                "url": "https://blah.com/BAR-a",
+                            }
+                        )
+                    ]
+                },
+                "",
+                False,
+                [],
+                "",
+                """some-repo report: 1
+ - type: oci
+   component: foo
+   detectedIn: Distro 1.0
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.2
+   fixedBy: 1.2.2
+   severity: low
+   status: released
+   url: https://blah.com/BAR-a""",
+            ),
+            (
+                {
+                    "some-repo": [
+                        cvelib.scan.ScanOCI(
+                            {
+                                "component": "foo",
+                                "detectedIn": "Distro 1.0",
+                                "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+                                "version": "1.2.2",
+                                "fixedBy": "1.2.2",
+                                "severity": "low",
+                                "status": "released",
+                                "url": "https://blah.com/BAR-a",
+                            }
+                        )
+                    ]
+                },
+                "quay",
+                True,
+                [],
+                "",
+                """## some-repo quay.io template
+Please address quay.io alert in some-repo:
+
+The following alert was issued:
+- [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0001) (low)
+
+Since a 'low' severity issue is present, tentatively adding the 'security/low' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated.
+
+Thanks!
+
+References:
+ * https://blah.com/BAR-a
+
+## end template
+
+## some-repo CVE template
+Candidate: CVE-%d-NNNN
+OpenDate: %0.2d-%0.2d-%0.2d
+CloseDate:
+PublicDate:
+CRD:
+References:
+ https://blah.com/BAR-a
+Description:
+ Please address alert in some-repo
+ - [ ] foo (low)
+Scan-Reports:
+ - type: oci
+   component: foo
+   detectedIn: Distro 1.0
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.2
+   fixedBy: 1.2.2
+   severity: low
+   status: released
+   url: https://blah.com/BAR-a
+Notes:
+Mitigation:
+Bugs:
+Priority: low
+Discovered-by: quay.io
+Assigned-to:
+CVSS:
+
+Patches_TBD:
+oci/unknown_TBD: needs-triage
+
+## end CVE template
+
+some-repo report: 1
+ - type: oci
+   component: foo
+   detectedIn: Distro 1.0
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.2
+   fixedBy: 1.2.2
+   severity: low
+   status: released
+   url: https://blah.com/BAR-a"""
+                % (now.year, now.year, now.month, now.day),
+            ),
+        ]
+
+        for oci_reports, scan_type, with_templates, template_urls, whr, exp in tsts:
+            res = cvelib.scan.getScanOCIsReport(
+                oci_reports,
+                scan_type,
+                with_templates,
+                template_urls=template_urls,
+                oci_where_override=whr,
+            )
+            self.assertEqual(exp, res)
+
     def test_getScanOCIsReportTemplates(self):
         """Test test_getScanOCIsReportTemplates()"""
         now: datetime.datetime = datetime.datetime.now()
