@@ -28,7 +28,7 @@ class TestScanOCI(TestCase):
         """Returns a valid data structure"""
         return {
             "component": "foo",
-            "detectedIn": "myorg/myimg@sha256:deadbeef",
+            "detectedIn": "Distro 1.0",
             "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
             "version": "1.2.2",
             "fixedBy": "1.2.3",
@@ -43,7 +43,7 @@ class TestScanOCI(TestCase):
         data = self._getValid()
         exp = """ - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.2
    fixedBy: 1.2.3
@@ -59,7 +59,7 @@ class TestScanOCI(TestCase):
         data = self._getValid()
         exp = """ - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.2
    fixedBy: 1.2.3
@@ -79,7 +79,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "cmponent": "foo",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -92,7 +92,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "component": "foo",
-                    "dtectedIn": "myorg/myimg@sha256:deadbeef",
+                    "dtectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -104,7 +104,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "component": "foo",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "avisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -117,7 +117,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "component": "foo",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "vrsion": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -130,7 +130,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "component": "foo",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fxedBy": "1.2.3",
@@ -143,7 +143,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "component": "foo",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -156,7 +156,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "component": "foo",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -169,7 +169,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "component": "foo",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -182,7 +182,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "component": "",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -195,7 +195,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "component": "foo\nbar",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -356,7 +356,7 @@ class TestScanCommon(TestCase):
         """Returns a valid data structure"""
         return """ - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.2
    fixedBy: 1.2.3
@@ -365,7 +365,7 @@ class TestScanCommon(TestCase):
    url: https://blah.com/BAR-a
  - type: oci
    component: baz
-   detectedIn: myorg/myimg2@sha256:deadbeef1
+   detectedIn: Distro 2.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
    version: 2.3.3
    fixedBy: 2.3.4
@@ -374,7 +374,7 @@ class TestScanCommon(TestCase):
    url: https://blah.com/NORF-a
  - type: oci
    component: corge
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0003
    version: 9.2.0-4
    fixedBy: 9.2.0-5
@@ -457,7 +457,7 @@ class TestScanCommon(TestCase):
             cvelib.scan.ScanOCI(
                 {
                     "component": "foo",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fixedBy": "1.2.2",
@@ -469,7 +469,7 @@ class TestScanCommon(TestCase):
             cvelib.scan.ScanOCI(
                 {
                     "component": "foo",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0002",
                     "version": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -481,7 +481,7 @@ class TestScanCommon(TestCase):
             cvelib.scan.ScanOCI(
                 {
                     "component": "baz",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0003",
                     "version": "2.3.4",
                     "fixedBy": "unavailable",
@@ -493,7 +493,7 @@ class TestScanCommon(TestCase):
             cvelib.scan.ScanOCI(
                 {
                     "component": "norf",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0004",
                     "version": "2.3.4",
                     "fixedBy": "2.3.4",
@@ -650,7 +650,7 @@ Description:
 Scan-Reports:
  - type: oci
    component: baz
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0003
    version: 2.3.4
    fixedBy: unavailable
@@ -659,7 +659,7 @@ Scan-Reports:
    url: https://blah.com/BAR-a
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.2
    fixedBy: 1.2.2
@@ -668,7 +668,7 @@ Scan-Reports:
    url: https://blah.com/BAR-a
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
    version: 1.2.2
    fixedBy: 1.2.3
@@ -677,7 +677,7 @@ Scan-Reports:
    url: https://blah.com/BAR-a
  - type: oci
    component: norf
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0004
    version: 2.3.4
    fixedBy: 2.3.4
@@ -705,7 +705,7 @@ oci/unknown_TBD: needs-triage
                     cvelib.scan.ScanOCI(
                         {
                             "component": "foo",
-                            "detectedIn": "myorg/myimg@sha256:deadbeef",
+                            "detectedIn": "Distro 1.0",
                             "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0002",
                             "version": "1.2.2",
                             "fixedBy": "1.2.3",
@@ -746,7 +746,7 @@ Description:
 Scan-Reports:
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
    version: 1.2.2
    fixedBy: 1.2.3
@@ -774,7 +774,7 @@ oci/unknown_TBD: needs-triage
                     cvelib.scan.ScanOCI(
                         {
                             "component": "foo",
-                            "detectedIn": "myorg/myimg@sha256:deadbeef",
+                            "detectedIn": "Distro 1.0",
                             "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0002",
                             "version": "1.2.2",
                             "fixedBy": "1.2.3",
@@ -817,7 +817,7 @@ Description:
 Scan-Reports:
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
    version: 1.2.2
    fixedBy: 1.2.3
@@ -845,7 +845,7 @@ oci/unknown_TBD: needs-triage
                     cvelib.scan.ScanOCI(
                         {
                             "component": "foo",
-                            "detectedIn": "myorg/myimg@sha256:deadbeef",
+                            "detectedIn": "Distro 1.0",
                             "advisory": "unavailable",
                             "version": "1.2.2",
                             "fixedBy": "1.2.3",
@@ -886,7 +886,7 @@ Description:
 Scan-Reports:
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: unavailable
    version: 1.2.2
    fixedBy: 1.2.3
@@ -914,7 +914,7 @@ oci/unknown_TBD: needs-triage
                     cvelib.scan.ScanOCI(
                         {
                             "component": "foo",
-                            "detectedIn": "myorg/myimg@sha256:deadbeef",
+                            "detectedIn": "Distro 1.0",
                             "advisory": "unavailable",
                             "version": "1.2.2",
                             "fixedBy": "1.2.3",
@@ -955,7 +955,7 @@ Description:
 Scan-Reports:
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: unavailable
    version: 1.2.2
    fixedBy: 1.2.3
@@ -983,7 +983,7 @@ oci/unknown_TBD: needs-triage
                     cvelib.scan.ScanOCI(
                         {
                             "component": "foo",
-                            "detectedIn": "myorg/myimg@sha256:deadbeef",
+                            "detectedIn": "Distro 1.0",
                             "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0002",
                             "version": "1.2.2",
                             "fixedBy": "1.2.3",
@@ -1024,7 +1024,7 @@ Description:
 Scan-Reports:
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
    version: 1.2.2
    fixedBy: 1.2.3

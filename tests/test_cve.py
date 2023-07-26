@@ -149,7 +149,7 @@ class TestCve(TestCase):
         ] = """
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.2
    fixedBy: 1.2.3
@@ -158,7 +158,7 @@ class TestCve(TestCase):
    url: https://blah.com/BAR-a
  - type: oci
    component: baz
-   detectedIn: myorg/myimg2@sha256:deadbeef1
+   detectedIn: Distro 2.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
    version: 2.3.3
    fixedBy: 2.3.4
@@ -167,7 +167,7 @@ class TestCve(TestCase):
    url: https://blah.com/NORF-a
  - type: oci
    component: corge
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0003
    version: 9.2.0-4
    fixedBy: 9.2.0-5
@@ -209,7 +209,7 @@ GitHub-Advanced-Security:
 Scan-Reports:
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.2
    fixedBy: 1.2.3
@@ -218,7 +218,7 @@ Scan-Reports:
    url: https://blah.com/BAR-a
  - type: oci
    component: baz
-   detectedIn: myorg/myimg2@sha256:deadbeef1
+   detectedIn: Distro 2.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
    version: 2.3.3
    fixedBy: 2.3.4
@@ -227,7 +227,7 @@ Scan-Reports:
    url: https://blah.com/NORF-a
  - type: oci
    component: corge
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0003
    version: 9.2.0-4
    fixedBy: 9.2.0-5
@@ -1457,7 +1457,7 @@ git/github_norf: needs-triage
                 """
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://blah.com/BAR-a
    version: 1.2.3-0
    fixedBy: 1.2.3-1
@@ -1473,7 +1473,7 @@ git/github_norf: needs-triage
                 """
  - type: oci
    component: bár
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://blah.com/BAR-a
    version: 1.2.3-0
    fixedBy: 1.2.3-1
@@ -1484,7 +1484,7 @@ git/github_norf: needs-triage
                 """invalid Scan-Reports: '
  - type: oci
    component: bár
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://blah.com/BAR-a
    version: 1.2.3-0
    fixedBy: 1.2.3-1
@@ -2248,7 +2248,7 @@ cve-data = %s
             ] = """
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef1
+   detectedIn: Distro 1.01
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.2
    fixedBy: 1.2.3
@@ -2257,7 +2257,7 @@ cve-data = %s
    url: https://quay.io/...
  - type: oci
    component: bar
-   detectedIn: myorg/myimg@sha256:deadbeef1
+   detectedIn: Distro 1.01
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
    version: 2.3.3
    fixedBy: 2.3.4
@@ -2266,7 +2266,7 @@ cve-data = %s
    url: https://console.cloud.google.com/...
  - type: oci
    component: baz
-   detectedIn: myorg/myimg@sha256:deadbeef1
+   detectedIn: Distro 1.01
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
    version: 3.4.4
    fixedBy: 3.4.5
@@ -2303,7 +2303,7 @@ cve-data = %s
         ] = """
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://blah.com/BAR-a
    version: 1.2.3-0
    fixedBy: 1.2.3-1
@@ -2336,7 +2336,7 @@ cve-data = %s
         ] = """
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://blah.com/BAR-a
    version: 1.2.3-0
    fixedBy: 1.2.3-1
@@ -2370,7 +2370,7 @@ cve-data = %s
         ] = """
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://blah.com/BAR-a
    version: 1.2.3-0
    fixedBy: 1.2.3-1
