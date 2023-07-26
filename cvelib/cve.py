@@ -1587,18 +1587,6 @@ def collectGHAlertUrls(cves: List[CVE]) -> Tuple[Set[str], Set[str]]:
     return set(urls), set(dupes)
 
 
-# XXX: unused
-def collectOciAdvisoryUrls(cves: List[CVE]) -> Set[str]:
-    """Collect all known advisory urls"""
-    urls: List[str] = []
-    for cve in cves:
-        a: cvelib.scan.ScanOCI
-        for a in cve.scan_reports:
-            if a.advisory not in urls:
-                urls.append(a.advisory)
-    return set(urls)
-
-
 #
 # CLI mains
 #
