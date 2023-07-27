@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Tuple
 
 from cvelib.common import error, warn, rePatterns, _sorted_json_deep, _experimental
 from cvelib.net import requestGetRaw
-from cvelib.scan import ScanOCI, getScanReport, SecurityReportInterface
+from cvelib.scan import ScanOCI, SecurityReportInterface
 
 
 def _createGARHeaders() -> Dict[str, str]:
@@ -904,7 +904,7 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
     count: int = 0
     for full_name in ocis:
         j: Dict[str, Any] = {}
-        tmp: str = getScanReport(sr, full_name, raw=True, quiet=True)
+        _, tmp = sr.fetchScanReport(full_name, raw=True, quiet=True)
         if "occurrences" in tmp:
             j = json.loads(tmp)
         else:

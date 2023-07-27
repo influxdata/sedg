@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from cvelib.common import error, warn, _sorted_json_deep, _experimental
 from cvelib.net import requestGetRaw
-from cvelib.scan import ScanOCI, SecurityReportInterface, getScanReport
+from cvelib.scan import ScanOCI, SecurityReportInterface
 
 
 def _createQuayHeaders() -> Dict[str, str]:
@@ -519,7 +519,7 @@ Eg, to pull all quay.io security scan reports for org 'foo':
     count: int = 0
     for full_name in ocis:
         j: Dict[str, Any] = {}
-        tmp: str = getScanReport(sr, full_name, raw=True)
+        _, tmp = sr.fetchScanReport(full_name, raw=True, quiet=True)
         if '"status":' in tmp:
             j = json.loads(tmp)
             if j["status"] not in ["queued", "scanned", "unsupported"]:
