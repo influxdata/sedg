@@ -39,48 +39,48 @@ syn match cveId contained "CVE-[0-9][0-9][0-9][0-9]-\([0-9]\{4,12\}\|NNN[0-9]\|N
 syn match cveDate contained "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\( [0-2][0-9]:[0-5][0-9]:[0-5][0-9] \([A-Z][A-Z][A-Z]\|[+-][01][0-9][0-9][0-9]\)\)\?"
 syn match cveStatus contained "\(needs\-triage\|needed\|deferred\|pending\|released\|ignored\|not\-affected\|DNE\)"
 syn match cveStatusExtra contained " (.\+)"
+syn match cvePriorityValue contained "\(negligible\|low\|medium\|high\|critical\)"
+syn match cveTagValue contained "\(apparmor\|fortify-source\|hardlink-restriction\|heap-protector\|limit-report\|pie\|stack-protector\|symlink-restriction\) *"
 
-" Standard keys
-syn match cveKey "^\%(Candidate\|OpenDate\|PublicDate\|CRD\|References\|Description\|GitHub-Advanced-Security\|Scan-Reports\|Notes\|Mitigation\|CVSS\|Bugs\|Discovered-by\|Assigned-to\|Patches_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\): *"
+" Standard keys that don't have any extra data in the key name
+syn match cveKey "^\%(Candidate\|OpenDate\|PublicDate\|CRD\|References\|Description\|GitHub-Advanced-Security\|Scan-Reports\|Notes\|Mitigation\|CVSS\|Bugs\|Discovered-by\|Assigned-to\): *"
 
-" Product/where key
-" <product>[/<where>]_<software>[/<modifier>]:
-syn match cveProductKey "^\%(upstream\|bzr\|cvs\|git\|hg\|svn\|appimage\|archive\|deb\|dmg\|exe\|flatpak\|oci\|rpm\|shell\|snap\|alpine\|android\|centos\|debian\|distroless\|flatcar\|ios\|opensuse\|osx\|rhel\|suse\|ubuntu\|windows\)\(/[a-z0-9+.-]\+\)\?_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+.-]\+\)\?: *"
-"
-" TODO: reuse the above definitions here
-" CloseDates key
 " CloseDate[_<software>[/<modifier>]]: <date>
-syn match cveCloseDateValue contained "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\( [0-2][0-9]:[0-5][0-9]:[0-5][0-9] \([A-Z][A-Z][A-Z]\|[+-][01][0-9][0-9][0-9]\)\)\?"
 syn match cveCloseDateKey "^CloseDate\(_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+.-]\+\)\?\)\?: *"
 
-" TODO: reuse the above definitions here
-" Priorities key
 " Priority[_<software>[/<modifier>]]: <priority>
-syn match cvePriorityValue contained "\(negligible\|low\|medium\|high\|critical\)"
 syn match cvePriorityKey "^Priority\(_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+.-]\+\)\?\)\?: *"
 
-" TODO: reuse the above definitions here
-" Tags key
+" Patches_<software>:
+syn match cvePatchesKey "^Patches_[a-zA-Z0-9][a-zA-Z0-9+._-]\+: *"
+
 " Tags_<software>[/<modifier>]: <tag>
-syn match cveTagValue contained "\(apparmor\|fortify-source\|hardlink-restriction\|heap-protector\|limit-report\|pie\|stack-protector\|symlink-restriction\) *"
 syn match cveTagKey "^Tags_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+.-]\+\)\?: *"
 
-" Fields where we do strict syntax checking
-syn region cveStrictField start="^CloseDate" end="$" contains=cveCloseDateKey,cveCloseDateValue oneline
-syn region cveStrictField start="^Priority" end="$" contains=cvePriorityKey,cvePriorityValue oneline
-syn region cveStrictField start="^Tags" end="$" contains=cveTagKey,cveTagValue oneline
+" <product>[/<where>]_<software>[/<modifier>]:
+syn match cveProductKey "^\%(upstream\|bzr\|cvs\|git\|hg\|svn\|appimage\|archive\|deb\|dmg\|exe\|flatpak\|oci\|rpm\|shell\|snap\|alpine\|android\|centos\|debian\|distroless\|flatcar\|ios\|opensuse\|osx\|rhel\|suse\|ubuntu\|windows\)\(/[a-z0-9+.-]\+\)\?_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+.-]\+\)\?: *"
+
+
+"
+" Extra syntax checking
+"
 syn region cveStrictField start="^Candidate" end="$" contains=cveKey,cveId
 syn region cveStrictField start="^\(OpenDate\|PublicDate\|CRD\)" end="$" contains=cveKey,cveDate
-syn region cveStrictField start="^Patches_" end=":$" contains=cveKey,cveSrcPkg oneline
+
+syn region cveStrictField start="^CloseDate" end="$" contains=cveCloseDateKey,cveDate oneline
+syn region cveStrictField start="^Priority" end="$" contains=cvePriorityKey,cvePriorityValue oneline
+syn region cveStrictField start="^Patches_" end=":$" contains=cvePatchesKey,cveSrcPkg oneline
+syn region cveStrictField start="^Tags" end="$" contains=cveTagKey,cveTagValue oneline
 syn region cveStrictField start="^[a-z/-]\+_" end="$" contains=cveProductKey,cveStatus,cveStatusExtra oneline
 
 " set the highlights
 hi def link cveKey                 Keyword
 hi def link cveCloseDateKey        Keyword
 hi def link cvePriorityKey         Keyword
+hi def link cvePatchesKey          Keyword
 hi def link cveTagKey              Keyword
 hi def link cveProductKey          Keyword
-hi def link cveElse                Normal
 hi def link cveStrictField         Error
+hi def link cveElse                Normal
 
 " vim: ts=8 sw=2
