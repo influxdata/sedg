@@ -41,6 +41,7 @@ syn match cveStatus contained "\(needs\-triage\|needed\|deferred\|pending\|relea
 syn match cveStatusExtra contained " (.\+)"
 syn match cvePriorityValue contained "\(negligible\|low\|medium\|high\|critical\)"
 syn match cvePatchesValue contained /^ \(distro\|other\|upstream\|vendor\|break-fix\): .\+$/
+syn match cveListURLs contained /^ \(cvs\|ftp\|git\|https\?\|sftp\|shttp\|svn\):\/\/.\+$/
 syn match cveTagValue contained "\(apparmor\|fortify-source\|hardlink-restriction\|heap-protector\|limit-report\|pie\|stack-protector\|symlink-restriction\) *"
 
 " this could use a subgroup for each of type of alert
@@ -71,6 +72,7 @@ syn match cveProductKey "^\%(upstream\|bzr\|cvs\|git\|hg\|svn\|appimage\|archive
 "
 syn region cveStrictField start="^Candidate" end="$" contains=cveKey,cveId
 syn region cveStrictField start="^\(OpenDate\|PublicDate\|CRD\)" end="$" contains=cveKey,cveDate
+syn region cveStrictField start="^\(References\|Bugs\)" end=/^[^ ]/me=s-1 contains=cveKey,cveListURLs
 syn region cveStrictField start="^Notes" end=/^[^ ]/me=s-1 contains=cveKey,cveNotesValue
 syn region cveStrictField start="^GitHub-Advanced-Security" end=/^[^ ]/me=s-1 contains=cveKey,cveGHASValue
 syn region cveStrictField start="^Scan-Reports" end=/^[^ ]/me=s-1 contains=cveKey,cveScanReportsValue
