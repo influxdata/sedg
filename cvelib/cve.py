@@ -604,7 +604,7 @@ CVSS:%(cvss)s
             elif key == "Description":
                 self._verifyDescription(key, val)
             elif key == "Notes":
-                self._verifyDescription(key, val)
+                self._verifyNotes(key, val)
             elif key == "Bugs":
                 self._verifyBugs(key, val)
             elif key == "Priority":
@@ -763,8 +763,41 @@ CVSS:%(cvss)s
 
     def _verifyNotes(self, key: str, val: str) -> None:
         """Verify CVE Notes"""
+        # Notes:
+        #  handle> blah
+        #   blah
+        #  @handle>
+        #   blah
+        #   .
+        #   blah
         if val != "":  # empty is ok
             self._verifyMultiline(key, val, allow_utf8=True)
+
+        # extended validation
+        lines: List[str] = val.splitlines()
+
+        # first is newline, 2nd is start of notes. If no notes, no extended
+        # validation
+        if len(lines) < 2:
+            return
+
+        handle: str = "@?[a-zA-Z0-9._-]+>"
+
+        # first entry must start with a handle
+        pat_handle: Pattern = re.compile(r"^ %s" % handle)
+        if not pat_handle.search(lines[1]):
+            raise CveException(
+                "invalid Notes: '%s' (first line should conform to ' handle> text...')"
+                % lines[1]
+            )
+
+        pat_either: Pattern = re.compile(r"^ (%s| [^\n])" % handle)
+        for line in lines[2:]:
+            if not pat_either.search(line):
+                raise CveException(
+                    "invalid Notes: '%s' (line should conform to ' handle> text...' or '  text...')"
+                    % line
+                )
 
     def _verifyMitigation(self, key: str, val: str) -> None:
         """Verify CVE Mitigation"""

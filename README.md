@@ -223,6 +223,7 @@ Items within `[]` are optional.
        severity: low | moderate | high | critical
        status: needs-triage|needed|released|dismissed (<reason>; <who>)
        url: <url to scan report> | unavailable]
+    Notes:
      person> One line note
      person> Multi-line note. Lorem ipsum dolor sit amet, consectetur adipiscing
       elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.

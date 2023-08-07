@@ -1262,8 +1262,8 @@ git/github_norf: needs-triage
                         fn(tstType, val)
                     self.assertEqual(err % {"key": tstType}, str(context.exception))
 
-    def test__verifyDescriptionAndNotesAndMitigation(self):
-        """Test _verifyDescription(), _verifyNotes() and _verifyMitigation()"""
+    def test__verifyDescriptionAndMitigation(self):
+        """Test _verifyDescription() and _verifyMitigation()"""
         tsts = [
             # valid
             ("\n foo", None),
@@ -1281,8 +1281,6 @@ git/github_norf: needs-triage
             fn = None
             if tstType == "Description":
                 fn = cvelib.cve.CVE()._verifyDescription
-            elif tstType == "Notes":
-                fn = cvelib.cve.CVE()._verifyNotes
             elif tstType == "Mitigation":
                 fn = cvelib.cve.CVE()._verifyMitigation
             else:  # pragma: nocover
@@ -1295,6 +1293,46 @@ git/github_norf: needs-triage
                     with self.assertRaises(cvelib.common.CveException) as context:
                         fn(tstType, val)
                     self.assertEqual(err % {"key": tstType}, str(context.exception))
+
+    def test__verifyNotes(self):
+        """Test _verifyNotes()"""
+        self.maxDiff = 4096
+        tsts = [
+            # valid
+            ("\n handle> blah", None),
+            ("\n handle> blah\n  blah", None),
+            ("\n handle> blah\n  blah\n  .\n  blah blah", None),
+            ("\n @handle> blah", None),
+            # invalid
+            ("\n", "invalid Notes (empty)"),
+            ("\nfoo", "invalid Notes: '\nfoo' (missing leading space)"),
+            ("\n\n foo", "invalid Notes: '\n\n foo' (empty line)"),
+            ("single line", "invalid Notes: 'single line' (missing leading newline)"),
+            (
+                "\n missing handle prefix1",
+                "invalid Notes: ' missing handle prefix1' (first line should conform to ' handle> text...')",
+            ),
+            (
+                "\n  missing handle prefix2",
+                "invalid Notes: '  missing handle prefix2' (first line should conform to ' handle> text...')",
+            ),
+            (
+                "\n handle> blah\n missing handle prefix3",
+                "invalid Notes: ' missing handle prefix3' (line should conform to ' handle> text...' or '  text...')",
+            ),
+            (
+                "\n handle> blah\n missing 2nd leading space",
+                "invalid Notes: ' missing 2nd leading space' (line should conform to ' handle> text...' or '  text...')",
+            ),
+        ]
+
+        for val, err in tsts:
+            if not err:
+                cvelib.cve.CVE()._verifyNotes("Notes", val)
+            else:
+                with self.assertRaises(cvelib.common.CveException) as context:
+                    cvelib.cve.CVE()._verifyNotes("Notes", val)
+                self.assertEqual(err, str(context.exception))
 
     def test__verifyDiscoveredByAndAssignedTo(self):
         """Test _verifyDiscoveredBy() and _verifyAssignedTo"""
