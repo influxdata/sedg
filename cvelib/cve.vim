@@ -34,13 +34,13 @@ syn case match
 " Everything that is not explicitly matched by the rules below
 syn match cveElse "^.*$"
 
-syn match cveSrcPkg contained "[a-zA-Z0-9][a-zA-Z0-9+._-]\+"
 syn match cveId contained "CVE-[0-9][0-9][0-9][0-9]-\([0-9]\{4,12\}\|NNN[0-9]\|NN[0-9][0-9]\|N[0-9]\{3,11\}\|GH[0-9]\+#[a-zA-Z0-9+._-]\+\)"
 syn match cveDate contained "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\( [0-2][0-9]:[0-5][0-9]:[0-5][0-9] \([A-Z][A-Z][A-Z]\|[+-][01][0-9][0-9][0-9]\)\)\?"
 syn match cveNotesValue contained /^\( @\?[a-zA-Z0-9._-]\+>.*\|  .\+\)$/
 syn match cveStatus contained "\(needs\-triage\|needed\|deferred\|pending\|released\|ignored\|not\-affected\|DNE\)"
 syn match cveStatusExtra contained " (.\+)"
 syn match cvePriorityValue contained "\(negligible\|low\|medium\|high\|critical\)"
+syn match cvePatchesValue contained /^ \(distro\|other\|upstream\|vendor\|break-fix\): .\+$/
 syn match cveTagValue contained "\(apparmor\|fortify-source\|hardlink-restriction\|heap-protector\|limit-report\|pie\|stack-protector\|symlink-restriction\) *"
 
 " this could use a subgroup for each of type of alert
@@ -77,7 +77,7 @@ syn region cveStrictField start="^Scan-Reports" end=/^[^ ]/me=s-1 contains=cveKe
 
 syn region cveStrictField start="^CloseDate" end="$" contains=cveCloseDateKey,cveDate oneline
 syn region cveStrictField start="^Priority" end="$" contains=cvePriorityKey,cvePriorityValue oneline
-syn region cveStrictField start="^Patches_" end=":$" contains=cvePatchesKey,cveSrcPkg oneline
+syn region cveStrictField start="^Patches_" end=/^[^ ]/me=s-1 contains=cvePatchesKey,cvePatchesValue
 syn region cveStrictField start="^Tags" end="$" contains=cveTagKey,cveTagValue oneline
 syn region cveStrictField start="^[a-z/-]\+_" end="$" contains=cveProductKey,cveStatus,cveStatusExtra oneline
 
