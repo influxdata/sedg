@@ -37,6 +37,7 @@ syn match cveElse "^.*$"
 syn match cveSrcPkg contained "[a-zA-Z0-9][a-zA-Z0-9+._-]\+"
 syn match cveId contained "CVE-[0-9][0-9][0-9][0-9]-\([0-9]\{4,12\}\|NNN[0-9]\|NN[0-9][0-9]\|N[0-9]\{3,11\}\|GH[0-9]\+#[a-zA-Z0-9+._-]\+\)"
 syn match cveDate contained "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\( [0-2][0-9]:[0-5][0-9]:[0-5][0-9] \([A-Z][A-Z][A-Z]\|[+-][01][0-9][0-9][0-9]\)\)\?"
+syn match cveNotesValue contained /^\( @\?[a-zA-Z0-9._-]\+>.*\|  .\+\)$/
 syn match cveStatus contained "\(needs\-triage\|needed\|deferred\|pending\|released\|ignored\|not\-affected\|DNE\)"
 syn match cveStatusExtra contained " (.\+)"
 syn match cvePriorityValue contained "\(negligible\|low\|medium\|high\|critical\)"
@@ -66,6 +67,7 @@ syn match cveProductKey "^\%(upstream\|bzr\|cvs\|git\|hg\|svn\|appimage\|archive
 "
 syn region cveStrictField start="^Candidate" end="$" contains=cveKey,cveId
 syn region cveStrictField start="^\(OpenDate\|PublicDate\|CRD\)" end="$" contains=cveKey,cveDate
+syn region cveStrictField start="^Notes" end=/^[^ ]/me=s-1 contains=cveKey,cveNotesValue
 
 syn region cveStrictField start="^CloseDate" end="$" contains=cveCloseDateKey,cveDate oneline
 syn region cveStrictField start="^Priority" end="$" contains=cvePriorityKey,cvePriorityValue oneline
