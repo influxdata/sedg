@@ -45,6 +45,7 @@ syn match cveTagValue contained "\(apparmor\|fortify-source\|hardlink-restrictio
 
 " this could use a subgroup for each of type of alert
 syn match cveGHASValue contained /^ \(- type: \(dependabot\|secret-scanning\|code-scanning\)\|  \(dependency\|secret\|description\|detectedIn\): .\+\|  severity: \(low\|medium\|high\|critical\)\|  status: \(needs-triage\|needed\|released\|removed\|dismissed (\(started\|no-bandwidth\|tolerable\|inaccurate\|code-not-used\|auto\|revoked\|false-positive\|used-in-tests\|wont-fix\); [a-zA-Z0-9._-]\+)\)\|  \(advisory\|url\): \(https:\/\/.\+\|unavailable\)\)$/
+syn match cveScanReportsValue contained /^ \(- type: oci\|  \(component\|detectedIn\|version\|fixedBy\): .\+\|  severity: \(negligible\|low\|medium\|high\|critical\|unknown\)\|  status: \(needs-triage\|needed\|released\|dismissed (\(tolerable\|code-not-used\); [a-zA-Z0-9._-]\+)\)\|  \(advisory\|url\): \(https:\/\/.\+\|unavailable\)\)$/
 
 " Standard keys that don't have any extra data in the key name
 syn match cveKey "^\%(Candidate\|OpenDate\|PublicDate\|CRD\|References\|Description\|GitHub-Advanced-Security\|Scan-Reports\|Notes\|Mitigation\|CVSS\|Bugs\|Discovered-by\|Assigned-to\): *"
@@ -72,6 +73,7 @@ syn region cveStrictField start="^Candidate" end="$" contains=cveKey,cveId
 syn region cveStrictField start="^\(OpenDate\|PublicDate\|CRD\)" end="$" contains=cveKey,cveDate
 syn region cveStrictField start="^Notes" end=/^[^ ]/me=s-1 contains=cveKey,cveNotesValue
 syn region cveStrictField start="^GitHub-Advanced-Security" end=/^[^ ]/me=s-1 contains=cveKey,cveGHASValue
+syn region cveStrictField start="^Scan-Reports" end=/^[^ ]/me=s-1 contains=cveKey,cveScanReportsValue
 
 syn region cveStrictField start="^CloseDate" end="$" contains=cveCloseDateKey,cveDate oneline
 syn region cveStrictField start="^Priority" end="$" contains=cvePriorityKey,cvePriorityValue oneline
