@@ -905,10 +905,9 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
     for full_name in ocis:
         j: Dict[str, Any] = {}
         _, tmp = sr.fetchScanReport(full_name, raw=True, quiet=True)
-        if "occurrences" in tmp:
-            j = json.loads(tmp)
-        else:
+        if "occurrences" not in tmp:
             continue
+        j = json.loads(tmp)
 
         # GAR API should guarantee this...
         ok = True

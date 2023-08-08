@@ -1209,6 +1209,31 @@ class TestGAR(TestCase):
         self.assertEqual("Updated: %s" % relfn, output.getvalue().strip())
         self.assertEqual("", error.getvalue().strip())
 
+        # no occurences
+        mock_getOCIsForNamespace.return_value = [
+            (
+                "projects/valid-proj/locations/us/repositories/valid-repo/valid-name2",
+                1684472852,
+            ),
+        ]
+        mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name2@deadbeef"
+        mock_fetchScanReport.return_value = ([], "{}")
+        with mock.patch(
+            "argparse._sys.argv",
+            [
+                "_",
+                "--path",
+                self.tmpdir + "/subdir",
+                "--name",
+                "valid-proj/us",
+            ],
+        ):
+            cvelib.gar.main_gar_dump_reports()
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.gar.main_gar_dump_reports()
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual("ERROR: No new security reports", error.getvalue().strip())
+
     # Note, these are listed in reverse order ot the arguments to test_...
     @mock.patch("cvelib.gar.GARSecurityReportNew.fetchScanReport")
     @mock.patch("cvelib.gar.GARSecurityReportNew.getDigestForImage")
