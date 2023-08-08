@@ -922,7 +922,7 @@ oci/unknown_TBD: needs-triage
                 % (now.year, now.year, now.month, now.day),
             ),
             (
-                "foo",
+                "gar",
                 "bar/baz",
                 [
                     cvelib.scan.ScanOCI(
@@ -940,8 +940,8 @@ oci/unknown_TBD: needs-triage
                 ],
                 ["https://some/url", "https://some/other/url"],
                 "",
-                """## bar/baz foo template
-Please address foo alert in bar/baz:
+                """## bar/baz GAR template
+Please address GAR alert in bar/baz:
 
 The following alert was issued:
 - [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0002) (medium)
@@ -982,7 +982,78 @@ Notes:
 Mitigation:
 Bugs:
 Priority: medium
-Discovered-by: foo
+Discovered-by: gar
+Assigned-to:
+CVSS:
+
+Patches_TBD:
+oci/unknown_TBD: needs-triage
+
+## end CVE template"""
+                % (now.year, now.year, now.month, now.day),
+            ),
+            (
+                "quay",
+                "bar/baz",
+                [
+                    cvelib.scan.ScanOCI(
+                        {
+                            "component": "foo",
+                            "detectedIn": "Distro 1.0",
+                            "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0002",
+                            "version": "1.2.2",
+                            "fixedBy": "1.2.3",
+                            "severity": "medium",
+                            "status": "needed",
+                            "url": "https://blah.com/BAR-a",
+                        }
+                    )
+                ],
+                ["https://some/url", "https://some/other/url"],
+                "",
+                """## bar/baz quay.io template
+Please address quay.io alert in bar/baz:
+
+The following alert was issued:
+- [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0002) (medium)
+
+Since a 'medium' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated.
+
+Thanks!
+
+References:
+ * https://some/url
+ * https://some/other/url
+ * https://blah.com/BAR-a
+
+## end template
+
+## bar/baz CVE template
+Candidate: CVE-%d-NNNN
+OpenDate: %0.2d-%0.2d-%0.2d
+CloseDate:
+PublicDate:
+CRD:
+References:
+ https://blah.com/BAR-a
+Description:
+ Please address alert in bar/baz
+ - [ ] foo (medium)
+Scan-Reports:
+ - type: oci
+   component: foo
+   detectedIn: Distro 1.0
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   version: 1.2.2
+   fixedBy: 1.2.3
+   severity: medium
+   status: needed
+   url: https://blah.com/BAR-a
+Notes:
+Mitigation:
+Bugs:
+Priority: medium
+Discovered-by: quay.io
 Assigned-to:
 CVSS:
 
