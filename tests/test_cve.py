@@ -31,7 +31,7 @@ class TestCve(TestCase):
         if self.orig_xdg_config_home is None:
             if "XDG_CONFIG_HOME" in os.environ:
                 del os.environ["XDG_CONFIG_HOME"]
-        else:
+        else:  # pragma: nocover
             os.environ["XDG_CONFIG_HOME"] = self.orig_xdg_config_home
             self.orig_xdg_config_home = None
         cvelib.common.configCache = None
