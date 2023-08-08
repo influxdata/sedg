@@ -3695,6 +3695,80 @@ Totals:
 - negligible: 0 in 0 repos"""
         self.assertEqual(exp, output.getvalue().strip())
 
+        # mock some data by calling collectCVEData() like bin/cve-report and
+        # filter out software
+        cveDirs = self._mock_cve_data_ghas_mixed()
+        cves = cvelib.cve.collectCVEData(
+            cveDirs, False, filter_status="needs-triage,needed,pending,released"
+        )
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSummaryGHAS(
+                cves, "nonexistent", report_output=cvelib.report.ReportOutput.BOTH
+            )
+        self.assertEqual("", error.getvalue().strip())
+        exp = """# Open
+
+Priority   Repository           Affected                            CVEs
+--------   ----------           --------                            ----
+
+Totals:
+- critical: 0 in 0 repos
+- high: 0 in 0 repos
+- medium: 0 in 0 repos
+- low: 0 in 0 repos
+- negligible: 0 in 0 repos
+
+
+# Closed
+
+Priority   Repository           Affected                            CVEs
+--------   ----------           --------                            ----
+
+Totals:
+- critical: 0 in 0 repos
+- high: 0 in 0 repos
+- medium: 0 in 0 repos
+- low: 0 in 0 repos
+- negligible: 0 in 0 repos"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        # mock some data by calling collectCVEData() like bin/cve-report and
+        # filter out priority
+        cveDirs = self._mock_cve_data_ghas_mixed()
+        cves = cvelib.cve.collectCVEData(
+            cveDirs, False, filter_status="needs-triage,needed,pending,released"
+        )
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSummaryGHAS(
+                cves, "nonexistent", report_output=cvelib.report.ReportOutput.BOTH
+            )
+        self.assertEqual("", error.getvalue().strip())
+        exp = """# Open
+
+Priority   Repository           Affected                            CVEs
+--------   ----------           --------                            ----
+
+Totals:
+- critical: 0 in 0 repos
+- high: 0 in 0 repos
+- medium: 0 in 0 repos
+- low: 0 in 0 repos
+- negligible: 0 in 0 repos
+
+
+# Closed
+
+Priority   Repository           Affected                            CVEs
+--------   ----------           --------                            ----
+
+Totals:
+- critical: 0 in 0 repos
+- high: 0 in 0 repos
+- medium: 0 in 0 repos
+- low: 0 in 0 repos
+- negligible: 0 in 0 repos"""
+        self.assertEqual(exp, output.getvalue().strip())
+
     def test__main_report_parse_args(self):
         """Test _main_report_parse_args"""
         # invalid invocations
@@ -3978,6 +4052,7 @@ Totals:
                 ["influxdb"],
                 'cvelog,priority=high,status=needed,product=git,where=org id="CVE-2022-GH2#bar",software="bar",modifier="" ',
             ),
+            (["influxdb", "--software='nonexistent'"], ""),
             (
                 ["influxdb", "--starttime", "1"],
                 'cvelog,priority=high,status=needed,product=git,where=org id="CVE-2022-GH2#bar",software="bar",modifier="" ',
@@ -4177,12 +4252,20 @@ template-urls = https://url1,https://url2
             exp in out.strip(), msg="Could not find '%s' in: %s" % (exp, out)
         )
 
-    @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
-    def test_main_report_gh_multiple(self, _):  # 2nd arg is mock_get
+    @mock.patch("cvelib.report.getMissingReport")
+    @mock.patch("cvelib.report.getUpdatedReport")
+    @mock.patch("cvelib.report.getGHAlertsReport")
+    def test_main_report_gh_multiple(
+        self, mock_getGHAlertsReport, mock_getUpdatedReport, mock_getMissingReport
+    ):  # 2nd arg is mock_get
         """Test main_report - gh --alerts --updated --missing"""
+        mock_getGHAlertsReport.return_value = None
+        mock_getUpdatedReport.return_value = None
+        mock_getMissingReport.return_value = None
         self._mock_cve_data_mixed()
         args = [
             "gh",
+            "--alerts",
             "--updated",
             "--missing",
             "--org",
@@ -4196,6 +4279,10 @@ template-urls = https://url1,https://url2
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
         out = output.getvalue()
+        exp = "# Alerts"
+        self.assertTrue(
+            exp in out.strip(), msg="Could not find '%s' in: %s" % (exp, out)
+        )
         exp = "# Missing"
         self.assertTrue(
             exp in out.strip(), msg="Could not find '%s' in: %s" % (exp, out)
@@ -4340,6 +4427,21 @@ template-urls = https://url1,https://url2
             "# New reports\n\nvalid-org/valid-repo report: 1" in output.getvalue(),
             msg="output is:\n%s" % output.getvalue().strip(),
         )
+
+        # with image digest, bad
+        mock_fetchScanReport.return_value = [], "bad"
+        args = [
+            "quay",
+            "--alerts",
+            "--namespace",
+            "valid-org",
+            "--images",
+            "valid-repo@sha256:deadbeef",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual("WARN: bad", error.getvalue().strip())
 
         # without image digest, bad result
         mock_fetchScanReport.return_value = [], ""
