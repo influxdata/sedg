@@ -125,7 +125,7 @@ class TestCommon(TestCase):
 
     def test_getCacheDirPath(self):
         """Test getCacheDirPath()"""
-        if "XDG_CACHE_HOME" in os.environ:
+        if "XDG_CACHE_HOME" in os.environ:  # pragma: nocover
             self.orig_xdg_config_home = os.environ["XDG_CACHE_HOME"]
 
         os.environ["XDG_CACHE_HOME"] = "/fake/.cache"
