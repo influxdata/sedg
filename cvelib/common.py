@@ -326,7 +326,7 @@ def recursive_rm(dirPath: str, contents_only: bool = False, top: bool = True) ->
 
     try:
         names: List[str] = os.listdir(dirPath)
-    except PermissionError:
+    except PermissionError:  # pragma: nocover
         # If directory has weird permissions (eg, 000), just try to remove the
         # directory if we can. If it is non-empty, we'll legitimately fail
         # here. This allows us to remove empty directories with weird
@@ -341,7 +341,7 @@ def recursive_rm(dirPath: str, contents_only: bool = False, top: bool = True) ->
         else:
             try:
                 recursive_rm(path, top=False)
-            except PermissionError:
+            except PermissionError:  # pragma: nocover
                 os.chmod(path, 0o0755)  # LP: #1712476
                 recursive_rm(path, top=False)
 
