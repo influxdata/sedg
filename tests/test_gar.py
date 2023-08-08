@@ -11,6 +11,7 @@ from unittest import TestCase, mock
 
 import cvelib.common
 import cvelib.gar
+import cvelib.scan
 import tests.testutil
 
 
@@ -899,72 +900,67 @@ class TestGAR(TestCase):
     # Note, these are listed in reverse order ot the arguments to test_...
     @mock.patch("cvelib.gar.getGARDiscovery")
     @mock.patch("requests.get")
-    def test_getSecurityReport(self, mock_get, mock_getGARDiscovery):
-        """Test getSecurityReport()"""
+    def test_fetchScanReport(self, mock_get, mock_getGARDiscovery):
+        """Test fetchScanReport()"""
         self.maxDiff = 2048
 
         mr = self._mock_response_for_gar(self._validGARReport())
         mock_get.return_value = mr
         gsr = cvelib.gar.GARSecurityReportNew()
-        res = gsr.getSecurityReport(
+        res, resMsg = gsr.fetchScanReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
         )
-        exp = """valid-proj/us/valid-repo/valid-name report: 1
- - type: oci
-   component: ncurses
-   detectedIn: cpe:/o:debian:debian_linux:11
-   advisory: https://www.cve.org/CVERecord?id=CVE-2022-29458
-   version: 6.2+20201114-2
-   fixedBy: 6.2+20201114-2+deb11u1
-   severity: medium
-   status: needed
-   url: https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:3fa5256ad34b31901ca30021c722fc7ba11a66ca070c8442862205696b908ddb"""
-        self.assertEqual(exp, res)
-        self.assertFalse("## valid-proj/us/valid-repo/valid-name GAR template" in res)
-
-        # with_templates=True
-        res = gsr.getSecurityReport(
-            "valid-proj/us/valid-repo/valid-name@sha256:deadbeef", with_templates=True
+        self.assertEqual("", resMsg)
+        self.assertEqual(1, len(res))
+        self.assertEqual(1, len(res))
+        self.assertEqual(res[0].component, "ncurses")
+        self.assertEqual(res[0].detectedIn, "cpe:/o:debian:debian_linux:11")
+        self.assertEqual(
+            res[0].advisory,
+            "https://www.cve.org/CVERecord?id=CVE-2022-29458",
         )
-        self.assertTrue("## valid-proj/us/valid-repo/valid-name GAR template" in res)
+        self.assertEqual(res[0].versionAffected, "6.2+20201114-2")
+        self.assertEqual(res[0].versionFixed, "6.2+20201114-2+deb11u1")
+        self.assertEqual(res[0].severity, "medium")
+        self.assertEqual(res[0].status, "needed")
+        self.assertEqual(
+            res[0].url,
+            "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:3fa5256ad34b31901ca30021c722fc7ba11a66ca070c8442862205696b908ddb",
+        )
 
-        # fixable=True
+        # fixable=False
         d = self._validGARReport()
         del d["occurrences"][0]["vulnerability"]["packageIssue"][0]["fixedVersion"][
             "fullName"
         ]
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
-        res = gsr.getSecurityReport(
+        res, resMsg = gsr.fetchScanReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef", fixable=False
         )
-        exp = """valid-proj/us/valid-repo/valid-name report: 1
- - type: oci
-   component: ncurses
-   detectedIn: cpe:/o:debian:debian_linux:11
-   advisory: https://www.cve.org/CVERecord?id=CVE-2022-29458
-   version: 6.2+20201114-2
-   fixedBy: unknown
-   severity: medium
-   status: needs-triage
-   url: https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:3fa5256ad34b31901ca30021c722fc7ba11a66ca070c8442862205696b908ddb"""
-        self.assertEqual(exp, res)
+        self.assertEqual("", resMsg)
+        self.assertEqual(1, len(res))
+        self.assertEqual(res[0].component, "ncurses")
+        self.assertEqual(res[0].versionAffected, "6.2+20201114-2")
+        self.assertEqual(res[0].versionFixed, "unknown")
 
-        # fixable=False
-        res = gsr.getSecurityReport(
+        # fixable=True
+        res, resMsg = gsr.fetchScanReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef", fixable=True
         )
-        self.assertEqual("valid-proj/us/valid-repo/valid-name report: 0", res)
+        self.assertEqual("", resMsg)
+        self.assertEqual(0, len(res))
 
         # priorities - not present
         d = self._validGARReport()
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
-        res = gsr.getSecurityReport(
+        res, resMsg = gsr.fetchScanReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef",
             priorities=["negligible"],
         )
-        self.assertEqual("valid-proj/us/valid-repo/valid-name report: 0", res)
+        self.assertEqual("", resMsg)
+        self.assertEqual(0, len(res))
 
         # priorities - present
         d = self._validGARReport()
@@ -973,55 +969,53 @@ class TestGAR(TestCase):
         ] = "NEGLIGIBLE"
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
-        res = gsr.getSecurityReport(
+        res, resMsg = gsr.fetchScanReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef",
             priorities=["negligible"],
         )
-        exp = """valid-proj/us/valid-repo/valid-name report: 1
- - type: oci
-   component: ncurses
-   detectedIn: cpe:/o:debian:debian_linux:11
-   advisory: https://www.cve.org/CVERecord?id=CVE-2022-29458
-   version: 6.2+20201114-2
-   fixedBy: 6.2+20201114-2+deb11u1
-   severity: negligible
-   status: needed
-   url: https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:3fa5256ad34b31901ca30021c722fc7ba11a66ca070c8442862205696b908ddb"""
-        self.assertEqual(exp, res)
+        self.assertEqual("", resMsg)
+        self.assertEqual(1, len(res))
+        self.assertEqual(res[0].component, "ncurses")
+        self.assertEqual(res[0].versionAffected, "6.2+20201114-2")
+        self.assertEqual(res[0].versionFixed, "6.2+20201114-2+deb11u1")
+        self.assertEqual(res[0].severity, "negligible")
 
         # clean
         mr = self._mock_response_for_gar("{}")
         mock_get.return_value = mr
         mock_getGARDiscovery.return_value = "CLEAN"
-        res = gsr.getSecurityReport(
+        res, resMsg = gsr.fetchScanReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
         )
-        self.assertEqual("No problems found", res)
+        self.assertEqual(0, len(res))
+        self.assertTrue("No problems found" in resMsg)
 
         # inactive
         mr = self._mock_response_for_gar("{}")
         mock_get.return_value = mr
         mock_getGARDiscovery.return_value = "INACTIVE"
-        res = gsr.getSecurityReport(
+        res, resMsg = gsr.fetchScanReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
         )
-        self.assertEqual("No scan results for this inactive image", res)
+        self.assertEqual("No scan results for this inactive image", resMsg)
+        self.assertEqual(0, len(res))
 
         # raw
         mr = self._mock_response_for_gar(self._validGARReport())
         mock_get.return_value = mr
-        res = gsr.getSecurityReport(
+        res, resMsg = gsr.fetchScanReport(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef", raw=True
         )
         exp = '"occurrences":'
-        self.assertTrue(exp in res)
+        self.assertTrue(exp in resMsg)
+        self.assertEqual(0, len(res))
 
         # raw no scan results
         mr = self._mock_response_for_gar("{}")
         mock_get.return_value = mr
         mock_getGARDiscovery.return_value = "UNSUPPORTED"
         with tests.testutil.capturedOutput() as (output, error):
-            res = gsr.getSecurityReport(
+            res, resMsg = gsr.fetchScanReport(
                 "valid-proj/us/valid-repo/valid-name@sha256:deadbeef", raw=True
             )
         self.assertEqual("", output.getvalue().strip())
@@ -1029,26 +1023,30 @@ class TestGAR(TestCase):
             "no scan results for valid-repo/valid-name: UNSUPPORTED"
             in error.getvalue().strip()
         )
-        self.assertEqual("", res)
+        self.assertEqual("", resMsg)
+        self.assertEqual(0, len(res))
 
         # bad invocation
         with tests.testutil.capturedOutput() as (output, error):
-            gsr.getSecurityReport("valid-proj/us/valid-repo/valid-name")
+            res, resMsg = gsr.fetchScanReport("valid-proj/us/valid-repo/valid-name")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Please use PROJECT/LOCATION/REPO/IMGNAME@sha256:<sha256>"
             in error.getvalue().strip()
         )
+        self.assertEqual("", resMsg)
+        self.assertEqual(0, len(res))
 
         # bad status
         mr = self._mock_response_for_gar({}, status=404)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = gsr.getSecurityReport(
+            res, resMsg = gsr.fetchScanReport(
                 "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
             )
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Could not fetch" in error.getvalue().strip())
+        self.assertEqual("", resMsg)
         self.assertEqual(0, len(res))
 
         # bad responses
@@ -1058,7 +1056,7 @@ class TestGAR(TestCase):
         mock_get.return_value = mr
         mock_getGARDiscovery.return_value = "UNSUPPORTED"
         with tests.testutil.capturedOutput() as (output, error):
-            res = gsr.getSecurityReport(
+            res, resMsg = gsr.fetchScanReport(
                 "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
             )
         self.assertEqual("", output.getvalue().strip())
@@ -1066,19 +1064,23 @@ class TestGAR(TestCase):
             "no scan results for valid-repo/valid-name: UNSUPPORTED"
             in error.getvalue().strip()
         )
+        self.assertEqual("No scan results for this unsupported image", resMsg)
+        self.assertEqual(0, len(res))
 
         d = self._validGARReport()
         d["occurrences"] = []
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = gsr.getSecurityReport(
+            res, resMsg = gsr.fetchScanReport(
                 "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
             )
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "no scan results for valid-repo/valid-name" in error.getvalue().strip()
         )
+        self.assertEqual("No scan results for this unsupported image", resMsg)
+        self.assertEqual(0, len(res))
 
         d = self._validGARReport()
         del d["occurrences"]
@@ -1086,7 +1088,7 @@ class TestGAR(TestCase):
         mr = self._mock_response_for_gar(d)
         mock_get.return_value = mr
         with tests.testutil.capturedOutput() as (output, error):
-            res = gsr.getSecurityReport(
+            res, resMsg = gsr.fetchScanReport(
                 "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
             )
         self.assertEqual("", output.getvalue().strip())
@@ -1094,6 +1096,8 @@ class TestGAR(TestCase):
             "no scan results for valid-repo/valid-name" in error.getvalue().strip(),
             msg="error=%s" % error.getvalue().strip(),
         )
+        self.assertEqual("No scan results for this unsupported image", resMsg)
+        self.assertEqual(0, len(res))
 
     # Note, these are listed in reverse order ot the arguments to test_...
     @mock.patch("cvelib.gar.getGAROCIForRepo")
@@ -1130,14 +1134,14 @@ class TestGAR(TestCase):
         self.assertTrue("Please use PROJECT/LOCATION" in error.getvalue().strip())
 
     # Note, these are listed in reverse order ot the arguments to test_...
-    @mock.patch("cvelib.gar.GARSecurityReportNew.getSecurityReport")
+    @mock.patch("cvelib.gar.GARSecurityReportNew.fetchScanReport")
     @mock.patch("cvelib.gar.GARSecurityReportNew.getDigestForImage")
     @mock.patch("cvelib.gar.GARSecurityReportNew.getOCIsForNamespace")
     def test_main_gar_dump_reports(
         self,
         mock_getOCIsForNamespace,
         mock_getDigestForImage,
-        mock_getSecurityReport,
+        mock_fetchScanReport,
     ):
         """Test test_main_gar_dump_reports()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
@@ -1150,7 +1154,9 @@ class TestGAR(TestCase):
             ),
         ]
         mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
-        mock_getSecurityReport.return_value = """{
+        mock_fetchScanReport.return_value = (
+            [],
+            """{
   "occurrences": [
     {
       "resourceUri": "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@deadbeef",
@@ -1160,7 +1166,8 @@ class TestGAR(TestCase):
     }
   ]
 }
-"""
+""",
+        )
 
         fn = (
             self.tmpdir
@@ -1202,15 +1209,40 @@ class TestGAR(TestCase):
         self.assertEqual("Updated: %s" % relfn, output.getvalue().strip())
         self.assertEqual("", error.getvalue().strip())
 
+        # no occurences
+        mock_getOCIsForNamespace.return_value = [
+            (
+                "projects/valid-proj/locations/us/repositories/valid-repo/valid-name2",
+                1684472852,
+            ),
+        ]
+        mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name2@deadbeef"
+        mock_fetchScanReport.return_value = ([], "{}")
+        with mock.patch(
+            "argparse._sys.argv",
+            [
+                "_",
+                "--path",
+                self.tmpdir + "/subdir",
+                "--name",
+                "valid-proj/us",
+            ],
+        ):
+            cvelib.gar.main_gar_dump_reports()
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.gar.main_gar_dump_reports()
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual("ERROR: No new security reports", error.getvalue().strip())
+
     # Note, these are listed in reverse order ot the arguments to test_...
-    @mock.patch("cvelib.gar.GARSecurityReportNew.getSecurityReport")
+    @mock.patch("cvelib.gar.GARSecurityReportNew.fetchScanReport")
     @mock.patch("cvelib.gar.GARSecurityReportNew.getDigestForImage")
     @mock.patch("cvelib.gar.GARSecurityReportNew.getOCIsForNamespace")
     def test_main_gar_dump_reports_bad(
         self,
         mock_getOCIsForNamespace,
         mock_getDigestForImage,
-        mock_getSecurityReport,
+        mock_fetchScanReport,
     ):
         """Test test_gar_main_dump_reports()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
@@ -1308,7 +1340,7 @@ class TestGAR(TestCase):
             ),
         ]
         mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
-        mock_getSecurityReport.return_value = "{}"
+        mock_fetchScanReport.return_value = "{}"
         with mock.patch.object(
             cvelib.common.error,
             "__defaults__",
@@ -1340,7 +1372,9 @@ class TestGAR(TestCase):
             ),
         ]
         mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
-        mock_getSecurityReport.return_value = """{
+        mock_fetchScanReport.return_value = (
+            [],
+            """{
   "occurrences": [
     {
       "resourceUri": "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@deadbeef",
@@ -1349,7 +1383,8 @@ class TestGAR(TestCase):
     }
   ]
 }
-"""
+""",
+        )
         with mock.patch(
             "argparse._sys.argv",
             [
@@ -1375,7 +1410,7 @@ class TestGAR(TestCase):
             ),
         ]
         mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
-        mock_getSecurityReport.return_value = "{}"
+        mock_fetchScanReport.return_value = "{}"
         with mock.patch(
             "argparse._sys.argv",
             [
@@ -1399,7 +1434,9 @@ class TestGAR(TestCase):
             ),
         ]
         mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@deadbeef"
-        mock_getSecurityReport.return_value = """{
+        mock_fetchScanReport.return_value = (
+            [],
+            """{
   "occurrences": [
     {
       "resourceUri": "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@deadbeef",
@@ -1409,7 +1446,8 @@ class TestGAR(TestCase):
     }
   ]
 }
-"""
+""",
+        )
         fn = (
             self.tmpdir
             + "/subdir/2023/03/15/gar/valid-proj/us/valid-repo/valid-name/deadbeef.json"

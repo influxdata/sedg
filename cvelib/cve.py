@@ -1572,7 +1572,7 @@ def collectCVEData(
 
 
 def collectGHAlertUrls(cves: List[CVE]) -> Tuple[Set[str], Set[str]]:
-    """Collect all known urls"""
+    """Collect all known alerts urls"""
     urls: List[str] = []
     dupes: List[str] = []
     for cve in cves:
@@ -1640,11 +1640,13 @@ def main_cve_add():
 
     if not args.cve:
         error("missing required argument: --cve")
+        return  # for tests
 
     # If given a url, we'll try to determine the package name, otherwise we
     # need to be given one
     if not args.cve.startswith("http") and not args.pkgs:
         error("missing required argument: --package")
+        return  # for tests
 
     addCve(
         getConfigCveDataPaths(),

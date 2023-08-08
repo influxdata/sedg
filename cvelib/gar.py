@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Tuple
 
 from cvelib.common import error, warn, rePatterns, _sorted_json_deep, _experimental
 from cvelib.net import requestGetRaw
-from cvelib.scan import ScanOCI, getScanOCIsReportTemplates, SecurityReportInterface
+from cvelib.scan import ScanOCI, SecurityReportInterface
 
 
 def _createGARHeaders() -> Dict[str, str]:
@@ -98,7 +98,7 @@ def getGAROCIForRepo(repo_full: str) -> List[Tuple[str, int]]:
         if "nextPageToken" not in resj:
             break
 
-        params["pageToken"] = resj["nextPageToken"]
+        params["pageToken"] = resj["nextPageToken"]  # pragma: nocover
         # time.sleep(2)  # in case nextPageToken isn't valid yet
 
     return ocis
@@ -297,7 +297,7 @@ def getGARDiscovery(repo_full: str) -> str:
         if "nextPageToken" not in resj:
             break
 
-        params["pageToken"] = resj["nextPageToken"]
+        params["pageToken"] = resj["nextPageToken"]  # pragma: nocover
         # time.sleep(2)  # in case nextPageToken isn't valid yet
 
     s: str = "reason not detected"
@@ -330,6 +330,8 @@ def getGARDiscovery(repo_full: str) -> str:
 
 
 class GARSecurityReportNew(SecurityReportInterface):
+    name = "gar"
+
     # find all versions
     # $ export GCLOUD_TOKEN=$(gcloud auth print-access-token)
     # $ curl -H "Content-Type: application/json"
@@ -512,7 +514,7 @@ class GARSecurityReportNew(SecurityReportInterface):
             if "nextPageToken" not in resj:
                 break
 
-            params["pageToken"] = resj["nextPageToken"]
+            params["pageToken"] = resj["nextPageToken"]  # pragma: nocover
             # time.sleep(2)  # in case nextPageToken isn't valid yet
 
         if tagsearch == "":
@@ -623,16 +625,14 @@ class GARSecurityReportNew(SecurityReportInterface):
     #
     # https://cloud.google.com/container-analysis/docs/investigate-vulnerabilities
     # https://cloud.google.com/container-analysis/docs/reference/rest
-    def getSecurityReport(
+    def fetchScanReport(
         self,
         repo_full: str,
         raw: bool = False,
         fixable: bool = True,
-        with_templates: bool = False,
         quiet: bool = False,
-        template_urls: List[str] = [],
         priorities: List[str] = [],
-    ) -> str:
+    ) -> Tuple[List[ScanOCI], str]:
         """Obtain the security manifest for the specified repo@sha256:..."""
         if (
             "/" not in repo_full
@@ -643,7 +643,7 @@ class GARSecurityReportNew(SecurityReportInterface):
                 "Please use PROJECT/LOCATION/REPO/IMGNAME@sha256:<sha256>",
                 do_exit=False,
             )
-            return ""
+            return [], ""
 
         project, location, repo, name = repo_full.split("/", 4)
 
@@ -682,11 +682,11 @@ class GARSecurityReportNew(SecurityReportInterface):
                 )
             except requests.exceptions.RequestException as e:  # pragma: nocover
                 warn("Skipping %s (request error: %s)" % (url, str(e)))
-                return ""
+                return [], ""
 
             if r.status_code >= 300:
                 warn("Could not fetch %s" % url)
-                return ""
+                return [], ""
 
             # An empty scan result can be due to several reasons so lookup why if
             # we fail to get a scan result
@@ -703,27 +703,26 @@ class GARSecurityReportNew(SecurityReportInterface):
                         % (repo, name.split("@")[0], why)
                     )
                 if raw:
-                    return ""
+                    return [], ""
                 if why == "CLEAN":
-                    return "No problems found"
-                return "No scan results for this %s image" % why.lower()
+                    return [], "No problems found"
+                return [], "No scan results for this %s image" % why.lower()
 
             vulns += resj["occurrences"]
 
             if "nextPageToken" not in resj:
                 break
 
-            params["pageToken"] = resj["nextPageToken"]
+            params["pageToken"] = resj["nextPageToken"]  # pragma: nocover
             # time.sleep(2)  # in case nextPageToken isn't valid yet
 
         # If raw format, output a unified JSON document that has all the
         # vulns in one doc but otherwise looks like that the API returned
         if raw:
-            return "%s" % json.dumps(
+            return [], "%s" % json.dumps(
                 _sorted_json_deep({"occurrences": vulns}), sort_keys=True, indent=2
             )
 
-        s: str = ""
         ocis: List[ScanOCI] = []
         # do a subset of this with created?
         for oci in sorted(parse(vulns), key=lambda i: (i.component, i.advisory)):
@@ -732,22 +731,8 @@ class GARSecurityReportNew(SecurityReportInterface):
             if len(priorities) > 0 and oci.severity not in priorities:
                 continue
             ocis.append(oci)
-            s += "%s\n" % oci
 
-        s = "%s report: %d\n%s" % (repo_full.split("@")[0], len(ocis), s)
-
-        if with_templates:
-            s = "%s\n\n%s" % (
-                getScanOCIsReportTemplates(
-                    "GAR",
-                    repo_full,
-                    ocis,
-                    template_urls=template_urls,
-                ),
-                s,
-            )
-
-        return s.rstrip()
+        return ocis, ""
 
     # $ export GCLOUD_TOKEN=$(gcloud auth print-access-token)
     # $ curl -H "Content-Type: application/json"
@@ -829,7 +814,7 @@ class GARSecurityReportNew(SecurityReportInterface):
                     print(" done!", flush=True)
                 break
 
-            params["pageToken"] = resj["nextPageToken"]
+            params["pageToken"] = resj["nextPageToken"]  # pragma: nocover
             # time.sleep(2)  # in case nextPageToken isn't valid yet
 
         return copy.deepcopy(repos)
@@ -919,11 +904,10 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
     count: int = 0
     for full_name in ocis:
         j: Dict[str, Any] = {}
-        tmp: str = sr.getSecurityReport(full_name, raw=True, quiet=True)
-        if "occurrences" in tmp:
-            j = json.loads(tmp)
-        else:
+        _, tmp = sr.fetchScanReport(full_name, raw=True, quiet=True)
+        if "occurrences" not in tmp:
             continue
+        j = json.loads(tmp)
 
         # GAR API should guarantee this...
         ok = True

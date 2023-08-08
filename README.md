@@ -54,6 +54,17 @@
     template-urls = https://url1,https://url2
     ```
 
+    Optionally add OCI product overrides. By default, `cve-report gar|quay`
+    security scan reports will use `oci/gar-<GAR_LOCATION>.<GAR_PROJECT>` or
+    `oci/quay-<QUAY_ORG>` depending on where the security report is coming
+    from. Use `oci-cve-override-where` to override this behavior to always use
+    `oci/gar-<OCI_WHERE>` or `oci/quay-<OCI_WHERE>`. Eg:
+
+    ```
+    [Behavior]
+    oci-cve-override-where = myorg
+    ```
+
  5. Do stuff
 
     ```

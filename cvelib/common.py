@@ -105,6 +105,9 @@ rePatterns: Dict[str, Pattern[str]] = {
         r"^[a-z0-9+.-]{1,%(product_len)d}$"
         % ({"product_len": _patLengths["pkg-product-ubuntu"]})
     ),
+    "pkg-where": re.compile(
+        r"^[a-z0-9+.-]{1,%(where_len)d}$" % ({"where_len": _patLengths["pkg-where"]})
+    ),
     "pkg-status": re.compile(r"^(%s)$" % "|".join(cve_statuses)),
     # free form text
     "pkg-when": re.compile(
@@ -323,7 +326,7 @@ def recursive_rm(dirPath: str, contents_only: bool = False, top: bool = True) ->
 
     try:
         names: List[str] = os.listdir(dirPath)
-    except PermissionError:
+    except PermissionError:  # pragma: nocover
         # If directory has weird permissions (eg, 000), just try to remove the
         # directory if we can. If it is non-empty, we'll legitimately fail
         # here. This allows us to remove empty directories with weird
@@ -338,7 +341,7 @@ def recursive_rm(dirPath: str, contents_only: bool = False, top: bool = True) ->
         else:
             try:
                 recursive_rm(path, top=False)
-            except PermissionError:
+            except PermissionError:  # pragma: nocover
                 os.chmod(path, 0o0755)  # LP: #1712476
                 recursive_rm(path, top=False)
 
@@ -585,6 +588,19 @@ def getConfigTemplateURLs() -> List[str]:
                 continue
             urls.append(url)
     return urls
+
+
+def getConfigOciCveOverrideWhere() -> str:
+    """Read oci-cve-override-where configuration from config"""
+    config: configparser.ConfigParser
+    (config, _) = readConfig()
+    where: str = ""
+    if "Behavior" in config and "oci-cve-override-where" in config["Behavior"]:
+        where = config["Behavior"]["oci-cve-override-where"].strip("\"' ")
+        if not rePatterns["pkg-where"].search(where):
+            warn("Skipping invalid 'oci-cve-override-where': %s" % where)
+            where = ""
+    return where
 
 
 def verifyDate(

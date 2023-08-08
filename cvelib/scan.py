@@ -8,7 +8,7 @@ import re
 from typing import Dict, List, Optional, Pattern, Tuple
 from yaml import load, CSafeLoader
 
-from cvelib.common import CveException, cve_priorities, rePatterns, _experimental
+from cvelib.common import CveException, cve_priorities, rePatterns, warn, _experimental
 
 # Scan-Reports:
 #  - type: oci
@@ -132,6 +132,23 @@ class ScanOCI(object):
         self.url = s
 
 
+def matches(a: ScanOCI, b: ScanOCI) -> Tuple[bool, bool]:
+    """Test if self and b match in meaningful ways. Returns fuzzy and precise
+    tuple"""
+    if a.advisory != b.advisory or a.component != b.component:
+        return False, False
+
+    if (
+        a.detectedIn != b.detectedIn
+        or a.versionAffected != b.versionAffected
+        or a.versionFixed != b.versionFixed
+        or a.severity != b.severity
+    ):
+        return True, False
+
+    return True, True
+
+
 def parse(s: str) -> List[ScanOCI]:
     """Parse a string and return a list of ScanOCIs"""
     if s == "":
@@ -161,10 +178,68 @@ def parse(s: str) -> List[ScanOCI]:
     return mans
 
 
+# Interface for work with different OCI scan report objects
+class SecurityReportInterface(metaclass=abc.ABCMeta):
+    name: str
+
+    @classmethod
+    def __subclasshook__(cls, subclass):  # pragma: nocover
+        return (
+            hasattr(subclass, "getDigestForImage")
+            and callable(subclass.getDigestForImage)
+            and hasattr(subclass, "parseImageDigest")
+            and callable(subclass.parseImageDigest)
+            and hasattr(subclass, "getOCIsForNamespace")
+            and callable(subclass.getOCIsForNamespace)
+            and hasattr(subclass, "getReposForNamespace")
+            and callable(subclass.getReposForNamespace)
+            and hasattr(subclass, "fetchScanReport")
+            and callable(subclass.fetchScanReport)
+            or NotImplementedError
+        )
+
+    @abc.abstractmethod
+    def getDigestForImage(self, repo_full: str) -> str:  # pragma: nocover
+        """Obtain the digest for the specified repo"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def parseImageDigest(self, digest: str) -> Tuple[str, str, str]:  # pragma: nocover
+        """Parse the image digest into a (namespace, repo, sha256) tuple"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def getOCIsForNamespace(
+        self, namespace: str
+    ) -> List[Tuple[str, int]]:  # pragma: nocover
+        """Obtain the list of OCIs with modification time in seconds for the specified namespace"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def getReposForNamespace(self, namespace: str) -> List[str]:  # pragma: nocover
+        """Obtain the list of repos for the specified namespace"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def fetchScanReport(
+        self,
+        repo_full: str,
+        raw: bool = False,
+        fixable: bool = True,
+        quiet: bool = True,  # remove?
+        priorities: List[str] = [],
+    ) -> Tuple[List[ScanOCI], str]:  # pragma: nocover
+        """Obtain the security manifest for the specified repo"""
+        raise NotImplementedError
+
+
 #
 # common report output for list of ScanOCIs
 #
-def getScanOCIsReport(ocis: List[ScanOCI], fixable: Optional[bool] = False) -> str:
+# XXX: as of 2023-07-20, this is unused
+def getScanOCIsReportUnused(
+    ocis: List[ScanOCI], fixable: Optional[bool] = False
+) -> str:
     """Show list of ScanOCIs objects"""
     max_name: int = 0
     max_vers: int = 0
@@ -193,8 +268,6 @@ def getScanOCIsReport(ocis: List[ScanOCI], fixable: Optional[bool] = False) -> s
         status = "n/a"
         if "needed" in grouped[g]["status"]:
             status = "needed"
-        elif "unavailable" in grouped[g]["status"]:
-            status = "unavailable"
         elif "released" in grouped[g]["status"]:
             status = "released"
 
@@ -209,7 +282,35 @@ def getScanOCIsReport(ocis: List[ScanOCI], fixable: Optional[bool] = False) -> s
     return s.rstrip()
 
 
-def _parseScanURL(url: str) -> Tuple[str, str, str, str]:
+def formatWhereFromNamespace(
+    oci_type: str, namespace: str, where_override: str = ""
+) -> str:
+    where: str = "unknown"
+    if oci_type == "gar":
+        w: str = where_override
+        if where_override == "":
+            proj, loc = namespace.split("/", maxsplit=1)
+            w = "%s.%s" % (loc, proj)
+        where = "gar-%s" % w
+    elif oci_type == "quay":
+        w: str = where_override
+        if where_override == "":
+            w = namespace
+        where = "quay-%s" % w
+    elif where_override != "":
+        where = where_override
+
+    if not rePatterns["pkg-where"].search(where):
+        warn(
+            "improper format for '%s' (should contain [a-z0-9+.-] with max length of 40)"
+            % where
+        )
+        where = "unknown"
+
+    return where
+
+
+def _parseScanURL(url: str, where_override: str = "") -> Tuple[str, str, str, str]:
     """Find CVE 'product', 'where', 'software' and 'modifier' from url"""
     if url == "":
         return ("", "", "", "")
@@ -221,32 +322,40 @@ def _parseScanURL(url: str) -> Tuple[str, str, str, str]:
 
     tmp = url.split("@")[0].split("/")
     # https://cloud.google.com/artifact-registry/docs/repositories/repo-locations
-    pat: Pattern[str] = re.compile(r"^https://[a-z\-]+-docker\.pkg\.dev/")
+    pat: Pattern[str] = re.compile(r"^https://[a-z0-9\-]+-docker\.pkg\.dev/")
     if pat.search(url):
         # https://us-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:...
-        where = tmp[3]
+        namespace = "%s/%s" % (tmp[3], tmp[2].rsplit("-", maxsplit=1)[0])
+        where = formatWhereFromNamespace("gar", namespace, where_override)
         software = tmp[4]
         modifier = tmp[5]
     elif url.startswith("https://quay.io/repository/"):  # quay.io
         # https://quay.io/repository/ORG/IMGNAME/manifest/sha256:...
-        where = tmp[4]
+        where = formatWhereFromNamespace("quay", tmp[4], where_override)
         software = tmp[5]
     else:
-        where = "TBD"
+        where = formatWhereFromNamespace("", "", where_override)
         software = "TBD"
 
     return (product, where, software, modifier)
 
 
 def getScanOCIsReportTemplates(
-    registry: str,
+    report_type: str,
     name: str,
     ocis: List[ScanOCI],
     template_urls: List[str] = [],
+    oci_where_override: str = "",
 ) -> str:
     """Get the reports templates"""
     if len(ocis) == 0:
         return ""
+
+    registry: str = report_type
+    if report_type == "gar":
+        registry = "GAR"
+    elif report_type == "quay":
+        registry = "quay.io"
 
     sev: List[str] = ["unknown", "negligible", "low", "medium", "high", "critical"]
     oci_references: List[str] = []
@@ -320,8 +429,7 @@ References:
 
     pkg_stanzas: List[str] = []
     for url in oci_references:
-        # TODO: where override
-        (prod, where, soft, mod) = _parseScanURL(url)
+        (prod, where, soft, mod) = _parseScanURL(url, where_override=oci_where_override)
         s: str = "Patches_%s:\n%s/%s_%s%s: needs-triage" % (
             soft,
             prod,
@@ -357,7 +465,6 @@ CVSS:
         name.split("@")[0],
         "CVE-%d-NNNN" % now.year,
         "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
-        # "\n ".join(references + sorted(advisories)),
         "\n ".join(oci_references),
         "s" if plural else "",
         name.split("@")[0],
@@ -373,55 +480,33 @@ CVSS:
     return "%s\n\n%s" % (iss_template, cve_template)
 
 
-# Interface for work with different OCI scan report objects
-class SecurityReportInterface(metaclass=abc.ABCMeta):
-    @classmethod
-    def __subclasshook__(cls, subclass):  # pragma: nocover
-        return (
-            hasattr(subclass, "getDigestForImage")
-            and callable(subclass.getDigestForImage)
-            and hasattr(subclass, "parseImageDigest")
-            and callable(subclass.parseImageDigest)
-            and hasattr(subclass, "getOCIsForNamespace")
-            and callable(subclass.getOCIsForNamespace)
-            and hasattr(subclass, "getReposForNamespace")
-            and callable(subclass.getReposForNamespace)
-            and hasattr(subclass, "getSecurityReport")
-            and callable(subclass.getSecurityReport)
-            or NotImplementedError
-        )
+def getScanOCIsReport(
+    ocis: Dict[str, List[ScanOCI]],
+    scan_type: str,
+    with_templates: bool = False,
+    template_urls: List[str] = [],
+    oci_where_override: str = "",
+) -> str:
+    """Obtain the security manifest for the specified repo@sha256:..."""
+    out: str = ""
+    for repo_full in sorted(ocis.keys()):
+        s: str = ""
+        for oci in ocis[repo_full]:
+            s += "%s\n" % oci
+        s = "%s report: %d\n%s" % (repo_full.split("@")[0], len(ocis), s)
 
-    @abc.abstractmethod
-    def getDigestForImage(self, repo_full: str) -> str:  # pragma: nocover
-        """Obtain the digest for the specified repo"""
-        raise NotImplementedError
+        if with_templates:
+            s = "%s\n\n%s" % (
+                getScanOCIsReportTemplates(
+                    scan_type,
+                    repo_full,
+                    ocis[repo_full],
+                    template_urls=template_urls,
+                    oci_where_override=oci_where_override,
+                ),
+                s,
+            )
 
-    @abc.abstractmethod
-    def parseImageDigest(self, digest: str) -> Tuple[str, str, str]:  # pragma: nocover
-        """Parse the image digest into a (namespace, repo, sha256) tuple"""
-        raise NotImplementedError
+        out += "%s%s" % (("" if out == "" else "\n\n"), s.rstrip())
 
-    @abc.abstractmethod
-    def getOCIsForNamespace(
-        self, namespace: str
-    ) -> List[Tuple[str, int]]:  # pragma: nocover
-        """Obtain the list of OCIs with modification time in seconds for the specified namespace"""
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def getReposForNamespace(self, namespace: str) -> List[str]:  # pragma: nocover
-        """Obtain the list of repos for the specified namespace"""
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def getSecurityReport(
-        self,
-        repo_full: str,
-        raw: bool = False,
-        fixable: bool = True,
-        with_templates: bool = False,
-        template_urls: List[str] = [],
-        priorities: List[str] = [],
-    ) -> str:  # pragma: nocover
-        """Obtain the security manifest for the specified repo"""
-        raise NotImplementedError
+    return out

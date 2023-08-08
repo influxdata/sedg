@@ -373,6 +373,43 @@ template-urls = %s
             self.assertEqual("", output.getvalue().strip())
             self.assertEqual(expErr, error.getvalue().strip())
 
+    def test_getConfigOciCveOverrideWhere(self):
+        """Test getConfigOciCveOverrideWhere()"""
+        tsts = [
+            # good
+            ("foo", "foo", ""),
+            ("foo-ok", "foo-ok", ""),
+            (" foo ", "foo", ""),
+            ("'foo'", "foo", ""),
+            ('"foo"', "foo", ""),
+            ("\"'foo'\"", "foo", ""),
+            ("%s" % ("a" * 40), "%s" % ("a" * 40), ""),
+            # bad
+            ("foo_bad", "", "WARN: Skipping invalid 'oci-cve-override-where': foo_bad"),
+            ("foo/bad", "", "WARN: Skipping invalid 'oci-cve-override-where': foo/bad"),
+            (
+                "%s" % ("a" * 41),
+                "",
+                "WARN: Skipping invalid 'oci-cve-override-where': %s" % ("a" * 41),
+            ),
+        ]
+
+        for val, exp, expErr in tsts:
+            cvelib.common.configCache = None
+            self.orig_xdg_config_home, tmpdir = tests.testutil._newConfigFile(
+                """[Behavior]
+oci-cve-override-where = %s
+"""
+                % val
+            )
+
+            with tests.testutil.capturedOutput() as (output, error):
+                res = cvelib.common.getConfigOciCveOverrideWhere()
+            cvelib.common.recursive_rm(tmpdir)
+            self.assertEqual(exp, res)
+            self.assertEqual("", output.getvalue().strip())
+            self.assertEqual(expErr, error.getvalue().strip())
+
     def test_readCVE(self):
         """Test readCve()"""
         self.tmpdir = tests.testutil._createTmpDir()

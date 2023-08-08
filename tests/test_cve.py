@@ -149,7 +149,7 @@ class TestCve(TestCase):
         ] = """
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.2
    fixedBy: 1.2.3
@@ -158,7 +158,7 @@ class TestCve(TestCase):
    url: https://blah.com/BAR-a
  - type: oci
    component: baz
-   detectedIn: myorg/myimg2@sha256:deadbeef1
+   detectedIn: Distro 2.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
    version: 2.3.3
    fixedBy: 2.3.4
@@ -167,7 +167,7 @@ class TestCve(TestCase):
    url: https://blah.com/NORF-a
  - type: oci
    component: corge
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0003
    version: 9.2.0-4
    fixedBy: 9.2.0-5
@@ -209,7 +209,7 @@ GitHub-Advanced-Security:
 Scan-Reports:
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.2
    fixedBy: 1.2.3
@@ -218,7 +218,7 @@ Scan-Reports:
    url: https://blah.com/BAR-a
  - type: oci
    component: baz
-   detectedIn: myorg/myimg2@sha256:deadbeef1
+   detectedIn: Distro 2.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
    version: 2.3.3
    fixedBy: 2.3.4
@@ -227,7 +227,7 @@ Scan-Reports:
    url: https://blah.com/NORF-a
  - type: oci
    component: corge
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0003
    version: 9.2.0-4
    fixedBy: 9.2.0-5
@@ -444,6 +444,65 @@ git/github_norf: needs-triage
             )
 
         cve.setPackages(pkgs)
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cve.onDiskFormat()
+
+        self.assertEqual(exp, res)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual("", error.getvalue().strip())
+
+    def test_onDiskFormatNoPatches(self):
+        """Test onDiskFormat() - no Patches"""
+        self.maxDiff = 2048
+        self._mock_readCve(
+            {
+                "Candidate": "CVE-2020-1234",
+                "OpenDate": "2020-06-29",
+                "CloseDate": "",
+                "PublicDate": "2020-06-30",
+                "CRD": "2020-06-30 01:02:03 -0700",
+                "References": "\n http://example.com",
+                "Description": "\n Some description\n more desc",
+                "Notes": "\n person> some notes\n  more notes\n person2> blah",
+                "Mitigation": "\n Some mitigation\n more",
+                "Bugs": "\n http://example.com/bug",
+                "Priority": "medium",
+                "Discovered-by": "Jane Doe (jdoe)",
+                "Assigned-to": "John Doe (johnny)",
+                "CVSS": "...",
+            }
+        )
+
+        exp = """Candidate: CVE-2020-1234
+OpenDate: 2020-06-29
+CloseDate:
+PublicDate: 2020-06-30
+CRD: 2020-06-30 01:02:03 -0700
+References:
+ http://example.com
+Description:
+ Some description
+ more desc
+Notes:
+ person> some notes
+  more notes
+ person2> blah
+Mitigation:
+ Some mitigation
+ more
+Bugs:
+ http://example.com/bug
+Priority: medium
+Discovered-by: Jane Doe (jdoe)
+Assigned-to: John Doe (johnny)
+CVSS: ...
+
+oci/org_foo: pending
+"""
+        cve = cvelib.cve.CVE(fn="fake")
+        cve.setPackages([CvePkg("oci", "foo", "pending", where="org")])
+
+        cve.onDiskFormat()
         with tests.testutil.capturedOutput() as (output, error):
             res = cve.onDiskFormat()
 
@@ -1457,7 +1516,7 @@ git/github_norf: needs-triage
                 """
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://blah.com/BAR-a
    version: 1.2.3-0
    fixedBy: 1.2.3-1
@@ -1473,7 +1532,7 @@ git/github_norf: needs-triage
                 """
  - type: oci
    component: bár
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://blah.com/BAR-a
    version: 1.2.3-0
    fixedBy: 1.2.3-1
@@ -1484,7 +1543,7 @@ git/github_norf: needs-triage
                 """invalid Scan-Reports: '
  - type: oci
    component: bár
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://blah.com/BAR-a
    version: 1.2.3-0
    fixedBy: 1.2.3-1
@@ -2038,34 +2097,38 @@ cve-data = %s
         # ghas
         ghasTsts = [
             # valid
-            ("gh-dependabot, gh-secret", None),
-            ("gh-secret, gh-dependabot", None),
-            ("foo, gh-dependabot, gh-secret", None),
-            ("gh-dependabot, foo, gh-secret", None),
-            ("gh-dependabot, gh-secret, foo", None),
+            ("gh-dependabot, gh-secret, gh-code", None),
+            ("gh-secret, gh-code, gh-dependabot", None),
+            ("foo, gh-dependabot, gh-secret, gh-code", None),
+            ("gh-dependabot, foo, gh-secret, gh-code", None),
+            ("gh-dependabot, gh-secret, gh-code, foo", None),
             # invalid
             (
-                "g-dependabot, gh-secret",
+                "g-dependabot, gh-secret, gh-code",
                 "WARN: active/CVE-2020-1234 has 'gh-dependabot' missing from Discovered-by",
             ),
             (
-                "gh-dependaboT, gh-secret",
+                "gh-dependaboT, gh-secret, gh-code",
                 "WARN: active/CVE-2020-1234 has 'gh-dependabot' missing from Discovered-by",
             ),
             (
-                "gh-dependabotX, gh-secret",
+                "gh-dependabotX, gh-secret, gh-code",
                 "WARN: active/CVE-2020-1234 has 'gh-dependabot' missing from Discovered-by",
             ),
             (
-                "gh-dependabot, secret",
+                "gh-dependabot, secret, gh-code",
                 "WARN: active/CVE-2020-1234 has 'gh-secret' missing from Discovered-by",
             ),
             (
-                "gh-dependabot",
+                "gh-dependabot, gh-secret, code",
+                "WARN: active/CVE-2020-1234 has 'gh-code' missing from Discovered-by",
+            ),
+            (
+                "gh-dependabot, gh-code",
                 "WARN: active/CVE-2020-1234 has 'gh-secret' missing from Discovered-by",
             ),
             (
-                "gh-secret",
+                "gh-secret, gh-code",
                 "WARN: active/CVE-2020-1234 has 'gh-dependabot' missing from Discovered-by",
             ),
         ]
@@ -2089,6 +2152,12 @@ cve-data = %s
    detectedIn: /path/to/file
    status: needed
    url: https://github.com/bar/baz/security/secret-scanning/1
+ - type: code-scanning
+   description: Some code violation
+   severity: high
+   detectedIn: /path/to/file
+   status: needed
+   url: https://github.com/bar/baz/security/code-scanning/1
 """
             tmpl["Discovered-by"] = dsc
             content = tests.testutil.cveContentFromDict(tmpl)
@@ -2248,7 +2317,7 @@ cve-data = %s
             ] = """
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef1
+   detectedIn: Distro 1.01
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.2
    fixedBy: 1.2.3
@@ -2257,7 +2326,7 @@ cve-data = %s
    url: https://quay.io/...
  - type: oci
    component: bar
-   detectedIn: myorg/myimg@sha256:deadbeef1
+   detectedIn: Distro 1.01
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
    version: 2.3.3
    fixedBy: 2.3.4
@@ -2266,7 +2335,7 @@ cve-data = %s
    url: https://console.cloud.google.com/...
  - type: oci
    component: baz
-   detectedIn: myorg/myimg@sha256:deadbeef1
+   detectedIn: Distro 1.01
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
    version: 3.4.4
    fixedBy: 3.4.5
@@ -2303,7 +2372,7 @@ cve-data = %s
         ] = """
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://blah.com/BAR-a
    version: 1.2.3-0
    fixedBy: 1.2.3-1
@@ -2336,7 +2405,7 @@ cve-data = %s
         ] = """
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://blah.com/BAR-a
    version: 1.2.3-0
    fixedBy: 1.2.3-1
@@ -2370,7 +2439,7 @@ cve-data = %s
         ] = """
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://blah.com/BAR-a
    version: 1.2.3-0
    fixedBy: 1.2.3-1
@@ -3265,6 +3334,64 @@ CVSS:
         # pkgs used
         self.assertTrue("git/org_foo" in res)
         self.assertTrue("git/org_bar" in res)
+
+    @mock.patch(
+        "argparse.ArgumentParser.parse_args",
+        return_value=argparse.Namespace(
+            cve=None,
+            assigned_to="assignee",
+            discovered_by="discoveree",
+            pkgs=["git/org_foo", "git/org_bar"],
+            template="some-template",
+            retired=False,
+        ),
+    )
+    def test_main_cve_add_missing_cve(self, _):  # 2nd arg is 'mock_args'
+        """Test main_cve_add() - missing --cve"""
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.cve.main_cve_add()
+                self.assertEqual("", output.getvalue().strip())
+                self.assertEqual(
+                    "ERROR: missing required argument: --cve",
+                    error.getvalue().strip(),
+                )
+
+    @mock.patch(
+        "argparse.ArgumentParser.parse_args",
+        return_value=argparse.Namespace(
+            cve="CVE-2021-999999",
+            assigned_to="assignee",
+            discovered_by="discoveree",
+            pkgs=None,
+            template="some-template",
+            retired=False,
+        ),
+    )
+    def test_main_cve_add_missing_package(self, _):  # 2nd arg is 'mock_args'
+        """Test main_cve_add() - missing --package"""
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.cve.main_cve_add()
+                self.assertEqual("", output.getvalue().strip())
+                self.assertEqual(
+                    "ERROR: missing required argument: --package",
+                    error.getvalue().strip(),
+                )
 
     @mock.patch(
         "argparse.ArgumentParser.parse_args",

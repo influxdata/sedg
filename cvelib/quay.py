@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from cvelib.common import error, warn, _sorted_json_deep, _experimental
 from cvelib.net import requestGetRaw
-from cvelib.scan import ScanOCI, getScanOCIsReportTemplates, SecurityReportInterface
+from cvelib.scan import ScanOCI, SecurityReportInterface
 
 
 def _createQuayHeaders() -> Dict[str, str]:
@@ -128,6 +128,8 @@ def parse(resj: Dict[str, Any], url_prefix: str) -> List[ScanOCI]:
 
 
 class QuaySecurityReportNew(SecurityReportInterface):
+    name = "quay"
+
     # $ curl -H "Authorization: Bearer $QUAY_TOKEN" \
     #        -G "https://quay.io/api/v1/repository/ORG/IMGNAME?includeTags=true"
     # {
@@ -317,7 +319,7 @@ class QuaySecurityReportNew(SecurityReportInterface):
                     print(" done!")
                 break
 
-            params["next_page"] = resj["next_page"]
+            params["next_page"] = resj["next_page"]  # pragma: nocover
 
         return copy.deepcopy(repos)
 
@@ -325,20 +327,18 @@ class QuaySecurityReportNew(SecurityReportInterface):
     #        -G
     #        "https://quay.io/api/v1/repository/ORG/IMGNAME/manifest/sha256:SHA256/security?vulnerabilities=true"
     # {
-
-    def getSecurityReport(
+    def fetchScanReport(
         self,
         repo_full: str,
         raw: bool = False,
         fixable: bool = True,
-        with_templates: bool = False,
-        template_urls: List[str] = [],
+        quiet: bool = False,  # remove?
         priorities: List[str] = [],
-    ) -> str:
+    ) -> Tuple[List[ScanOCI], str]:
         """Obtain the security manifest for the specified repo@sha256:..."""
         if "/" not in repo_full or "@sha256:" not in repo_full:
             error("Please use ORG/NAME@sha256:<sha256>", do_exit=False)
-            return ""
+            return [], ""
 
         repo: str
         sha256: str
@@ -354,45 +354,45 @@ class QuaySecurityReportNew(SecurityReportInterface):
             r: requests.Response = requestGetRaw(url, headers=headers, params=params)
         except requests.exceptions.RequestException as e:  # pragma: nocover
             warn("Skipping %s (request error: %s)" % (url, str(e)))
-            return ""
+            return [], ""
 
         if r.status_code >= 300:
             warn("Could not fetch %s" % url)
-            return ""
+            return [], ""
 
         resj = r.json()
         if raw:
-            return json.dumps(_sorted_json_deep(resj), sort_keys=True, indent=2)
+            return [], json.dumps(_sorted_json_deep(resj), sort_keys=True, indent=2)
 
         if "status" not in resj:
             error("Cound not find 'status' in response: %s" % resj, do_exit=False)
-            return ""
+            return [], ""
         elif resj["status"] != "scanned":
             error(
                 "Could not process report due to status: %s" % resj["status"],
                 do_exit=False,
             )
-            return ""
+            return [], ""
 
         if "data" not in resj:
             error("Could not find 'data' in %s" % resj, do_exit=False)
-            return ""
+            return [], ""
         elif resj["data"] is None:
             error(
                 "Could not process report due to no data in %s" % resj,
                 do_exit=False,
             )
-            return ""
+            return [], ""
 
         if "Layer" not in resj["data"]:
             error("Could not find 'Layer' in %s" % resj["data"], do_exit=False)
-            return ""
+            return [], ""
         if "Features" not in resj["data"]["Layer"]:
             error(
                 "Could not find 'Features' in %s" % resj["data"]["Layer"],
                 do_exit=False,
             )
-            return ""
+            return [], ""
 
         url_prefix: str = "https://quay.io/repository/%s/manifest/%s" % (
             repo,
@@ -400,7 +400,6 @@ class QuaySecurityReportNew(SecurityReportInterface):
         )
 
         ocis: List[ScanOCI] = []
-        s: str = ""
         # do a subset of this with created?
         for oci in sorted(
             parse(resj, url_prefix), key=lambda i: (i.component, i.advisory)
@@ -410,22 +409,8 @@ class QuaySecurityReportNew(SecurityReportInterface):
             if len(priorities) > 0 and oci.severity not in priorities:
                 continue
             ocis.append(oci)
-            s += "%s\n" % oci
 
-        s = "%s report: %d\n%s" % (repo_full.split("@")[0], len(ocis), s)
-
-        if with_templates:
-            s = "%s\n\n%s" % (
-                getScanOCIsReportTemplates(
-                    "quay.io",
-                    repo_full,
-                    ocis,
-                    template_urls=template_urls,
-                ),
-                s,
-            )
-
-        return s.rstrip()
+        return ocis, ""
 
     def getReposForNamespace(self, _: str) -> List[str]:  # pragma: nocover
         # quay.io doesn't have a concept of repos within namespaces
@@ -534,7 +519,7 @@ Eg, to pull all quay.io security scan reports for org 'foo':
     count: int = 0
     for full_name in ocis:
         j: Dict[str, Any] = {}
-        tmp: str = sr.getSecurityReport(full_name, raw=True)
+        _, tmp = sr.fetchScanReport(full_name, raw=True, quiet=True)
         if '"status":' in tmp:
             j = json.loads(tmp)
             if j["status"] not in ["queued", "scanned", "unsupported"]:

@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 
+import copy
 import datetime
 import os
 from unittest import TestCase
@@ -27,7 +28,7 @@ class TestScanOCI(TestCase):
         """Returns a valid data structure"""
         return {
             "component": "foo",
-            "detectedIn": "myorg/myimg@sha256:deadbeef",
+            "detectedIn": "Distro 1.0",
             "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
             "version": "1.2.2",
             "fixedBy": "1.2.3",
@@ -42,7 +43,7 @@ class TestScanOCI(TestCase):
         data = self._getValid()
         exp = """ - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.2
    fixedBy: 1.2.3
@@ -58,7 +59,7 @@ class TestScanOCI(TestCase):
         data = self._getValid()
         exp = """ - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.2
    fixedBy: 1.2.3
@@ -78,7 +79,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "cmponent": "foo",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -91,7 +92,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "component": "foo",
-                    "dtectedIn": "myorg/myimg@sha256:deadbeef",
+                    "dtectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -103,7 +104,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "component": "foo",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "avisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -116,7 +117,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "component": "foo",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "vrsion": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -129,7 +130,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "component": "foo",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fxedBy": "1.2.3",
@@ -142,7 +143,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "component": "foo",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -155,7 +156,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "component": "foo",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -168,7 +169,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "component": "foo",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -181,7 +182,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "component": "",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -194,7 +195,7 @@ class TestScanOCI(TestCase):
             (
                 {
                     "component": "foo\nbar",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -355,7 +356,7 @@ class TestScanCommon(TestCase):
         """Returns a valid data structure"""
         return """ - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.2
    fixedBy: 1.2.3
@@ -364,7 +365,7 @@ class TestScanCommon(TestCase):
    url: https://blah.com/BAR-a
  - type: oci
    component: baz
-   detectedIn: myorg/myimg2@sha256:deadbeef1
+   detectedIn: Distro 2.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
    version: 2.3.3
    fixedBy: 2.3.4
@@ -373,7 +374,7 @@ class TestScanCommon(TestCase):
    url: https://blah.com/NORF-a
  - type: oci
    component: corge
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0003
    version: 9.2.0-4
    fixedBy: 9.2.0-5
@@ -381,6 +382,45 @@ class TestScanCommon(TestCase):
    status: released
    url: https://blah.com/CORGE-a
 """
+
+    def test_matches(self):
+        """Test matches()"""
+        a_data = {
+            "component": "foo",
+            "detectedIn": "Some Distro",
+            "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+            "version": "1.2.2",
+            "fixedBy": "1.2.3",
+            "severity": "medium",
+            "status": "needed",
+            "url": "https://blah.com/BAR-a",
+        }
+
+        b_same = copy.deepcopy(a_data)
+        b_diff = copy.deepcopy(a_data)
+        b_diff["component"] = "other"
+        b_imprecise = copy.deepcopy(a_data)
+        b_imprecise["severity"] = "high"
+        b_close = copy.deepcopy(a_data)
+        b_close["status"] = "needs-triage"
+
+        tsts = [
+            # a, b, expectedFuzzy, expectedPrecise
+            (cvelib.scan.ScanOCI(a_data), cvelib.scan.ScanOCI(b_same), True, True),
+            (cvelib.scan.ScanOCI(a_data), cvelib.scan.ScanOCI(b_close), True, True),
+            (
+                cvelib.scan.ScanOCI(a_data),
+                cvelib.scan.ScanOCI(b_imprecise),
+                True,
+                False,
+            ),
+            (cvelib.scan.ScanOCI(a_data), cvelib.scan.ScanOCI(b_diff), False, False),
+        ]
+
+        for a, b, expF, expP in tsts:
+            f, p = cvelib.scan.matches(a, b)
+            self.assertEqual(expF, f)
+            self.assertEqual(expP, p)
 
     def test_parse(self):
         """Test parse()"""
@@ -417,7 +457,7 @@ class TestScanCommon(TestCase):
             cvelib.scan.ScanOCI(
                 {
                     "component": "foo",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
                     "version": "1.2.2",
                     "fixedBy": "1.2.2",
@@ -429,7 +469,7 @@ class TestScanCommon(TestCase):
             cvelib.scan.ScanOCI(
                 {
                     "component": "foo",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0002",
                     "version": "1.2.2",
                     "fixedBy": "1.2.3",
@@ -441,7 +481,7 @@ class TestScanCommon(TestCase):
             cvelib.scan.ScanOCI(
                 {
                     "component": "baz",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0003",
                     "version": "2.3.4",
                     "fixedBy": "unavailable",
@@ -453,7 +493,7 @@ class TestScanCommon(TestCase):
             cvelib.scan.ScanOCI(
                 {
                     "component": "norf",
-                    "detectedIn": "myorg/myimg@sha256:deadbeef",
+                    "detectedIn": "Distro 1.0",
                     "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0004",
                     "version": "2.3.4",
                     "fixedBy": "2.3.4",
@@ -464,8 +504,8 @@ class TestScanCommon(TestCase):
             ),
         ]
 
-    def test_getScanOCIsReport(self):
-        """Test getScanOCIsReport()"""
+    def test_getScanOCIsReportUnused(self):
+        """Test getScanOCIsReportUnused()"""
         tsts = [
             ([], False, ""),
             ([], True, ""),
@@ -478,50 +518,235 @@ class TestScanCommon(TestCase):
         ]
 
         for ocis, fixable, exp in tsts:
-            res = cvelib.scan.getScanOCIsReport(ocis, fixable=fixable)
+            res = cvelib.scan.getScanOCIsReportUnused(ocis, fixable=fixable)
+            self.assertEqual(exp, res)
+
+    def test_formatWhereFromNamespace(self):
+        """Test formatWhereFromNamespace()"""
+        tsts = [
+            # oci_type, namespace, where_override, exp
+            ("", "", "", "unknown"),
+            ("other", "", "", "unknown"),
+            ("other", "", "ovr", "ovr"),
+            ("other", "blah", "", "unknown"),
+            ("other", "blah", "ovr", "ovr"),
+            ("gar", "proj/us", "", "gar-us.proj"),
+            ("gar", "proj/us-west1", "", "gar-us-west1.proj"),
+            ("gar", "proj/us", "ovr", "gar-ovr"),
+            ("quay", "org", "", "quay-org"),
+            ("quay", "org", "ovr", "quay-ovr"),
+            ("other", "b@d", "", "unknown"),
+            ("other", "", "b@d", "unknown"),
+        ]
+
+        for oci_type, ns, whr, exp in tsts:
+            res = cvelib.scan.formatWhereFromNamespace(oci_type, ns, whr)
             self.assertEqual(exp, res)
 
     def test__parseScanURL(self):
         """Test _parseScanURL()"""
         tsts = [
-            # url, expProduct, expWhere, expSoftware, expModifier
-            ("", "", "", "", ""),
-            ("https://other", "oci", "TBD", "TBD", ""),
-            ("unavailable", "oci", "TBD", "TBD", ""),
+            # url, where_override, expProduct, expWhere, expSoftware, expModifier
+            ("", "", "", "", "", ""),
+            ("https://other", "", "oci", "unknown", "TBD", ""),
+            ("https://other", "some-override", "oci", "some-override", "TBD", ""),
+            ("unavailable", "", "oci", "unknown", "TBD", ""),
             (
-                "https://us-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:deadbeef",
+                "https://us-docker.pkg.dev/project/REPO/IMGNAME@sha256:deadbeef",
+                "",
                 "oci",
-                "PROJECT",
+                "gar-us.project",
                 "REPO",
                 "IMGNAME",
             ),
             (
-                "https://quay.io/repository/ORG/IMGNAME/manifest/sha256:deadbeef",
+                "https://us-west1-docker.pkg.dev/project/REPO/IMGNAME@sha256:deadbeef",
+                "",
                 "oci",
-                "ORG",
+                "gar-us-west1.project",
+                "REPO",
+                "IMGNAME",
+            ),
+            (
+                "https://us-docker.pkg.dev/project/REPO/IMGNAME@sha256:deadbeef",
+                "proj-override",
+                "oci",
+                "gar-proj-override",
+                "REPO",
+                "IMGNAME",
+            ),
+            (
+                "https://quay.io/repository/org/IMGNAME/manifest/sha256:deadbeef",
+                "",
+                "oci",
+                "quay-org",
+                "IMGNAME",
+                "",
+            ),
+            (
+                "https://quay.io/repository/org/IMGNAME/manifest/sha256:deadbeef",
+                "org-override",
+                "oci",
+                "quay-org-override",
                 "IMGNAME",
                 "",
             ),
         ]
 
-        for url, expP, expW, expS, expM in tsts:
-            (resP, resW, resS, resM) = cvelib.scan._parseScanURL(url)
+        for url, whr, expP, expW, expS, expM in tsts:
+            (resP, resW, resS, resM) = cvelib.scan._parseScanURL(
+                url, where_override=whr
+            )
             self.assertEqual(expP, resP, msg="url=%s" % url)
             self.assertEqual(expW, resW, msg="url=%s" % url)
             self.assertEqual(expS, resS, msg="url=%s" % url)
             self.assertEqual(expM, resM, msg="url=%s" % url)
 
+    def test_getScanOCIsReport(self):
+        """Test getScanOCIsReport()"""
+        now: datetime.datetime = datetime.datetime.now()
+        self.maxDiff = 8196
+        # oci_reports, scan_type, with_templates, template_urls, where_override, expected
+        tsts = [
+            (
+                {
+                    "some-repo": [
+                        cvelib.scan.ScanOCI(
+                            {
+                                "component": "foo",
+                                "detectedIn": "Distro 1.0",
+                                "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+                                "version": "1.2.2",
+                                "fixedBy": "1.2.2",
+                                "severity": "low",
+                                "status": "released",
+                                "url": "https://blah.com/BAR-a",
+                            }
+                        )
+                    ]
+                },
+                "",
+                False,
+                [],
+                "",
+                """some-repo report: 1
+ - type: oci
+   component: foo
+   detectedIn: Distro 1.0
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.2
+   fixedBy: 1.2.2
+   severity: low
+   status: released
+   url: https://blah.com/BAR-a""",
+            ),
+            (
+                {
+                    "some-repo": [
+                        cvelib.scan.ScanOCI(
+                            {
+                                "component": "foo",
+                                "detectedIn": "Distro 1.0",
+                                "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+                                "version": "1.2.2",
+                                "fixedBy": "1.2.2",
+                                "severity": "low",
+                                "status": "released",
+                                "url": "https://blah.com/BAR-a",
+                            }
+                        )
+                    ]
+                },
+                "quay",
+                True,
+                [],
+                "",
+                """## some-repo quay.io template
+Please address quay.io alert in some-repo:
+
+The following alert was issued:
+- [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0001) (low)
+
+Since a 'low' severity issue is present, tentatively adding the 'security/low' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated.
+
+Thanks!
+
+References:
+ * https://blah.com/BAR-a
+
+## end template
+
+## some-repo CVE template
+Candidate: CVE-%d-NNNN
+OpenDate: %0.2d-%0.2d-%0.2d
+CloseDate:
+PublicDate:
+CRD:
+References:
+ https://blah.com/BAR-a
+Description:
+ Please address alert in some-repo
+ - [ ] foo (low)
+Scan-Reports:
+ - type: oci
+   component: foo
+   detectedIn: Distro 1.0
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.2
+   fixedBy: 1.2.2
+   severity: low
+   status: released
+   url: https://blah.com/BAR-a
+Notes:
+Mitigation:
+Bugs:
+Priority: low
+Discovered-by: quay.io
+Assigned-to:
+CVSS:
+
+Patches_TBD:
+oci/unknown_TBD: needs-triage
+
+## end CVE template
+
+some-repo report: 1
+ - type: oci
+   component: foo
+   detectedIn: Distro 1.0
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.2
+   fixedBy: 1.2.2
+   severity: low
+   status: released
+   url: https://blah.com/BAR-a"""
+                % (now.year, now.year, now.month, now.day),
+            ),
+        ]
+
+        for oci_reports, scan_type, with_templates, template_urls, whr, exp in tsts:
+            res = cvelib.scan.getScanOCIsReport(
+                oci_reports,
+                scan_type,
+                with_templates,
+                template_urls=template_urls,
+                oci_where_override=whr,
+            )
+            self.assertEqual(exp, res)
+
     def test_getScanOCIsReportTemplates(self):
         """Test test_getScanOCIsReportTemplates()"""
         now: datetime.datetime = datetime.datetime.now()
         self.maxDiff = 8196
+        # alert_name, pkg_name, oci_reports, template_urls, where_override, expected
         tsts = [
-            ("foo", "bar/baz", [], [], ""),
+            ("foo", "bar/baz", [], [], "", ""),
             (
                 "foo",
                 "bar/baz",
                 self._getValidOCIs(),
                 [],
+                "",
                 """## bar/baz foo template
 Please address foo alerts in bar/baz:
 
@@ -557,7 +782,7 @@ Description:
 Scan-Reports:
  - type: oci
    component: baz
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0003
    version: 2.3.4
    fixedBy: unavailable
@@ -566,7 +791,7 @@ Scan-Reports:
    url: https://blah.com/BAR-a
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.2
    fixedBy: 1.2.2
@@ -575,7 +800,7 @@ Scan-Reports:
    url: https://blah.com/BAR-a
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
    version: 1.2.2
    fixedBy: 1.2.3
@@ -584,7 +809,7 @@ Scan-Reports:
    url: https://blah.com/BAR-a
  - type: oci
    component: norf
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0004
    version: 2.3.4
    fixedBy: 2.3.4
@@ -600,7 +825,7 @@ Assigned-to:
 CVSS:
 
 Patches_TBD:
-oci/TBD_TBD: needs-triage
+oci/unknown_TBD: needs-triage
 
 ## end CVE template"""
                 % (now.year, now.year, now.month, now.day),
@@ -612,7 +837,7 @@ oci/TBD_TBD: needs-triage
                     cvelib.scan.ScanOCI(
                         {
                             "component": "foo",
-                            "detectedIn": "myorg/myimg@sha256:deadbeef",
+                            "detectedIn": "Distro 1.0",
                             "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0002",
                             "version": "1.2.2",
                             "fixedBy": "1.2.3",
@@ -620,14 +845,28 @@ oci/TBD_TBD: needs-triage
                             "status": "needed",
                             "url": "https://blah.com/BAR-a",
                         }
-                    )
+                    ),
+                    cvelib.scan.ScanOCI(
+                        {
+                            "component": "foo",
+                            "detectedIn": "Distro 1.0",
+                            "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0003",
+                            "version": "1.2.2",
+                            "fixedBy": "1.2.3",
+                            "severity": "medium",
+                            "status": "needed",
+                            "url": "https://blah.com/BAR-a",
+                        }
+                    ),
                 ],
                 [],
+                "",
                 """## bar/baz foo template
-Please address foo alert in bar/baz:
+Please address foo alerts in bar/baz:
 
-The following alert was issued:
+The following alerts were issued:
 - [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0002) (medium)
+- [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0003) (medium)
 
 Since a 'medium' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated.
 
@@ -647,13 +886,22 @@ CRD:
 References:
  https://blah.com/BAR-a
 Description:
- Please address alert in bar/baz
- - [ ] foo (medium)
+ Please address alerts in bar/baz
+ - [ ] foo (2 medium)
 Scan-Reports:
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   version: 1.2.2
+   fixedBy: 1.2.3
+   severity: medium
+   status: needed
+   url: https://blah.com/BAR-a
+ - type: oci
+   component: foo
+   detectedIn: Distro 1.0
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0003
    version: 1.2.2
    fixedBy: 1.2.3
    severity: medium
@@ -668,19 +916,19 @@ Assigned-to:
 CVSS:
 
 Patches_TBD:
-oci/TBD_TBD: needs-triage
+oci/unknown_TBD: needs-triage
 
 ## end CVE template"""
                 % (now.year, now.year, now.month, now.day),
             ),
             (
-                "foo",
+                "gar",
                 "bar/baz",
                 [
                     cvelib.scan.ScanOCI(
                         {
                             "component": "foo",
-                            "detectedIn": "myorg/myimg@sha256:deadbeef",
+                            "detectedIn": "Distro 1.0",
                             "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0002",
                             "version": "1.2.2",
                             "fixedBy": "1.2.3",
@@ -691,8 +939,9 @@ oci/TBD_TBD: needs-triage
                     )
                 ],
                 ["https://some/url", "https://some/other/url"],
-                """## bar/baz foo template
-Please address foo alert in bar/baz:
+                "",
+                """## bar/baz GAR template
+Please address GAR alert in bar/baz:
 
 The following alert was issued:
 - [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0002) (medium)
@@ -722,7 +971,7 @@ Description:
 Scan-Reports:
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
    version: 1.2.2
    fixedBy: 1.2.3
@@ -733,12 +982,83 @@ Notes:
 Mitigation:
 Bugs:
 Priority: medium
-Discovered-by: foo
+Discovered-by: gar
 Assigned-to:
 CVSS:
 
 Patches_TBD:
-oci/TBD_TBD: needs-triage
+oci/unknown_TBD: needs-triage
+
+## end CVE template"""
+                % (now.year, now.year, now.month, now.day),
+            ),
+            (
+                "quay",
+                "bar/baz",
+                [
+                    cvelib.scan.ScanOCI(
+                        {
+                            "component": "foo",
+                            "detectedIn": "Distro 1.0",
+                            "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0002",
+                            "version": "1.2.2",
+                            "fixedBy": "1.2.3",
+                            "severity": "medium",
+                            "status": "needed",
+                            "url": "https://blah.com/BAR-a",
+                        }
+                    )
+                ],
+                ["https://some/url", "https://some/other/url"],
+                "",
+                """## bar/baz quay.io template
+Please address quay.io alert in bar/baz:
+
+The following alert was issued:
+- [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0002) (medium)
+
+Since a 'medium' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated.
+
+Thanks!
+
+References:
+ * https://some/url
+ * https://some/other/url
+ * https://blah.com/BAR-a
+
+## end template
+
+## bar/baz CVE template
+Candidate: CVE-%d-NNNN
+OpenDate: %0.2d-%0.2d-%0.2d
+CloseDate:
+PublicDate:
+CRD:
+References:
+ https://blah.com/BAR-a
+Description:
+ Please address alert in bar/baz
+ - [ ] foo (medium)
+Scan-Reports:
+ - type: oci
+   component: foo
+   detectedIn: Distro 1.0
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   version: 1.2.2
+   fixedBy: 1.2.3
+   severity: medium
+   status: needed
+   url: https://blah.com/BAR-a
+Notes:
+Mitigation:
+Bugs:
+Priority: medium
+Discovered-by: quay.io
+Assigned-to:
+CVSS:
+
+Patches_TBD:
+oci/unknown_TBD: needs-triage
 
 ## end CVE template"""
                 % (now.year, now.year, now.month, now.day),
@@ -750,7 +1070,7 @@ oci/TBD_TBD: needs-triage
                     cvelib.scan.ScanOCI(
                         {
                             "component": "foo",
-                            "detectedIn": "myorg/myimg@sha256:deadbeef",
+                            "detectedIn": "Distro 1.0",
                             "advisory": "unavailable",
                             "version": "1.2.2",
                             "fixedBy": "1.2.3",
@@ -761,6 +1081,7 @@ oci/TBD_TBD: needs-triage
                     )
                 ],
                 [],
+                "",
                 """## bar/baz foo template
 Please address foo alert in bar/baz:
 
@@ -790,7 +1111,7 @@ Description:
 Scan-Reports:
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: unavailable
    version: 1.2.2
    fixedBy: 1.2.3
@@ -806,7 +1127,7 @@ Assigned-to:
 CVSS:
 
 Patches_TBD:
-oci/TBD_TBD: needs-triage
+oci/unknown_TBD: needs-triage
 
 ## end CVE template"""
                 % (now.year, now.year, now.month, now.day),
@@ -818,7 +1139,7 @@ oci/TBD_TBD: needs-triage
                     cvelib.scan.ScanOCI(
                         {
                             "component": "foo",
-                            "detectedIn": "myorg/myimg@sha256:deadbeef",
+                            "detectedIn": "Distro 1.0",
                             "advisory": "unavailable",
                             "version": "1.2.2",
                             "fixedBy": "1.2.3",
@@ -829,6 +1150,7 @@ oci/TBD_TBD: needs-triage
                     )
                 ],
                 [],
+                "",
                 """## bar/baz foo template
 Please address foo alert in bar/baz:
 
@@ -858,7 +1180,7 @@ Description:
 Scan-Reports:
  - type: oci
    component: foo
-   detectedIn: myorg/myimg@sha256:deadbeef
+   detectedIn: Distro 1.0
    advisory: unavailable
    version: 1.2.2
    fixedBy: 1.2.3
@@ -874,13 +1196,84 @@ Assigned-to:
 CVSS:
 
 Patches_TBD:
-oci/TBD_TBD: needs-triage
+oci/unknown_TBD: needs-triage
+
+## end CVE template"""
+                % (now.year, now.year, now.month, now.day),
+            ),
+            (
+                "foo",
+                "bar/baz",
+                [
+                    cvelib.scan.ScanOCI(
+                        {
+                            "component": "foo",
+                            "detectedIn": "Distro 1.0",
+                            "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0002",
+                            "version": "1.2.2",
+                            "fixedBy": "1.2.3",
+                            "severity": "medium",
+                            "status": "needed",
+                            "url": "https://blah.com/BAR-a",
+                        }
+                    )
+                ],
+                [],
+                "some-override",
+                """## bar/baz foo template
+Please address foo alert in bar/baz:
+
+The following alert was issued:
+- [ ] [foo](https://www.cve.org/CVERecord?id=CVE-2023-0002) (medium)
+
+Since a 'medium' severity issue is present, tentatively adding the 'security/medium' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated.
+
+Thanks!
+
+References:
+ * https://blah.com/BAR-a
+
+## end template
+
+## bar/baz CVE template
+Candidate: CVE-%d-NNNN
+OpenDate: %0.2d-%0.2d-%0.2d
+CloseDate:
+PublicDate:
+CRD:
+References:
+ https://blah.com/BAR-a
+Description:
+ Please address alert in bar/baz
+ - [ ] foo (medium)
+Scan-Reports:
+ - type: oci
+   component: foo
+   detectedIn: Distro 1.0
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   version: 1.2.2
+   fixedBy: 1.2.3
+   severity: medium
+   status: needed
+   url: https://blah.com/BAR-a
+Notes:
+Mitigation:
+Bugs:
+Priority: medium
+Discovered-by: foo
+Assigned-to:
+CVSS:
+
+Patches_TBD:
+oci/some-override_TBD: needs-triage
 
 ## end CVE template"""
                 % (now.year, now.year, now.month, now.day),
             ),
         ]
 
-        for reg, name, ocis, template_urls, exp in tsts:
-            res = cvelib.scan.getScanOCIsReportTemplates(reg, name, ocis, template_urls)
+        for alert_name, pkg_name, oci_reports, template_urls, whr, exp in tsts:
+            res = cvelib.scan.getScanOCIsReportTemplates(
+                alert_name, pkg_name, oci_reports, template_urls, oci_where_override=whr
+            )
             self.assertEqual(exp, res)
