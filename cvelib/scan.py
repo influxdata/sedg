@@ -268,8 +268,6 @@ def getScanOCIsReportUnused(
         status = "n/a"
         if "needed" in grouped[g]["status"]:
             status = "needed"
-        elif "unavailable" in grouped[g]["status"]:
-            status = "unavailable"
         elif "released" in grouped[g]["status"]:
             status = "released"
 
