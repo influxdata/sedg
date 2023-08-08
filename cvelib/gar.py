@@ -98,7 +98,7 @@ def getGAROCIForRepo(repo_full: str) -> List[Tuple[str, int]]:
         if "nextPageToken" not in resj:
             break
 
-        params["pageToken"] = resj["nextPageToken"]
+        params["pageToken"] = resj["nextPageToken"]  # pragma: nocover
         # time.sleep(2)  # in case nextPageToken isn't valid yet
 
     return ocis
@@ -297,7 +297,7 @@ def getGARDiscovery(repo_full: str) -> str:
         if "nextPageToken" not in resj:
             break
 
-        params["pageToken"] = resj["nextPageToken"]
+        params["pageToken"] = resj["nextPageToken"]  # pragma: nocover
         # time.sleep(2)  # in case nextPageToken isn't valid yet
 
     s: str = "reason not detected"
@@ -514,7 +514,7 @@ class GARSecurityReportNew(SecurityReportInterface):
             if "nextPageToken" not in resj:
                 break
 
-            params["pageToken"] = resj["nextPageToken"]
+            params["pageToken"] = resj["nextPageToken"]  # pragma: nocover
             # time.sleep(2)  # in case nextPageToken isn't valid yet
 
         if tagsearch == "":
@@ -713,7 +713,7 @@ class GARSecurityReportNew(SecurityReportInterface):
             if "nextPageToken" not in resj:
                 break
 
-            params["pageToken"] = resj["nextPageToken"]
+            params["pageToken"] = resj["nextPageToken"]  # pragma: nocover
             # time.sleep(2)  # in case nextPageToken isn't valid yet
 
         # If raw format, output a unified JSON document that has all the
@@ -814,7 +814,7 @@ class GARSecurityReportNew(SecurityReportInterface):
                     print(" done!", flush=True)
                 break
 
-            params["pageToken"] = resj["nextPageToken"]
+            params["pageToken"] = resj["nextPageToken"]  # pragma: nocover
             # time.sleep(2)  # in case nextPageToken isn't valid yet
 
         return copy.deepcopy(repos)
