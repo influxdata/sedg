@@ -4099,9 +4099,6 @@ template-urls = https://url1,https://url2
 """
             )
 
-        # set the access and modification time to 2000-01-01
-        os.utime(since_stamp_fn, (946706400, 946706400))
-
         tsts = [
             (
                 [
@@ -4184,10 +4181,65 @@ template-urls = https://url1,https://url2
             ),
         ]
         for args, exp in tsts:
+            # set the access and modification time to 2000-01-01
+            os.utime(since_stamp_fn, (946706400, 946706400))
+
             with tests.testutil.capturedOutput() as (output, error):
                 cvelib.report.main_report(args)
             self.assertEqual("", error.getvalue().strip())
             out = output.getvalue()
+            self.assertTrue(
+                exp in out.strip(),
+                msg="Could not find '%s' in: %s" % (exp, out),
+            )
+
+    @mock.patch("requests.get", side_effect=mocked_requests_get__getGHAlertsAllFull)
+    def test_main_report_gh_alerts_has_previous(self, _):  # 2nd arg is mock_get
+        """Test main_report - gh --alerts - has previous"""
+        cveDirs = self._mock_cve_data_mixed()  # this creates self.tmpdir
+
+        # create a file with a dupe of something in self._mock_cve_data_mixed()
+        d = self._cve_template(
+            cand="CVE-2022-GH9998#bar",
+            references=["https://github.com/org/bar/issues/9998"],
+        )
+        d["Priority"] = "medium"
+        d["git/valid-org_valid-repo"] = "needed"
+        d["Discovered-by"] = "gh-dependabot"
+        d[
+            "GitHub-Advanced-Security"
+        ] = """
+ - type: dependabot
+   dependency: baz
+   detectedIn: path/yarn.lock
+   advisory: https://github.com/advisories/GHSA-b
+   severity: medium
+   status: needed
+   url: https://github.com/valid-org/valid-repo/security/dependabot/3"""
+        cve_fn = os.path.join(cveDirs["active"], d["Candidate"])
+        content = tests.testutil.cveContentFromDict(d)
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(
+                [
+                    "gh",
+                    "--alerts",
+                    "--since",
+                    "1",
+                    "--org",
+                    "valid-org",
+                    "-s",
+                    "valid-repo",
+                ],
+            )
+            self.assertEqual(
+                "WARN: found previously known url with newer createdAt: https://github.com/valid-org/valid-repo/security/dependabot/3 (skipping)",
+                error.getvalue().strip(),
+            )
+            out = output.getvalue()
+            exp = "valid-repo updated alerts:"
             self.assertTrue(
                 exp in out.strip(),
                 msg="Could not find '%s' in: %s" % (exp, out),
@@ -4875,7 +4927,6 @@ template-urls = https://url1,https://url2
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
         res = output.getvalue().strip()
-        print(res)
         self.assertTrue("# Updated reports" in res, msg="output is:\n%s" % res)
         self.assertTrue(
             "   advisory: https://www.cve.org/CVERecord?id=CVE-2022-32221" in res,
