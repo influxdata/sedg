@@ -319,7 +319,7 @@ class QuaySecurityReportNew(SecurityReportInterface):
                     print(" done!")
                 break
 
-            params["next_page"] = resj["next_page"]
+            params["next_page"] = resj["next_page"]  # pragma: nocover
 
         return copy.deepcopy(repos)
 
