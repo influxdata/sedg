@@ -191,11 +191,33 @@ class TestGAR(TestCase):
         res = cvelib.gar.parse(d["occurrences"])
         self.assertEqual("unknown", res[0].versionAffected)
 
-        # detectedIn
+        # detectedIn - GO_STDLIB
         d = self._validGARReport()
         d["occurrences"][0]["vulnerability"]["packageIssue"][0][
             "packageType"
         ] = "GO_STDLIB"
+        d["occurrences"][0]["vulnerability"]["packageIssue"][0]["fileLocation"] = [
+            {"filePath": "/first"},
+            {"filePath": "/second"},
+        ]
+        res = cvelib.gar.parse(d["occurrences"])
+        self.assertEqual(1, len(res))
+        self.assertEqual("/first", res[0].detectedIn)
+
+        # detectedIn - NPM
+        d = self._validGARReport()
+        d["occurrences"][0]["vulnerability"]["packageIssue"][0]["packageType"] = "NPM"
+        d["occurrences"][0]["vulnerability"]["packageIssue"][0]["fileLocation"] = [
+            {"filePath": "/first"},
+            {"filePath": "/second"},
+        ]
+        res = cvelib.gar.parse(d["occurrences"])
+        self.assertEqual(1, len(res))
+        self.assertEqual("/first", res[0].detectedIn)
+
+        # detectedIn - PYPI
+        d = self._validGARReport()
+        d["occurrences"][0]["vulnerability"]["packageIssue"][0]["packageType"] = "PYPI"
         d["occurrences"][0]["vulnerability"]["packageIssue"][0]["fileLocation"] = [
             {"filePath": "/first"},
             {"filePath": "/second"},

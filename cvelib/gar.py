@@ -135,7 +135,7 @@ def parse(vulns: List[Dict[str, Any]]) -> List[ScanOCI]:
         # only be a list of 1 anyway)
         iss: Dict[str, Any] = v["vulnerability"][details_key][0]
 
-        if iss["packageType"] not in ["OS", "GO_STDLIB"]:
+        if iss["packageType"] not in ["OS", "GO_STDLIB", "NPM", "PYPI"]:
             warn("unrecognized packageType '%s'" % iss["packageType"])
             continue
 
@@ -169,7 +169,7 @@ def parse(vulns: List[Dict[str, Any]]) -> List[ScanOCI]:
         detectedIn: str = "unknown"
         if iss["packageType"] == "OS":
             detectedIn = iss["affectedCpeUri"]
-        elif iss["packageType"] == "GO_STDLIB":
+        elif iss["packageType"] in ["GO_STDLIB", "NPM", "PYPI"]:
             if (
                 "fileLocation" in iss
                 and len(iss["fileLocation"]) > 0
