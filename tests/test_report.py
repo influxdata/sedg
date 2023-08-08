@@ -168,8 +168,6 @@ def mocked_requests_get__getGHIssuesForRepo(*args, **kwargs):
         return MockResponse(None, 400)
     elif args[0] == "https://api.github.com/repos/valid-org/empty-repo/issues":
         return MockResponse([], 200)
-    elif args[0] == "https://api.github.com/repos/valid-org/private-repo/issues":
-        return MockResponse([], 200)
     elif args[0] == "https://api.github.com/orgs/valid-org/repos":
         return MockResponse(
             [
@@ -632,11 +630,7 @@ def mocked_requests_get__getGHAlertsAllCode(*args, **kwargs):
         def json(self):  # pragma: no cover
             return self.json_data
 
-    if args[0] == "https://api.github.com/orgs/valid-org/dependabot/alerts":
-        return MockResponse([], 200)
-    elif args[0] == "https://api.github.com/orgs/valid-org/secret-scanning/alerts":
-        return MockResponse([], 200)
-    elif args[0] == "https://api.github.com/orgs/valid-org/code-scanning/alerts":
+    if args[0] == "https://api.github.com/orgs/valid-org/code-scanning/alerts":
         return MockResponse(_getMockedAlertsJSON("code-scanning"), 200)
 
     # catch-all
@@ -658,10 +652,6 @@ def mocked_requests_get__getGHAlertsAllDependabot(*args, **kwargs):
 
     if args[0] == "https://api.github.com/orgs/valid-org/dependabot/alerts":
         return MockResponse(_getMockedAlertsJSON("dependabot"), 200)
-    elif args[0] == "https://api.github.com/orgs/valid-org/secret-scanning/alerts":
-        return MockResponse([], 200)
-    elif args[0] == "https://api.github.com/orgs/valid-org/code-scanning/alerts":
-        return MockResponse([], 200)
 
     # catch-all
     print(
@@ -680,12 +670,8 @@ def mocked_requests_get__getGHAlertsAllSecret(*args, **kwargs):
         def json(self):  # pragma: no cover
             return self.json_data
 
-    if args[0] == "https://api.github.com/orgs/valid-org/dependabot/alerts":
-        return MockResponse([], 200)
-    elif args[0] == "https://api.github.com/orgs/valid-org/secret-scanning/alerts":
+    if args[0] == "https://api.github.com/orgs/valid-org/secret-scanning/alerts":
         return MockResponse(_getMockedAlertsJSON("secret-scanning"), 200)
-    elif args[0] == "https://api.github.com/orgs/valid-org/code-scanning/alerts":
-        return MockResponse([], 200)
 
     # catch-all
     print(
@@ -704,12 +690,8 @@ def mocked_requests_get__getGHAlertsAllSecretPrivate(*args, **kwargs):
         def json(self):  # pragma: no cover
             return self.json_data
 
-    if args[0] == "https://api.github.com/orgs/valid-org/dependabot/alerts":
-        return MockResponse([], 200)
-    elif args[0] == "https://api.github.com/orgs/valid-org/secret-scanning/alerts":
+    if args[0] == "https://api.github.com/orgs/valid-org/secret-scanning/alerts":
         return MockResponse(_getMockedAlertsJSON("secret-scanning-private"), 200)
-    elif args[0] == "https://api.github.com/orgs/valid-org/code-scanning/alerts":
-        return MockResponse([], 200)
 
     # catch-all
     print(
