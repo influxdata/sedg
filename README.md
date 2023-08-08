@@ -110,7 +110,24 @@
     $ deactivate
     ```
 
- 6. (Optional) If vim user, symlink `cvelib/cve.vim` in `~/.vim/syntax`
+ 6. (Optional) If vim user, symlink `extras/vim/syntax/cve.vim` in
+    `~/.vim/syntax` or `~/.config/nvim/syntax`, symlink
+    `extras/vim/indent/cve.vim` in `~/.vim/indent` or `~/.config/nvim/indent`
+    and add to VIMRC:
+    ```
+    " CVEs
+    augroup cve
+      autocmd!
+      autocmd BufNewFile,BufRead CVE-[0-9][0-9][0-9][0-9]-[0-9GN]* set ft=cve
+      autocmd BufNewFile,BufRead CVE-[0-9][0-9][0-9][0-9]-[0-9GN]* set syntax=cve
+      autocmd BufNewFile,BufRead CVE-[0-9][0-9][0-9][0-9]-[0-9GN]* set autoindent
+      autocmd BufNewFile,BufRead CVE-[0-9][0-9][0-9][0-9]-[0-9GN]* setlocal indentexpr=GetCVEIndent()
+      autocmd BufNewFile,BufRead */path/to/cve-data-dir/templates/* set ft=cve
+      autocmd BufNewFile,BufRead */path/to/cve-data-dir/templates/* set syntax=cve
+      autocmd BufNewFile,BufRead */path/to/cve-data-dir/templates/* set autoindent
+      autocmd BufNewFile,BufRead */path/to/cve-data-dir/templates/* setlocal indentexpr=GetCVEIndent()
+    augroup END
+    ```
 
 # Staying up to date
 
