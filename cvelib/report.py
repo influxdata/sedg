@@ -1116,16 +1116,16 @@ def getOCIReports(
     pat: Pattern = re.compile(r"sha256:.*")
     for img in scan_ocis:
         repo_full: str = "%s/%s" % (namespace, img)
-        for oci in scan_ocis[img]:
+        for report in scan_ocis[img]:
             prod, whr, sw, mod = cvelib.scan._parseScanURL(
-                oci.url, where_override=oci_where_override
+                report.url, where_override=oci_where_override
             )
             found: bool = False
             updated: bool = False
             # TODO: capture the CVE file and suggest updates to it
             for cve in cves:
-                # skip CVE files without package stanzas that apply to the oci
-                # URL
+                # skip CVE files without package stanzas that apply to the
+                # report URL
                 for pkg in cve.pkgs:
                     if (
                         pkg.product == prod
@@ -1138,8 +1138,8 @@ def getOCIReports(
                         # advisory/url combinations in the CVE file
                         for cverep in cve.scan_reports:
                             purl: str = pat.sub("", cverep.url)
-                            fuzzy, precise = cvelib.scan.matches(cverep, oci)
-                            if fuzzy and oci.url.startswith(purl):
+                            fuzzy, precise = cvelib.scan.matches(cverep, report)
+                            if fuzzy and report.url.startswith(purl):
                                 found = True
                                 if not precise:
                                     updated = True
@@ -1150,18 +1150,18 @@ def getOCIReports(
             if found:
                 # if repo_full not in ext:
                 #    ext[repo_full] = []
-                # if oci not in ext[repo_full]:
-                #    ext[repo_full].append(oci)
+                # if report not in ext[repo_full]:
+                #    ext[repo_full].append(report)
                 if updated:
                     if repo_full not in upd:
                         upd[repo_full] = []
-                    if oci not in upd[repo_full]:
-                        upd[repo_full].append(oci)
+                    if report not in upd[repo_full]:
+                        upd[repo_full].append(report)
             else:
                 if repo_full not in new:
                     new[repo_full] = []
-                if oci not in new[repo_full]:
-                    new[repo_full].append(oci)
+                if report not in new[repo_full]:
+                    new[repo_full].append(report)
 
     if len(new) > 0:
         print("# New reports\n")
