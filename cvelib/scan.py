@@ -131,22 +131,70 @@ class ScanOCI(object):
             raise CveException("invalid url: %s" % s)
         self.url = s
 
+    # declare b's type as "ScanOCI" (string literal) to postpone evaluation of
+    # the ScanOCI type
+    def matches(self, b: "ScanOCI") -> Tuple[bool, bool]:
+        """Test if self and b match in meaningful ways. Returns fuzzy and
+        precise tuple
+        """
+        if self.advisory != b.advisory or self.component != b.component:
+            return False, False
 
-def matches(a: ScanOCI, b: ScanOCI) -> Tuple[bool, bool]:
-    """Test if self and b match in meaningful ways. Returns fuzzy and precise
-    tuple"""
-    if a.advisory != b.advisory or a.component != b.component:
-        return False, False
+        if (
+            self.detectedIn != b.detectedIn
+            or self.versionAffected != b.versionAffected
+            or self.versionFixed != b.versionFixed
+            or self.severity != b.severity
+        ):
+            return True, False
 
-    if (
-        a.detectedIn != b.detectedIn
-        or a.versionAffected != b.versionAffected
-        or a.versionFixed != b.versionFixed
-        or a.severity != b.severity
-    ):
-        return True, False
+        return True, True
 
-    return True, True
+    def diff(self, b: "ScanOCI") -> str:
+        """Get diff of two reports"""
+
+        def _diff(a: "ScanOCI", b: "ScanOCI", attrib: str):
+            attrib_p: str = attrib
+            if attrib == "versionAffected":
+                attrib_p = "version"
+            if attrib == "versionFixed":
+                attrib_p = "fixedBy"
+
+            # only show diff for versions, detectedIn and severity (the fuzzy
+            # matching parts)
+            if getattr(a, attrib) == getattr(b, attrib) or attrib not in [
+                "versionAffected",
+                "versionFixed",
+                "severity",
+                "detectedIn",
+            ]:
+                return "   %s: %s\n" % (attrib_p, getattr(a, attrib))
+
+            return "-  %s: %s\n+  %s: %s\n" % (
+                attrib_p,
+                getattr(a, attrib),
+                attrib_p,
+                getattr(b, attrib),
+            )
+
+        # this function makes no sense if not a fuzzy match
+        fuzzy, _ = self.matches(b)
+        assert fuzzy
+
+        s: str = " - type: oci\n"
+        for attrib in [
+            "component",
+            "detectedIn",
+            "advisory",
+            "versionAffected",
+            "versionFixed",
+            "severity",
+            "status",
+            "url",
+        ]:
+            s += _diff(self, b, attrib)
+
+        return s.rstrip()  # strip trailing newline
 
 
 def parse(s: str) -> List[ScanOCI]:

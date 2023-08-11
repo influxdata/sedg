@@ -63,7 +63,7 @@ class TestGAR(TestCase):
                 res = cvelib.gar._createGARHeaders()
             self.assertEqual("", output.getvalue().strip())
             self.assertEqual(
-                "ERROR: Please export GCLOUD_TOKEN (eg: export GCLOUD_TOKEN=$(gcloud auth print-access-token)",
+                "ERROR: Please export GCLOUD_TOKEN (eg: export GCLOUD_TOKEN=$(gcloud auth print-access-token))",
                 error.getvalue().strip(),
             )
 
