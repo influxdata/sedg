@@ -131,22 +131,23 @@ class ScanOCI(object):
             raise CveException("invalid url: %s" % s)
         self.url = s
 
+    # declare b's type as "ScanOCI" (string literal) to postpone evaluation of
+    # the ScanOCI type
+    def matches(self, b: "ScanOCI") -> Tuple[bool, bool]:
+        """Test if self and b match in meaningful ways. Returns fuzzy and precise
+        tuple"""
+        if self.advisory != b.advisory or self.component != b.component:
+            return False, False
 
-def matches(a: ScanOCI, b: ScanOCI) -> Tuple[bool, bool]:
-    """Test if self and b match in meaningful ways. Returns fuzzy and precise
-    tuple"""
-    if a.advisory != b.advisory or a.component != b.component:
-        return False, False
+        if (
+            self.detectedIn != b.detectedIn
+            or self.versionAffected != b.versionAffected
+            or self.versionFixed != b.versionFixed
+            or self.severity != b.severity
+        ):
+            return True, False
 
-    if (
-        a.detectedIn != b.detectedIn
-        or a.versionAffected != b.versionAffected
-        or a.versionFixed != b.versionFixed
-        or a.severity != b.severity
-    ):
-        return True, False
-
-    return True, True
+        return True, True
 
 
 def parse(s: str) -> List[ScanOCI]:

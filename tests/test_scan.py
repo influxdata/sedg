@@ -418,7 +418,7 @@ class TestScanCommon(TestCase):
         ]
 
         for a, b, expF, expP in tsts:
-            f, p = cvelib.scan.matches(a, b)
+            f, p = a.matches(b)
             self.assertEqual(expF, f)
             self.assertEqual(expP, p)
 

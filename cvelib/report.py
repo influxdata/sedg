@@ -1136,9 +1136,9 @@ def getOCIReports(
                         # there is a pkg match in the CVE file for the scan
                         # report url, so now see if there are any existing
                         # advisory/url combinations in the CVE file
-                        for cverep in cve.scan_reports:
-                            purl: str = pat.sub("", cverep.url)
-                            fuzzy, precise = cvelib.scan.matches(cverep, report)
+                        for cve_report in cve.scan_reports:
+                            purl: str = pat.sub("", cve_report.url)
+                            fuzzy, precise = report.matches(cve_report)
                             if fuzzy and report.url.startswith(purl):
                                 found = True
                                 if not precise:
