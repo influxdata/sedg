@@ -70,6 +70,7 @@ class CVE(object):
         compatUbuntu: bool = False,
     ) -> None:
         # types and defaults
+        self.fn: str = ""
         self.candidate: str = ""
         self.openDate: str = ""
         self.closeDate: str = ""
@@ -105,6 +106,10 @@ class CVE(object):
         self.untriagedOk: bool = untriagedOk
         if fn is None:
             return
+        self.fn = "%s/%s" % (
+            os.path.basename(os.path.dirname(fn)),
+            os.path.basename(fn),
+        )
 
         data: Dict[str, str] = cvelib.common.readCve(fn)
         self.setData(data)

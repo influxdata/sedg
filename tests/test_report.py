@@ -4927,16 +4927,19 @@ template-urls = https://url1,https://url2
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
         res = output.getvalue().strip()
-        self.assertTrue("# Updated reports" in res, msg="output is:\n%s" % res)
-        self.assertTrue(
-            "   advisory: https://www.cve.org/CVERecord?id=CVE-2022-32221" in res,
-            msg="output is:\n%s" % res,
-        )
-        self.assertTrue(
-            "   severity: high" in res,
-            msg="output is:\n%s" % res,
-        )
-        self.assertFalse(
-            "   advisory: https://www.cve.org/CVERecord?id=CVE-2021-46848" in res,
-            msg="output is:\n%s" % res,
-        )
+        exp = """# Updated reports
+
+valid-proj/us/valid-repo/valid-name report: 1
+
+ active/CVE-2022-GH2#foo:
+ - type: oci
+   component: curl
+   detectedIn: cpe:/o:debian:debian_linux:11
+   advisory: https://www.cve.org/CVERecord?id=CVE-2022-32221
+   version: 7.74.0-1.3+deb11u2
+   fixedBy: 7.74.0-1.3+deb11u5
+-  severity: critical
++  severity: high
+   status: needed
+   url: https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef"""
+        self.assertEqual(res, exp)

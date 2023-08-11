@@ -1111,7 +1111,7 @@ def getOCIReports(
 
     new: Dict[str, List[cvelib.scan.ScanOCI]] = {}
     upd: Dict[str, List[cvelib.scan.ScanOCI]] = {}
-    # ext: Dict[str, List[cvelib.scan.ScanOCI]] = {}
+    ext: Dict[str, List[Tuple[cvelib.scan.ScanOCI, str]]] = {}
 
     pat: Pattern = re.compile(r"sha256:.*")
     for img in scan_ocis:
@@ -1143,15 +1143,21 @@ def getOCIReports(
                                 found = True
                                 if not precise:
                                     updated = True
+
+                                if repo_full not in ext:
+                                    ext[repo_full] = []
+
+                                tupl: Tuple[cvelib.scan.ScanOCI, str] = (
+                                    cve_report,
+                                    cve.fn,
+                                )
+                                if tupl not in ext[repo_full]:
+                                    ext[repo_full].append(tupl)
                                 break
                     if found:
                         break
 
             if found:
-                # if repo_full not in ext:
-                #    ext[repo_full] = []
-                # if report not in ext[repo_full]:
-                #    ext[repo_full].append(report)
                 if updated:
                     if repo_full not in upd:
                         upd[repo_full] = []
@@ -1177,29 +1183,26 @@ def getOCIReports(
 
     if len(upd) > 0:
         print("\n# Updated reports\n")
-        print(
-            cvelib.scan.getScanOCIsReport(
-                upd,
-                sr.name,
-                with_templates=with_templates,
-                template_urls=template_urls,
-                oci_where_override=oci_where_override,
-            )
-        )
+        upd_report: cvelib.scan.ScanOCI
+        ext_report: cvelib.scan.ScanOCI
+        for repo_full in upd:
+            assert repo_full in ext
+            print("%s report: %d" % (repo_full.split("@")[0], len(upd[repo_full])))
 
-    # print("\n# Existing reports\n")
-    # if len(ext) > 0:
-    #    print(
-    #        cvelib.scan.getScanOCIsReport(
-    #            ext,
-    #            sr.name,
-    #            with_templates=with_templates,
-    #            template_urls=template_urls,
-    #            oci_where_override=oci_where_override,
-    #        )
-    #    )
-    # else:
-    #    print("No existing reports")
+            # first group by CVEs
+            tmp: Dict[str, List[str]] = {}
+            for upd_report in upd[repo_full]:
+                for ext_report, cve_fn in ext[repo_full]:
+                    fuzzy, _ = upd_report.matches(ext_report)
+                    if fuzzy:
+                        if cve_fn not in tmp:
+                            tmp[cve_fn] = []
+                        tmp[cve_fn].append(ext_report.diff(upd_report))
+
+            for cve_fn in tmp:
+                print("\n %s:" % cve_fn)
+                for r in tmp[cve_fn]:
+                    print(r + "\n")
 
 
 #
