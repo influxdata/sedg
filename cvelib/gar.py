@@ -22,7 +22,7 @@ def _createGARHeaders() -> Dict[str, str]:
     """Create request headers for a GAR request"""
     if "GCLOUD_TOKEN" not in os.environ:
         error(
-            "Please export GCLOUD_TOKEN (eg: export GCLOUD_TOKEN=$(gcloud auth print-access-token)"
+            "Please export GCLOUD_TOKEN (eg: export GCLOUD_TOKEN=$(gcloud auth print-access-token))"
         )
 
     headers: Dict[str, str] = {}
