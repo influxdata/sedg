@@ -395,6 +395,7 @@ class TestScanCommon(TestCase):
             "status": "needed",
             "url": "https://blah.com/BAR-a",
         }
+        a = cvelib.scan.ScanOCI(a_data)
 
         b_same = copy.deepcopy(a_data)
         b_diff = copy.deepcopy(a_data)
@@ -406,21 +407,80 @@ class TestScanCommon(TestCase):
 
         tsts = [
             # a, b, expectedFuzzy, expectedPrecise
-            (cvelib.scan.ScanOCI(a_data), cvelib.scan.ScanOCI(b_same), True, True),
-            (cvelib.scan.ScanOCI(a_data), cvelib.scan.ScanOCI(b_close), True, True),
+            (a, cvelib.scan.ScanOCI(b_same), True, True),
+            (a, cvelib.scan.ScanOCI(b_close), True, True),
             (
-                cvelib.scan.ScanOCI(a_data),
+                a,
                 cvelib.scan.ScanOCI(b_imprecise),
                 True,
                 False,
             ),
-            (cvelib.scan.ScanOCI(a_data), cvelib.scan.ScanOCI(b_diff), False, False),
+            (a, cvelib.scan.ScanOCI(b_diff), False, False),
         ]
 
         for a, b, expF, expP in tsts:
             f, p = a.matches(b)
             self.assertEqual(expF, f)
             self.assertEqual(expP, p)
+
+    def test_diff(self):
+        """Test diff()"""
+        a_data = {
+            "component": "foo",
+            "detectedIn": "Some Distro",
+            "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+            "version": "1.2.2",
+            "fixedBy": "1.2.3",
+            "severity": "medium",
+            "status": "needed",
+            "url": "https://blah.com/BAR-a",
+        }
+        a = cvelib.scan.ScanOCI(a_data)
+
+        b_same = copy.deepcopy(a_data)
+        b_diff = copy.deepcopy(a_data)
+        b_diff["fixedBy"] = "1.2.4"
+        b_diff["severity"] = "low"
+        b_diff["status"] = "needs-triage"
+        b_diff["detectedIn"] = "Other Distro"
+
+        tsts = [
+            # a, b, expected
+            (
+                a,
+                cvelib.scan.ScanOCI(b_same),
+                """ - type: oci
+   component: foo
+   detectedIn: Some Distro
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.2
+   fixedBy: 1.2.3
+   severity: medium
+   status: needed
+   url: https://blah.com/BAR-a""",
+            ),
+            (
+                a,
+                cvelib.scan.ScanOCI(b_diff),
+                """ - type: oci
+   component: foo
+-  detectedIn: Some Distro
++  detectedIn: Other Distro
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.2
+-  fixedBy: 1.2.3
++  fixedBy: 1.2.4
+-  severity: medium
++  severity: low
+   status: needed
+   url: https://blah.com/BAR-a""",
+            ),
+        ]
+
+        for a, b, exp in tsts:
+            res = a.diff(b)
+            print(res)
+            self.assertEqual(exp, res)
 
     def test_parse(self):
         """Test parse()"""

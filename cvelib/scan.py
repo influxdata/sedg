@@ -134,8 +134,9 @@ class ScanOCI(object):
     # declare b's type as "ScanOCI" (string literal) to postpone evaluation of
     # the ScanOCI type
     def matches(self, b: "ScanOCI") -> Tuple[bool, bool]:
-        """Test if self and b match in meaningful ways. Returns fuzzy and precise
-        tuple"""
+        """Test if self and b match in meaningful ways. Returns fuzzy and
+        precise tuple
+        """
         if self.advisory != b.advisory or self.component != b.component:
             return False, False
 
@@ -148,6 +149,52 @@ class ScanOCI(object):
             return True, False
 
         return True, True
+
+    def diff(self, b: "ScanOCI") -> str:
+        """Get diff of two reports"""
+
+        def _diff(a: "ScanOCI", b: "ScanOCI", attrib: str):
+            attrib_p: str = attrib
+            if attrib == "versionAffected":
+                attrib_p = "version"
+            if attrib == "versionFixed":
+                attrib_p = "fixedBy"
+
+            # only show diff for versions, detectedIn and severity (the fuzzy
+            # matching parts)
+            if getattr(a, attrib) == getattr(b, attrib) or attrib not in [
+                "versionAffected",
+                "versionFixed",
+                "severity",
+                "detectedIn",
+            ]:
+                return "   %s: %s\n" % (attrib_p, getattr(a, attrib))
+
+            return "-  %s: %s\n+  %s: %s\n" % (
+                attrib_p,
+                getattr(a, attrib),
+                attrib_p,
+                getattr(b, attrib),
+            )
+
+        # this function makes no sense if not a fuzzy match
+        fuzzy, _ = self.matches(b)
+        assert fuzzy
+
+        s: str = " - type: oci\n"
+        for attrib in [
+            "component",
+            "detectedIn",
+            "advisory",
+            "versionAffected",
+            "versionFixed",
+            "severity",
+            "status",
+            "url",
+        ]:
+            s += _diff(self, b, attrib)
+
+        return s.rstrip()  # strip trailing newline
 
 
 def parse(s: str) -> List[ScanOCI]:
