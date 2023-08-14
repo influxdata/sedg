@@ -1116,12 +1116,14 @@ def getOCIReports(
         return
 
     new: Dict[str, List[cvelib.scan.ScanOCI]] = {}
-    upd: Dict[str, List[cvelib.scan.ScanOCI]] = {}
-    ext: Dict[str, List[Tuple[cvelib.scan.ScanOCI, str]]] = {}
+    upd_reports: Dict[str, List[cvelib.scan.ScanOCI]] = {}
+    upd_files: Dict[str, List[Tuple[cvelib.scan.ScanOCI, str]]] = {}
 
     pat: Pattern = re.compile(r"sha256:.*")
     for img in scan_ocis:
         repo_full: str = "%s/%s" % (namespace, img)
+
+        # first check for any new or updated items in the reports for this img
         for report in scan_ocis[img]:
             prod, whr, sw, mod = cvelib.scan._parseScanURL(
                 report.url, where_override=oci_where_override
@@ -1149,25 +1151,25 @@ def getOCIReports(
                                 if not precise:
                                     updated = True
 
-                                if repo_full not in ext:
-                                    ext[repo_full] = []
+                                if repo_full not in upd_files:
+                                    upd_files[repo_full] = []
 
                                 tupl: Tuple[cvelib.scan.ScanOCI, str] = (
                                     cve_report,
                                     cve.fn,
                                 )
-                                if tupl not in ext[repo_full]:
-                                    ext[repo_full].append(tupl)
+                                if tupl not in upd_files[repo_full]:
+                                    upd_files[repo_full].append(tupl)
                                 break
                     if found:
                         break
 
             if found:
                 if updated:
-                    if repo_full not in upd:
-                        upd[repo_full] = []
-                    if report not in upd[repo_full]:
-                        upd[repo_full].append(report)
+                    if repo_full not in upd_reports:
+                        upd_reports[repo_full] = []
+                    if report not in upd_reports[repo_full]:
+                        upd_reports[repo_full].append(report)
             else:
                 if repo_full not in new:
                     new[repo_full] = []
@@ -1186,18 +1188,20 @@ def getOCIReports(
             )
         )
 
-    if len(upd) > 0:
+    if len(upd_reports) > 0:
         print("\n# Updated reports\n")
         upd_report: cvelib.scan.ScanOCI
         ext_report: cvelib.scan.ScanOCI
-        for repo_full in upd:
-            assert repo_full in ext
-            print("%s report: %d" % (repo_full.split("@")[0], len(upd[repo_full])))
+        for repo_full in upd_reports:
+            assert repo_full in upd_files
+            print(
+                "%s report: %d" % (repo_full.split("@")[0], len(upd_reports[repo_full]))
+            )
 
             # first group by CVEs
             tmp: Dict[str, List[str]] = {}
-            for upd_report in upd[repo_full]:
-                for ext_report, cve_fn in ext[repo_full]:
+            for upd_report in upd_reports[repo_full]:
+                for ext_report, cve_fn in upd_files[repo_full]:
                     fuzzy, _ = upd_report.matches(ext_report)
                     if fuzzy:
                         if cve_fn not in tmp:
