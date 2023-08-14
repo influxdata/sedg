@@ -158,10 +158,10 @@ class ScanOCI(object):
 
         return True, True
 
-    def diff(self, b: "ScanOCI") -> str:
+    def diff(self, b: "ScanOCI", precise: bool = False) -> str:
         """Get diff of two reports"""
 
-        def _diff(a: "ScanOCI", b: "ScanOCI", attrib: str):
+        def _diff(a: "ScanOCI", b: "ScanOCI", attrib: str, precise: bool):
             attrib_p: str = attrib
             if attrib == "versionAffected":
                 attrib_p = "version"
@@ -170,12 +170,16 @@ class ScanOCI(object):
 
             # only show diff for versions, detectedIn and severity (the fuzzy
             # matching parts)
-            if getattr(a, attrib) == getattr(b, attrib) or attrib not in [
-                "versionAffected",
-                "versionFixed",
-                "severity",
-                "detectedIn",
-            ]:
+            if getattr(a, attrib) == getattr(b, attrib) or (
+                not precise
+                and attrib
+                not in [
+                    "versionAffected",
+                    "versionFixed",
+                    "severity",
+                    "detectedIn",
+                ]
+            ):
                 return "   %s: %s\n" % (attrib_p, getattr(a, attrib))
 
             return "-  %s: %s\n+  %s: %s\n" % (
@@ -200,7 +204,7 @@ class ScanOCI(object):
             "status",
             "url",
         ]:
-            s += _diff(self, b, attrib)
+            s += _diff(self, b, attrib, precise)
 
         return s.rstrip()  # strip trailing newline
 

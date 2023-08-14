@@ -445,10 +445,11 @@ class TestScanCommon(TestCase):
         b_diff["detectedIn"] = "Other Distro"
 
         tsts = [
-            # a, b, expected
+            # a, b, precise, expected
             (
                 a,
                 cvelib.scan.ScanOCI(b_same),
+                False,
                 """ - type: oci
    component: foo
    detectedIn: Some Distro
@@ -462,6 +463,7 @@ class TestScanCommon(TestCase):
             (
                 a,
                 cvelib.scan.ScanOCI(b_diff),
+                False,
                 """ - type: oci
    component: foo
 -  detectedIn: Some Distro
@@ -475,11 +477,28 @@ class TestScanCommon(TestCase):
    status: needed
    url: https://blah.com/BAR-a""",
             ),
+            (
+                a,
+                cvelib.scan.ScanOCI(b_diff),
+                True,
+                """ - type: oci
+   component: foo
+-  detectedIn: Some Distro
++  detectedIn: Other Distro
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.2
+-  fixedBy: 1.2.3
++  fixedBy: 1.2.4
+-  severity: medium
++  severity: low
+-  status: needed
++  status: needs-triage
+   url: https://blah.com/BAR-a""",
+            ),
         ]
 
-        for a, b, exp in tsts:
-            res = a.diff(b)
-            print(res)
+        for a, b, precise, exp in tsts:
+            res = a.diff(b, precise=precise)
             self.assertEqual(exp, res)
 
     def test_parse(self):
