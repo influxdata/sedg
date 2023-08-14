@@ -1136,6 +1136,111 @@ cve-data = %s
 
         return cveDirs
 
+    def _mock_cve_data_scans_mixed2(self):
+        """Generate a List[cvelib.cve.CVE] with scan reports"""
+
+        def _write_cve(cve_fn, d):
+            content = tests.testutil.cveContentFromDict(d)
+            with open(cve_fn, "w") as fp:
+                fp.write("%s" % content)
+
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
+        content = (
+            """[Locations]
+cve-data = %s
+"""
+            % self.tmpdir
+        )
+        self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
+            content, self.tmpdir
+        )
+
+        cveDirs = {}
+        for d in cvelib.common.cve_reldirs:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.mkdir(cveDirs[d], 0o0700)
+
+        # regular CVE - foo
+        d = self._cve_template(
+            cand="CVE-2022-0001",
+            references=["https://www.cve.org/CVERecord?id=CVE-2022-0001"],
+        )
+        d["upstream_foo"] = "needs-triage"
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+
+        # scan-report
+        d = self._cve_template(
+            cand="CVE-2022-GH2#foo",
+            references=["https://github.com/org/foo/issues/2"],
+        )
+        d["Priority"] = "medium"
+        d["oci/gar-us.valid-proj_valid-repo/valid-name"] = "needed"
+        d["Discovered-by"] = "gar"
+        d[
+            "Scan-Reports"
+        ] = """
+ - type: oci
+   component: curl
+   detectedIn: cpe:/o:debian:debian_linux:11
+   advisory: https://www.cve.org/CVERecord?id=CVE-2022-32221
+   version: 7.74.0-1.3+deb11u2
+   fixedBy: 7.74.0-1.3+deb11u5
+   severity: critical
+   status: needed
+   url: https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef
+ - type: oci
+   component: libtasn1-6
+   detectedIn: cpe:/o:debian:debian_linux:11
+   advisory: https://www.cve.org/CVERecord?id=CVE-2021-46848
+   version: 4.16.0-2
+   fixedBy: 4.16.0-2+deb11u1
+   severity: critical
+   status: needed
+   url: https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef
+ - type: oci
+   component: libtasn1-6
+   detectedIn: cpe:/o:debian:debian_linux:11
+   advisory: https://www.cve.org/CVERecord?id=CVE-2021-46848
+   version: 4.16.0-2
+   fixedBy: 4.16.0-2+deb11u1
+   severity: critical
+   status: needed
+   url: https://us-docker.pkg.dev/valid-proj/valid-repo/other-name@sha256:deadbeef
+ - type: oci
+   component: zlib
+   detectedIn: cpe:/o:debian:debian_linux:11
+   advisory: https://www.cve.org/CVERecord?id=CVE-2022-37434
+   version: 1:1.2.11.dfsg-2+deb11u1
+   fixedBy: 1:1.2.11.dfsg-2+deb11u2
+   severity: low
+   status: needed
+   url: https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef"""
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+
+        # scan-report for another project
+        d = self._cve_template(
+            cand="CVE-2022-GH3#foo",
+            references=["https://github.com/org/foo/issues/3"],
+        )
+        d["Priority"] = "medium"
+        d["oci/gar-us.valid-proj_valid-repo/valid-other"] = "needed"
+        d["Discovered-by"] = "gar"
+        d[
+            "Scan-Reports"
+        ] = """
+ - type: oci
+   component: some-other
+   detectedIn: cpe:/o:debian:debian_linux:11
+   advisory: https://www.cve.org/CVERecord?id=CVE-2022-99991
+   version: 1.0.0
+   fixedBy: 1.0.1
+   severity: critical
+   status: needed
+   url: https://us-docker.pkg.dev/valid-proj/valid-repo/valid-other@sha256:deadbeef"""
+        _write_cve(os.path.join(cveDirs["active"], d["Candidate"]), d)
+
+        return cveDirs
+
     #
     # _getGHReposAll() tests
     #
@@ -4942,4 +5047,161 @@ valid-proj/us/valid-repo/valid-name report: 1
 +  severity: high
    status: needed
    url: https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef"""
+        self.assertEqual(res, exp)
+
+        # 0 new, 2 exist with no matches
+        ocis = []
+
+        mock_fetchScanReport.return_value = ocis, ""
+        args = [
+            "gar",
+            "--alerts",
+            "--namespace",
+            "valid-proj/us",
+            "--images",
+            "valid-repo/valid-name@sha256:deadbeef0001",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        res = output.getvalue().strip()
+        exp = """# Removed reports
+
+valid-proj/us/valid-repo/valid-name removed report: 2
+
+ active/CVE-2022-GH2#foo:
+ - type: oci
+   component: curl
+   detectedIn: cpe:/o:debian:debian_linux:11
+   advisory: https://www.cve.org/CVERecord?id=CVE-2022-32221
+   version: 7.74.0-1.3+deb11u2
+   fixedBy: 7.74.0-1.3+deb11u5
+   severity: critical
+-  status: needed
++  status: released
+   url: https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef
+
+ - type: oci
+   component: libtasn1-6
+   detectedIn: cpe:/o:debian:debian_linux:11
+   advisory: https://www.cve.org/CVERecord?id=CVE-2021-46848
+   version: 4.16.0-2
+   fixedBy: 4.16.0-2+deb11u1
+   severity: critical
+-  status: needed
++  status: released
+   url: https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef"""
+        self.assertEqual(res, exp)
+
+    @mock.patch("cvelib.gar.GARSecurityReportNew.fetchScanReport")
+    def test_main_report_gar_alerts_mixed(self, mock_fetchScanReport):
+        """Test main_report - gar --alerts - mixed"""
+        self._mock_cve_data_scans_mixed2()  # for cveDirs
+        os.environ["SEDG_EXPERIMENTAL"] = "1"
+
+        # 1 new, 1 updated and 1 removed
+        ocis = [
+            # new
+            cvelib.scan.ScanOCI(
+                {
+                    "component": "new-thing",
+                    "detectedIn": "cpe:/o:debian:debian_linux:11",
+                    "advisory": "https://www.cve.org/CVERecord?id=CVE-2022-9999",
+                    "version": "1.0",
+                    "fixedBy": "1.1",
+                    "severity": "high",
+                    "status": "needed",
+                    "url": "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef",
+                }
+            ),
+            # updated
+            cvelib.scan.ScanOCI(
+                {
+                    "component": "libtasn1-6",
+                    "detectedIn": "cpe:/o:debian:debian_linux:11",
+                    "advisory": "https://www.cve.org/CVERecord?id=CVE-2021-46848",
+                    "version": "4.16.0-2",
+                    "fixedBy": "4.16.0-2+deb11u1",
+                    "severity": "high",
+                    "status": "needed",
+                    "url": "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef",
+                }
+            ),
+            # removed
+            # cvelib.scan.ScanOCI(
+            #     {
+            #         "component": "curl",
+            #         "detectedIn": "cpe:/o:debian:debian_linux:11",
+            #         "advisory": "https://www.cve.org/CVERecord?id=CVE-2022-32221",
+            #         "version": "7.74.0-1.3+deb11u2",
+            #         "fixedBy": "7.74.0-1.3+deb11u5",
+            #         "severity": "critical",
+            #         "status": "needed",
+            #         "url": "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef",
+            #     }
+            # ),
+        ]
+
+        mock_fetchScanReport.return_value = ocis, ""
+        args = [
+            "gar",
+            "--alerts",
+            "--filter-priority",
+            "critical",
+            "--namespace",
+            "valid-proj/us",
+            "--images",
+            "valid-repo/valid-name@sha256:deadbeef0001",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        res = output.getvalue().strip()
+
+        exp = """# New reports
+
+valid-proj/us/valid-repo/valid-name report: 1
+ - type: oci
+   component: new-thing
+   detectedIn: cpe:/o:debian:debian_linux:11
+   advisory: https://www.cve.org/CVERecord?id=CVE-2022-9999
+   version: 1.0
+   fixedBy: 1.1
+   severity: high
+   status: needed
+   url: https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef
+
+# Updated reports
+
+valid-proj/us/valid-repo/valid-name report: 1
+
+ active/CVE-2022-GH2#foo:
+ - type: oci
+   component: libtasn1-6
+   detectedIn: cpe:/o:debian:debian_linux:11
+   advisory: https://www.cve.org/CVERecord?id=CVE-2021-46848
+   version: 4.16.0-2
+   fixedBy: 4.16.0-2+deb11u1
+-  severity: critical
++  severity: high
+   status: needed
+   url: https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef
+
+
+# Removed reports
+
+valid-proj/us/valid-repo/valid-name removed report: 1
+
+ active/CVE-2022-GH2#foo:
+ - type: oci
+   component: curl
+   detectedIn: cpe:/o:debian:debian_linux:11
+   advisory: https://www.cve.org/CVERecord?id=CVE-2022-32221
+   version: 7.74.0-1.3+deb11u2
+   fixedBy: 7.74.0-1.3+deb11u5
+   severity: critical
+-  status: needed
++  status: released
+   url: https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef"""
+
         self.assertEqual(res, exp)

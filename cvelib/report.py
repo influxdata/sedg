@@ -1118,10 +1118,15 @@ def getOCIReports(
     new: Dict[str, List[cvelib.scan.ScanOCI]] = {}
     upd_reports: Dict[str, List[cvelib.scan.ScanOCI]] = {}
     upd_files: Dict[str, List[Tuple[cvelib.scan.ScanOCI, str]]] = {}
+    del_files: Dict[str, List[Tuple[cvelib.scan.ScanOCI, str]]] = {}
 
     pat: Pattern = re.compile(r"sha256:.*")
     for img in scan_ocis:
         repo_full: str = "%s/%s" % (namespace, img)
+        pat_url = cvelib.scan.parseNsAndImageToURLPattern(
+            sr.name, namespace, img, where_override=oci_where_override
+        )
+        assert pat_url is not None  # for pyright
 
         # first check for any new or updated items in the reports for this img
         for report in scan_ocis[img]:
@@ -1131,6 +1136,7 @@ def getOCIReports(
             found: bool = False
             updated: bool = False
             for cve in cves:
+                # XXX: use found_pkg to decrease indent for this section
                 # skip CVE files without package stanzas that apply to the
                 # report URL
                 for pkg in cve.pkgs:
@@ -1176,6 +1182,59 @@ def getOCIReports(
                 if report not in new[repo_full]:
                     new[repo_full].append(report)
 
+        # then check for any existing scan reports in the CVE files that were
+        # removed from the reports for this image
+        for cve in cves:
+            # Are there any matching package stanzas in the CVE for this
+            # namespace and image?
+            found_pkg: bool = False
+            for pkg in cve.pkgs:
+                prod, whr, sw, mod = cvelib.scan.parseNsAndImageToPkg(
+                    sr.name, namespace, img, where_override=oci_where_override
+                )
+                if (
+                    pkg.product == prod
+                    and pkg.where == whr
+                    and pkg.software == sw
+                    and pkg.modifier == mod
+                ):
+                    found_pkg = True
+                    break
+
+            if not found_pkg:
+                continue
+
+            # See if the CVE file has scan reports the downloaded report
+            # doesn't
+            for cve_report in cve.scan_reports:
+                if cve_report.severity not in priorities:
+                    # Don't consider priorities in the CVE file that we
+                    # filtered out
+                    continue
+
+                if not pat_url.search(cve_report.url):
+                    # the url for the CVE's scan report doesn't match for the
+                    # specified namespace and image
+                    continue
+
+                found_rep: bool = False
+                for report in scan_ocis[img]:
+                    fuzzy, _ = cve_report.matches(report)
+                    if fuzzy:
+                        found_rep = True
+                        break
+
+                if not found_rep:
+                    if repo_full not in del_files:
+                        del_files[repo_full] = []
+
+                    tupl: Tuple[cvelib.scan.ScanOCI, str] = (
+                        cve_report,
+                        cve.fn,
+                    )
+                    if tupl not in del_files[repo_full]:
+                        del_files[repo_full].append(tupl)
+
     if len(new) > 0:
         print("# New reports\n")
         print(
@@ -1207,6 +1266,29 @@ def getOCIReports(
                         if cve_fn not in tmp:
                             tmp[cve_fn] = []
                         tmp[cve_fn].append(ext_report.diff(upd_report))
+
+            for cve_fn in tmp:
+                print("\n %s:" % cve_fn)
+                for r in tmp[cve_fn]:
+                    print(r + "\n")
+
+    if len(del_files) > 0:
+        print("\n# Removed reports\n")
+        del_report: cvelib.scan.ScanOCI
+        for repo_full in del_files:
+            print(
+                "%s removed report: %d"
+                % (repo_full.split("@")[0], len(del_files[repo_full]))
+            )
+
+            # first group by CVEs
+            tmp: Dict[str, List[str]] = {}
+            for del_report, cve_fn in del_files[repo_full]:
+                if cve_fn not in tmp:
+                    tmp[cve_fn] = []
+                released: cvelib.scan.ScanOCI = copy.deepcopy(del_report)
+                released.setStatus("released")
+                tmp[cve_fn].append(del_report.diff(released, precise=True))
 
             for cve_fn in tmp:
                 print("\n %s:" % cve_fn)
