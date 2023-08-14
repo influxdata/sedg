@@ -4,11 +4,19 @@
 
 import abc
 import datetime
+from enum import Enum
 import re
-from typing import Dict, List, Optional, Pattern, Tuple
+from typing import Dict, List, Optional, Pattern, Tuple, Union
 from yaml import load, CSafeLoader
 
 from cvelib.common import CveException, cve_priorities, rePatterns, warn, _experimental
+
+
+class SecurityReportFetchResult(Enum):
+    TESTERR = 0
+    EMPTY = 1
+    CLEAN = 2
+
 
 # Scan-Reports:
 #  - type: oci
@@ -150,10 +158,10 @@ class ScanOCI(object):
 
         return True, True
 
-    def diff(self, b: "ScanOCI") -> str:
+    def diff(self, b: "ScanOCI", precise: bool = False) -> str:
         """Get diff of two reports"""
 
-        def _diff(a: "ScanOCI", b: "ScanOCI", attrib: str):
+        def _diff(a: "ScanOCI", b: "ScanOCI", attrib: str, precise: bool):
             attrib_p: str = attrib
             if attrib == "versionAffected":
                 attrib_p = "version"
@@ -162,12 +170,16 @@ class ScanOCI(object):
 
             # only show diff for versions, detectedIn and severity (the fuzzy
             # matching parts)
-            if getattr(a, attrib) == getattr(b, attrib) or attrib not in [
-                "versionAffected",
-                "versionFixed",
-                "severity",
-                "detectedIn",
-            ]:
+            if getattr(a, attrib) == getattr(b, attrib) or (
+                not precise
+                and attrib
+                not in [
+                    "versionAffected",
+                    "versionFixed",
+                    "severity",
+                    "detectedIn",
+                ]
+            ):
                 return "   %s: %s\n" % (attrib_p, getattr(a, attrib))
 
             return "-  %s: %s\n+  %s: %s\n" % (
@@ -192,7 +204,7 @@ class ScanOCI(object):
             "status",
             "url",
         ]:
-            s += _diff(self, b, attrib)
+            s += _diff(self, b, attrib, precise)
 
         return s.rstrip()  # strip trailing newline
 
@@ -229,6 +241,18 @@ def parse(s: str) -> List[ScanOCI]:
 # Interface for work with different OCI scan report objects
 class SecurityReportInterface(metaclass=abc.ABCMeta):
     name: str
+    errors: Dict[SecurityReportFetchResult, str] = {
+        SecurityReportFetchResult.TESTERR: "Test error",
+        SecurityReportFetchResult.EMPTY: "No scan results",
+        SecurityReportFetchResult.CLEAN: "No problems found",
+    }
+
+    def getFetchResult(self, err: str) -> SecurityReportFetchResult:
+        """Retrive the SecurityReportFetchResult from and error message"""
+        for m in self.errors:
+            if self.errors[m] == err:
+                return m
+        raise ValueError("unsupported error message: %s" % err)
 
     @classmethod
     def __subclasshook__(cls, subclass):  # pragma: nocover
@@ -337,6 +361,7 @@ def formatWhereFromNamespace(
     if oci_type == "gar":
         w: str = where_override
         if where_override == "":
+            assert "/" in namespace  # verified elsewhere
             proj, loc = namespace.split("/", maxsplit=1)
             w = "%s.%s" % (loc, proj)
         where = "gar-%s" % w
@@ -386,6 +411,62 @@ def _parseScanURL(url: str, where_override: str = "") -> Tuple[str, str, str, st
         software = "TBD"
 
     return (product, where, software, modifier)
+
+
+def parseNsAndImageToPkg(
+    oci_type: str, namespace: str, img: str, where_override: str = ""
+) -> Tuple[str, str, str, str]:
+    """Find CVE 'product', 'where', 'software' and 'modifier' from namespace and image name"""
+    if namespace == "" or img == "":
+        return ("", "", "", "")
+
+    product: str = "oci"
+    where: str = formatWhereFromNamespace(oci_type, namespace, where_override)
+    software: str = img.split("@")[0].split("/")[0]
+    modifier: str = ""
+    if oci_type == "gar":
+        assert "/" in img  # verified elsewhere
+        modifier = img.split("/")[1].split("@")[0]
+
+    return (product, where, software, modifier)
+
+
+def parseNsAndImageToURLPattern(
+    oci_type: str, namespace: str, img: str, where_override: str = ""
+) -> Union[None, Pattern]:
+    """Find ScanOCI 'url' from namespace and image"""
+    if namespace == "" or img == "":
+        return None
+
+    pat: Union[None, Pattern] = None
+    if oci_type == "gar":
+        if where_override == "":
+            assert "/" in namespace  # verified elsewhere
+            proj, loc = namespace.split("/", maxsplit=1)
+            assert "/" in img  # verified elsewhere
+            sw, mod = img.split("@", maxsplit=1)[0].split("/", maxsplit=1)
+            pat = re.compile(
+                "^https://%s-docker\\.pkg\\.dev/%s/%s/%s@sha256:" % (loc, proj, sw, mod)
+            )
+        else:
+            assert "/" in img  # verified elsewhere
+            sw, mod = img.split("@", maxsplit=1)[0].split("/", maxsplit=1)
+            pat = re.compile(
+                "^https://[a-z-]+-docker\\.pkg\\.dev/[^/]+/%s/%s@sha256:" % (sw, mod)
+            )
+    elif oci_type == "quay":
+        if where_override == "":
+            pat = re.compile(
+                "^https://quay.io/repository/%s/%s/manifest/sha256:"
+                % (namespace, img.split("@", maxsplit=1)[0])
+            )
+        else:
+            pat = re.compile(
+                "^https://quay.io/repository/[^/]+/%s/manifest/sha256:"
+                % (img.split("@", maxsplit=1)[0])
+            )
+
+    return pat
 
 
 def getScanOCIsReportTemplates(
