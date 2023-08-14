@@ -6,7 +6,7 @@ import abc
 import datetime
 from enum import Enum
 import re
-from typing import Dict, List, Optional, Pattern, Tuple
+from typing import Dict, List, Optional, Pattern, Tuple, Union
 from yaml import load, CSafeLoader
 
 from cvelib.common import CveException, cve_priorities, rePatterns, warn, _experimental
@@ -357,6 +357,7 @@ def formatWhereFromNamespace(
     if oci_type == "gar":
         w: str = where_override
         if where_override == "":
+            assert "/" in namespace  # verified elsewhere
             proj, loc = namespace.split("/", maxsplit=1)
             w = "%s.%s" % (loc, proj)
         where = "gar-%s" % w
@@ -406,6 +407,62 @@ def _parseScanURL(url: str, where_override: str = "") -> Tuple[str, str, str, st
         software = "TBD"
 
     return (product, where, software, modifier)
+
+
+def parseNsAndImageToPkg(
+    oci_type: str, namespace: str, img: str, where_override: str = ""
+) -> Tuple[str, str, str, str]:
+    """Find CVE 'product', 'where', 'software' and 'modifier' from namespace and image name"""
+    if namespace == "" or img == "":
+        return ("", "", "", "")
+
+    product: str = "oci"
+    where: str = formatWhereFromNamespace(oci_type, namespace, where_override)
+    software: str = img.split("@")[0].split("/")[0]
+    modifier: str = ""
+    if oci_type == "gar":
+        assert "/" in img  # verified elsewhere
+        modifier = img.split("/")[1].split("@")[0]
+
+    return (product, where, software, modifier)
+
+
+def parseNsAndImageToURLPattern(
+    oci_type: str, namespace: str, img: str, where_override: str = ""
+) -> Union[None, Pattern]:
+    """Find ScanOCI 'url' from namespace and image"""
+    if namespace == "" or img == "":
+        return None
+
+    pat: Union[None, Pattern] = None
+    if oci_type == "gar":
+        if where_override == "":
+            assert "/" in namespace  # verified elsewhere
+            proj, loc = namespace.split("/", maxsplit=1)
+            assert "/" in img  # verified elsewhere
+            sw, mod = img.split("@", maxsplit=1)[0].split("/", maxsplit=1)
+            pat = re.compile(
+                "^https://%s-docker\\.pkg\\.dev/%s/%s/%s@sha256:" % (loc, proj, sw, mod)
+            )
+        else:
+            assert "/" in img  # verified elsewhere
+            sw, mod = img.split("@", maxsplit=1)[0].split("/", maxsplit=1)
+            pat = re.compile(
+                "^https://[a-z-]+-docker\\.pkg\\.dev/[^/]+/%s/%s@sha256:" % (sw, mod)
+            )
+    elif oci_type == "quay":
+        if where_override == "":
+            pat = re.compile(
+                "^https://quay.io/repository/%s/%s/manifest/sha256:"
+                % (namespace, img.split("@", maxsplit=1)[0])
+            )
+        else:
+            pat = re.compile(
+                "^https://quay.io/repository/[^/]+/%s/manifest/sha256:"
+                % (img.split("@", maxsplit=1)[0])
+            )
+
+    return pat
 
 
 def getScanOCIsReportTemplates(

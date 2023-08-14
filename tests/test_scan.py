@@ -662,6 +662,157 @@ class TestScanCommon(TestCase):
             self.assertEqual(expS, resS, msg="url=%s" % url)
             self.assertEqual(expM, resM, msg="url=%s" % url)
 
+    def test_parseNsAndImageToPkg(self):
+        """Test parseNsAndImageToPkg()"""
+        tsts = [
+            # oci_type, ns, img, where_override, expProduct, expWhere,
+            # expSoftware, expModifier
+            ("", "", "", "", "", "", "", ""),
+            ("gar", "foo/loc", "bar/baz", "", "oci", "gar-loc.foo", "bar", "baz"),
+            ("gar", "foo/loc", "bar/baz", "ovr", "oci", "gar-ovr", "bar", "baz"),
+            ("quay", "foo", "bar", "", "oci", "quay-foo", "bar", ""),
+            ("quay", "foo", "bar", "ovr", "oci", "quay-ovr", "bar", ""),
+        ]
+
+        for oci_type, ns, img, whr, expP, expW, expS, expM in tsts:
+            (resP, resW, resS, resM) = cvelib.scan.parseNsAndImageToPkg(
+                oci_type, ns, img, where_override=whr
+            )
+            self.assertEqual(
+                expP, resP, msg="oci_type=%s, ns=%s, img=%s" % (oci_type, ns, img)
+            )
+            self.assertEqual(
+                expW, resW, msg="oci_type=%s, ns=%s, img=%s" % (oci_type, ns, img)
+            )
+            self.assertEqual(
+                expS, resS, msg="oci_type=%s, ns=%s, img=%s" % (oci_type, ns, img)
+            )
+            self.assertEqual(
+                expM, resM, msg="oci_type=%s, ns=%s, img=%s" % (oci_type, ns, img)
+            )
+
+    def test_parseNsAndImageToURLPattern(self):
+        """Test parseNsAndImageToURLPattern()"""
+        tsts = [
+            # oci_type, ns, img, where_override, matchStr, matches
+            (
+                "gar",
+                "foo/loc",
+                "bar/baz",
+                "",
+                "https://loc-docker.pkg.dev/foo/bar/baz@sha256:deadbeef",
+                True,
+            ),
+            (
+                "gar",
+                "foo/loc",
+                "bar/baz",
+                "",
+                "https://other-loc-docker.pkg.dev/other-proj/bar/baz@sha256:deadbeef",
+                False,
+            ),
+            (
+                "gar",
+                "foo/loc",
+                "other-repo/baz",
+                "",
+                "https://loc-docker.pkg.dev/foo/bar/baz@sha256:deadbeef",
+                False,
+            ),
+            (
+                "gar",
+                "foo/loc",
+                "bar/other-mod",
+                "",
+                "https://loc-docker.pkg.dev/foo/bar/baz@sha256:deadbeef",
+                False,
+            ),
+            (
+                "gar",
+                "foo/loc",
+                "bar/baz",
+                "ovr",
+                "https://loc-docker.pkg.dev/foo/bar/baz@sha256:deadbeef",
+                True,
+            ),
+            (
+                "gar",
+                "foo/loc",
+                "bar/baz",
+                "ovr",
+                "https://other-loc-docker.pkg.dev/other-proj/bar/baz@sha256:deadbeef",
+                True,
+            ),
+            (
+                "quay",
+                "foo",
+                "bar",
+                "",
+                "https://quay.io/repository/foo/bar/manifest/sha256:deadbeef",
+                True,
+            ),
+            (
+                "quay",
+                "foo",
+                "bar",
+                "",
+                "https://quay.io/repository/other-org/bar/manifest/sha256:deadbeef",
+                False,
+            ),
+            (
+                "quay",
+                "other",
+                "bar",
+                "",
+                "https://quay.io/repository/foo/bar/manifest/sha256:deadbeef",
+                False,
+            ),
+            (
+                "quay",
+                "foo",
+                "other",
+                "",
+                "https://quay.io/repository/foo/bar/manifest/sha256:deadbeef",
+                False,
+            ),
+            (
+                "quay",
+                "foo",
+                "bar",
+                "ovr",
+                "https://quay.io/repository/foo/bar/manifest/sha256:deadbeef",
+                True,
+            ),
+            (
+                "quay",
+                "foo",
+                "bar",
+                "ovr",
+                "https://quay.io/repository/other-org/bar/manifest/sha256:deadbeef",
+                True,
+            ),
+        ]
+
+        for oci_type, ns, img, whr, m, exp in tsts:
+            pat = cvelib.scan.parseNsAndImageToURLPattern(
+                oci_type, ns, img, where_override=whr
+            )
+            assert pat is not None  # for pyright
+            res = pat.search(m)
+            if exp:
+                self.assertFalse(
+                    res is None,
+                    msg="oci_type=%s, ns=%s, img=%s, whr=%s" % (oci_type, ns, img, whr),
+                )
+            else:
+                self.assertTrue(
+                    res is None,
+                    msg="oci_type=%s, ns=%s, img=%s, whr=%s" % (oci_type, ns, img, whr),
+                )
+
+        pat = cvelib.scan.parseNsAndImageToURLPattern("", "", "", where_override="")
+        self.assertTrue(pat is None)
+
     def test_getScanOCIsReport(self):
         """Test getScanOCIsReport()"""
         now: datetime.datetime = datetime.datetime.now()
