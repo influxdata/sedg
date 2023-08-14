@@ -489,6 +489,26 @@ class TestQuay(TestCase):
                     self.assertEqual(repo, r2)
                     self.assertEqual(sha, r3)
 
+    def test_getFetchResult(self):
+        """Test getFetchResult()"""
+        # good
+        tsts = [
+            # msg, exp
+            ("No scan results", cvelib.scan.SecurityReportFetchResult.EMPTY),
+            ("No problems found", cvelib.scan.SecurityReportFetchResult.CLEAN),
+        ]
+
+        qsr = cvelib.quay.QuaySecurityReportNew()
+        for msg, exp in tsts:
+            res = qsr.getFetchResult(msg)
+            self.assertEqual(res, exp)
+
+        with self.assertRaises(ValueError) as context:
+            qsr.getFetchResult("nonexistent")
+        self.assertEqual(
+            "unsupported error message: nonexistent", str(context.exception)
+        )
+
     @mock.patch("requests.get")
     def test_fetchScanReport(self, mock_get):
         """Test fetchScanReport()"""
@@ -533,7 +553,7 @@ class TestQuay(TestCase):
         res, resMsg = qsr.fetchScanReport(
             "valid-org/valid-repo@sha256:deadbeef", fixable=True
         )
-        self.assertEqual("", resMsg)
+        self.assertEqual("No problems found", resMsg)
         self.assertEqual(0, len(res))
 
         # priorities
@@ -544,7 +564,7 @@ class TestQuay(TestCase):
             "valid-org/valid-repo@sha256:deadbeef",
             priorities=["negligible"],
         )
-        self.assertEqual("", resMsg)
+        self.assertEqual("No problems found", resMsg)
         self.assertEqual(0, len(res))
 
         # priorities - present

@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Tuple
 
 from cvelib.common import error, warn, rePatterns, _sorted_json_deep, _experimental
 from cvelib.net import requestGetRaw
-from cvelib.scan import ScanOCI, SecurityReportInterface
+from cvelib.scan import ScanOCI, SecurityReportInterface, SecurityReportFetchResult
 
 
 def _createGARHeaders() -> Dict[str, str]:
@@ -705,8 +705,11 @@ class GARSecurityReportNew(SecurityReportInterface):
                 if raw:
                     return [], ""
                 if why == "CLEAN":
-                    return [], "No problems found"
-                return [], "No scan results for this %s image" % why.lower()
+                    return [], self.errors[SecurityReportFetchResult.CLEAN]
+                return [], "%s for this %s image" % (
+                    self.errors[SecurityReportFetchResult.EMPTY],
+                    why.lower(),
+                )
 
             vulns += resj["occurrences"]
 

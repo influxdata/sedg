@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from cvelib.common import error, warn, _sorted_json_deep, _experimental
 from cvelib.net import requestGetRaw
-from cvelib.scan import ScanOCI, SecurityReportInterface
+from cvelib.scan import ScanOCI, SecurityReportInterface, SecurityReportFetchResult
 
 
 def _createQuayHeaders() -> Dict[str, str]:
@@ -409,6 +409,9 @@ class QuaySecurityReportNew(SecurityReportInterface):
             if len(priorities) > 0 and oci.severity not in priorities:
                 continue
             ocis.append(oci)
+
+        if len(ocis) == 0:
+            return [], self.errors[SecurityReportFetchResult.CLEAN]
 
         return ocis, ""
 

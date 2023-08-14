@@ -4,11 +4,19 @@
 
 import abc
 import datetime
+from enum import Enum
 import re
 from typing import Dict, List, Optional, Pattern, Tuple
 from yaml import load, CSafeLoader
 
 from cvelib.common import CveException, cve_priorities, rePatterns, warn, _experimental
+
+
+class SecurityReportFetchResult(Enum):
+    TESTERR = 0
+    EMPTY = 1
+    CLEAN = 2
+
 
 # Scan-Reports:
 #  - type: oci
@@ -229,6 +237,18 @@ def parse(s: str) -> List[ScanOCI]:
 # Interface for work with different OCI scan report objects
 class SecurityReportInterface(metaclass=abc.ABCMeta):
     name: str
+    errors: Dict[SecurityReportFetchResult, str] = {
+        SecurityReportFetchResult.TESTERR: "Test error",
+        SecurityReportFetchResult.EMPTY: "No scan results",
+        SecurityReportFetchResult.CLEAN: "No problems found",
+    }
+
+    def getFetchResult(self, err: str) -> SecurityReportFetchResult:
+        """Retrive the SecurityReportFetchResult from and error message"""
+        for m in self.errors:
+            if self.errors[m] == err:
+                return m
+        raise ValueError("unsupported error message: %s" % err)
 
     @classmethod
     def __subclasshook__(cls, subclass):  # pragma: nocover

@@ -1097,8 +1097,14 @@ def getOCIReports(
                 fixable=fixable,
                 priorities=priorities,
             )
-            if msg != "":
+            if (
+                msg != ""
+                and sr.getFetchResult(msg)
+                != cvelib.scan.SecurityReportFetchResult.CLEAN
+            ):
                 warn(msg)
+
+    # TODO: refactor above from below into a new function
 
     # output a list of jsons
     if raw:
@@ -1122,7 +1128,6 @@ def getOCIReports(
             )
             found: bool = False
             updated: bool = False
-            # TODO: capture the CVE file and suggest updates to it
             for cve in cves:
                 # skip CVE files without package stanzas that apply to the
                 # report URL

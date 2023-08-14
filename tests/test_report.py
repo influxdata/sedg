@@ -4463,7 +4463,7 @@ template-urls = https://url1,https://url2
         )
 
         # with image digest, bad
-        mock_fetchScanReport.return_value = [], "bad"
+        mock_fetchScanReport.return_value = [], "Test error"
         args = [
             "quay",
             "--alerts",
@@ -4475,7 +4475,7 @@ template-urls = https://url1,https://url2
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", output.getvalue().strip())
-        self.assertEqual("WARN: bad", error.getvalue().strip())
+        self.assertEqual("WARN: Test error", error.getvalue().strip())
 
         # without image digest, bad result
         mock_fetchScanReport.return_value = [], ""
