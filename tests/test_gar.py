@@ -192,11 +192,33 @@ class TestGAR(TestCase):
         res = cvelib.gar.parse(d["occurrences"])
         self.assertEqual("unknown", res[0].versionAffected)
 
+        # detectedIn - GO
+        d = self._validGARReport()
+        d["occurrences"][0]["vulnerability"]["packageIssue"][0]["packageType"] = "GO"
+        d["occurrences"][0]["vulnerability"]["packageIssue"][0]["fileLocation"] = [
+            {"filePath": "/first"},
+            {"filePath": "/second"},
+        ]
+        res = cvelib.gar.parse(d["occurrences"])
+        self.assertEqual(1, len(res))
+        self.assertEqual("/first", res[0].detectedIn)
+
         # detectedIn - GO_STDLIB
         d = self._validGARReport()
         d["occurrences"][0]["vulnerability"]["packageIssue"][0][
             "packageType"
         ] = "GO_STDLIB"
+        d["occurrences"][0]["vulnerability"]["packageIssue"][0]["fileLocation"] = [
+            {"filePath": "/first"},
+            {"filePath": "/second"},
+        ]
+        res = cvelib.gar.parse(d["occurrences"])
+        self.assertEqual(1, len(res))
+        self.assertEqual("/first", res[0].detectedIn)
+
+        # detectedIn - MAVEN
+        d = self._validGARReport()
+        d["occurrences"][0]["vulnerability"]["packageIssue"][0]["packageType"] = "MAVEN"
         d["occurrences"][0]["vulnerability"]["packageIssue"][0]["fileLocation"] = [
             {"filePath": "/first"},
             {"filePath": "/second"},
