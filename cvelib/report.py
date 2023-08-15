@@ -1136,9 +1136,9 @@ def getOCIReports(
             found: bool = False
             updated: bool = False
             for cve in cves:
-                # XXX: use found_pkg to decrease indent for this section
-                # skip CVE files without package stanzas that apply to the
-                # report URL
+                # Are there any matching package stanzas in the CVE for this
+                # scan URL?
+                found_pkg: bool = False
                 for pkg in cve.pkgs:
                     if (
                         pkg.product == prod
@@ -1146,28 +1146,31 @@ def getOCIReports(
                         and pkg.software == sw
                         and pkg.modifier == mod
                     ):
-                        # there is a pkg match in the CVE file for the scan
-                        # report url, so now see if there are any existing
-                        # advisory/url combinations in the CVE file
-                        for cve_report in cve.scan_reports:
-                            purl: str = pat.sub("", cve_report.url)
-                            fuzzy, precise = report.matches(cve_report)
-                            if fuzzy and report.url.startswith(purl):
-                                found = True
-                                if not precise:
-                                    updated = True
+                        found_pkg = True
 
-                                if repo_full not in upd_files:
-                                    upd_files[repo_full] = []
+                if not found_pkg:
+                    continue
 
-                                tupl: Tuple[cvelib.scan.ScanOCI, str] = (
-                                    cve_report,
-                                    cve.fn,
-                                )
-                                if tupl not in upd_files[repo_full]:
-                                    upd_files[repo_full].append(tupl)
-                                break
-                    if found:
+                # there is a pkg match in the CVE file for the scan
+                # report url, so now see if there are any existing
+                # advisory/url combinations in the CVE file
+                for cve_report in cve.scan_reports:
+                    purl: str = pat.sub("", cve_report.url)
+                    fuzzy, precise = report.matches(cve_report)
+                    if fuzzy and report.url.startswith(purl):
+                        found = True
+                        if not precise:
+                            updated = True
+
+                        if repo_full not in upd_files:
+                            upd_files[repo_full] = []
+
+                        tupl: Tuple[cvelib.scan.ScanOCI, str] = (
+                            cve_report,
+                            cve.fn,
+                        )
+                        if tupl not in upd_files[repo_full]:
+                            upd_files[repo_full].append(tupl)
                         break
 
             if found:
