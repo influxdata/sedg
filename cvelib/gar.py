@@ -125,22 +125,31 @@ def parse(vulns: List[Dict[str, Any]]) -> List[ScanOCI]:
         # 'packageIssue'). XXX: look for 'details' and 'windowsDetails'?
         details_key: str = "packageIssue"
         if details_key not in v["vulnerability"]:
-            warn("Could not find '%s' in %s" % (details_key, v["vulnerability"]))
+            warn(
+                "Could not find '%s' in %s: %s"
+                % (details_key, v["resourceUri"], v["vulnerability"])
+            )
             continue
         if len(v["vulnerability"][details_key]) == 0:
-            warn("'%s' is empty in %s" % (details_key, v["vulnerability"]))
+            warn(
+                "'%s' is empty in %s: %s"
+                % (details_key, v["resourceUri"], v["vulnerability"])
+            )
             continue
 
         # XXX: just use the first issue for now (anecdotally, seems to always
         # only be a list of 1 anyway)
         iss: Dict[str, Any] = v["vulnerability"][details_key][0]
 
-        if iss["packageType"] not in ["OS", "GO_STDLIB", "NPM", "PYPI"]:
-            warn("unrecognized packageType '%s'" % iss["packageType"])
+        if iss["packageType"] not in ["GO", "GO_STDLIB", "MAVEN", "NPM", "OS", "PYPI"]:
+            warn(
+                "unrecognized packageType '%s' in %s"
+                % (iss["packageType"], v["resourceUri"])
+            )
             continue
 
         if "affectedPackage" not in iss:
-            warn("Could not find 'affectedPackage' in %s" % iss)
+            warn("Could not find 'affectedPackage' in %s: %s" % (v["resourceUri"], iss))
             continue
 
         scan_data["component"] = iss["affectedPackage"]
@@ -169,7 +178,7 @@ def parse(vulns: List[Dict[str, Any]]) -> List[ScanOCI]:
         detectedIn: str = "unknown"
         if iss["packageType"] == "OS":
             detectedIn = iss["affectedCpeUri"]
-        elif iss["packageType"] in ["GO_STDLIB", "NPM", "PYPI"]:
+        elif iss["packageType"] in ["GO", "GO_STDLIB", "MAVEN", "NPM", "PYPI"]:
             if (
                 "fileLocation" in iss
                 and len(iss["fileLocation"]) > 0
