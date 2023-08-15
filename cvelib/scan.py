@@ -7,7 +7,7 @@ import datetime
 from enum import Enum
 import re
 from typing import Dict, List, Optional, Pattern, Tuple, Union
-from yaml import load, CSafeLoader
+from yaml import load, CBaseLoader
 
 from cvelib.common import CveException, cve_priorities, rePatterns, warn, _experimental
 
@@ -216,10 +216,20 @@ def parse(s: str) -> List[ScanOCI]:
 
     yml: List[Dict[str, str]]
     try:
-        # Use yaml.load(s, Loader=yaml.CSafeLoader) instead of
-        # yaml.safe_load(s) since the C implementation is so much faster
-        # yml = yaml.load(s, Loader=yaml.CSafeLoader)
-        yml = load(s, Loader=CSafeLoader)
+        # Use yaml.load(s, Loader=yaml.BaseLoader) instead of yaml.safe_load(s)
+        # since:
+        # - BaseLoader "does not resolve or support any tags and constructs
+        #   only basic Python objects: lists, dictionaries and Unicode
+        #   strings". This is desirable, eg, for the versionAffected and
+        #   versionFixed fields to always be strings and not having to convert
+        #   them later.
+        # - SafeLoader inherits from BaseLoader and does more than BaseLoader,
+        #   so BaseLoader is at least as safe as SafeLoader
+        #
+        # Use yaml.load(s, Loader=yaml.CBaseLoader) instead of yaml.safe_load()
+        # or yaml.load(s, Loader=yaml.BaseLoader) since the C implementation is
+        # so much faster
+        yml = load(s, Loader=CBaseLoader)
     except Exception:
         raise CveException("invalid yaml:\n'%s'" % s)
 

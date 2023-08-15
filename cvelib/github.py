@@ -10,7 +10,7 @@ import os
 import re
 import textwrap
 from typing import Any, Dict, List, Union
-from yaml import load, CSafeLoader
+from yaml import load, CBaseLoader
 
 from cvelib.common import CveException, rePatterns, error, warn, _experimental
 from cvelib.net import ghAPIGetList
@@ -305,10 +305,19 @@ def parse(s: str) -> List[Union[GHDependabot, GHSecret, GHCode]]:
 
     yml: List[Dict[str, str]]
     try:
-        # Use yaml.load(s, Loader=yaml.CSafeLoader) instead of
-        # yaml.safe_load(s) since the C implementation is so much faster
-        # yml = yaml.load(s, Loader=yaml.CSafeLoader)
-        yml = load(s, Loader=CSafeLoader)
+        # Use yaml.load(s, Loader=yaml.BaseLoader) instead of yaml.safe_load(s)
+        # since:
+        # - BaseLoader "does not resolve or support any tags and constructs
+        #   only basic Python objects: lists, dictionaries and Unicode
+        #   strings". This is desirable to ensure all fields are strings and
+        #   without having to convert them later.
+        # - SafeLoader inherits from BaseLoader and does more than BaseLoader,
+        #   so BaseLoader is at least as safe as SafeLoader
+        #
+        # Use yaml.load(s, Loader=yaml.CBaseLoader) instead of yaml.safe_load()
+        # or yaml.load(s, Loader=yaml.BaseLoader) since the C implementation is
+        # so much faster
+        yml = load(s, Loader=CBaseLoader)
     except Exception:
         if s is not None and " - type: dependabot\n   dependency: @" in s:
             raise CveException("invalid yaml: uses unquoted 'dependency: @...'")
