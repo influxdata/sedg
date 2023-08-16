@@ -93,6 +93,24 @@ class TestNet(TestCase):
         self.assertTrue("foo" in rjson)
         self.assertEqual("bar", rjson["foo"])
 
+    @mock.patch("requests.post")
+    def test_requestPostRaw(self, mock_get):
+        """Test requestPostRaw()"""
+        mr = self._mock_response(json_data={"foo": "bar"})
+        mock_get.return_value = mr
+
+        url = "https://api.github.com/repos/valid-org/valid-repo/issues"
+        params = {
+            "accept": "application/vnd.github.v3+json",
+            "per_page": 100,
+        }
+        data = {}
+        r = cvelib.net.requestPostRaw(url, params=params, data=data)
+        self.assertEqual(200, r.status_code)
+        rjson = r.json()
+        self.assertTrue("foo" in rjson)
+        self.assertEqual("bar", rjson["foo"])
+
     @mock.patch("requests.get")
     def test_ghAPIGetList(self, mock_get):
         """Test ghAPIGetList()"""

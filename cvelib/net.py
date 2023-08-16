@@ -11,10 +11,7 @@ from typing import Any, Dict, List, Mapping, MutableMapping, Tuple, Union
 from cvelib.common import error, warn, getCacheDirPath
 
 
-def requestGetRaw(
-    url: str, headers: Dict[str, str] = {}, params: Mapping[str, Union[str, int]] = {}
-) -> requests.Response:
-    """Wrapper around requests.get()"""
+def _install_request_cache(url: str):
     # use the requests-cache module only if it is installed. Disable caching
     # with SEDG_REQUESTS_CACHE=none
     requests_cache = None
@@ -51,6 +48,7 @@ def requestGetRaw(
                     backend="sqlite",
                     expire_after=expiry,
                     allowable_codes=allowable_codes,
+                    allowable_methods=["GET", "POST"],
                     match_headers=True,
                     ignored_parameters=["Authorization", "cookie"],
                 )
@@ -60,6 +58,18 @@ def requestGetRaw(
             # print("DEBUG: requests_cache could not be imported")
             pass
 
+    return requests_cache
+
+
+def requestRaw(
+    method: str,
+    url: str,
+    headers: Dict[str, str] = {},
+    params: Mapping[str, Union[str, int]] = {},
+    data=None,
+) -> requests.Response:
+    """Wrapper around requests.get() and requests.post()"""
+    reqc = _install_request_cache(url)
     hdrs: Dict[str, str] = copy.deepcopy(headers)
     if (
         url.startswith("https://api.github.com/")
@@ -68,23 +78,36 @@ def requestGetRaw(
     ):
         hdrs["Authorization"] = "Bearer %s" % os.getenv("GHTOKEN")
 
-    # print("DEBUG: url=%s, headers=%s, params=%s" % (url, hdrs, params))
+    # print("DEBUG: url=%s, headers=%s, params=%s, data=%s" % (url, hdrs, params, data))
     res: requests.Response
     try:
-        res = requests.get(url, headers=hdrs, params=params)
+        if method == "post":
+            res = requests.post(url, headers=hdrs, params=params, data=data)
+        else:
+            res = requests.get(url, headers=hdrs, params=params)
     except AttributeError as e:  # pragma: nocover
         # For some reason, requests to GitHub sometimes traceback with
         # AttibuteError: 'dict' object has no attribute 'raw' when
         # requests_cache is in use. Let's try to work around that by retrying
         # without the cache
-        if requests_cache is None:
+        if reqc is None:
             raise
         warn("requests_cache errored with AttibuteError: %s" % e)
         warn("Retrying %s without caching" % url)
         hdrs["Cache-Control"] = "no-cache"
-        res = requests.get(url, headers=hdrs, params=params)
+        if method == "post":
+            res = requests.post(url, headers=hdrs, params=params, data=data)
+        else:
+            res = requests.get(url, headers=hdrs, params=params)
 
     return res
+
+
+def requestGetRaw(
+    url: str, headers: Dict[str, str] = {}, params: Mapping[str, Union[str, int]] = {}
+) -> requests.Response:
+    """Wrapper around requests.get()"""
+    return requestRaw("get", url, headers, params)
 
 
 # TODO: type hint the return value (it's tricky)
@@ -97,6 +120,16 @@ def requestGet(
         error("Problem fetching %s:\n%d - %s" % (url, r.status_code, str(r.content)))
 
     return r.json()
+
+
+def requestPostRaw(
+    url: str,
+    headers: Dict[str, str] = {},
+    params: Mapping[str, Union[str, int]] = {},
+    data=None,
+) -> requests.Response:
+    """Wrapper around requests.post()"""
+    return requestRaw("post", url, headers, params, data)
 
 
 # https://docs.github.com/en/rest/guides/using-pagination-in-the-rest-api?apiVersion=2022-11-28#using-link-headers
