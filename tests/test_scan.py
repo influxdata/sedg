@@ -810,6 +810,38 @@ class TestScanCommon(TestCase):
                 "https://quay.io/repository/other-org/bar/manifest/sha256:deadbeef",
                 True,
             ),
+            (
+                "dso",
+                "foo",
+                "ignored",
+                "",
+                "https://dso.docker.com/images/foo/digests/sha256:deadbeef",
+                True,
+            ),
+            (
+                "dso",
+                "other",
+                "ignored",
+                "",
+                "https://dso.docker.com/images/foo/digests/sha256:deadbeef",
+                False,
+            ),
+            (
+                "dso",
+                "foo",
+                "ignored",
+                "ovr",
+                "https://dso.docker.com/images/foo/digests/sha256:deadbeef",
+                True,
+            ),
+            (
+                "dso",
+                "other",
+                "ignored",
+                "ovr",
+                "https://dso.docker.com/images/foo/digests/sha256:deadbeef",
+                False,
+            ),
         ]
 
         for oci_type, ns, img, whr, m, exp in tsts:
@@ -819,8 +851,8 @@ class TestScanCommon(TestCase):
             assert pat is not None  # for pyright
             res = pat.search(m)
             if exp:
-                self.assertFalse(
-                    res is None,
+                self.assertTrue(
+                    res is not None,
                     msg="oci_type=%s, ns=%s, img=%s, whr=%s" % (oci_type, ns, img, whr),
                 )
             else:

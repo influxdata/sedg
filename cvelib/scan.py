@@ -475,6 +475,11 @@ def parseNsAndImageToURLPattern(
                 "^https://quay.io/repository/[^/]+/%s/manifest/sha256:"
                 % (img.split("@", maxsplit=1)[0])
             )
+    elif oci_type == "dso":
+        # dso has no concept of org
+        pat = re.compile(
+            "^https://dso.docker.com/images/%s/digests/sha256:" % (namespace)
+        )
 
     return pat
 
