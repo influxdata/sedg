@@ -365,7 +365,7 @@ class QuaySecurityReportNew(SecurityReportInterface):
             return [], json.dumps(_sorted_json_deep(resj), sort_keys=True, indent=2)
 
         if "status" not in resj:
-            error("Cound not find 'status' in response: %s" % resj, do_exit=False)
+            error("Could not find 'status' in response: %s" % resj, do_exit=False)
             return [], ""
         elif resj["status"] != "scanned":
             error(

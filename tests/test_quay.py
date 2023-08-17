@@ -624,7 +624,7 @@ class TestQuay(TestCase):
             res, resMsg = qsr.fetchScanReport("valid-org/valid-repo@sha256:deadbeef")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
-            "Cound not find 'status' in response" in error.getvalue().strip()
+            "Could not find 'status' in response" in error.getvalue().strip()
         )
         self.assertEqual(0, len(res))
         self.assertEqual("", resMsg)
