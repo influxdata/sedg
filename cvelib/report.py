@@ -48,6 +48,7 @@ from cvelib.common import (
     warn,
     _experimental,
 )
+import cvelib.dso
 import cvelib.gar
 from cvelib.github import GHDependabot, GHSecret, GHCode
 from cvelib.net import requestGetRaw, ghAPIGetList
@@ -2071,6 +2072,7 @@ Example usage:
   # Show list of OCI image names
   $ cve-report gar --namespace <project>/<location> --list  # eg, foo/us
   $ cve-report quay --namespace <org> --list
+  $ cve-report dso --namespace <repo> --list
 
   # Show list of GAR repositories
   $ cve-report gar --namespace <project/location> --list-repos
@@ -2078,14 +2080,17 @@ Example usage:
   # Show latest SHA256 digest with a scan result for image name
   $ cve-report gar --namespace <project>/<location> --list-digest <repo>/<name>
   $ cve-report quay --namespace <org> --list-digest <name>
+  $ cve-report dso --namespace <repo> --list-digest <name>
 
   # Show SHA256 digest for image name with tag
   $ cve-report gar --namespace <project>/<location> --list-digest <repo>/<name>:<tag>
   $ cve-report quay --namespace <org> --list-digest <name>:<tag>
+  $ cve-report dso --namespace <repo> --list-digest <name>:<tag>
 
   # Show security report for image name with digest
   $ cve-report gar --alerts --namespace <project>/<location> --image-names <repo>/<name>@<digest>
   $ cve-report quay --alerts --namespace <org> --image-names <name>@<digest>
+  $ cve-report dso --alerts --namespace <repo> --image-names <name>@<digest>
 
   # Eg, to research the 'foo' project with location 'us' in GAR:
   # - find all the container images
@@ -2376,6 +2381,10 @@ Example usage:
     parser_quay = sub.add_parser("quay")
     _add_common_oci(parser_quay, "quay.io", "ORG", "NAME@sha256:SHA256")
 
+    # dso
+    parser_dso = sub.add_parser("dso")
+    _add_common_oci(parser_dso, "dso.docker.com", "REPO", "NAME@sha256:SHA256")
+
     # gar
     parser_gar = sub.add_parser("gar")
     _add_common_oci(
@@ -2452,7 +2461,7 @@ Example usage:
                     error(
                         "Please specify seconds since epoch or YYYY-MM-DD with --since"
                     )
-    elif args.cmd == "gar" or args.cmd == "quay":
+    elif args.cmd in ["dso", "gar", "quay"]:
         if (
             args.cmd == "gar"
             and not args.alerts
@@ -2464,15 +2473,18 @@ Example usage:
                 "Please specify one of --alerts, --list, --list-repos or --list-digest with 'gar'"
             )
         elif (
-            args.cmd == "quay"
+            args.cmd in ["dso", "quay"]
             and not args.alerts
             and not args.list
             and not args.list_digest
         ):
-            error("Please specify one of --alerts, --list or --list-digest with 'quay'")
+            error(
+                "Please specify one of --alerts, --list or --list-digest with '%s'"
+                % args.cmd
+            )
         elif not args.namespace:
             error("Please specify --namespace with '%s'" % args.cmd)
-        elif args.cmd == "quay" and args.namespace.count("/") > 0:
+        elif args.cmd in ["dso", "quay"] and args.namespace.count("/") > 0:
             error("--namespace '%s' should not contain '/'" % args.namespace)
         elif args.cmd == "gar" and args.namespace.count("/") != 1:
             error("--namespace '%s' should contain one '/'" % args.namespace)
@@ -2668,13 +2680,15 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
 
         if args.since_stamp is not None:
             pathlib.Path(args.since_stamp).touch()
-    elif args.cmd in ["quay", "gar"]:
+    elif args.cmd in ["dso", "quay", "gar"]:
         # EXPERIMENTAL: this script and APIs subject to change
         _experimental()
 
         sr: cvelib.scan.SecurityReportInterface
         if args.cmd == "quay":
             sr = cvelib.quay.QuaySecurityReportNew()
+        elif args.cmd == "dso":
+            sr = cvelib.dso.DockerDSOSecurityReportNew()
         else:
             sr = cvelib.gar.GARSecurityReportNew()
 
@@ -2690,6 +2704,10 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
             if args.cmd == "quay":
                 for (r, m) in sorted(ocis):
                     # ORG/NAME
+                    print("%s/%s %s" % (args.namespace, r, formatDate(m)))
+            elif args.cmd == "dso":
+                for (r, m) in sorted(ocis):
+                    # REPO/NAME
                     print("%s/%s %s" % (args.namespace, r, formatDate(m)))
             elif args.cmd == "gar":
                 for (r, m) in sorted(ocis):
@@ -2740,7 +2758,7 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
                 if args.cmd == "gar" and c != 1:
                     error("image name '%s' should contain one '/'" % img)
                     return  # for tests
-                elif args.cmd == "quay" and c > 0:
+                elif args.cmd in ["dso", "quay"] and c > 0:
                     error("image name '%s' should not contain '/'" % img)
                     return  # for tests
 

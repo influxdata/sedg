@@ -24,6 +24,9 @@ commands:
           name: Install python components
           command: |
             make install-venv
+            . .venv/bin/activate
+            pip install -e ".[dso]"
+            deactivate
 
   # https://docs.getwoke.tech/installation/
   install_woke:
