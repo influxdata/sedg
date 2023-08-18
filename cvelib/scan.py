@@ -364,7 +364,7 @@ def getScanOCIsReportUnused(
     return s.rstrip()
 
 
-def formatWhereFromNamespace(
+def formatWhereFromOCIType(
     oci_type: str, namespace: str, where_override: str = ""
 ) -> str:
     where: str = "unknown"
@@ -380,6 +380,10 @@ def formatWhereFromNamespace(
         if where_override == "":
             w = namespace
         where = "quay-%s" % w
+    elif oci_type == "dso":
+        where = "dockerhub"
+        if where_override != "":
+            where += "-%s" % where_override
     elif where_override != "":
         where = where_override
 
@@ -409,15 +413,15 @@ def _parseScanURL(url: str, where_override: str = "") -> Tuple[str, str, str, st
     if pat.search(url):
         # https://us-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:...
         namespace = "%s/%s" % (tmp[3], tmp[2].rsplit("-", maxsplit=1)[0])
-        where = formatWhereFromNamespace("gar", namespace, where_override)
+        where = formatWhereFromOCIType("gar", namespace, where_override)
         software = tmp[4]
         modifier = tmp[5]
     elif url.startswith("https://quay.io/repository/"):  # quay.io
         # https://quay.io/repository/ORG/IMGNAME/manifest/sha256:...
-        where = formatWhereFromNamespace("quay", tmp[4], where_override)
+        where = formatWhereFromOCIType("quay", tmp[4], where_override)
         software = tmp[5]
     else:
-        where = formatWhereFromNamespace("", "", where_override)
+        where = formatWhereFromOCIType("", "", where_override)
         software = "TBD"
 
     return (product, where, software, modifier)
@@ -431,7 +435,7 @@ def parseNsAndImageToPkg(
         return ("", "", "", "")
 
     product: str = "oci"
-    where: str = formatWhereFromNamespace(oci_type, namespace, where_override)
+    where: str = formatWhereFromOCIType(oci_type, namespace, where_override)
     software: str = img.split("@")[0].split("/")[0]
     modifier: str = ""
     if oci_type == "gar":

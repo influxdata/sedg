@@ -600,8 +600,8 @@ class TestScanCommon(TestCase):
             res = cvelib.scan.getScanOCIsReportUnused(ocis, fixable=fixable)
             self.assertEqual(exp, res)
 
-    def test_formatWhereFromNamespace(self):
-        """Test formatWhereFromNamespace()"""
+    def test_formatWhereFromOCIType(self):
+        """Test formatWhereFromFromOCIType()"""
         tsts = [
             # oci_type, namespace, where_override, exp
             ("", "", "", "unknown"),
@@ -614,12 +614,14 @@ class TestScanCommon(TestCase):
             ("gar", "proj/us", "ovr", "gar-ovr"),
             ("quay", "org", "", "quay-org"),
             ("quay", "org", "ovr", "quay-ovr"),
+            ("dso", "", "", "dockerhub"),
+            ("dso", "", "ovr", "dockerhub-ovr"),
             ("other", "b@d", "", "unknown"),
             ("other", "", "b@d", "unknown"),
         ]
 
         for oci_type, ns, whr, exp in tsts:
-            res = cvelib.scan.formatWhereFromNamespace(oci_type, ns, whr)
+            res = cvelib.scan.formatWhereFromOCIType(oci_type, ns, whr)
             self.assertEqual(exp, res)
 
     def test__parseScanURL(self):
