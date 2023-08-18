@@ -672,6 +672,22 @@ class TestScanCommon(TestCase):
                 "IMGNAME",
                 "",
             ),
+            (
+                "https://dso.docker.com/images/IMGNAME/digests/sha256:deadbeef",
+                "",
+                "oci",
+                "dockerhub",
+                "IMGNAME",
+                "",
+            ),
+            (
+                "https://dso.docker.com/images/IMGNAME/digests/sha256:deadbeef",
+                "override",
+                "oci",
+                "dockerhub-override",
+                "IMGNAME",
+                "",
+            ),
         ]
 
         for url, whr, expP, expW, expS, expM in tsts:

@@ -420,6 +420,9 @@ def _parseScanURL(url: str, where_override: str = "") -> Tuple[str, str, str, st
         # https://quay.io/repository/ORG/IMGNAME/manifest/sha256:...
         where = formatWhereFromOCIType("quay", tmp[4], where_override)
         software = tmp[5]
+    elif url.startswith("https://dso.docker.com/"):
+        where = formatWhereFromOCIType("dso", "", where_override)
+        software = tmp[4]
     else:
         where = formatWhereFromOCIType("", "", where_override)
         software = "TBD"
