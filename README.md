@@ -118,9 +118,8 @@
     $ cve-report quay --alerts --name <org>/<name>@<digest>
 
     # Docker DSO container security reports
-    $ cve-report dso --list <repo>
-    $ cve-report dso --list-digest <repo>/<tag>
-    $ cve-report dso --alerts --name <repo>/<tag>@<digest>
+    $ cve-report dso --list-digest <repo>[:<tag>|@<sha256>]
+    $ cve-report dso --alerts --name <repo>[:<tag>|@<sha256>]
 
     # if desired, leave the venv
     $ deactivate

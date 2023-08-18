@@ -376,8 +376,8 @@ class TestDockerDSO(TestCase):
     # Note, these are listed in reverse order ot the arguments to test_...
     @mock.patch("cvelib.dso.ednLoadAsDict")
     @mock.patch("requests.post")
-    def test_getOCIsForNamespace(self, mock_post, mock_ednLoadAsDict):
-        """Test getOCIsForNamespace()"""
+    def test__getOCIsForRepo(self, mock_post, mock_ednLoadAsDict):
+        """Test _getOCIsForRepo()"""
         mock_post.return_value = self._mock_response_for_dso(content="edn-doc")
         mock_ednLoadAsDict.return_value = {
             "docker-repository-tags": {
@@ -389,9 +389,9 @@ class TestDockerDSO(TestCase):
                                 2023, 8, 7, 6, 5, 4, tzinfo=datetime.timezone.utc
                             ),
                             "docker.image/tags": [
-                                "1.0-valid-tag",
-                                "1-valid-tag",
-                                "valid-tag",
+                                "1.0-valid-name",
+                                "1-valid-name",
+                                "valid-name",
                             ],
                         }
                     }
@@ -403,10 +403,9 @@ class TestDockerDSO(TestCase):
                 "x-atomist-correlation-id": "81e2aee7-13d1-4097-93aa-90841e5bd43b"
             },
         }
-        dsr = cvelib.dso.DockerDSOSecurityReportNew()
-        res = dsr.getOCIsForNamespace("valid-repo")
+        res = cvelib.dso._getOCIsForRepo("valid-repo")
         self.assertEqual(1, len(res))
-        self.assertEqual("1.0-valid-tag", res[0][0])
+        self.assertEqual("1.0-valid-name", res[0][0])
 
         # should be able to do #self.assertEqual(1691503749, res[0][1]) but
         # circleci's python gives different epoch (weird). Confirm the datetime
@@ -429,9 +428,9 @@ class TestDockerDSO(TestCase):
                             "docker.image/digest": "sha256:af27abadb0a5e58b01e58806a02aca8c46d4c2b0823d6077d13de7ade017e9a9",
                             "docker.image/created-at": None,
                             "docker.image/tags": [
-                                "1.0-valid-tag",
-                                "1-valid-tag",
-                                "valid-tag",
+                                "1.0-valid-name",
+                                "1-valid-name",
+                                "valid-name",
                             ],
                         }
                     }
@@ -443,17 +442,15 @@ class TestDockerDSO(TestCase):
                 "x-atomist-correlation-id": "81e2aee7-13d1-4097-93aa-90841e5bd43b"
             },
         }
-        dsr = cvelib.dso.DockerDSOSecurityReportNew()
-        res = dsr.getOCIsForNamespace("valid-repo")
+        res = cvelib.dso._getOCIsForRepo("valid-repo")
         self.assertEqual(1, len(res))
         self.assertEqual(0, res[0][1])
 
         # empty
         mock_post.return_value = self._mock_response_for_dso(content="edn-doc")
         mock_ednLoadAsDict.return_value = {}
-        dsr = cvelib.dso.DockerDSOSecurityReportNew()
         with tests.testutil.capturedOutput() as (output, error):
-            res = dsr.getOCIsForNamespace("valid-repo")
+            res = cvelib.dso._getOCIsForRepo("valid-repo")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not find 'docker-repository-tags' as dict in response"
@@ -473,12 +470,29 @@ class TestDockerDSO(TestCase):
                 "x-atomist-correlation-id": "81e2aee7-13d1-4097-93aa-90841e5bd43b"
             },
         }
-        dsr = cvelib.dso.DockerDSOSecurityReportNew()
         with tests.testutil.capturedOutput() as (output, error):
-            res = dsr.getOCIsForNamespace("valid-repo")
+            res = cvelib.dso._getOCIsForRepo("valid-repo")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not find 'image' in response for image" in error.getvalue().strip()
+        )
+        self.assertEqual(0, len(res))
+
+        # bad invocation
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                res = cvelib.dso._getOCIsForRepo("valid-repo:dont-use-tag")
+        self.assertEqual("", output.getvalue().strip())
+        self.assertTrue(
+            "Please use REPO (without :TAG or @sha256:SHA256)"
+            in error.getvalue().strip()
         )
         self.assertEqual(0, len(res))
 
@@ -498,9 +512,9 @@ class TestDockerDSO(TestCase):
                                 2023, 8, 8, 9, 9, 9, tzinfo=datetime.timezone.utc
                             ),
                             "docker.image/tags": [
-                                "1.0-valid-tag",
-                                "1-valid-tag",
-                                "valid-tag",
+                                "1.0-valid-name",
+                                "1-valid-name",
+                                "valid-name",
                             ],
                         }
                     }
@@ -512,25 +526,39 @@ class TestDockerDSO(TestCase):
                 "x-atomist-correlation-id": "81e2aee7-13d1-4097-93aa-90841e5bd43b"
             },
         }
+
+        # with tag
         dsr = cvelib.dso.DockerDSOSecurityReportNew()
-        res = dsr.getDigestForImage("valid-repo/valid-tag")
+        res = dsr.getDigestForImage("valid-repo:valid-name")
         self.assertEqual(
-            "valid-repo/valid-tag@sha256:af27abadb0a5e58b01e58806a02aca8c46d4c2b0823d6077d13de7ade017e9a9",
+            "valid-repo@sha256:af27abadb0a5e58b01e58806a02aca8c46d4c2b0823d6077d13de7ade017e9a9",
             res,
         )
 
-        # bad invocation
-        with tests.testutil.capturedOutput() as (output, error):
-            dsr.getDigestForImage("valid-repo")
-        self.assertEqual("", output.getvalue().strip())
-        self.assertTrue("Please use REPO/TAG" in error.getvalue().strip())
+        # with sha256
+        dsr = cvelib.dso.DockerDSOSecurityReportNew()
+        res = dsr.getDigestForImage(
+            "valid-repo@sha256:af27abadb0a5e58b01e58806a02aca8c46d4c2b0823d6077d13de7ade017e9a9"
+        )
+        self.assertEqual(
+            "valid-repo@sha256:af27abadb0a5e58b01e58806a02aca8c46d4c2b0823d6077d13de7ade017e9a9",
+            res,
+        )
+
+        # bare
+        dsr = cvelib.dso.DockerDSOSecurityReportNew()
+        res = dsr.getDigestForImage("valid-repo")
+        self.assertEqual(
+            "valid-repo@sha256:af27abadb0a5e58b01e58806a02aca8c46d4c2b0823d6077d13de7ade017e9a9",
+            res,
+        )
 
         # empty
         mock_post.return_value = self._mock_response_for_dso(content="edn-doc")
         mock_ednLoadAsDict.return_value = {}
         dsr = cvelib.dso.DockerDSOSecurityReportNew()
         with tests.testutil.capturedOutput() as (output, error):
-            res = dsr.getDigestForImage("valid-repo/valid-tag")
+            res = dsr.getDigestForImage("valid-repo:valid-name")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not find 'docker-repository-tags' as dict in response"
@@ -552,7 +580,7 @@ class TestDockerDSO(TestCase):
         }
         dsr = cvelib.dso.DockerDSOSecurityReportNew()
         with tests.testutil.capturedOutput() as (output, error):
-            res = dsr.getDigestForImage("valid-repo/valid-tag")
+            res = dsr.getDigestForImage("valid-repo:valid-name")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not find 'image' in response for image" in error.getvalue().strip()
@@ -582,7 +610,7 @@ class TestDockerDSO(TestCase):
             },
         }
         with tests.testutil.capturedOutput() as (output, error):
-            res = dsr.getDigestForImage("valid-repo/valid-tag")
+            res = dsr.getDigestForImage("valid-repo:valid-name")
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual("", error.getvalue().strip())
         self.assertEqual(0, len(res))
@@ -591,10 +619,10 @@ class TestDockerDSO(TestCase):
         """Test parseImageDigest"""
         tsts = [
             # org, repo, sha256, expErr
-            ("valid-repo", "valid-tag", "sha256:deadbeef", ""),
-            ("valid-repo", "valid-tag", "bad", "does not contain '@sha256:"),
-            ("valid-repo", "valid-tag", "@sha256:@", "should have 1 '@'"),
-            ("valid-repo", "valid-tag/bad", "sha256:deadbeef", "should have 1 '/'"),
+            ("", "valid-name", "sha256:deadbeef", ""),
+            ("ignored", "valid-name", "sha256:deadbeef", ""),
+            ("", "valid-name", "bad", "does not contain '@sha256:"),
+            ("", "valid-name", "@sha256:@", "should have 1 '@'"),
         ]
         dsr = cvelib.dso.DockerDSOSecurityReportNew()
         with mock.patch.object(
@@ -606,7 +634,7 @@ class TestDockerDSO(TestCase):
             ),
         ):
             for org, repo, sha, expErr in tsts:
-                digest = "%s/%s@%s" % (org, repo, sha)
+                digest = "%s@%s" % (repo, sha)
                 with tests.testutil.capturedOutput() as (output, error):
                     r1, r2, r3 = dsr.parseImageDigest(digest)
 
@@ -619,7 +647,7 @@ class TestDockerDSO(TestCase):
                 else:
                     self.assertEqual("", output.getvalue().strip())
                     self.assertEqual("", error.getvalue().strip())
-                    self.assertEqual(org, r1)
+                    self.assertEqual("", r1)
                     self.assertEqual(repo, r2)
                     self.assertEqual(sha, r3)
 
@@ -755,7 +783,7 @@ class TestDockerDSO(TestCase):
         _, d = self._validDockerDSOReport()
         mock_fetchVulnReports.return_value = d
         dsr = cvelib.dso.DockerDSOSecurityReportNew()
-        res, resMsg = dsr.fetchScanReport("valid-repo/valid-tag@sha256:deadbeef")
+        res, resMsg = dsr.fetchScanReport("valid-name@sha256:deadbeef")
         self.assertEqual("", resMsg)
         self.assertEqual(2, len(res))
         self.assertEqual("pkg:something", res[0].component)
@@ -769,7 +797,7 @@ class TestDockerDSO(TestCase):
         self.assertEqual("high", res[0].severity)
         self.assertEqual("needed", res[0].status)
         self.assertEqual(
-            "https://dso.docker.com/images/valid-repo/digests/sha256:deadbeef",
+            "https://dso.docker.com/images/valid-name/digests/sha256:deadbeef",
             res[0].url,
         )
         self.assertEqual("pkg:something", res[1].component)
@@ -783,7 +811,7 @@ class TestDockerDSO(TestCase):
         self.assertEqual("high", res[1].severity)
         self.assertEqual("needed", res[1].status)
         self.assertEqual(
-            "https://dso.docker.com/images/valid-repo/digests/sha256:deadbeef",
+            "https://dso.docker.com/images/valid-name/digests/sha256:deadbeef",
             res[1].url,
         )
 
@@ -794,9 +822,7 @@ class TestDockerDSO(TestCase):
         _, d = self._validDockerDSOReport()
         d["data"]["vulnerabilitiesByPackage"][0]["vulnerabilities"][0]["fixedBy"] = None
         mock_fetchVulnReports.return_value = d
-        res, resMsg = dsr.fetchScanReport(
-            "valid-repo/valid-tag@sha256:deadbeef", fixable=False
-        )
+        res, resMsg = dsr.fetchScanReport("valid-name@sha256:deadbeef", fixable=False)
         self.assertEqual("", resMsg)
         self.assertEqual(2, len(res))
         self.assertEqual("pkg:something", res[0].component)
@@ -809,9 +835,7 @@ class TestDockerDSO(TestCase):
         self.assertEqual("/path/2", res[1].detectedIn)
 
         # fixable=True
-        res, resMsg = dsr.fetchScanReport(
-            "valid-repo/valid-tag@sha256:deadbeef", fixable=True
-        )
+        res, resMsg = dsr.fetchScanReport("valid-name@sha256:deadbeef", fixable=True)
         self.assertEqual(0, len(res))
         self.assertEqual("No problems found", resMsg)
 
@@ -819,7 +843,7 @@ class TestDockerDSO(TestCase):
         _, d = self._validDockerDSOReport()
         mock_fetchVulnReports.return_value = d
         res, resMsg = dsr.fetchScanReport(
-            "valid-repo/valid-tag@sha256:deadbeef",
+            "valid-name@sha256:deadbeef",
             priorities=["negligible"],
         )
         self.assertEqual(0, len(res))
@@ -835,7 +859,7 @@ class TestDockerDSO(TestCase):
         ] = "NEGLIGIBLE"
         mock_fetchVulnReports.return_value = d
         res, resMsg = dsr.fetchScanReport(
-            "valid-repo/valid-tag@sha256:deadbeef",
+            "valid-name@sha256:deadbeef",
             priorities=["negligible"],
         )
         self.assertEqual("", resMsg)
@@ -850,20 +874,16 @@ class TestDockerDSO(TestCase):
             json_data=self._validDockerDSOPackageURLs()
         )
         _, d = self._validDockerDSOReport()
-        res, resMsg = dsr.fetchScanReport(
-            "valid-repo/valid-tag@sha256:deadbeef", raw=True
-        )
+        res, resMsg = dsr.fetchScanReport("valid-name@sha256:deadbeef", raw=True)
         exp = '"purl": "pkg:something@1.0.0",'
         self.assertEqual(0, len(res))
         self.assertTrue(exp in resMsg)
 
         # bad invocation
         with tests.testutil.capturedOutput() as (output, error):
-            res, resMsg = dsr.fetchScanReport("valid-repo/valid-tag")
+            res, resMsg = dsr.fetchScanReport("valid-name")
         self.assertEqual("", output.getvalue().strip())
-        self.assertTrue(
-            "Please use REPO/TAG@sha256:<sha256>" in error.getvalue().strip()
-        )
+        self.assertTrue("Please use REPO@sha256:SHA256" in error.getvalue().strip())
         self.assertEqual(0, len(res))
         self.assertEqual("", resMsg)
 
@@ -875,7 +895,7 @@ class TestDockerDSO(TestCase):
         del d["data"]
         mock_fetchVulnReports.return_value = d
         with tests.testutil.capturedOutput() as (output, error):
-            res, resMsg = dsr.fetchScanReport("valid-repo/valid-tag@sha256:deadbeef")
+            res, resMsg = dsr.fetchScanReport("valid-name@sha256:deadbeef")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Could not find 'data' in" in error.getvalue().strip())
         self.assertEqual(0, len(res))
@@ -888,7 +908,7 @@ class TestDockerDSO(TestCase):
         del d["data"]["vulnerabilitiesByPackage"]
         mock_fetchVulnReports.return_value = d
         with tests.testutil.capturedOutput() as (output, error):
-            res, resMsg = dsr.fetchScanReport("valid-repo/valid-tag@sha256:deadbeef")
+            res, resMsg = dsr.fetchScanReport("valid-name@sha256:deadbeef")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not find 'vulnerabilitiesByPackage' in" in error.getvalue().strip()
@@ -899,10 +919,10 @@ class TestDockerDSO(TestCase):
     # Note, these are listed in reverse order ot the arguments to test_...
     @mock.patch("cvelib.dso.DockerDSOSecurityReportNew.fetchScanReport")
     @mock.patch("cvelib.dso.DockerDSOSecurityReportNew.getDigestForImage")
-    @mock.patch("cvelib.dso.DockerDSOSecurityReportNew.getOCIsForNamespace")
+    @mock.patch("cvelib.dso._getOCIsForRepo")
     def test_main_dso_dump_reports(
         self,
-        mock_getOCIsForNamespace,
+        mock__getOCIsForRepo,
         mock_getDigestForImage,
         mock_fetchScanReport,
     ):
@@ -910,8 +930,8 @@ class TestDockerDSO(TestCase):
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         os.environ["SEDG_EXPERIMENTAL"] = "1"
 
-        mock_getOCIsForNamespace.return_value = [("valid-tag", 1684472852)]
-        mock_getDigestForImage.return_value = "valid-repo/valid-tag@sha256:deadbeef"
+        mock__getOCIsForRepo.return_value = [("valid-name", 1684472852)]
+        mock_getDigestForImage.return_value = "valid-name@sha256:deadbeef"
         mock_fetchScanReport.return_value = (
             [],
             '{"data": {"vulnerabilitiesByPackage": []}}',
@@ -932,10 +952,10 @@ class TestDockerDSO(TestCase):
                 cvelib.dso.main_dso_dump_reports()
 
         today = datetime.datetime.now()
-        fn = (
-            self.tmpdir
-            + "/subdir/%d/%0.2d/%0.2d/dso/valid-repo/valid-tag/deadbeef.json"
-            % (today.year, today.month, today.day)
+        fn = self.tmpdir + "/subdir/%d/%0.2d/%0.2d/dso/valid-repo/deadbeef.json" % (
+            today.year,
+            today.month,
+            today.day,
         )
         relfn = os.path.relpath(fn, self.tmpdir + "/subdir")
         self.assertEqual("Created: %s" % relfn, output.getvalue().strip())
@@ -962,11 +982,11 @@ class TestDockerDSO(TestCase):
         os.unlink(fn)
 
         # duplicate (write out equivalent of json.dumps(..., sort_keys=True))
-        fn = self.tmpdir + "/subdir/YYYY/MM/DD/dso/valid-repo/valid-tag/deadbeef.json"
+        fn = self.tmpdir + "/subdir/YYYY/MM/DD/dso/valid-repo/deadbeef.json"
         os.makedirs(os.path.dirname(fn))
         with open(fn, "w") as fh:
             fh.write('{\n  "data": {\n    "vulnerabilitiesByPackage": []\n  }\n}\n')
-        fn2 = self.tmpdir + "/subdir/YYYY/MM/dd/dso/valid-repo/valid-tag/deadbeef.json"
+        fn2 = self.tmpdir + "/subdir/YYYY/MM/dd/dso/valid-repo/deadbeef.json"
         os.makedirs(os.path.dirname(fn2))
         with open(fn2, "w") as fh:
             fh.write('{\n  "data": {\n    "vulnerabilitiesByPackage": []\n  }\n}\n')
@@ -989,10 +1009,10 @@ class TestDockerDSO(TestCase):
     # Note, these are listed in reverse order ot the arguments to test_...
     @mock.patch("cvelib.dso.DockerDSOSecurityReportNew.fetchScanReport")
     @mock.patch("cvelib.dso.DockerDSOSecurityReportNew.getDigestForImage")
-    @mock.patch("cvelib.dso.DockerDSOSecurityReportNew.getOCIsForNamespace")
+    @mock.patch("cvelib.dso._getOCIsForRepo")
     def test_main_dso_dump_reports_bad(
         self,
-        mock_getOCIsForNamespace,
+        mock__getOCIsForRepo,
         mock_getDigestForImage,
         mock_fetchScanReport,
     ):
@@ -1001,7 +1021,7 @@ class TestDockerDSO(TestCase):
         os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         # no image names
-        mock_getOCIsForNamespace.return_value = []
+        mock__getOCIsForRepo.return_value = []
         with mock.patch.object(
             cvelib.common.error,
             "__defaults__",
@@ -1028,7 +1048,7 @@ class TestDockerDSO(TestCase):
         )
 
         # no digests
-        mock_getOCIsForNamespace.return_value = [("valid-tag", 1684472852)]
+        mock__getOCIsForRepo.return_value = [("valid-name", 1684472852)]
         mock_getDigestForImage.return_value = ""
         with mock.patch.object(
             cvelib.common.error,
@@ -1052,15 +1072,14 @@ class TestDockerDSO(TestCase):
                     cvelib.dso.main_dso_dump_reports()
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
-            "WARN: Could not find digest for valid-repo/valid-tag"
-            in error.getvalue().strip(),
+            "WARN: Could not find digest for valid-repo" in error.getvalue().strip(),
         )
         self.assertTrue(
             "Could not find any OCI image digests" in error.getvalue().strip(),
         )
 
-        mock_getOCIsForNamespace.return_value = [("valid-tag", 1684472852)]
-        mock_getDigestForImage.return_value = "valid-repo/valid-tag@sha256:deadbeef"
+        mock__getOCIsForRepo.return_value = [("valid-name", 1684472852)]
+        mock_getDigestForImage.return_value = "valid-name@sha256:deadbeef"
         mock_fetchScanReport.return_value = [], ""
         with mock.patch.object(
             cvelib.common.error,
@@ -1086,8 +1105,8 @@ class TestDockerDSO(TestCase):
         self.assertTrue("No new security reports" in error.getvalue().strip())
 
         # unsupported scan status
-        mock_getOCIsForNamespace.return_value = [("valid-tag", 1684472852)]
-        mock_getDigestForImage.return_value = "valid-repo/valid-tag@sha256:deadbeef"
+        mock__getOCIsForRepo.return_value = [("valid-name", 1684472852)]
+        mock_getDigestForImage.return_value = "valid-name@sha256:deadbeef"
         mock_fetchScanReport.return_value = ([], '{"data": null}')
         with mock.patch.object(
             cvelib.common.error,

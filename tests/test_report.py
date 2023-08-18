@@ -4100,59 +4100,35 @@ Totals:
             # dso
             (
                 ["dso"],
-                "Please specify one of --alerts, --list or --list-digest with 'dso'",
+                "Please specify --alerts or --list-digest with 'dso'",
             ),
             (
-                ["dso", "--list", "--namespace", "foo/bad"],
-                "--namespace 'foo/bad' should not contain '/'",
-            ),
-            (
-                ["dso", "--list", "--namespace", "foo", "--raw"],
+                ["dso", "--list-digest", "foo", "--raw"],
                 "Please specify --alerts with --raw",
             ),
             (
-                ["dso", "--list", "--namespace", "foo", "--all"],
+                ["dso", "--list-digest", "foo", "--all"],
                 "Please specify --alerts with --all",
             ),
             (
-                ["dso", "--list", "--namespace", "foo", "--with-templates"],
+                ["dso", "--list-digest", "foo", "--with-templates"],
                 "Please specify --alerts with --with-templates",
             ),
             (
                 [
                     "dso",
                     "--alerts",
-                    "--namespace",
-                    "foo",
-                    "--images",
-                    "img@sha256:deadbeef",
-                    "--list",
-                ],
-                "Unsupported option --list with --alerts",
-            ),
-            (
-                [
-                    "dso",
-                    "--alerts",
-                    "--namespace",
-                    "foo",
                     "--images",
                     "img@sha256:deadbeef",
                     "--list-digest",
-                    "foo/img",
+                    "foo",
                 ],
                 "Unsupported option --list-digest with --alerts",
             ),
             (
-                ["dso", "--alerts"],
-                "Please specify --namespace with 'dso'",
-            ),
-            (
                 [
                     "dso",
                     "--alerts",
-                    "--namespace",
-                    "foo",
                     "--images",
                     "img@sha256:deadbeef",
                     "--raw",
@@ -4164,8 +4140,6 @@ Totals:
                 [
                     "dso",
                     "--alerts",
-                    "--namespace",
-                    "foo",
                     "--images",
                     "img@sha256:deadbeef",
                     "--raw",
@@ -4177,8 +4151,6 @@ Totals:
                 [
                     "dso",
                     "--alerts",
-                    "--namespace",
-                    "foo",
                 ],
                 "Please specify --images or --excluded-images with --alerts",
             ),
@@ -4593,7 +4565,7 @@ template-urls = https://url1,https://url2
         elif gar:
             url = "https://us-docker.pkg.dev/valid-proj/valid-repo/valid-name@sha256:deadbeef"
         elif dso:
-            url = "https://dso.docker.com/images/valid-org/digests/sha256:deadbeef"
+            url = "https://dso.docker.com/images/valid-repo/digests/sha256:deadbeef"
 
         data = {
             "component": "foo",
@@ -5297,38 +5269,13 @@ valid-proj/us/valid-repo/valid-name removed report: 1
 
         self.assertEqual(res, exp)
 
-    @mock.patch("cvelib.dso.DockerDSOSecurityReportNew.getOCIsForNamespace")
-    def test_main_report_dso_list(self, mock_getOCIsForNamespace):
-        """Test main_report - dso --list"""
-        self._mock_cve_data_mixed()  # for cveDirs
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
-        mock_getOCIsForNamespace.return_value = [("valid-repo", 1684472852)]
-        args = ["dso", "--list", "--namespace", "valid-org"]
-        with tests.testutil.capturedOutput() as (output, error):
-            cvelib.report.main_report(args)
-        self.assertEqual("", error.getvalue().strip())
-        self.assertEqual(
-            "valid-org/valid-repo (last updated: 2023-05-19 05:07:32)",
-            output.getvalue().strip(),
-        )
-
-        mock_getOCIsForNamespace.return_value = [("empty-repo", 0)]
-        args = ["dso", "--list", "--namespace", "valid-org"]
-        with tests.testutil.capturedOutput() as (output, error):
-            cvelib.report.main_report(args)
-        self.assertEqual("", error.getvalue().strip())
-        self.assertEqual(
-            "valid-org/empty-repo (last updated: unknown)",
-            output.getvalue().strip(),
-        )
-
     @mock.patch("cvelib.dso.DockerDSOSecurityReportNew.getDigestForImage")
     def test_main_report_dso_list_digest(self, mock_getDigestForImage):
         """Test main_report - dso --list-digest"""
         self._mock_cve_data_mixed()  # for cveDirs
         os.environ["SEDG_EXPERIMENTAL"] = "1"
-        mock_getDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
-        args = ["dso", "--list-digest", "valid-repo", "--namespace", "valid-org"]
+        mock_getDigestForImage.return_value = "valid-repo@sha256:deadbeef"
+        args = ["dso", "--list-digest", "valid-repo"]
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
@@ -5347,8 +5294,6 @@ valid-proj/us/valid-repo/valid-name removed report: 1
         args = [
             "dso",
             "--alerts",
-            "--namespace",
-            "valid-org",
             "--images",
             "valid-repo@sha256:deadbeef",
         ]
@@ -5356,18 +5301,16 @@ valid-proj/us/valid-repo/valid-name removed report: 1
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
         self.assertTrue(
-            "# New reports\n\nvalid-org/valid-repo report: 1" in output.getvalue(),
+            "# New reports\n\nvalid-repo report: 1" in output.getvalue(),
             msg="output is:\n%s" % output.getvalue().strip(),
         )
 
         # without image digest
         mock_fetchScanReport.return_value = [self._getValidScanOCI(dso=True)], ""
-        mock_getDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef0123"
+        mock_getDigestForImage.return_value = "valid-repo@sha256:deadbeef0123"
         args = [
             "dso",
             "--alerts",
-            "--namespace",
-            "valid-org",
             "--images",
             "valid-repo",
         ]
@@ -5375,7 +5318,7 @@ valid-proj/us/valid-repo/valid-name removed report: 1
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
         self.assertTrue(
-            "# New reports\n\nvalid-org/valid-repo report: 1" in output.getvalue(),
+            "# New reports\n\nvalid-repo report: 1" in output.getvalue(),
             msg="output is:\n%s" % output.getvalue().strip(),
         )
 
@@ -5384,8 +5327,6 @@ valid-proj/us/valid-repo/valid-name removed report: 1
         args = [
             "dso",
             "--alerts",
-            "--namespace",
-            "valid-org",
             "--images",
             "valid-repo@sha256:deadbeef",
         ]
@@ -5400,8 +5341,6 @@ valid-proj/us/valid-repo/valid-name removed report: 1
         args = [
             "dso",
             "--alerts",
-            "--namespace",
-            "valid-org",
             "--images",
             "valid-repo",
         ]
@@ -5425,8 +5364,6 @@ valid-proj/us/valid-repo/valid-name removed report: 1
             args = [
                 "dso",
                 "--alerts",
-                "--namespace",
-                "valid-org",
                 "--images",
                 "valid-repo/bad@sha256:deadbeef",
             ]
