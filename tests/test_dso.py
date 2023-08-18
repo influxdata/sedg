@@ -376,8 +376,8 @@ class TestDockerDSO(TestCase):
     # Note, these are listed in reverse order ot the arguments to test_...
     @mock.patch("cvelib.dso.ednLoadAsDict")
     @mock.patch("requests.post")
-    def test__getOCIsForRepo(self, mock_post, mock_ednLoadAsDict):
-        """Test _getOCIsForRepo()"""
+    def test__getTagsForRepo(self, mock_post, mock_ednLoadAsDict):
+        """Test _getTagsForRepo()"""
         mock_post.return_value = self._mock_response_for_dso(content="edn-doc")
         mock_ednLoadAsDict.return_value = {
             "docker-repository-tags": {
@@ -403,7 +403,7 @@ class TestDockerDSO(TestCase):
                 "x-atomist-correlation-id": "81e2aee7-13d1-4097-93aa-90841e5bd43b"
             },
         }
-        res = cvelib.dso._getOCIsForRepo("valid-repo")
+        res = cvelib.dso._getTagsForRepo("valid-repo")
         self.assertEqual(1, len(res))
         self.assertEqual("1.0-valid-name", res[0][0])
 
@@ -442,7 +442,7 @@ class TestDockerDSO(TestCase):
                 "x-atomist-correlation-id": "81e2aee7-13d1-4097-93aa-90841e5bd43b"
             },
         }
-        res = cvelib.dso._getOCIsForRepo("valid-repo")
+        res = cvelib.dso._getTagsForRepo("valid-repo")
         self.assertEqual(1, len(res))
         self.assertEqual(0, res[0][1])
 
@@ -450,7 +450,7 @@ class TestDockerDSO(TestCase):
         mock_post.return_value = self._mock_response_for_dso(content="edn-doc")
         mock_ednLoadAsDict.return_value = {}
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.dso._getOCIsForRepo("valid-repo")
+            res = cvelib.dso._getTagsForRepo("valid-repo")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not find 'docker-repository-tags' as dict in response"
@@ -471,7 +471,7 @@ class TestDockerDSO(TestCase):
             },
         }
         with tests.testutil.capturedOutput() as (output, error):
-            res = cvelib.dso._getOCIsForRepo("valid-repo")
+            res = cvelib.dso._getTagsForRepo("valid-repo")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Could not find 'image' in response for image" in error.getvalue().strip()
@@ -488,7 +488,7 @@ class TestDockerDSO(TestCase):
             ),
         ):
             with tests.testutil.capturedOutput() as (output, error):
-                res = cvelib.dso._getOCIsForRepo("valid-repo:dont-use-tag")
+                res = cvelib.dso._getTagsForRepo("valid-repo:dont-use-tag")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
             "Please use REPO (without :TAG or @sha256:SHA256)"
@@ -919,10 +919,10 @@ class TestDockerDSO(TestCase):
     # Note, these are listed in reverse order ot the arguments to test_...
     @mock.patch("cvelib.dso.DockerDSOSecurityReportNew.fetchScanReport")
     @mock.patch("cvelib.dso.DockerDSOSecurityReportNew.getDigestForImage")
-    @mock.patch("cvelib.dso._getOCIsForRepo")
+    @mock.patch("cvelib.dso._getTagsForRepo")
     def test_main_dso_dump_reports(
         self,
-        mock__getOCIsForRepo,
+        mock__getTagsForRepo,
         mock_getDigestForImage,
         mock_fetchScanReport,
     ):
@@ -930,7 +930,7 @@ class TestDockerDSO(TestCase):
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
         os.environ["SEDG_EXPERIMENTAL"] = "1"
 
-        mock__getOCIsForRepo.return_value = [("valid-name", 1684472852)]
+        mock__getTagsForRepo.return_value = [("valid-name", 1684472852)]
         mock_getDigestForImage.return_value = "valid-name@sha256:deadbeef"
         mock_fetchScanReport.return_value = (
             [],
@@ -1009,10 +1009,10 @@ class TestDockerDSO(TestCase):
     # Note, these are listed in reverse order ot the arguments to test_...
     @mock.patch("cvelib.dso.DockerDSOSecurityReportNew.fetchScanReport")
     @mock.patch("cvelib.dso.DockerDSOSecurityReportNew.getDigestForImage")
-    @mock.patch("cvelib.dso._getOCIsForRepo")
+    @mock.patch("cvelib.dso._getTagsForRepo")
     def test_main_dso_dump_reports_bad(
         self,
-        mock__getOCIsForRepo,
+        mock__getTagsForRepo,
         mock_getDigestForImage,
         mock_fetchScanReport,
     ):
@@ -1021,7 +1021,7 @@ class TestDockerDSO(TestCase):
         os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         # no image names
-        mock__getOCIsForRepo.return_value = []
+        mock__getTagsForRepo.return_value = []
         with mock.patch.object(
             cvelib.common.error,
             "__defaults__",
@@ -1048,7 +1048,7 @@ class TestDockerDSO(TestCase):
         )
 
         # no digests
-        mock__getOCIsForRepo.return_value = [("valid-name", 1684472852)]
+        mock__getTagsForRepo.return_value = [("valid-name", 1684472852)]
         mock_getDigestForImage.return_value = ""
         with mock.patch.object(
             cvelib.common.error,
@@ -1078,7 +1078,7 @@ class TestDockerDSO(TestCase):
             "Could not find any OCI image digests" in error.getvalue().strip(),
         )
 
-        mock__getOCIsForRepo.return_value = [("valid-name", 1684472852)]
+        mock__getTagsForRepo.return_value = [("valid-name", 1684472852)]
         mock_getDigestForImage.return_value = "valid-name@sha256:deadbeef"
         mock_fetchScanReport.return_value = [], ""
         with mock.patch.object(
@@ -1105,7 +1105,7 @@ class TestDockerDSO(TestCase):
         self.assertTrue("No new security reports" in error.getvalue().strip())
 
         # unsupported scan status
-        mock__getOCIsForRepo.return_value = [("valid-name", 1684472852)]
+        mock__getTagsForRepo.return_value = [("valid-name", 1684472852)]
         mock_getDigestForImage.return_value = "valid-name@sha256:deadbeef"
         mock_fetchScanReport.return_value = ([], '{"data": null}')
         with mock.patch.object(

@@ -202,7 +202,7 @@ class DockerDSOSecurityReportNew(SecurityReportInterface):
         return ""
 
     def parseImageDigest(self, digest: str) -> Tuple[str, str, str]:
-        """Parse the image digest into a (namespace, repo, sha256) tuple"""
+        """Parse the image digest into a (namespace (ignored), repo, sha256) tuple"""
         if "@sha256:" not in digest:
             error("Malformed digest '%s' (does not contain '@sha256:')" % digest)
             return ("", "", "")
@@ -210,15 +210,11 @@ class DockerDSOSecurityReportNew(SecurityReportInterface):
             error("Malformed digest '%s' (should have 1 '@')" % digest)
             return ("", "", "")
 
-        sha256: str = ""
+        repo: str
+        sha256: str
         repo, sha256 = digest.split("@")
 
         return ("", repo, sha256)
-
-    def getOCIsForNamespace(self, _: str) -> List[Tuple[str, int]]:  # pragma: nocover
-        """Obtain the list of DockerDSO repos for the specified namespace"""
-        # dso doesn't have a concept of namespaces
-        raise NotImplementedError
 
     def fetchScanReport(
         self,
@@ -269,6 +265,10 @@ class DockerDSOSecurityReportNew(SecurityReportInterface):
             return [], self.errors[SecurityReportFetchResult.CLEAN]
 
         return ocis, ""
+
+    def getOCIsForNamespace(self, _: str) -> List[Tuple[str, int]]:  # pragma: nocover
+        # dso doesn't have a concept of namespaces
+        raise NotImplementedError
 
     def getReposForNamespace(self, _: str) -> List[str]:  # pragma: nocover
         # dso doesn't have a concept of repos within namespaces
@@ -752,7 +752,7 @@ def _getListEDN(namespace: str, days: int = 365) -> Dict:
 #     "x-atomist-correlation-id": "81e2aee7-13d1-4097-93aa-90841e5bd43b"
 #   }
 # }
-def _getOCIsForRepo(repo_name: str) -> List[Tuple[str, int]]:
+def _getTagsForRepo(repo_name: str) -> List[Tuple[str, int]]:
     """Obtain the list of DockerDSO tags for the specified repo"""
     if ":" in repo_name or "@" in repo_name or "/" in repo_name:
         error("Please use REPO (without :TAG or @sha256:SHA256)")
@@ -810,10 +810,10 @@ def main_dso_dump_reports():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent(
             """\
-dso-dump-reports pulls all the latest security reports for OCI images in
-REPO and outputs them to:
+dso-dump-reports pulls all the latest security reports for the tagged images in
+the REPO and outputs them to:
 
-  /path/to/reports/YY/MM/DD/dso/REPO/TAG/SHA256.json
+  /path/to/reports/YY/MM/DD/dso/REPO/SHA256.json
 
 Eg, to pull all dso security scan reports for org 'foo':
 
@@ -843,7 +843,7 @@ Eg, to pull all dso security scan reports for org 'foo':
     sr = DockerDSOSecurityReportNew()
 
     # Find latest digest for all images
-    oci_names: List[Tuple[str, int]] = _getOCIsForRepo(args.name)
+    oci_names: List[Tuple[str, int]] = _getTagsForRepo(args.name)
     if len(oci_names) == 0:
         error("Could not enumerate any OCI image names")
         return  # for tests
@@ -872,7 +872,7 @@ Eg, to pull all dso security scan reports for org 'foo':
     # dso doesn't have dates or times in the security report, so we will
     # store them in a folder under today's date. Since the report path comes
     # from the date the report was fetched, we'll first search for the report
-    # by the dso/TAG/SHA256.json to see if we previously downloaded it.
+    # by the dso/REPO/SHA256.json to see if we previously downloaded it.
 
     # gather a list of potentially matching filenames
     json_files: Dict[str, str] = {}
