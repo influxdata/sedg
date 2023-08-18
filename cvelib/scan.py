@@ -145,12 +145,15 @@ class ScanOCI(object):
         """Test if self and b match in meaningful ways. Returns fuzzy and
         precise tuple
         """
-        if self.advisory != b.advisory or self.component != b.component:
+        if (
+            self.advisory != b.advisory
+            or self.component != b.component
+            or self.detectedIn != b.detectedIn
+        ):
             return False, False
 
         if (
-            self.detectedIn != b.detectedIn
-            or self.versionAffected != b.versionAffected
+            self.versionAffected != b.versionAffected
             or self.versionFixed != b.versionFixed
             or self.severity != b.severity
         ):
@@ -168,8 +171,8 @@ class ScanOCI(object):
             if attrib == "versionFixed":
                 attrib_p = "fixedBy"
 
-            # only show diff for versions, detectedIn and severity (the fuzzy
-            # matching parts)
+            # only show diff for versions and severity (the fuzzy matching
+            # parts)
             if getattr(a, attrib) == getattr(b, attrib) or (
                 not precise
                 and attrib
@@ -177,7 +180,6 @@ class ScanOCI(object):
                     "versionAffected",
                     "versionFixed",
                     "severity",
-                    "detectedIn",
                 ]
             ):
                 return "   %s: %s\n" % (attrib_p, getattr(a, attrib))
@@ -364,7 +366,7 @@ def getScanOCIsReportUnused(
     return s.rstrip()
 
 
-def formatWhereFromNamespace(
+def formatWhereFromOCIType(
     oci_type: str, namespace: str, where_override: str = ""
 ) -> str:
     where: str = "unknown"
@@ -380,6 +382,10 @@ def formatWhereFromNamespace(
         if where_override == "":
             w = namespace
         where = "quay-%s" % w
+    elif oci_type == "dso":
+        where = "dockerhub"
+        if where_override != "":
+            where += "-%s" % where_override
     elif where_override != "":
         where = where_override
 
@@ -409,15 +415,18 @@ def _parseScanURL(url: str, where_override: str = "") -> Tuple[str, str, str, st
     if pat.search(url):
         # https://us-docker.pkg.dev/PROJECT/REPO/IMGNAME@sha256:...
         namespace = "%s/%s" % (tmp[3], tmp[2].rsplit("-", maxsplit=1)[0])
-        where = formatWhereFromNamespace("gar", namespace, where_override)
+        where = formatWhereFromOCIType("gar", namespace, where_override)
         software = tmp[4]
         modifier = tmp[5]
     elif url.startswith("https://quay.io/repository/"):  # quay.io
         # https://quay.io/repository/ORG/IMGNAME/manifest/sha256:...
-        where = formatWhereFromNamespace("quay", tmp[4], where_override)
+        where = formatWhereFromOCIType("quay", tmp[4], where_override)
         software = tmp[5]
+    elif url.startswith("https://dso.docker.com/"):
+        where = formatWhereFromOCIType("dso", "", where_override)
+        software = tmp[4]
     else:
-        where = formatWhereFromNamespace("", "", where_override)
+        where = formatWhereFromOCIType("", "", where_override)
         software = "TBD"
 
     return (product, where, software, modifier)
@@ -427,11 +436,11 @@ def parseNsAndImageToPkg(
     oci_type: str, namespace: str, img: str, where_override: str = ""
 ) -> Tuple[str, str, str, str]:
     """Find CVE 'product', 'where', 'software' and 'modifier' from namespace and image name"""
-    if namespace == "" or img == "":
+    if (namespace == "" and oci_type != "dso") or img == "":
         return ("", "", "", "")
 
     product: str = "oci"
-    where: str = formatWhereFromNamespace(oci_type, namespace, where_override)
+    where: str = formatWhereFromOCIType(oci_type, namespace, where_override)
     software: str = img.split("@")[0].split("/")[0]
     modifier: str = ""
     if oci_type == "gar":
@@ -445,7 +454,7 @@ def parseNsAndImageToURLPattern(
     oci_type: str, namespace: str, img: str, where_override: str = ""
 ) -> Union[None, Pattern]:
     """Find ScanOCI 'url' from namespace and image"""
-    if namespace == "" or img == "":
+    if (namespace == "" and oci_type != "dso") or img == "":
         return None
 
     pat: Union[None, Pattern] = None
@@ -478,7 +487,8 @@ def parseNsAndImageToURLPattern(
     elif oci_type == "dso":
         # dso has no concept of org
         pat = re.compile(
-            "^https://dso.docker.com/images/%s/digests/sha256:" % (namespace)
+            "^https://dso.docker.com/images/%s/digests/sha256:"
+            % (img.split("@", maxsplit=1)[0])
         )
 
     return pat
@@ -507,7 +517,7 @@ def getScanOCIsReportTemplates(
     cve_items: Dict[str, int] = {}
     scan_reports: str = ""
     highest: int = 0
-    for oci in sorted(ocis, key=lambda i: (i.component, i.advisory)):
+    for oci in sorted(ocis, key=lambda i: (i.component, i.advisory, i.detectedIn)):
         cur: int = sev.index(oci.severity)
         if cur > highest:
             highest = cur

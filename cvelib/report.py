@@ -1076,8 +1076,10 @@ def getOCIReports(
             continue
         if "@sha256:" not in img:
             # search for tag or latest
-            digest: str = sr.getDigestForImage("%s/%s" % (namespace, img))
-            if digest == "" or "/" not in digest:
+            digest: str = sr.getDigestForImage(
+                "%s/%s" % (namespace, img) if namespace != "" else img
+            )
+            if digest == "" or "@" not in digest:
                 warn("Could not find digest for %s" % img)
                 continue
             _, repo, sha256 = sr.parseImageDigest(digest)
@@ -1085,7 +1087,7 @@ def getOCIReports(
 
         if raw:
             _, json = sr.fetchScanReport(
-                "%s/%s" % (namespace, img),
+                "%s/%s" % (namespace, img) if namespace != "" else img,
                 raw=raw,
                 fixable=fixable,
                 priorities=priorities,
@@ -1093,7 +1095,7 @@ def getOCIReports(
             scan_raws[img] = json
         else:
             scan_ocis[img], msg = sr.fetchScanReport(
-                "%s/%s" % (namespace, img),
+                "%s/%s" % (namespace, img) if namespace != "" else img,
                 raw=raw,
                 fixable=fixable,
                 priorities=priorities,
@@ -1123,7 +1125,7 @@ def getOCIReports(
 
     pat: Pattern = re.compile(r"sha256:.*")
     for img in scan_ocis:
-        repo_full: str = "%s/%s" % (namespace, img)
+        repo_full: str = "%s/%s" % (namespace, img) if namespace != "" else img
         pat_url = cvelib.scan.parseNsAndImageToURLPattern(
             sr.name, namespace, img, where_override=oci_where_override
         )
@@ -2069,27 +2071,27 @@ Example usage:
 
 # OCI reports
 
-  # Show list of OCI image names
-  $ cve-report gar --namespace <project>/<location> --list  # eg, foo/us
-  $ cve-report quay --namespace <org> --list
-  $ cve-report dso --namespace <repo> --list
-
-  # Show list of GAR repositories
-  $ cve-report gar --namespace <project/location> --list-repos
-
   # Show latest SHA256 digest with a scan result for image name
+  $ cve-report dso --list-digest <name>
   $ cve-report gar --namespace <project>/<location> --list-digest <repo>/<name>
   $ cve-report quay --namespace <org> --list-digest <name>
 
   # Show SHA256 digest for image name with tag
+  $ cve-report dso --list-digest <name>:<tag>
   $ cve-report gar --namespace <project>/<location> --list-digest <repo>/<name>:<tag>
   $ cve-report quay --namespace <org> --list-digest <name>:<tag>
-  $ cve-report dso --namespace <repo> --list-digest <tagname>
 
   # Show security report for image name with digest
+  $ cve-report dso --alerts --images <name>@<digest>
   $ cve-report gar --alerts --namespace <project>/<location> --images <repo>/<name>@<digest>
   $ cve-report quay --alerts --namespace <org> --images <name>@<digest>
-  $ cve-report dso --alerts --namespace <repo> --images <tagname>@<digest>
+
+  # Show list of OCI image names for an organizational group (gar and quay)
+  $ cve-report gar --namespace <project>/<location> --list  # eg, foo/us
+  $ cve-report quay --namespace <org> --list
+
+  # Show list of GAR repositories
+  $ cve-report gar --namespace <project/location> --list-repos
 
   # Eg, to research the 'foo' project with location 'us' in GAR:
   # - find all the container images
@@ -2138,8 +2140,9 @@ Example usage:
     * other/eu norf/corge:1.2.3-alpine
 
   cve-report abstracts this to use 'namespace' to denote the organizational
-  grouping so that invocation is the same across each registry. Eg:
-  * Docker HUB: use --namespace <repo> and --images <tag1>,...
+  grouping so that invocation is the same across each registry. Since Docker
+  Hub does not support organizational groups, it should be omitted. Eg:
+  * Docker HUB: use --images <imgname>,...
   * GAR: use --namespace <proj>/<loc> and --images <repo>/<imgname>,...
   * Quay.io: use --namespace <org> and --images <imgname>,...
         """
@@ -2200,13 +2203,7 @@ Example usage:
             action="store_true",
         )
 
-    def _add_common_oci(p, what: str, where: str, imgname: str):
-        p.add_argument(
-            "--list",
-            dest="list",
-            help="list %s OCI image names" % what,
-            action="store_true",
-        )
+    def _add_common_oci(p, what: str, imgname: str):
         bare_imgname: str = imgname.split("@")[0]
         p.add_argument(
             "--list-digest",
@@ -2247,14 +2244,6 @@ Example usage:
             dest="all",
             help="also show unfixable items in %s security reports" % what,
             action="store_true",
-        )
-        p.add_argument(
-            "--namespace",
-            dest="namespace",
-            help="%s namespace (eg %s)" % (what, where),
-            metavar=where,
-            type=str,
-            default=None,
         )
         p.add_argument(
             "--images",
@@ -2416,19 +2405,46 @@ Example usage:
 
     # quay
     parser_quay = sub.add_parser("quay")
-    _add_common_oci(parser_quay, "quay.io", "ORG", "NAME@sha256:SHA256")
+    parser_quay.add_argument(
+        "--namespace",
+        dest="namespace",
+        help="quay.io namespace (eg ORG)",
+        metavar="ORG",
+        type=str,
+        default=None,
+    )
+    _add_common_oci(parser_quay, "quay.io", "NAME@sha256:SHA256")
+    parser_quay.add_argument(
+        "--list",
+        dest="list",
+        help="list quay.io OCI image names",
+        action="store_true",
+    )
 
     # dso
     parser_dso = sub.add_parser("dso")
-    _add_common_oci(parser_dso, "dso.docker.com", "REPO", "NAME@sha256:SHA256")
+    _add_common_oci(parser_dso, "dso.docker.com", "NAME@sha256:SHA256")
 
     # gar
     parser_gar = sub.add_parser("gar")
+    parser_gar.add_argument(
+        "--namespace",
+        dest="namespace",
+        help="GAR namespace (eg PROJECT/LOCATION)",
+        metavar="PROJECT/LOCATION",
+        type=str,
+        default=None,
+    )
     _add_common_oci(
         parser_gar,
         "GAR",
-        "PROJECT/LOCATION",
         "REPO/NAME@sha256:SHA256",
+    )
+    parser_gar.add_argument(
+        "--list",
+        dest="list",
+        help="list GAR OCI image names",
+        action="store_true",
     )
     parser_gar.add_argument(
         "--list-repos",
@@ -2510,7 +2526,7 @@ Example usage:
                 "Please specify one of --alerts, --list, --list-repos or --list-digest with 'gar'"
             )
         elif (
-            args.cmd in ["dso", "quay"]
+            args.cmd == "quay"
             and not args.alerts
             and not args.list
             and not args.list_digest
@@ -2519,9 +2535,11 @@ Example usage:
                 "Please specify one of --alerts, --list or --list-digest with '%s'"
                 % args.cmd
             )
-        elif not args.namespace:
+        elif args.cmd == "dso" and not args.alerts and not args.list_digest:
+            error("Please specify --alerts or --list-digest with '%s'" % args.cmd)
+        elif args.cmd in ["gar", "quay"] and not args.namespace:
             error("Please specify --namespace with '%s'" % args.cmd)
-        elif args.cmd in ["dso", "quay"] and args.namespace.count("/") > 0:
+        elif args.cmd == "quay" and args.namespace.count("/") > 0:
             error("--namespace '%s' should not contain '/'" % args.namespace)
         elif args.cmd == "gar" and args.namespace.count("/") != 1:
             error("--namespace '%s' should contain one '/'" % args.namespace)
@@ -2537,7 +2555,7 @@ Example usage:
         # below here are --alerts specific
         elif args.raw and (args.with_templates or args.all):
             error("--raw not supported with --all or --with-templates")
-        elif args.list:
+        elif args.cmd in ["gar", "quay"] and args.list:
             error("Unsupported option --list with --alerts")
         elif args.list_digest:
             error("Unsupported option --list-digest with --alerts")
@@ -2729,7 +2747,7 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
         else:
             sr = cvelib.gar.GARSecurityReportNew()
 
-        if args.list:
+        if args.cmd in ["gar", "quay"] and args.list:
 
             def formatDate(t: int) -> str:
                 s: str = "unknown"
@@ -2741,10 +2759,6 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
             if args.cmd == "quay":
                 for (r, m) in sorted(ocis):
                     # ORG/NAME
-                    print("%s/%s %s" % (args.namespace, r, formatDate(m)))
-            elif args.cmd == "dso":
-                for (r, m) in sorted(ocis):
-                    # REPO/NAME
                     print("%s/%s %s" % (args.namespace, r, formatDate(m)))
             elif args.cmd == "gar":
                 for (r, m) in sorted(ocis):
@@ -2759,16 +2773,23 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
                 # PROJECT/LOCATION/REPO
                 print("%s/%s" % (args.namespace, r.split("/")[-1]))
         elif args.list_digest:
-            digest: str = sr.getDigestForImage(
-                "%s/%s" % (args.namespace, args.list_digest)
-            )
+            digest: str
+            if args.cmd == "dso":
+                digest = sr.getDigestForImage(args.list_digest)
+            else:
+                digest = sr.getDigestForImage(
+                    "%s/%s" % (args.namespace, args.list_digest)
+                )
             if digest == "":  # pragma: nocover
                 sys.exit(1)
 
             print(digest.split("@")[1])
         elif args.alerts:
-            filter_product: str = "oci/%s" % cvelib.scan.formatWhereFromNamespace(
-                args.cmd, args.namespace, oci_where_override
+            ns = ""
+            if args.cmd in ["gar", "quay"]:
+                ns = args.namespace
+            filter_product: str = "oci/%s" % cvelib.scan.formatWhereFromOCIType(
+                args.cmd, ns, oci_where_override
             )
             cves = collectCVEData(
                 cveDirs,
@@ -2802,7 +2823,7 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
             getOCIReports(
                 cves,
                 sr=sr,
-                namespace=args.namespace,
+                namespace=ns,
                 images=images,
                 excluded_images=excluded_images,
                 with_templates=args.with_templates,

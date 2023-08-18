@@ -442,7 +442,6 @@ class TestScanCommon(TestCase):
         b_diff["fixedBy"] = "1.2.4"
         b_diff["severity"] = "low"
         b_diff["status"] = "needs-triage"
-        b_diff["detectedIn"] = "Other Distro"
 
         tsts = [
             # a, b, precise, expected
@@ -466,8 +465,7 @@ class TestScanCommon(TestCase):
                 False,
                 """ - type: oci
    component: foo
--  detectedIn: Some Distro
-+  detectedIn: Other Distro
+   detectedIn: Some Distro
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.2
 -  fixedBy: 1.2.3
@@ -483,8 +481,7 @@ class TestScanCommon(TestCase):
                 True,
                 """ - type: oci
    component: foo
--  detectedIn: Some Distro
-+  detectedIn: Other Distro
+   detectedIn: Some Distro
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.2
 -  fixedBy: 1.2.3
@@ -499,7 +496,7 @@ class TestScanCommon(TestCase):
 
         for a, b, precise, exp in tsts:
             res = a.diff(b, precise=precise)
-            self.assertEqual(exp, res)
+            self.assertEqual(exp, res, msg=res)
 
     def test_parse(self):
         """Test parse()"""
@@ -600,8 +597,8 @@ class TestScanCommon(TestCase):
             res = cvelib.scan.getScanOCIsReportUnused(ocis, fixable=fixable)
             self.assertEqual(exp, res)
 
-    def test_formatWhereFromNamespace(self):
-        """Test formatWhereFromNamespace()"""
+    def test_formatWhereFromOCIType(self):
+        """Test formatWhereFromFromOCIType()"""
         tsts = [
             # oci_type, namespace, where_override, exp
             ("", "", "", "unknown"),
@@ -614,12 +611,14 @@ class TestScanCommon(TestCase):
             ("gar", "proj/us", "ovr", "gar-ovr"),
             ("quay", "org", "", "quay-org"),
             ("quay", "org", "ovr", "quay-ovr"),
+            ("dso", "", "", "dockerhub"),
+            ("dso", "", "ovr", "dockerhub-ovr"),
             ("other", "b@d", "", "unknown"),
             ("other", "", "b@d", "unknown"),
         ]
 
         for oci_type, ns, whr, exp in tsts:
-            res = cvelib.scan.formatWhereFromNamespace(oci_type, ns, whr)
+            res = cvelib.scan.formatWhereFromOCIType(oci_type, ns, whr)
             self.assertEqual(exp, res)
 
     def test__parseScanURL(self):
@@ -670,6 +669,22 @@ class TestScanCommon(TestCase):
                 "IMGNAME",
                 "",
             ),
+            (
+                "https://dso.docker.com/images/IMGNAME/digests/sha256:deadbeef",
+                "",
+                "oci",
+                "dockerhub",
+                "IMGNAME",
+                "",
+            ),
+            (
+                "https://dso.docker.com/images/IMGNAME/digests/sha256:deadbeef",
+                "override",
+                "oci",
+                "dockerhub-override",
+                "IMGNAME",
+                "",
+            ),
         ]
 
         for url, whr, expP, expW, expS, expM in tsts:
@@ -691,6 +706,8 @@ class TestScanCommon(TestCase):
             ("gar", "foo/loc", "bar/baz", "ovr", "oci", "gar-ovr", "bar", "baz"),
             ("quay", "foo", "bar", "", "oci", "quay-foo", "bar", ""),
             ("quay", "foo", "bar", "ovr", "oci", "quay-ovr", "bar", ""),
+            ("dso", "", "bar", "", "oci", "dockerhub", "bar", ""),
+            ("dso", "", "bar", "ovr", "oci", "dockerhub-ovr", "bar", ""),
         ]
 
         for oci_type, ns, img, whr, expP, expW, expS, expM in tsts:
@@ -812,32 +829,32 @@ class TestScanCommon(TestCase):
             ),
             (
                 "dso",
-                "foo",
                 "ignored",
+                "foo",
                 "",
                 "https://dso.docker.com/images/foo/digests/sha256:deadbeef",
                 True,
             ),
             (
                 "dso",
-                "other",
                 "ignored",
+                "other",
                 "",
                 "https://dso.docker.com/images/foo/digests/sha256:deadbeef",
                 False,
             ),
             (
                 "dso",
-                "foo",
                 "ignored",
+                "foo",
                 "ovr",
                 "https://dso.docker.com/images/foo/digests/sha256:deadbeef",
                 True,
             ),
             (
                 "dso",
-                "other",
                 "ignored",
+                "other",
                 "ovr",
                 "https://dso.docker.com/images/foo/digests/sha256:deadbeef",
                 False,
