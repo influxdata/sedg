@@ -2080,17 +2080,16 @@ Example usage:
   # Show latest SHA256 digest with a scan result for image name
   $ cve-report gar --namespace <project>/<location> --list-digest <repo>/<name>
   $ cve-report quay --namespace <org> --list-digest <name>
-  $ cve-report dso --namespace <repo> --list-digest <name>
 
   # Show SHA256 digest for image name with tag
   $ cve-report gar --namespace <project>/<location> --list-digest <repo>/<name>:<tag>
   $ cve-report quay --namespace <org> --list-digest <name>:<tag>
-  $ cve-report dso --namespace <repo> --list-digest <name>:<tag>
+  $ cve-report dso --namespace <repo> --list-digest <tagname>
 
   # Show security report for image name with digest
-  $ cve-report gar --alerts --namespace <project>/<location> --image-names <repo>/<name>@<digest>
-  $ cve-report quay --alerts --namespace <org> --image-names <name>@<digest>
-  $ cve-report dso --alerts --namespace <repo> --image-names <name>@<digest>
+  $ cve-report gar --alerts --namespace <project>/<location> --images <repo>/<name>@<digest>
+  $ cve-report quay --alerts --namespace <org> --images <name>@<digest>
+  $ cve-report dso --alerts --namespace <repo> --images <tagname>@<digest>
 
   # Eg, to research the 'foo' project with location 'us' in GAR:
   # - find all the container images
@@ -2102,9 +2101,47 @@ Example usage:
   $ cve-report gar --namespace foo/us --list-digest bar/baz
   sha256:791be3...
   # - pull the report for the image with a particular digest
-  $ cve-report gar --alerts --namespace foo/us --image-names bar/baz@sha256:791be3...
+  $ cve-report gar --alerts --namespace foo/us --images bar/baz@sha256:791be3...
   qux   1.2.3-1        needed (low,medium)
   norf  2.3.4+deb11u1  needed (low,medium)
+
+  Note that different artifact registries organize containers differently:
+  * Docker Hub organizes by 'repo' for a single logical piece of software, with
+    tags used to differentiate containers. Eg:
+    * foo:latest
+    * foo:1.0
+    * foo:1.0.1
+    * foo:alpine
+    * foo:1.0-alpine
+    * foo:1.0.1-alpine
+  * Quay.io organizes by 'organization' and 'repo' where 'repo' is for a single
+    logical piece of software, with tags used to differentiate containers. Eg:
+    * org foo:latest
+    * org foo:1.0
+    * org foo:1.0.1
+    * org foo:alpine
+    * org foo:1.0-alpine
+    * org foo:1.0.1-alpine
+  * GAR organizes by 'project', 'location', 'repo' and 'image name'. In this
+    manner, a single repo can contain different container names (consider a
+    source code repo with multiple Dockerfiles that create different build
+    artifacts). These repos can then be organized into named projects and
+    Google regions. Tags are per-container name. Eg:
+    * proj/us foo/foo:latest
+    * proj/us foo/foo:1.0
+    * proj/us foo/bar:latest
+    * proj/us foo/bar:1.0
+    * proj/us baz/baz:latest
+    * proj/eu baz/baz:latest
+    * other/eu norf/norf:1.2.3
+    * other/eu norf/corge:1.2.3
+    * other/eu norf/corge:1.2.3-alpine
+
+  cve-report abstracts this to use 'namespace' to denote the organizational
+  grouping so that invocation is the same across each registry. Eg:
+  * Docker HUB: use --namespace <repo> and --images <tag1>,...
+  * GAR: use --namespace <proj>/<loc> and --images <repo>/<imgname>,...
+  * Quay.io: use --namespace <org> and --images <imgname>,...
         """
         ),
     )
