@@ -117,6 +117,11 @@
     $ cve-report quay --list-digest <org>/<name>
     $ cve-report quay --alerts --name <org>/<name>@<digest>
 
+    # Docker DSO container security reports
+    $ cve-report dso --list <repo>
+    $ cve-report dso --list-digest <repo>/<tag>
+    $ cve-report dso --alerts --name <repo>/<tag>@<digest>
+
     # if desired, leave the venv
     $ deactivate
     ```
