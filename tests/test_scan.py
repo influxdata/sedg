@@ -442,7 +442,6 @@ class TestScanCommon(TestCase):
         b_diff["fixedBy"] = "1.2.4"
         b_diff["severity"] = "low"
         b_diff["status"] = "needs-triage"
-        b_diff["detectedIn"] = "Other Distro"
 
         tsts = [
             # a, b, precise, expected
@@ -466,8 +465,7 @@ class TestScanCommon(TestCase):
                 False,
                 """ - type: oci
    component: foo
--  detectedIn: Some Distro
-+  detectedIn: Other Distro
+   detectedIn: Some Distro
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.2
 -  fixedBy: 1.2.3
@@ -483,8 +481,7 @@ class TestScanCommon(TestCase):
                 True,
                 """ - type: oci
    component: foo
--  detectedIn: Some Distro
-+  detectedIn: Other Distro
+   detectedIn: Some Distro
    advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.2
 -  fixedBy: 1.2.3
@@ -499,7 +496,7 @@ class TestScanCommon(TestCase):
 
         for a, b, precise, exp in tsts:
             res = a.diff(b, precise=precise)
-            self.assertEqual(exp, res)
+            self.assertEqual(exp, res, msg=res)
 
     def test_parse(self):
         """Test parse()"""

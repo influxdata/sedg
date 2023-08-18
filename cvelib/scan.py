@@ -145,12 +145,15 @@ class ScanOCI(object):
         """Test if self and b match in meaningful ways. Returns fuzzy and
         precise tuple
         """
-        if self.advisory != b.advisory or self.component != b.component:
+        if (
+            self.advisory != b.advisory
+            or self.component != b.component
+            or self.detectedIn != b.detectedIn
+        ):
             return False, False
 
         if (
-            self.detectedIn != b.detectedIn
-            or self.versionAffected != b.versionAffected
+            self.versionAffected != b.versionAffected
             or self.versionFixed != b.versionFixed
             or self.severity != b.severity
         ):
@@ -168,8 +171,8 @@ class ScanOCI(object):
             if attrib == "versionFixed":
                 attrib_p = "fixedBy"
 
-            # only show diff for versions, detectedIn and severity (the fuzzy
-            # matching parts)
+            # only show diff for versions and severity (the fuzzy matching
+            # parts)
             if getattr(a, attrib) == getattr(b, attrib) or (
                 not precise
                 and attrib
@@ -177,7 +180,6 @@ class ScanOCI(object):
                     "versionAffected",
                     "versionFixed",
                     "severity",
-                    "detectedIn",
                 ]
             ):
                 return "   %s: %s\n" % (attrib_p, getattr(a, attrib))
@@ -515,7 +517,7 @@ def getScanOCIsReportTemplates(
     cve_items: Dict[str, int] = {}
     scan_reports: str = ""
     highest: int = 0
-    for oci in sorted(ocis, key=lambda i: (i.component, i.advisory)):
+    for oci in sorted(ocis, key=lambda i: (i.component, i.advisory, i.detectedIn)):
         cur: int = sev.index(oci.severity)
         if cur > highest:
             highest = cur
