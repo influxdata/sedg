@@ -431,7 +431,7 @@ def parseNsAndImageToPkg(
     oci_type: str, namespace: str, img: str, where_override: str = ""
 ) -> Tuple[str, str, str, str]:
     """Find CVE 'product', 'where', 'software' and 'modifier' from namespace and image name"""
-    if namespace == "" or img == "":
+    if (namespace == "" and oci_type != "dso") or img == "":
         return ("", "", "", "")
 
     product: str = "oci"
@@ -449,7 +449,7 @@ def parseNsAndImageToURLPattern(
     oci_type: str, namespace: str, img: str, where_override: str = ""
 ) -> Union[None, Pattern]:
     """Find ScanOCI 'url' from namespace and image"""
-    if namespace == "" or img == "":
+    if (namespace == "" and oci_type != "dso") or img == "":
         return None
 
     pat: Union[None, Pattern] = None
@@ -482,7 +482,8 @@ def parseNsAndImageToURLPattern(
     elif oci_type == "dso":
         # dso has no concept of org
         pat = re.compile(
-            "^https://dso.docker.com/images/%s/digests/sha256:" % (namespace)
+            "^https://dso.docker.com/images/%s/digests/sha256:"
+            % (img.split("@", maxsplit=1)[0])
         )
 
     return pat

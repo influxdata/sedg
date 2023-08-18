@@ -693,6 +693,8 @@ class TestScanCommon(TestCase):
             ("gar", "foo/loc", "bar/baz", "ovr", "oci", "gar-ovr", "bar", "baz"),
             ("quay", "foo", "bar", "", "oci", "quay-foo", "bar", ""),
             ("quay", "foo", "bar", "ovr", "oci", "quay-ovr", "bar", ""),
+            ("dso", "", "bar", "", "oci", "dockerhub", "bar", ""),
+            ("dso", "", "bar", "ovr", "oci", "dockerhub-ovr", "bar", ""),
         ]
 
         for oci_type, ns, img, whr, expP, expW, expS, expM in tsts:
@@ -814,32 +816,32 @@ class TestScanCommon(TestCase):
             ),
             (
                 "dso",
-                "foo",
                 "ignored",
+                "foo",
                 "",
                 "https://dso.docker.com/images/foo/digests/sha256:deadbeef",
                 True,
             ),
             (
                 "dso",
-                "other",
                 "ignored",
+                "other",
                 "",
                 "https://dso.docker.com/images/foo/digests/sha256:deadbeef",
                 False,
             ),
             (
                 "dso",
-                "foo",
                 "ignored",
+                "foo",
                 "ovr",
                 "https://dso.docker.com/images/foo/digests/sha256:deadbeef",
                 True,
             ),
             (
                 "dso",
-                "other",
                 "ignored",
+                "other",
                 "ovr",
                 "https://dso.docker.com/images/foo/digests/sha256:deadbeef",
                 False,
