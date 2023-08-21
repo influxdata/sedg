@@ -647,7 +647,7 @@ def getScanOCIsReport(
         s: str = ""
         for oci in ocis[repo_full]:
             s += "%s\n" % oci
-        s = "%s report: %d\n%s" % (repo_full.split("@")[0], len(ocis), s)
+        s = "%s report: %d\n%s" % (repo_full.split("@")[0], len(ocis[repo_full]), s)
 
         if with_templates:
             s = "%s\n\n%s" % (
