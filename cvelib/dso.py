@@ -910,6 +910,11 @@ Eg, to pull all dso security scan reports for org 'foo':
                 warn("unexpected format of report for '%s'" % full_name)
                 j = {}
 
+            # clear the correlation_id since it changes on every fetch which
+            # causes the sha256 to always change
+            if "extensions" in j and "correlation_id" in j["extensions"]:
+                del j["extensions"]["correlation_id"]
+
         if len(j) == 0:
             continue
 

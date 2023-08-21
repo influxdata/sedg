@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 import datetime
+import json
 import os
 import tempfile
 from unittest import TestCase, mock, skipIf
@@ -934,7 +935,7 @@ class TestDockerDSO(TestCase):
         mock_getDigestForImage.return_value = "valid-name@sha256:deadbeef"
         mock_fetchScanReport.return_value = (
             [],
-            '{"data": {"vulnerabilitiesByPackage": []}}',
+            '{"data": {"vulnerabilitiesByPackage": []}, "extensions": {"correlation_id": "81e2aee7-13d1-4097-93aa-90841e5bd43b"}}',
         )
 
         # create
@@ -960,6 +961,11 @@ class TestDockerDSO(TestCase):
         relfn = os.path.relpath(fn, self.tmpdir + "/subdir")
         self.assertEqual("Created: %s" % relfn, output.getvalue().strip())
         self.assertEqual("", error.getvalue().strip())
+        self.assertTrue(os.path.exists(fn))
+        with open(fn, "r") as fh:
+            j = json.load(fh)
+            self.assertTrue("extensions" in j)
+            self.assertFalse("correlation_id" in j)
 
         # updated
         with open(fn, "w") as fh:
@@ -985,11 +991,15 @@ class TestDockerDSO(TestCase):
         fn = self.tmpdir + "/subdir/YYYY/MM/DD/dso/valid-repo/deadbeef.json"
         os.makedirs(os.path.dirname(fn))
         with open(fn, "w") as fh:
-            fh.write('{\n  "data": {\n    "vulnerabilitiesByPackage": []\n  }\n}\n')
+            fh.write(
+                '{\n  "data": {\n    "vulnerabilitiesByPackage": []\n  },\n  "extensions": {}\n}\n'
+            )
         fn2 = self.tmpdir + "/subdir/YYYY/MM/dd/dso/valid-repo/deadbeef.json"
         os.makedirs(os.path.dirname(fn2))
         with open(fn2, "w") as fh:
-            fh.write('{\n  "data": {\n    "vulnerabilitiesByPackage": []\n  }\n}\n')
+            fh.write(
+                '{\n  "data": {\n    "vulnerabilitiesByPackage": []\n  },\n  "extensions": {}\n}\n'
+            )
 
         with mock.patch(
             "argparse._sys.argv",
