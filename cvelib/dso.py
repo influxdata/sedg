@@ -317,6 +317,12 @@ def _fetchPackageURLs(sha256: str) -> Dict[str, List[str]]:
 query web_ImagePackagesByDigest($digest: String!, $context: Context!) {
   imagePackagesByDigest(context: $context, digest: $digest) {
     digest
+    imageLayers {
+      layers {
+        diffId
+        ordinal
+      }
+    }
     imagePackages {
       packages {
         package {
