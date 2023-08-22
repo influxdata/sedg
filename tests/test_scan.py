@@ -550,6 +550,80 @@ class TestScanCommon(TestCase):
                     cvelib.scan.parse(s)
                 self.assertEqual(expErr, str(context.exception))
 
+    def test_combineLikeOCIs(self):
+        """Test combineLikeOCIs()"""
+        a_data = {
+            "component": "foo",
+            "detectedIn": "Some Distro",
+            "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+            "version": "1.2.2",
+            "fixedBy": "1.2.3",
+            "severity": "medium",
+            "status": "needed",
+            "url": "https://blah.com/BAR-a",
+        }
+        b_data = {
+            "component": "other",
+            "detectedIn": "Some Distro",
+            "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0002",
+            "version": "9.8.7",
+            "fixedBy": "9.8.8",
+            "severity": "medium",
+            "status": "needed",
+            "url": "https://blah.com/BAZ-a",
+        }
+        c_data = {
+            "component": "libfoo",
+            "detectedIn": "Some Distro",
+            "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+            "version": "1.2.2",
+            "fixedBy": "1.2.3",
+            "severity": "medium",
+            "status": "needed",
+            "url": "https://blah.com/BAR-a",
+        }
+        # ocis, expected number, component1, adv1, component1, adv2
+        tsts = [
+            (
+                [cvelib.scan.ScanOCI(a_data)],
+                1,
+                "foo",
+                "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+                "",
+                "",
+            ),
+            (
+                [cvelib.scan.ScanOCI(a_data), cvelib.scan.ScanOCI(b_data)],
+                2,
+                "foo",
+                "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+                "other",
+                "https://www.cve.org/CVERecord?id=CVE-2023-0002",
+            ),
+            (
+                [
+                    cvelib.scan.ScanOCI(a_data),
+                    cvelib.scan.ScanOCI(b_data),
+                    cvelib.scan.ScanOCI(c_data),
+                ],
+                2,
+                "foo, libfoo",
+                "https://www.cve.org/CVERecord?id=CVE-2023-0001",
+                "other",
+                "https://www.cve.org/CVERecord?id=CVE-2023-0002",
+            ),
+        ]
+
+        for ocis, expN, expComp1, expAdv1, expComp2, expAdv2 in tsts:
+            res = cvelib.scan.combineLikeOCIs(ocis)
+            self.assertEqual(expN, len(res))
+            self.assertEqual(expAdv1, res[0].advisory)
+            self.assertEqual(expComp1, res[0].component)
+            if expAdv2 != "":
+                self.assertEqual(expAdv2, res[1].advisory)
+            if expComp2 != "":
+                self.assertEqual(expComp2, res[1].component)
+
     def _getValidOCIs(self):
         """Returns valid list of ScanOCIs"""
         return [
