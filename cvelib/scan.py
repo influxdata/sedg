@@ -558,12 +558,17 @@ def getScanOCIsReportTemplates(
         if oci.url != "unavailable" and oci.url not in oci_references:
             oci_references.append(oci.url)
 
+        tmp_issue_item: str = ""
         if oci.advisory == "unavailable":
-            iss_checklist.append("- [ ] %s (%s)" % (oci.component, oci.severity))
+            tmp_issue_item = "- [ ] %s (%s)" % (oci.component, oci.severity)
         else:
-            iss_checklist.append(
-                "- [ ] [%s](%s) (%s)" % (oci.component, oci.advisory, oci.severity)
+            tmp_issue_item = "- [ ] [%s](%s) (%s)" % (
+                oci.component,
+                oci.advisory,
+                oci.severity,
             )
+        if tmp_issue_item not in iss_checklist:
+            iss_checklist.append(tmp_issue_item)
 
         c: str = "- [ ] %s (%s)" % (oci.component, oci.severity)
         if c not in cve_items:
