@@ -113,7 +113,11 @@ def parse(resj: Dict[str, Any], url_prefix: str) -> List[ScanOCI]:
             # fixedBy
             fixedBy = "unknown"
             if v["FixedBy"] != "" and v["FixedBy"] != "0:0":
-                fixedBy = v["FixedBy"]
+                fixedBy = (
+                    v["FixedBy"]
+                    if "fixed=" not in v["FixedBy"]
+                    else v["FixedBy"].split("=", maxsplit=1)[1]
+                )
             scan_data["fixedBy"] = fixedBy
 
             # adv url
