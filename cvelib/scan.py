@@ -93,11 +93,11 @@ class ScanOCI(object):
 
     def setComponent(self, s: str) -> None:
         """Set component"""
-        self.component = s
+        self.component = s.strip()
 
     def setDetectedIn(self, s: str) -> None:
         """Set detectedIn"""
-        self.detectedIn = s
+        self.detectedIn = s.strip()
 
     def setSeverity(self, s: str) -> None:
         """Set severity"""
@@ -107,11 +107,11 @@ class ScanOCI(object):
 
     def setVersionAffected(self, s: str) -> None:
         """Set version"""
-        self.versionAffected = s
+        self.versionAffected = s.strip()
 
     def setVersionFixed(self, s: str) -> None:
         """Set fixedBy"""
-        self.versionFixed = s
+        self.versionFixed = s.strip()
 
     def setStatus(self, s: str) -> None:
         """Set status"""
@@ -131,13 +131,13 @@ class ScanOCI(object):
         """Set advisory"""
         if not s.startswith("https://") and s != "unavailable":
             raise CveException("invalid advisory url: %s" % s)
-        self.advisory = s
+        self.advisory = s.strip()
 
     def setUrl(self, s: str) -> None:
         """Set url"""
         if not s.startswith("https://") and s != "unavailable":
             raise CveException("invalid url: %s" % s)
-        self.url = s
+        self.url = s.strip()
 
     # declare b's type as "ScanOCI" (string literal) to postpone evaluation of
     # the ScanOCI type
