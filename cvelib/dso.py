@@ -15,7 +15,12 @@ from typing import Any, Dict, List, Tuple, Union
 
 from cvelib.common import error, warn, _sorted_json_deep, _experimental
 from cvelib.net import requestPostRaw
-from cvelib.scan import ScanOCI, SecurityReportInterface, SecurityReportFetchResult
+from cvelib.scan import (
+    ScanOCI,
+    SecurityReportInterface,
+    SecurityReportFetchResult,
+    combineLikeOCIs,
+)
 
 
 def _createDockerDSOHeaders() -> Dict[str, str]:
@@ -135,7 +140,7 @@ def parse(purls: Dict[str, List[str]], resj: Dict[str, Any], url: str) -> List[S
                 scan_data["detectedIn"] = "unknown"
                 ocis.append(ScanOCI(scan_data))
 
-    return ocis
+    return combineLikeOCIs(ocis)
 
 
 class DockerDSOSecurityReportNew(SecurityReportInterface):
