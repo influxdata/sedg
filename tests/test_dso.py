@@ -152,6 +152,21 @@ class TestDockerDSO(TestCase):
             res[1].url,
         )
 
+        # parse with ? in purl
+        p, d = self._validDockerDSOReport()
+        d["data"]["vulnerabilitiesByPackage"][0][
+            "purl"
+        ] = "pkg:something@1.0.0?os_distro=bullseye&os_name=debian&os_version=11"
+        p = {"pkg:something@1.0.0?os_distro=bullseye&os_name=debian&os_version=11": []}
+        res = cvelib.dso.parse(
+            p, d, "https://dso.docker.com/images/foo/digests/sha256:deadbeef"
+        )
+        self.assertEqual("pkg:something", res[0].component)
+        self.assertEqual("1.0.0", res[0].versionAffected)
+        self.assertEqual(
+            "os_distro=bullseye&os_name=debian&os_version=11", res[0].detectedIn
+        )
+
         # needs-triage
         p, d = self._validDockerDSOReport()
         d["data"]["vulnerabilitiesByPackage"][0]["vulnerabilities"][0]["fixedBy"] = None
