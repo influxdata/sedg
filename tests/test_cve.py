@@ -2277,34 +2277,34 @@ cve-data = %s
         os.environ["SEDG_EXPERIMENTAL"] = "1"
         scanTsts = [
             # valid
-            ("quay.io, gar, docker", None),
-            ("gar, quay.io, docker", None),
-            ("foo, quay.io, gar, docker", None),
-            ("quay.io, foo, gar, docker", None),
-            ("quay.io, gar, foo, docker", None),
+            ("quay.io, gar, dso", None),
+            ("gar, quay.io, dso", None),
+            ("foo, quay.io, gar, dso", None),
+            ("quay.io, foo, gar, dso", None),
+            ("quay.io, gar, foo, dso", None),
             # invalid
             (
-                "uay, gar, docker",
+                "uay, gar, dso",
                 "WARN: active/CVE-2020-1234 has 'quay.io' missing from Discovered-by",
             ),
             (
-                "quaY, gar, docker",
+                "quaY, gar, dso",
                 "WARN: active/CVE-2020-1234 has 'quay.io' missing from Discovered-by",
             ),
             (
-                "quay.ioX, gar, docker",
+                "quay.ioX, gar, dso",
                 "WARN: active/CVE-2020-1234 has 'quay.io' missing from Discovered-by",
             ),
             (
-                "quay.io, gr, docker",
+                "quay.io, gr, dso",
                 "WARN: active/CVE-2020-1234 has 'gar' missing from Discovered-by",
             ),
             (
-                "quay.io, docker",
+                "quay.io, dso",
                 "WARN: active/CVE-2020-1234 has 'gar' missing from Discovered-by",
             ),
             (
-                "gar, docker",
+                "gar, dso",
                 "WARN: active/CVE-2020-1234 has 'quay.io' missing from Discovered-by",
             ),
         ]

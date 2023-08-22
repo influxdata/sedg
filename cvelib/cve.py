@@ -1016,7 +1016,7 @@ def checkSyntaxFile(
             elif item.url.startswith("https://console.cloud.google.com/"):
                 needle = "gar"
             elif item.url.startswith("https://dso.docker.com/"):
-                needle = "docker"
+                needle = "dso"
 
         if needle != "" and needle not in seen:
             if (
