@@ -219,24 +219,28 @@ class TestScanOCI(TestCase):
     def test_setComponent(self):
         """Test setComponent()"""
         tsts = [
-            # valid
-            ("foo"),
+            # valid, exp
+            ("foo", "foo"),
+            ("foo trailing ", "foo trailing"),
         ]
 
-        for s in tsts:
+        for s, exp in tsts:
             sm = cvelib.scan.ScanOCI(self._getValid())
             sm.setComponent(s)
+            self.assertEqual(exp, sm.component)
 
     def test_setDetectedIn(self):
         """Test setDetectedIn()"""
         tsts = [
-            # valid
-            ("foo"),
+            # valid, exp
+            ("foo", "foo"),
+            ("foo trailing ", "foo trailing"),
         ]
 
-        for s in tsts:
+        for s, exp in tsts:
             sm = cvelib.scan.ScanOCI(self._getValid())
             sm.setDetectedIn(s)
+            self.assertEqual(exp, sm.detectedIn)
 
     def test_setSeverity(self):
         """Test setSeverity()"""
@@ -261,16 +265,31 @@ class TestScanOCI(TestCase):
                     sm.setSeverity(s)
                 self.assertEqual(expErr, str(context.exception))
 
+    def test_setVersionAffected(self):
+        """Test setVersionAffected()"""
+        tsts = [
+            # valid, exp
+            ("foo", "foo"),
+            ("foo trailing ", "foo trailing"),
+        ]
+
+        for s, exp in tsts:
+            sm = cvelib.scan.ScanOCI(self._getValid())
+            sm.setVersionAffected(s)
+            self.assertEqual(exp, sm.versionAffected)
+
     def test_setVersionFixed(self):
         """Test setVersionFixed()"""
         tsts = [
-            # valid
-            ("foo"),
+            # valid, exp
+            ("foo", "foo"),
+            ("foo trailing ", "foo trailing"),
         ]
 
-        for s in tsts:
+        for s, exp in tsts:
             sm = cvelib.scan.ScanOCI(self._getValid())
             sm.setVersionFixed(s)
+            self.assertEqual(exp, sm.versionFixed)
 
     def test_setStatus(self):
         """Test setStatus()"""
@@ -304,17 +323,19 @@ class TestScanOCI(TestCase):
     def test_setAdvisory(self):
         """Test setAdvisory()"""
         tsts = [
-            # valid
-            ("https://foo", None),
-            ("unavailable", None),
+            # valid, exp, expErr
+            ("https://foo", "https://foo", None),
+            ("https://foo ", "https://foo", None),
+            ("unavailable", "unavailable", None),
             # invalid
-            ("foo", "invalid advisory url: foo"),
+            ("foo", "", "invalid advisory url: foo"),
         ]
 
-        for s, expErr in tsts:
+        for s, exp, expErr in tsts:
             sm = cvelib.scan.ScanOCI(self._getValid())
             if expErr is None:
                 sm.setAdvisory(s)
+                self.assertEqual(exp, sm.advisory)
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
                     sm.setAdvisory(s)
@@ -323,17 +344,19 @@ class TestScanOCI(TestCase):
     def test_setUrl(self):
         """Test setUrl()"""
         tsts = [
-            # valid
-            ("https://foo", None),
-            ("unavailable", None),
+            # valid, exp, expErr
+            ("https://foo", "https://foo", None),
+            ("https://foo ", "https://foo", None),
+            ("unavailable", "unavailable", None),
             # invalid
-            ("foo", "invalid url: foo"),
+            ("foo", "", "invalid url: foo"),
         ]
 
-        for s, expErr in tsts:
+        for s, exp, expErr in tsts:
             sm = cvelib.scan.ScanOCI(self._getValid())
             if expErr is None:
                 sm.setUrl(s)
+                self.assertEqual(exp, sm.url)
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
                     sm.setUrl(s)
