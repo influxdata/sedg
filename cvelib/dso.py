@@ -259,7 +259,7 @@ class DockerDSOSecurityReportNew(SecurityReportInterface):
             return [], ""
 
         url: str = "https://dso.docker.com/images/%s/digests/%s" % (
-            repo_full.split("@")[0],
+            repo_full.split("@")[0].split(":")[0],
             repo_full.split("@")[1],
         )
 

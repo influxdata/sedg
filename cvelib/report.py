@@ -1083,7 +1083,9 @@ def getOCIReports(
                 warn("Could not find digest for %s" % img)
                 continue
             _, repo, sha256 = sr.parseImageDigest(digest)
-            img = "%s@%s" % (repo, sha256)
+            img = (
+                "%s@%s" % (repo, sha256) if namespace != "" else "%s@%s" % (img, sha256)
+            )
 
         if raw:
             _, json = sr.fetchScanReport(
