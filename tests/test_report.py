@@ -5304,6 +5304,33 @@ valid-proj/us/valid-repo/valid-name removed report: 1
             "# New reports\n\nvalid-repo report: 1" in output.getvalue(),
             msg="output is:\n%s" % output.getvalue().strip(),
         )
+        self.assertTrue(
+            "url: https://dso.docker.com/images/valid-repo/digests/sha256:deadbeef"
+            in output.getvalue(),
+            msg="output is:\n%s" % output.getvalue().strip(),
+        )
+
+        # with image digest and tag (supported with dso)
+        mock_fetchScanReport.return_value = [self._getValidScanOCI(dso=True)], ""
+        args = [
+            "dso",
+            "--alerts",
+            "--images",
+            "valid-repo:valid-tag@sha256:deadbeef",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertTrue(
+            "# New reports\n\nvalid-repo:valid-tag report: 1" in output.getvalue(),
+            msg="output is:\n%s" % output.getvalue().strip(),
+        )
+        # tag should be omitted from url
+        self.assertTrue(
+            "url: https://dso.docker.com/images/valid-repo/digests/sha256:deadbeef"
+            in output.getvalue(),
+            msg="output is:\n%s" % output.getvalue().strip(),
+        )
 
         # without image digest
         mock_fetchScanReport.return_value = [self._getValidScanOCI(dso=True)], ""
