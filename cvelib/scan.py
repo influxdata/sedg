@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 import abc
+import copy
 import datetime
 from enum import Enum
 import re
@@ -209,6 +210,38 @@ class ScanOCI(object):
             s += _diff(self, b, attrib, precise)
 
         return s.rstrip()  # strip trailing newline
+
+
+def combineLikeOCIs(ocis: List[ScanOCI]) -> List[ScanOCI]:
+    """Combine OCIs into ..."""
+    if len(ocis) <= 1:
+        return ocis
+
+    tuples: Dict[Tuple[str, str, str], List[ScanOCI]] = {}
+
+    for oci in ocis:
+        t: Tuple[str, str, str] = (oci.advisory, oci.versionAffected, oci.detectedIn)
+        if t not in tuples:
+            tuples[t] = []
+        tuples[t].append(oci)
+
+    updated: List[ScanOCI] = []
+    for t in tuples:
+        if len(tuples[t]) == 1:
+            # nothing to combine
+            updated.append(tuples[t][0])
+            continue
+
+        # combine like into one
+        combined: ScanOCI = copy.deepcopy(tuples[t][0])
+        components: List[str] = []
+        for oci in tuples[t]:
+            if oci.component not in components:
+                components.append(oci.component)
+        combined.component = ", ".join(sorted(components))
+        updated.append(copy.deepcopy(combined))
+
+    return copy.deepcopy(updated)
 
 
 def parse(s: str) -> List[ScanOCI]:

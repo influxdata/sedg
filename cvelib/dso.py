@@ -15,7 +15,12 @@ from typing import Any, Dict, List, Tuple, Union
 
 from cvelib.common import error, warn, _sorted_json_deep, _experimental
 from cvelib.net import requestPostRaw
-from cvelib.scan import ScanOCI, SecurityReportInterface, SecurityReportFetchResult
+from cvelib.scan import (
+    ScanOCI,
+    SecurityReportInterface,
+    SecurityReportFetchResult,
+    combineLikeOCIs,
+)
 
 
 def _createDockerDSOHeaders() -> Dict[str, str]:
@@ -85,7 +90,7 @@ def parse(purls: Dict[str, List[str]], resj: Dict[str, Any], url: str) -> List[S
             # One ScanOCI per vuln
             scan_data: Dict[str, str] = {}
             scan_data["component"] = component
-            scan_data["version"] = version
+            scan_data["version"] = version.split("?")[0]  # remove the OS bits
             scan_data["url"] = url
 
             status: str = "needed"
@@ -127,15 +132,23 @@ def parse(purls: Dict[str, List[str]], resj: Dict[str, Any], url: str) -> List[S
 
             # detectedIn - do one ScanOCI per detected in
             if pkg["purl"] in purls:
-                for det in purls[pkg["purl"]]:
-                    tmp = copy.deepcopy(scan_data)
-                    tmp["detectedIn"] = det
-                    ocis.append(ScanOCI(tmp))
+                if "?" in pkg["purl"]:
+                    # use the OS bits of the purl instead of the paths since
+                    # a) this captures the OS release and b) we can skip boring
+                    # paths like changelog, md5sums, etc and just put them all
+                    # in the component (the package name)
+                    scan_data["detectedIn"] = pkg["purl"].split("?", maxsplit=1)[1]
+                    ocis.append(ScanOCI(scan_data))
+                else:
+                    for det in purls[pkg["purl"]]:
+                        tmp = copy.deepcopy(scan_data)
+                        tmp["detectedIn"] = det
+                        ocis.append(ScanOCI(tmp))
             else:
                 scan_data["detectedIn"] = "unknown"
                 ocis.append(ScanOCI(scan_data))
 
-    return ocis
+    return combineLikeOCIs(ocis)
 
 
 class DockerDSOSecurityReportNew(SecurityReportInterface):

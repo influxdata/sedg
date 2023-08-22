@@ -15,7 +15,12 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from cvelib.common import error, warn, _sorted_json_deep, _experimental
 from cvelib.net import requestGetRaw
-from cvelib.scan import ScanOCI, SecurityReportInterface, SecurityReportFetchResult
+from cvelib.scan import (
+    ScanOCI,
+    SecurityReportInterface,
+    SecurityReportFetchResult,
+    combineLikeOCIs,
+)
 
 
 def _createQuayHeaders() -> Dict[str, str]:
@@ -113,7 +118,11 @@ def parse(resj: Dict[str, Any], url_prefix: str) -> List[ScanOCI]:
             # fixedBy
             fixedBy = "unknown"
             if v["FixedBy"] != "" and v["FixedBy"] != "0:0":
-                fixedBy = v["FixedBy"]
+                fixedBy = (
+                    v["FixedBy"]
+                    if "fixed=" not in v["FixedBy"]
+                    else v["FixedBy"].split("=", maxsplit=1)[1]
+                )
             scan_data["fixedBy"] = fixedBy
 
             # adv url
@@ -125,7 +134,7 @@ def parse(resj: Dict[str, Any], url_prefix: str) -> List[ScanOCI]:
 
             ocis.append(ScanOCI(scan_data))
 
-    return ocis
+    return combineLikeOCIs(ocis)
 
 
 class QuaySecurityReportNew(SecurityReportInterface):

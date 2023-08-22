@@ -15,7 +15,12 @@ from typing import Any, Dict, List, Tuple
 
 from cvelib.common import error, warn, rePatterns, _sorted_json_deep, _experimental
 from cvelib.net import requestGetRaw
-from cvelib.scan import ScanOCI, SecurityReportInterface, SecurityReportFetchResult
+from cvelib.scan import (
+    ScanOCI,
+    SecurityReportInterface,
+    SecurityReportFetchResult,
+    combineLikeOCIs,
+)
 
 
 def _createGARHeaders() -> Dict[str, str]:
@@ -215,7 +220,7 @@ def parse(vulns: List[Dict[str, Any]]) -> List[ScanOCI]:
 
         ocis.append(ScanOCI(scan_data))
 
-    return ocis
+    return combineLikeOCIs(ocis)
 
 
 # $ export GCLOUD_TOKEN=$(gcloud auth print-access-token)
