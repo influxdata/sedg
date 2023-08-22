@@ -99,6 +99,7 @@ def parse(resj: Dict[str, Any], url_prefix: str) -> List[ScanOCI]:
                     if (
                         "DistroVersion" in v["Metadata"]
                         and v["Metadata"]["DistroVersion"] is not None
+                        and v["Metadata"]["DistroVersion"] != ""
                     ):
                         detectedIn += " %s" % v["Metadata"]["DistroVersion"]
             scan_data["detectedIn"] = detectedIn
