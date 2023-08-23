@@ -181,9 +181,9 @@ class TestQuay(TestCase):
             ("fixed=1.2.3", "1.2.3"),
             ("fixed=1.2.3&introduced=0.1.2", "1.2.3"),
             ("introduced=0.1.2&fixed=1.2.3", "1.2.3"),
-            ("lastAffected=1.1.1", ">1.1.1"),
-            ("introduced=0.1.2&lastAffected=1.1.1", ">1.1.1"),
-            ("lastAffected=1.1.1&introduced=0.1.2", ">1.1.1"),
+            ("lastAffected=1.1.1", "+1.1.1"),
+            ("introduced=0.1.2&lastAffected=1.1.1", "+1.1.1"),
+            ("lastAffected=1.1.1&introduced=0.1.2", "+1.1.1"),
             ("fixed=1.2.3&lastAffected=1.1.1", "1.2.3"),
             ("lastAffected=1.1.1&fixed=1.2.3", "1.2.3"),
         ]
