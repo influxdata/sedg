@@ -125,13 +125,28 @@ def parse(resj: Dict[str, Any], url_prefix: str) -> List[ScanOCI]:
             scan_data["severity"] = severity
 
             # fixedBy
+            # - "": unknown
+            # - "0:0": unknown
+            # - x.y: x.y
+            # - x.y&introduced=x.x: x.y
+            # - fixed=x.y: x.y
+            # - introduced=x.y: unknown
+            # - lastAffected=x.y: >x.y
+            # - introduced=x.y&lastAffected=x.y: >x.y
             fixedBy = "unknown"
             if v["FixedBy"] != "" and v["FixedBy"] != "0:0":
-                fixedBy = (
-                    v["FixedBy"]
-                    if "fixed=" not in v["FixedBy"]
-                    else v["FixedBy"].split("=", maxsplit=1)[1]
-                )
+                for tmp in v["FixedBy"].split("&"):
+                    if "=" not in tmp:
+                        fixedBy = tmp
+                    elif tmp.lower().startswith("fixed="):
+                        fixedBy = tmp.split("=")[1]
+                    elif (
+                        tmp.lower().startswith("lastaffected=")
+                        and "fixed=" not in v["FixedBy"].lower()
+                    ):
+                        fixedBy = ">%s" % tmp.split("=")[1]
+                    if fixedBy != "unknown":
+                        break
             scan_data["fixedBy"] = fixedBy
 
             # adv url
