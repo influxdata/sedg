@@ -886,12 +886,14 @@ def checkSyntaxFile(
 
     cve_pkgs_only_pending_or_closed: bool = True
 
+    seen_oci_where: List[str] = []
+
     # ensure pkgs is populated
     if len(cve.pkgs) == 0:
         ok = False
         cvelib.common.warn("%s has missing affected software" % rel)
     else:
-        # check package status against reldir
+        # check package status against reldir (noting the pkg.where for later)
         open = False
         for p in cve.pkgs:
             if p.when != "":
@@ -927,6 +929,11 @@ def checkSyntaxFile(
                 if p.status.startswith("need"):
                     cve_pkgs_only_pending_or_closed = False
                 open = True
+
+            # will use this in another check
+            if p.product == "oci" and p.where != "" and p.where not in seen_oci_where:
+                seen_oci_where.append(p.where)
+
         if open and "retired" in rel:
             ok = False
             cvelib.common.warn("%s is retired but has software with open status" % rel)
@@ -1005,18 +1012,26 @@ def checkSyntaxFile(
 
     # scan reports
     seen: List[str] = []
+    where_needles: List[str] = []
     open_scans = False
     for item in cve.scan_reports:
         if item.status.startswith("need"):
             open_scans = True
         needle: str = ""
+        whr_needle: str = ""
         if isinstance(item, cvelib.scan.ScanOCI):
             if item.url.startswith("https://quay.io/"):
                 needle = "quay.io"
+                whr_needle = "quay-"
             elif item.url.startswith("https://console.cloud.google.com/"):
                 needle = "gar"
+                whr_needle = "gar-"
             elif item.url.startswith("https://dso.docker.com/"):
                 needle = "dso"
+                whr_needle = "dockerhub"
+
+        if whr_needle != "" and whr_needle not in where_needles:
+            where_needles.append(whr_needle)
 
         if needle != "" and needle not in seen:
             if (
@@ -1030,6 +1045,24 @@ def checkSyntaxFile(
                 cvelib.common.warn(
                     "%s has '%s' missing from Discovered-by" % (rel, needle)
                 )
+
+    # check if have oci/<where> present for all ocis
+    where_missing: List[str] = []
+    for n in where_needles:
+        found: bool = False
+        for where in seen_oci_where:
+            if where.startswith(n):
+                found = True
+                break
+        if not found:
+            where_missing.append("oci/%s" % n)
+
+    if len(where_missing) > 0:
+        ok = False
+        cvelib.common.warn(
+            "%s missing package entries starting with '%s'"
+            % (rel, ", ".join(sorted(where_missing)))
+        )
 
     if len(cve.scan_reports) > 0 and open_scans and "retired" in rel:
         ok = False

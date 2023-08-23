@@ -1517,12 +1517,12 @@ oci/org_foo: pending
  - type: oci
    component: foo
    detectedIn: Distro 1.0
-   advisory: https://blah.com/BAR-a
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.3-0
    fixedBy: 1.2.3-1
    severity: medium
    status: dismissed (tolerable; who)
-   url: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   url: https://blah.com/BAR-a
 """,
                 None,
             ),
@@ -1533,23 +1533,23 @@ oci/org_foo: pending
  - type: oci
    component: bár
    detectedIn: Distro 1.0
-   advisory: https://blah.com/BAR-a
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.3-0
    fixedBy: 1.2.3-1
    severity: medium
    status: dismissed (tolerable; who)
-   url: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   url: https://blah.com/BAR-a
 """,
                 """invalid Scan-Reports: '
  - type: oci
    component: bár
    detectedIn: Distro 1.0
-   advisory: https://blah.com/BAR-a
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.3-0
    fixedBy: 1.2.3-1
    severity: medium
    status: dismissed (tolerable; who)
-   url: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   url: https://blah.com/BAR-a
 ' (contains non-ASCII characters)""",
             ),
         ]
@@ -2312,6 +2312,9 @@ cve-data = %s
         for dsc, expErr in scanTsts:
             tmpl = self._cve_template()
             tmpl["git/github_pkg1"] = "needed"
+            tmpl["oci/quay-org_pkg1"] = "needed"
+            tmpl["oci/gar-us.proj_pkg1"] = "needed"
+            tmpl["oci/dockerhub_pkg1"] = "needed"
             tmpl[
                 "Scan-Reports"
             ] = """
@@ -2373,12 +2376,12 @@ cve-data = %s
  - type: oci
    component: foo
    detectedIn: Distro 1.0
-   advisory: https://blah.com/BAR-a
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.3-0
    fixedBy: 1.2.3-1
    severity: medium
    status: needed
-   url: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   url: https://blah.com/BAR-a
 """
         content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["retired"], "CVE-1234-5678")
@@ -2406,12 +2409,12 @@ cve-data = %s
  - type: oci
    component: foo
    detectedIn: Distro 1.0
-   advisory: https://blah.com/BAR-a
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.3-0
    fixedBy: 1.2.3-1
    severity: medium
    status: released
-   url: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   url: https://blah.com/BAR-a
 """
         content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
@@ -2440,12 +2443,12 @@ cve-data = %s
  - type: oci
    component: foo
    detectedIn: Distro 1.0
-   advisory: https://blah.com/BAR-a
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
    version: 1.2.3-0
    fixedBy: 1.2.3-1
    severity: medium
    status: released
-   url: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   url: https://blah.com/BAR-a
 """
         content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
@@ -2459,6 +2462,83 @@ cve-data = %s
         self.assertTrue(res)
         self.assertEqual("", output.getvalue().strip())
         self.assertEqual("", error.getvalue().strip())
+
+        # scan-report with compliant oci/... package stanza
+        tmpl = self._cve_template()
+        tmpl["Candidate"] = "CVE-1234-5678"
+        tmpl["Discovered-by"] = "quay.io"
+        tmpl["git/github_pkg1"] = "needed"
+        tmpl[
+            "Scan-Reports"
+        ] = """
+ - type: oci
+   component: foo
+   detectedIn: Distro 1.0
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.3-0
+   fixedBy: 1.2.3-1
+   severity: medium
+   status: needed
+   url: https://quay.io/...
+"""
+        content = tests.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertFalse(res)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: active/CVE-1234-5678 missing package entries starting with 'oci/quay-'",
+            error.getvalue().strip(),
+        )
+
+        # scan-report with compliant oci/... package stanza - multiple
+        tmpl = self._cve_template()
+        tmpl["Candidate"] = "CVE-1234-5678"
+        tmpl["Discovered-by"] = "quay.io, dso"
+        tmpl["git/github_pkg1"] = "needed"
+        tmpl[
+            "Scan-Reports"
+        ] = """
+ - type: oci
+   component: foo
+   detectedIn: Distro 1.0
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.3-0
+   fixedBy: 1.2.3-1
+   severity: medium
+   status: needed
+   url: https://quay.io/...
+ - type: oci
+   component: bar
+   detectedIn: somewhere
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   version: 9.8.7
+   fixedBy: 9.8.8
+   severity: medium
+   status: needed
+   url: https://dso.docker.com/...
+"""
+        content = tests.testutil.cveContentFromDict(tmpl)
+        cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
+        with open(cve_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with tests.testutil.capturedOutput() as (output, error):
+            res = cvelib.cve.checkSyntax(cveDirs, False)
+        os.unlink(cve_fn)
+
+        self.assertFalse(res)
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: active/CVE-1234-5678 missing package entries starting with 'oci/dockerhub, oci/quay-'",
+            error.getvalue().strip(),
+        )
 
     def test_checkSyntaxCrossChecks(self):
         """Test checkSyntax() - cross checks"""
