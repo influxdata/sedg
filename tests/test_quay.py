@@ -169,6 +169,31 @@ class TestQuay(TestCase):
         self.assertEqual(1, len(res))
         self.assertEqual("released", res[0].status)
 
+        # version - blank
+        tsts = [
+            # version, exp
+            ("", "unknown"),
+            ("0:0", "unknown"),
+            ("introduced=0.1.2", "unknown"),
+            ("1.2.3", "1.2.3"),
+            ("1.2.3&introduced=0.1.2", "1.2.3"),
+            ("introduced=0.1.2&1.2.3", "1.2.3"),
+            ("fixed=1.2.3", "1.2.3"),
+            ("fixed=1.2.3&introduced=0.1.2", "1.2.3"),
+            ("introduced=0.1.2&fixed=1.2.3", "1.2.3"),
+            ("lastAffected=1.1.1", ">1.1.1"),
+            ("introduced=0.1.2&lastAffected=1.1.1", ">1.1.1"),
+            ("lastAffected=1.1.1&introduced=0.1.2", ">1.1.1"),
+            ("fixed=1.2.3&lastAffected=1.1.1", "1.2.3"),
+            ("lastAffected=1.1.1&fixed=1.2.3", "1.2.3"),
+        ]
+        for v, exp in tsts:
+            d = self._validQuayReport()
+            d["data"]["Layer"]["Features"][0]["Vulnerabilities"][0]["FixedBy"] = v
+            res = cvelib.quay.parse(d, "https://quay.io/repository/foo/manifest/bar")
+            self.assertEqual(1, len(res))
+            self.assertEqual(exp, res[0].versionFixed)
+
         # detectedIn
         d = self._validQuayReport()
         d["data"]["Layer"]["Features"][0]["Vulnerabilities"][0]["Metadata"][
