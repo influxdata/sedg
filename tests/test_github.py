@@ -851,9 +851,6 @@ class TestGitHubCommon(TestCase):
         if self.tmpdir is not None:
             cvelib.common.recursive_rm(self.tmpdir)
 
-        if "SEDG_EXPERIMENTAL" in os.environ:
-            del os.environ["SEDG_EXPERIMENTAL"]
-
     def _getValidYaml(self):
         """Returns a valid yaml document"""
         return """ - type: dependabot
@@ -941,7 +938,6 @@ class TestGitHubCommon(TestCase):
     def test_main_dump_alerts(self, mock_get):
         """Test main_dump_alerts()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         alert = {
             "number": 1,
@@ -1005,7 +1001,6 @@ class TestGitHubCommon(TestCase):
     def test_main_dump_alerts_bad(self, mock_get):
         """Test main_dump_alerts() - bad"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         # missing 'number'
         alert = {
