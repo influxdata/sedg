@@ -76,7 +76,6 @@ def parse(resj: Dict[str, Any], url_prefix: str) -> List[ScanOCI]:
 
         # One ScanOCI per vuln
         for v in feature["Vulnerabilities"]:
-            scan_data["component"] = feature["Name"]
             scan_data["version"] = feature["Version"]
             scan_data["url"] = "%s?tab=vulnerabilities" % url_prefix
 
@@ -88,18 +87,27 @@ def parse(resj: Dict[str, Any], url_prefix: str) -> List[ScanOCI]:
                 status = "released"
             scan_data["status"] = status
 
-            # detectedIn
+            # component and detectedIn
+            component: str = feature["Name"]
             detectedIn: str = "unknown"
             if "Metadata" in v:
                 if (
                     "RepoName" in v["Metadata"]
                     and v["Metadata"]["RepoName"] is not None
                 ):
+                    component = "repo/%s:%s" % (
+                        v["Metadata"]["RepoName"].lower(),
+                        feature["Name"],
+                    )
                     detectedIn = "%s" % v["Metadata"]["RepoName"]
                 elif (
                     "DistroName" in v["Metadata"]
                     and v["Metadata"]["DistroName"] is not None
                 ):
+                    component = "os/%s:%s" % (
+                        v["Metadata"]["DistroName"].split()[0].lower(),
+                        feature["Name"],
+                    )
                     detectedIn = "%s" % v["Metadata"]["DistroName"]
                     if (
                         "DistroVersion" in v["Metadata"]
@@ -107,6 +115,7 @@ def parse(resj: Dict[str, Any], url_prefix: str) -> List[ScanOCI]:
                         and v["Metadata"]["DistroVersion"] != ""
                     ):
                         detectedIn += " %s" % v["Metadata"]["DistroVersion"]
+            scan_data["component"] = component
             scan_data["detectedIn"] = detectedIn
 
             # severity

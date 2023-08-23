@@ -150,7 +150,7 @@ class TestGAR(TestCase):
         d = self._validGARReport()
         res = cvelib.gar.parse(d["occurrences"])
         self.assertEqual(1, len(res))
-        self.assertEqual("ncurses", res[0].component)
+        self.assertEqual("os/debian:ncurses", res[0].component)
         self.assertEqual("cpe:/o:debian:debian_linux:11", res[0].detectedIn)
         self.assertEqual(
             "https://www.cve.org/CVERecord?id=CVE-2022-29458",
@@ -935,7 +935,7 @@ class TestGAR(TestCase):
         self.assertEqual("", resMsg)
         self.assertEqual(1, len(res))
         self.assertEqual(1, len(res))
-        self.assertEqual(res[0].component, "ncurses")
+        self.assertEqual(res[0].component, "os/debian:ncurses")
         self.assertEqual(res[0].detectedIn, "cpe:/o:debian:debian_linux:11")
         self.assertEqual(
             res[0].advisory,
@@ -962,7 +962,7 @@ class TestGAR(TestCase):
         )
         self.assertEqual("", resMsg)
         self.assertEqual(1, len(res))
-        self.assertEqual(res[0].component, "ncurses")
+        self.assertEqual(res[0].component, "os/debian:ncurses")
         self.assertEqual(res[0].versionAffected, "6.2+20201114-2")
         self.assertEqual(res[0].versionFixed, "unknown")
 
@@ -997,7 +997,7 @@ class TestGAR(TestCase):
         )
         self.assertEqual("", resMsg)
         self.assertEqual(1, len(res))
-        self.assertEqual(res[0].component, "ncurses")
+        self.assertEqual(res[0].component, "os/debian:ncurses")
         self.assertEqual(res[0].versionAffected, "6.2+20201114-2")
         self.assertEqual(res[0].versionFixed, "6.2+20201114-2+deb11u1")
         self.assertEqual(res[0].severity, "negligible")

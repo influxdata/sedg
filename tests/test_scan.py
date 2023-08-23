@@ -1060,6 +1060,7 @@ PublicDate:
 CRD:
 References:
  https://blah.com/BAR-a
+ https://www.cve.org/CVERecord?id=CVE-2023-0001
 Description:
  Please address alert in some-repo
  - [ ] foo (low)
@@ -1149,6 +1150,10 @@ PublicDate:
 CRD:
 References:
  https://blah.com/BAR-a
+ https://www.cve.org/CVERecord?id=CVE-2023-0001
+ https://www.cve.org/CVERecord?id=CVE-2023-0002
+ https://www.cve.org/CVERecord?id=CVE-2023-0003
+ https://www.cve.org/CVERecord?id=CVE-2023-0004
 Description:
  Please address alerts in bar/baz
  - [ ] baz (high)
@@ -1261,6 +1266,8 @@ PublicDate:
 CRD:
 References:
  https://blah.com/BAR-a
+ https://www.cve.org/CVERecord?id=CVE-2023-0002
+ https://www.cve.org/CVERecord?id=CVE-2023-0003
 Description:
  Please address alerts in bar/baz
  - [ ] foo (2 medium)
@@ -1341,6 +1348,7 @@ PublicDate:
 CRD:
 References:
  https://blah.com/BAR-a
+ https://www.cve.org/CVERecord?id=CVE-2023-0002
 Description:
  Please address alert in bar/baz
  - [ ] foo (medium)
@@ -1412,6 +1420,7 @@ PublicDate:
 CRD:
 References:
  https://blah.com/BAR-a
+ https://www.cve.org/CVERecord?id=CVE-2023-0002
 Description:
  Please address alert in bar/baz
  - [ ] foo (medium)
@@ -1619,6 +1628,7 @@ PublicDate:
 CRD:
 References:
  https://blah.com/BAR-a
+ https://www.cve.org/CVERecord?id=CVE-2023-0002
 Description:
  Please address alert in bar/baz
  - [ ] foo (medium)

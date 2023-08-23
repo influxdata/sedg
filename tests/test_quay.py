@@ -134,7 +134,7 @@ class TestQuay(TestCase):
         d = self._validQuayReport()
         res = cvelib.quay.parse(d, "https://quay.io/repository/foo/manifest/bar")
         self.assertEqual(1, len(res))
-        self.assertEqual("libncurses6", res[0].component)
+        self.assertEqual("os/debian:libncurses6", res[0].component)
         self.assertEqual("Debian GNU/Linux 11 (bullseye)", res[0].detectedIn)
         self.assertEqual(
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-29458",
@@ -520,7 +520,7 @@ class TestQuay(TestCase):
         res, resMsg = qsr.fetchScanReport("valid-org/valid-repo@sha256:deadbeef")
         self.assertEqual("", resMsg)
         self.assertEqual(1, len(res))
-        self.assertEqual(res[0].component, "libncurses6")
+        self.assertEqual(res[0].component, "os/debian:libncurses6")
         self.assertEqual(res[0].detectedIn, "Debian GNU/Linux 11 (bullseye)")
         self.assertEqual(
             res[0].advisory,
@@ -545,7 +545,7 @@ class TestQuay(TestCase):
         )
         self.assertEqual("", resMsg)
         self.assertEqual(1, len(res))
-        self.assertEqual(res[0].component, "libncurses6")
+        self.assertEqual(res[0].component, "os/debian:libncurses6")
         self.assertEqual(res[0].versionAffected, "6.2+20201114-2")
         self.assertEqual(res[0].versionFixed, "unknown")
 
@@ -580,7 +580,7 @@ class TestQuay(TestCase):
         )
         self.assertEqual("", resMsg)
         self.assertEqual(1, len(res))
-        self.assertEqual(res[0].component, "libncurses6")
+        self.assertEqual(res[0].component, "os/debian:libncurses6")
         self.assertEqual(res[0].versionAffected, "6.2+20201114-2")
         self.assertEqual(res[0].versionFixed, "0:6.2+20201114-2+deb11u1")
         self.assertEqual(res[0].severity, "negligible")

@@ -114,7 +114,6 @@ def parse(vulns: List[Dict[str, Any]]) -> List[ScanOCI]:
     # Parse 'notes' (vulnerabilities)
     # https://cloud.google.com/container-analysis/docs/reference/rest/v1/projects.notes#Note
     # https://cloud.google.com/container-analysis/docs/reference/rest/v1/projects.notes#VulnerabilityNote
-
     ocis: List[ScanOCI] = []
 
     # createTime, updateTime
@@ -157,9 +156,19 @@ def parse(vulns: List[Dict[str, Any]]) -> List[ScanOCI]:
             warn("Could not find 'affectedPackage' in %s: %s" % (v["resourceUri"], iss))
             continue
 
-        scan_data["component"] = iss["affectedPackage"]
         scan_data["url"] = v["resourceUri"]
 
+        # component
+        prefix: str = iss["packageType"].lower()
+        if (
+            iss["packageType"].lower() == "os"
+            and "affectedCpeUri" in iss
+            and iss["affectedCpeUri"].count(":") >= 2
+        ):
+            prefix += "/%s" % iss["affectedCpeUri"].split(":")[2]
+        scan_data["component"] = "%s:%s" % (prefix, iss["affectedPackage"])
+
+        # version
         version: str = "unknown"
         if "affectedVersion" in iss and "fullName" in iss["affectedVersion"]:
             version = iss["affectedVersion"]["fullName"]

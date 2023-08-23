@@ -546,6 +546,7 @@ def getScanOCIsReportTemplates(
 
     sev: List[str] = ["unknown", "negligible", "low", "medium", "high", "critical"]
     oci_references: List[str] = []
+    adv_references: List[str] = []
     iss_checklist: List[str] = []
     cve_items: Dict[str, int] = {}
     scan_reports: str = ""
@@ -557,6 +558,10 @@ def getScanOCIsReportTemplates(
 
         if oci.url != "unavailable" and oci.url not in oci_references:
             oci_references.append(oci.url)
+
+        if oci.advisory != "unavailable":
+            if oci.advisory not in adv_references:
+                adv_references.append(oci.advisory)
 
         tmp_issue_item: str = ""
         if oci.advisory == "unavailable":
@@ -657,7 +662,7 @@ CVSS:
         name.split("@")[0],
         "CVE-%d-NNNN" % now.year,
         "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
-        "\n ".join(oci_references),
+        "\n ".join(oci_references + sorted(adv_references)),
         "s" if plural else "",
         name.split("@")[0],
         cve_checklist,
