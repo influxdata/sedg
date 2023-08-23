@@ -19,7 +19,6 @@ class TestQuay(TestCase):
 
     def setUp(self):
         """Setup functions common for all tests"""
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
         self.tmpdir = None
         self.orig_quay_cookie = None
         self.orig_quay_token = None
@@ -36,9 +35,6 @@ class TestQuay(TestCase):
 
     def tearDown(self):
         """Teardown functions common for all tests"""
-        if "SEDG_EXPERIMENTAL" in os.environ:
-            del os.environ["SEDG_EXPERIMENTAL"]
-
         if self.tmpdir is not None:
             cvelib.common.recursive_rm(self.tmpdir)
 
@@ -700,7 +696,6 @@ class TestQuay(TestCase):
     ):
         """Test test_main_quay_dump_reports()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         mock_getOCIsForNamespace.return_value = [("valid-repo", 1684472852)]
         mock_getDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
@@ -787,7 +782,6 @@ class TestQuay(TestCase):
     ):
         """Test test_quay_main_dump_reports()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         # no image names
         mock_getOCIsForNamespace.return_value = []

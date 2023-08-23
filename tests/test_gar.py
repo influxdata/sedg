@@ -20,7 +20,6 @@ class TestGAR(TestCase):
 
     def setUp(self):
         """Setup functions common for all tests"""
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
         self.orig_gar_token = None
         self.tmpdir = None
 
@@ -32,9 +31,6 @@ class TestGAR(TestCase):
 
     def tearDown(self):
         """Teardown functions common for all tests"""
-        if "SEDG_EXPERIMENTAL" in os.environ:
-            del os.environ["SEDG_EXPERIMENTAL"]
-
         if self.tmpdir is not None:
             cvelib.common.recursive_rm(self.tmpdir)
 
@@ -1167,7 +1163,6 @@ class TestGAR(TestCase):
     ):
         """Test test_main_gar_dump_reports()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         mock_getOCIsForNamespace.return_value = [
             (
@@ -1268,7 +1263,6 @@ class TestGAR(TestCase):
     ):
         """Test test_gar_main_dump_reports()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         # bad
         with mock.patch.object(

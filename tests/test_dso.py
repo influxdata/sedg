@@ -32,16 +32,12 @@ class TestDockerDSO(TestCase):
 
     def setUp(self):
         """Setup functions common for all tests"""
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
         self.tmpdir = None
 
         tests.testutil.disableRequestsCache()
 
     def tearDown(self):
         """Teardown functions common for all tests"""
-        if "SEDG_EXPERIMENTAL" in os.environ:
-            del os.environ["SEDG_EXPERIMENTAL"]
-
         if self.tmpdir is not None:
             cvelib.common.recursive_rm(self.tmpdir)
 
@@ -944,7 +940,6 @@ class TestDockerDSO(TestCase):
     ):
         """Test test_main_dso_dump_reports()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         mock__getTagsForRepo.return_value = [("valid-name", 1684472852)]
         mock_getDigestForImage.return_value = "valid-name@sha256:deadbeef"
@@ -1043,7 +1038,6 @@ class TestDockerDSO(TestCase):
     ):
         """Test test_dso_main_dump_reports()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         # no image names
         mock__getTagsForRepo.return_value = []

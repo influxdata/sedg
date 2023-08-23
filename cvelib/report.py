@@ -46,7 +46,6 @@ from cvelib.common import (
     rePatterns,
     updateProgress,
     warn,
-    _experimental,
 )
 import cvelib.dso
 import cvelib.gar
@@ -2738,9 +2737,6 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
         if args.since_stamp is not None:
             pathlib.Path(args.since_stamp).touch()
     elif args.cmd in ["dso", "quay", "gar"]:
-        # EXPERIMENTAL: this script and APIs subject to change
-        _experimental()
-
         sr: cvelib.scan.SecurityReportInterface
         if args.cmd == "quay":
             sr = cvelib.quay.QuaySecurityReportNew()

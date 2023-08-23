@@ -10,7 +10,7 @@ import re
 from typing import Dict, List, Optional, Pattern, Tuple, Union
 from yaml import load, CBaseLoader
 
-from cvelib.common import CveException, cve_priorities, rePatterns, warn, _experimental
+from cvelib.common import CveException, cve_priorities, rePatterns, warn
 
 
 class SecurityReportFetchResult(Enum):
@@ -60,8 +60,6 @@ class ScanOCI(object):
         return s
 
     def __init__(self, data: Dict[str, str]) -> None:
-        _experimental()
-
         self.component: str = ""
         self.detectedIn: str = ""
         self.advisory: str = ""

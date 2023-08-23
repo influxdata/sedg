@@ -13,7 +13,7 @@ import sys
 import textwrap
 from typing import Any, Dict, List, Tuple
 
-from cvelib.common import error, warn, rePatterns, _sorted_json_deep, _experimental
+from cvelib.common import error, warn, rePatterns, _sorted_json_deep
 from cvelib.net import requestGetRaw
 from cvelib.scan import (
     ScanOCI,
@@ -850,9 +850,6 @@ class GARSecurityReportNew(SecurityReportInterface):
 # CLI mains
 #
 def main_gar_dump_reports():
-    # EXPERIMENTAL: this is subject to change
-    _experimental()
-
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         prog="gar-dump-reports",
         description="Fetch GAR reports and save locally",
