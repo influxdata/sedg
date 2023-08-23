@@ -13,7 +13,7 @@ import sys
 import textwrap
 from typing import Any, Dict, List, Optional, Tuple
 
-from cvelib.common import error, warn, _sorted_json_deep, _experimental
+from cvelib.common import error, warn, _sorted_json_deep
 from cvelib.net import requestGetRaw
 from cvelib.scan import (
     ScanOCI,
@@ -443,9 +443,6 @@ class QuaySecurityReportNew(SecurityReportInterface):
 # CLI mains
 #
 def main_quay_dump_reports():
-    # EXPERIMENTAL: this is subject to change
-    _experimental()
-
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         prog="quay-dump-reports",
         description="Fetch quay.io reports and save locally",

@@ -12,7 +12,7 @@ import textwrap
 from typing import Any, Dict, List, Union
 from yaml import load, CBaseLoader
 
-from cvelib.common import CveException, rePatterns, error, warn, _experimental
+from cvelib.common import CveException, rePatterns, error, warn
 from cvelib.net import ghAPIGetList
 
 
@@ -346,9 +346,6 @@ def parse(s: str) -> List[Union[GHDependabot, GHSecret, GHCode]]:
 # CLI mains
 #
 def main_dump_alerts():
-    # EXPERIMENTAL: this is subject to change
-    _experimental()
-
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         prog="gh-dump-alerts",
         description="Fetch alerts and save locally",

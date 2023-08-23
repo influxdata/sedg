@@ -13,7 +13,7 @@ import sys
 import textwrap
 from typing import Any, Dict, List, Tuple, Union
 
-from cvelib.common import error, warn, _sorted_json_deep, _experimental
+from cvelib.common import error, warn, _sorted_json_deep
 from cvelib.net import requestPostRaw
 from cvelib.scan import (
     ScanOCI,
@@ -820,9 +820,6 @@ def _getTagsForRepo(repo_name: str) -> List[Tuple[str, int]]:
 # CLI mains
 #
 def main_dso_dump_reports():
-    # EXPERIMENTAL: this is subject to change
-    _experimental()
-
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         prog="dso-dump-reports",
         description="Fetch dso reports and save locally",

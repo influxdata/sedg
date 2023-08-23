@@ -36,7 +36,7 @@ class TestCve(TestCase):
             self.orig_xdg_config_home = None
         cvelib.common.configCache = None
 
-        if "SEDG_EXPERIMENTAL" in os.environ:
+        if "SEDG_EXPERIMENTAL" in os.environ:  # pragma: nocover
             del os.environ["SEDG_EXPERIMENTAL"]
 
         if self.orig_readCve is not None:
@@ -119,7 +119,6 @@ class TestCve(TestCase):
     def test_onDiskFormat(self):
         """Test onDiskFormat()"""
         self.maxDiff = 4096
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
         tmpl = self._cve_template()
         tmpl[
             "GitHub-Advanced-Security"
@@ -2274,7 +2273,6 @@ cve-data = %s
         self.assertEqual("", error.getvalue().strip())
 
         # scan reports
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
         scanTsts = [
             # valid
             ("quay.io, gar, dso", None),

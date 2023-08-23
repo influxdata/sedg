@@ -85,11 +85,7 @@ class CVE(object):
             ]
         ] = []
 
-        # when no longer experimental, use List[cvelib.scan.ScanOCI]
-        self.scan_reports = []
-        if "SEDG_EXPERIMENTAL" in os.environ:
-            self.scan_reports: List[cvelib.scan.ScanOCI] = []
-
+        self.scan_reports: List[cvelib.scan.ScanOCI] = []
         self.mitigation: List[str] = []
         self.bugs: List[str] = []
         self.priority: str = ""
@@ -145,9 +141,8 @@ class CVE(object):
         if "GitHub-Advanced-Security" in data:
             self.setGHAS(data["GitHub-Advanced-Security"])
 
-        if "SEDG_EXPERIMENTAL" in os.environ:
-            if "Scan-Reports" in data:
-                self.setScanReports(data["Scan-Reports"])
+        if "Scan-Reports" in data:
+            self.setScanReports(data["Scan-Reports"])
 
         # Any field with '_' is a package or patch. Since these could be out of
         # order, collect them separately, then call setPackages()

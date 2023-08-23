@@ -4,7 +4,6 @@
 
 import copy
 import datetime
-import os
 from unittest import TestCase
 
 import cvelib.common
@@ -17,12 +16,9 @@ class TestScanOCI(TestCase):
 
     def setUp(self):
         """Setup functions common for all tests"""
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
 
     def tearDown(self):
         """Teardown functions common for all tests"""
-        if "SEDG_EXPERIMENTAL" in os.environ:
-            del os.environ["SEDG_EXPERIMENTAL"]
 
     def _getValid(self):
         """Returns a valid data structure"""
@@ -368,12 +364,9 @@ class TestScanCommon(TestCase):
 
     def setUp(self):
         """Setup functions common for all tests"""
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
 
     def tearDown(self):
         """Teardown functions common for all tests"""
-        if "SEDG_EXPERIMENTAL" in os.environ:
-            del os.environ["SEDG_EXPERIMENTAL"]
 
     def _getValidYaml(self):
         """Returns a valid data structure"""

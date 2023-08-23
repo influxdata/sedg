@@ -740,7 +740,7 @@ class TestReport(TestCase):
         if self.tmpdir is not None:
             cvelib.common.recursive_rm(self.tmpdir)
 
-        if "SEDG_EXPERIMENTAL" in os.environ:
+        if "SEDG_EXPERIMENTAL" in os.environ:  # pragma: nocover
             del os.environ["SEDG_EXPERIMENTAL"]
 
     def _cve_template(self, cand="", references=[]):
@@ -4524,7 +4524,6 @@ template-urls = https://url1,https://url2
     def test_main_report_quay_list(self, mock_getOCIsForNamespace):
         """Test main_report - quay --list"""
         self._mock_cve_data_mixed()  # for cveDirs
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
         mock_getOCIsForNamespace.return_value = [("valid-repo", 1684472852)]
         args = ["quay", "--list", "--namespace", "valid-org"]
         with tests.testutil.capturedOutput() as (output, error):
@@ -4549,7 +4548,6 @@ template-urls = https://url1,https://url2
     def test_main_report_quay_list_digest(self, mock_getDigestForImage):
         """Test main_report - quay --list-digest"""
         self._mock_cve_data_mixed()  # for cveDirs
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
         mock_getDigestForImage.return_value = "valid-org/valid-repo@sha256:deadbeef"
         args = ["quay", "--list-digest", "valid-repo", "--namespace", "valid-org"]
         with tests.testutil.capturedOutput() as (output, error):
@@ -4587,7 +4585,6 @@ template-urls = https://url1,https://url2
     ):
         """Test main_report - quay --alerts"""
         self._mock_cve_data_mixed()  # for cveDirs
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         # with image digest
         mock_fetchScanReport.return_value = [self._getValidScanOCI(quay=True)], ""
@@ -4765,7 +4762,6 @@ template-urls = https://url1,https://url2
     def test_main_report_gar_list(self, mock_getOCIsForNamespace):
         """Test main_report - gar --list"""
         self._mock_cve_data_mixed()  # for cveDirs
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
         mock_getOCIsForNamespace.return_value = [
             (
                 "projects/valid-proj/locations/us/repositories/valid-repo/valid-name",
@@ -4785,7 +4781,6 @@ template-urls = https://url1,https://url2
     def test_main_report_gar_list_repos(self, mock_getReposForNamespace):
         """Test main_report - gar --list-repos"""
         self._mock_cve_data_mixed()  # for cveDirs
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
         mock_getReposForNamespace.return_value = [
             "projects/valid-proj/locations/us/repositories/valid-repo"
         ]
@@ -4799,7 +4794,6 @@ template-urls = https://url1,https://url2
     def test_main_report_gar_list_digest(self, mock_getDigestForImage):
         """Test main_report - gar --list-digest"""
         self._mock_cve_data_mixed()  # for cveDirs
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
         mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:deadbeef"
         args = [
             "gar",
@@ -4819,7 +4813,6 @@ template-urls = https://url1,https://url2
     def test_main_report_gar_alerts(self, mock_fetchScanReport, mock_getDigestForImage):
         """Test main_report - gar --alerts"""
         self._mock_cve_data_mixed()  # for cveDirs
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         # with image digest
         mock_fetchScanReport.return_value = [self._getValidScanOCI(gar=True)], ""
@@ -4925,7 +4918,6 @@ template-urls = https://url1,https://url2
     def test_main_report_gar_alerts_existing(self, mock_fetchScanReport):
         """Test main_report - gar --alerts - existing"""
         self._mock_cve_data_scans_mixed()  # for cveDirs
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         # 1 new, 2 exist with precise oci match
         ocis = [
@@ -5160,7 +5152,6 @@ valid-proj/us/valid-repo/valid-name removed report: 2
     def test_main_report_gar_alerts_mixed(self, mock_fetchScanReport):
         """Test main_report - gar --alerts - mixed"""
         self._mock_cve_data_scans_mixed2()  # for cveDirs
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         # 1 new, 1 updated and 1 removed
         ocis = [
@@ -5273,7 +5264,6 @@ valid-proj/us/valid-repo/valid-name removed report: 1
     def test_main_report_dso_list_digest(self, mock_getDigestForImage):
         """Test main_report - dso --list-digest"""
         self._mock_cve_data_mixed()  # for cveDirs
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
         mock_getDigestForImage.return_value = "valid-repo@sha256:deadbeef"
         args = ["dso", "--list-digest", "valid-repo"]
         with tests.testutil.capturedOutput() as (output, error):
@@ -5287,7 +5277,6 @@ valid-proj/us/valid-repo/valid-name removed report: 1
     def test_main_report_dso_alerts(self, mock_fetchScanReport, mock_getDigestForImage):
         """Test main_report - dso --alerts"""
         self._mock_cve_data_mixed()  # for cveDirs
-        os.environ["SEDG_EXPERIMENTAL"] = "1"
 
         # with image digest
         mock_fetchScanReport.return_value = [self._getValidScanOCI(dso=True)], ""
