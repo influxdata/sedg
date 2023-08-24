@@ -3334,6 +3334,147 @@ foo:
         self.assertEqual(exp, output.getvalue().strip())
 
     #
+    # _readStatsUniqueCVEs()
+    #
+    def test__readStatsUniqueCVEs(self):
+        """Test _readStatsUniqueCVEs()"""
+        # empty
+        res = cvelib.report._readStatsUniqueCVEs([], filter_status=[])
+        self.assertEqual(0, len(res))
+
+        # mock some data - no filter status
+        cveDirs = self._mock_cve_data_mixed()
+        cves = cvelib.cve.collectCVEData(cveDirs, False)
+        res = cvelib.report._readStatsUniqueCVEs(cves)
+        self.assertEqual(3, len(res))
+
+        self.assertTrue("bar" in res)
+        self.assertEqual(0, res["bar"]["critical"]["num"])
+        self.assertEqual(0, len(res["bar"]["critical"]["cves"]))
+        self.assertEqual(1, res["bar"]["high"]["num"])
+        self.assertEqual(1, len(res["bar"]["high"]["cves"]))
+        self.assertTrue("CVE-2022-GH2#bar" in res["bar"]["high"]["cves"])
+        self.assertEqual(0, res["bar"]["medium"]["num"])
+        self.assertEqual(0, len(res["bar"]["medium"]["cves"]))
+        self.assertEqual(1, res["bar"]["low"]["num"])
+        self.assertEqual(1, len(res["bar"]["low"]["cves"]))
+        self.assertTrue("CVE-2022-0002" in res["bar"]["low"]["cves"])
+        self.assertEqual(2, res["bar"]["negligible"]["num"])
+        self.assertEqual(2, len(res["bar"]["negligible"]["cves"]))
+        self.assertTrue("CVE-2021-9992" in res["bar"]["negligible"]["cves"])
+        self.assertTrue("CVE-2021-9993" in res["bar"]["negligible"]["cves"])
+        self.assertEqual(1, len(res["bar"]["deps"]))
+        self.assertTrue("CVE-2022-GH2#bar" in res["bar"]["deps"])
+        self.assertEqual(1, len(res["bar"]["secrets"]))
+        self.assertTrue("CVE-2022-GH2#bar" in res["bar"]["secrets"])
+        self.assertEqual(0, len(res["bar"]["ociscans"]))
+        self.assertEqual(0, len(res["bar"]["tags"]))
+
+        self.assertTrue("baz" in res)
+        self.assertEqual(0, res["baz"]["critical"]["num"])
+        self.assertEqual(0, len(res["baz"]["critical"]["cves"]))
+        self.assertEqual(0, res["baz"]["high"]["num"])
+        self.assertEqual(0, len(res["baz"]["high"]["cves"]))
+        self.assertEqual(0, res["baz"]["medium"]["num"])
+        self.assertEqual(0, len(res["baz"]["medium"]["cves"]))
+        self.assertEqual(1, res["baz"]["low"]["num"])
+        self.assertEqual(1, len(res["baz"]["low"]["cves"]))
+        self.assertTrue("CVE-2022-0003" in res["baz"]["low"]["cves"])
+        self.assertEqual(0, res["baz"]["negligible"]["num"])
+        self.assertEqual(0, len(res["baz"]["negligible"]["cves"]))
+        self.assertEqual(0, len(res["baz"]["deps"]))
+        self.assertEqual(0, len(res["baz"]["secrets"]))
+        self.assertEqual(0, len(res["baz"]["ociscans"]))
+        self.assertEqual(0, len(res["baz"]["tags"]))
+
+        self.assertTrue("foo" in res)
+        self.assertEqual(1, res["foo"]["critical"]["num"])
+        self.assertEqual(1, len(res["foo"]["critical"]["cves"]))
+        self.assertTrue("CVE-2021-9991" in res["foo"]["critical"]["cves"])
+        self.assertEqual(0, res["foo"]["high"]["num"])
+        self.assertEqual(0, len(res["foo"]["high"]["cves"]))
+        self.assertEqual(2, res["foo"]["medium"]["num"])
+        self.assertEqual(2, len(res["foo"]["medium"]["cves"]))
+        self.assertTrue("CVE-2022-0001" in res["foo"]["medium"]["cves"])
+        self.assertTrue("CVE-2022-GH1#foo" in res["foo"]["medium"]["cves"])
+        self.assertEqual(1, res["foo"]["low"]["num"])
+        self.assertEqual(1, len(res["foo"]["low"]["cves"]))
+        self.assertTrue("CVE-2022-NNN1" in res["foo"]["low"]["cves"])
+        self.assertEqual(0, res["foo"]["negligible"]["num"])
+        self.assertEqual(0, len(res["foo"]["negligible"]["cves"]))
+        self.assertEqual(0, len(res["foo"]["deps"]))
+        self.assertEqual(0, len(res["foo"]["secrets"]))
+        self.assertEqual(0, len(res["foo"]["ociscans"]))
+        self.assertEqual(1, len(res["foo"]["tags"]))
+        self.assertTrue("limit-report" in res["foo"]["tags"])
+        self.assertTrue("CVE-2022-GH1#foo" in res["foo"]["tags"]["limit-report"])
+
+        # filter_status=["ignored"]
+        res = cvelib.report._readStatsUniqueCVEs(cves, filter_status=["ignored"])
+        self.assertEqual(1, len(res))
+        self.assertTrue("bar" in res)
+        self.assertEqual(0, res["bar"]["critical"]["num"])
+        self.assertEqual(0, len(res["bar"]["critical"]["cves"]))
+        self.assertEqual(0, res["bar"]["high"]["num"])
+        self.assertEqual(0, len(res["bar"]["high"]["cves"]))
+        self.assertEqual(0, res["bar"]["medium"]["num"])
+        self.assertEqual(0, len(res["bar"]["medium"]["cves"]))
+        self.assertEqual(0, res["bar"]["low"]["num"])
+        self.assertEqual(0, len(res["bar"]["low"]["cves"]))
+        self.assertEqual(1, res["bar"]["negligible"]["num"])
+        self.assertEqual(1, len(res["bar"]["negligible"]["cves"]))
+        self.assertTrue("CVE-2021-9993" in res["bar"]["negligible"]["cves"])
+        self.assertEqual(0, len(res["bar"]["deps"]))
+        self.assertEqual(0, len(res["bar"]["secrets"]))
+        self.assertEqual(0, len(res["bar"]["ociscans"]))
+        self.assertEqual(0, len(res["bar"]["tags"]))
+
+        # clear out the above
+        assert self.tmpdir is not None  # for pyright
+        cvelib.common.recursive_rm(self.tmpdir)
+
+        # mock some data - no filter status
+        cveDirs = self._mock_cve_data_scans_mixed()
+        cves = cvelib.cve.collectCVEData(cveDirs, False)
+        res = cvelib.report._readStatsUniqueCVEs(cves)
+        self.assertEqual(2, len(res))
+
+        self.assertTrue("foo" in res)
+        self.assertEqual(0, res["foo"]["critical"]["num"])
+        self.assertEqual(0, len(res["foo"]["critical"]["cves"]))
+        self.assertEqual(0, res["foo"]["high"]["num"])
+        self.assertEqual(0, len(res["foo"]["high"]["cves"]))
+        self.assertEqual(1, res["foo"]["medium"]["num"])
+        self.assertEqual(1, len(res["foo"]["medium"]["cves"]))
+        self.assertTrue("CVE-2022-0001" in res["foo"]["medium"]["cves"])
+        self.assertEqual(0, res["foo"]["low"]["num"])
+        self.assertEqual(0, len(res["foo"]["low"]["cves"]))
+        self.assertEqual(0, res["foo"]["negligible"]["num"])
+        self.assertEqual(0, len(res["foo"]["negligible"]["cves"]))
+        self.assertEqual(0, len(res["foo"]["deps"]))
+        self.assertEqual(0, len(res["foo"]["secrets"]))
+        self.assertEqual(0, len(res["foo"]["ociscans"]))
+        self.assertEqual(0, len(res["foo"]["tags"]))
+
+        self.assertTrue("valid-repo" in res)
+        self.assertEqual(0, res["valid-repo"]["critical"]["num"])
+        self.assertEqual(0, len(res["valid-repo"]["critical"]["cves"]))
+        self.assertEqual(0, res["valid-repo"]["high"]["num"])
+        self.assertEqual(0, len(res["valid-repo"]["high"]["cves"]))
+        self.assertEqual(1, res["valid-repo"]["medium"]["num"])
+        self.assertEqual(1, len(res["valid-repo"]["medium"]["cves"]))
+        self.assertTrue("CVE-2022-GH2#foo" in res["valid-repo"]["medium"]["cves"])
+        self.assertEqual(0, res["valid-repo"]["low"]["num"])
+        self.assertEqual(0, len(res["valid-repo"]["low"]["cves"]))
+        self.assertEqual(0, res["valid-repo"]["negligible"]["num"])
+        self.assertEqual(0, len(res["valid-repo"]["negligible"]["cves"]))
+        self.assertEqual(0, len(res["valid-repo"]["deps"]))
+        self.assertEqual(0, len(res["valid-repo"]["secrets"]))
+        self.assertEqual(1, len(res["valid-repo"]["ociscans"]))
+        self.assertTrue("CVE-2022-GH2#foo" in res["valid-repo"]["ociscans"])
+        self.assertEqual(0, len(res["valid-repo"]["tags"]))
+
+    #
     # getHumanSummary()
     #
     def test_getHumanSummary(self):
@@ -3425,6 +3566,35 @@ Totals:
 - negligible: 1 in 1 repos"""
         )
         self.assertEqual(expClosed, output.getvalue().strip())
+
+        # clear out the above
+        assert self.tmpdir is not None  # for pyright
+        cvelib.common.recursive_rm(self.tmpdir)
+
+        # mock some data - container scans
+        cveDirs = self._mock_cve_data_scans_mixed()
+        cves = cvelib.cve.collectCVEData(
+            cveDirs, False, filter_status="needs-triage,needed,pending,released"
+        )
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSummary(
+                cves, "", report_output=cvelib.report.ReportOutput.OPEN
+            )
+        self.assertEqual("", error.getvalue().strip())
+        exp = """# Open
+
+Priority   Repository                     Issue
+--------   ----------                     -----
+medium     foo                            CVE-2022-0001
+medium     valid-repo                     CVE-2022-GH2#foo          (container-scanning)
+
+Totals:
+- critical: 0 in 0 repos
+- high: 0 in 0 repos
+- medium: 2 in 2 repos
+- low: 0 in 0 repos
+- negligible: 0 in 0 repos"""
+        self.assertEqual(exp, output.getvalue().strip())
 
     def test_getHumanSummaryWithPkgFn(self):
         """Test getHumanSummary() with pkg_fn"""
@@ -3856,6 +4026,48 @@ Totals:
 - negligible: 0 in 0 repos"""
         self.assertEqual(exp, output.getvalue().strip())
 
+        # clear out the above
+        assert self.tmpdir is not None  # for pyright
+        cvelib.common.recursive_rm(self.tmpdir)
+
+        # mock some data - container scans
+        cveDirs = self._mock_cve_data_scans_mixed()
+        cves = cvelib.cve.collectCVEData(
+            cveDirs, False, filter_status="needs-triage,needed,pending,released"
+        )
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getHumanSummaryGHAS(
+                cves, "", report_output=cvelib.report.ReportOutput.BOTH
+            )
+        self.assertEqual("", error.getvalue().strip())
+        exp = """# Open
+
+Priority   Repository           Affected                            CVEs
+--------   ----------           --------                            ----
+medium     valid-repo/valid-... curl                                CVE-2022-GH2#foo          (container-scanning)
+medium     valid-repo/valid-... libtasn1-6                          CVE-2022-GH2#foo          (container-scanning)
+
+Totals:
+- critical: 0 in 0 repos
+- high: 0 in 0 repos
+- medium: 2 in 1 repos
+- low: 0 in 0 repos
+- negligible: 0 in 0 repos
+
+
+# Closed
+
+Priority   Repository           Affected                            CVEs
+--------   ----------           --------                            ----
+
+Totals:
+- critical: 0 in 0 repos
+- high: 0 in 0 repos
+- medium: 0 in 0 repos
+- low: 0 in 0 repos
+- negligible: 0 in 0 repos"""
+        self.assertEqual(exp, output.getvalue().strip())
+
     def test__main_report_parse_args(self):
         """Test _main_report_parse_args"""
         # invalid invocations
@@ -3872,8 +4084,8 @@ Totals:
                 "Please use only one of --all, --closed or --open with 'summary'",
             ),
             (
-                ["summary", "--software", "foo", "--ghas"],
-                "--software is not supported with 'summary --ghas'",
+                ["summary", "--software", "foo", "--scans"],
+                "--software is not supported with 'summary --scans'",
             ),
             (
                 ["summary", "--software", "foo", "--unique"],
@@ -4187,7 +4399,7 @@ Totals:
             (["summary", "--closed"], "- critical: 1 in 1 repos"),
             (["summary", "--all"], "- high: 1 in 1 repos"),
             (["summary", "--all"], "- critical: 1 in 1 repos"),
-            (["summary", "--ghas"], "- critical: 0 in 0 repos"),
+            (["summary", "--scans"], "- critical: 0 in 0 repos"),
             (
                 ["summary", "--unique"],
                 "Total:                                  1          1          2          3          1",

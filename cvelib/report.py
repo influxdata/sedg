@@ -1318,6 +1318,7 @@ class _statsUniqueCVEsPkgSoftware(TypedDict):
 
     deps: List[str]
     secrets: List[str]
+    ociscans: List[str]
     negligible: _statsUniqueCVEsPriorityCounts
     low: _statsUniqueCVEsPriorityCounts
     medium: _statsUniqueCVEsPriorityCounts
@@ -1368,6 +1369,7 @@ def _readStatsUniqueCVEs(
                 stats[pkg.software] = _statsUniqueCVEsPkgSoftware(
                     deps=[],
                     secrets=[],
+                    ociscans=[],
                     negligible=_statsUniqueCVEsPriorityCounts(num=0, cves=[]),
                     low=_statsUniqueCVEsPriorityCounts(num=0, cves=[]),
                     medium=_statsUniqueCVEsPriorityCounts(num=0, cves=[]),
@@ -1396,6 +1398,13 @@ def _readStatsUniqueCVEs(
                 and cve.candidate not in stats[pkg.software]["secrets"]
             ):
                 stats[pkg.software]["secrets"].append(cve.candidate)
+
+            if (
+                "gar" in cve.discoveredBy.lower()
+                or "quay.io" in cve.discoveredBy.lower()
+                or "dso" in cve.discoveredBy.lower()
+            ) and cve.candidate not in stats[pkg.software]["ociscans"]:
+                stats[pkg.software]["ociscans"].append(cve.candidate)
 
     return stats
 
@@ -1581,7 +1590,7 @@ def getHumanSummary(
 
             priority: str
             for priority in stats[repo]:
-                if priority in ["deps", "secrets", "tags"]:
+                if priority in ["deps", "ociscans", "secrets", "tags"]:
                     continue
 
                 if stats[repo][priority]["num"] > 0:
@@ -1611,6 +1620,8 @@ def getHumanSummary(
                         extras.append("dependabot")
                     if cve in stats[repo]["secrets"]:
                         extras.append("secret-scanning")
+                    if cve in stats[repo]["ociscans"]:
+                        extras.append("container-scanning")
                     for tag in stats[repo]["tags"]:
                         if cve in stats[repo]["tags"][tag]:
                             extras.append(tag)
@@ -1763,8 +1774,8 @@ def _readStatsGHAS(
     # TODO: type hint
     stats = {}
     for cve in cves:
-        alert: Union[GHDependabot, GHSecret, GHCode]
-        for alert in cve.ghas:
+        alert: Union[GHDependabot, GHSecret, GHCode, cvelib.scan.ScanOCI]
+        for alert in cve.ghas + cve.scan_reports:
             for pkg in cve.pkgs:
                 if (
                     pkg_filter_status is not None
@@ -1798,6 +1809,8 @@ def _readStatsGHAS(
                     alert_type = "secret-scanning"
                 elif isinstance(alert, GHCode):
                     alert_type = "code-scanning"
+                elif isinstance(alert, cvelib.scan.ScanOCI):
+                    alert_type = "container-scanning"
 
                 if alert_type not in stats[sw]:
                     stats[sw][alert_type] = {}
@@ -1807,6 +1820,8 @@ def _readStatsGHAS(
                     what = alert.secret
                 elif isinstance(alert, GHCode):
                     what = alert.description
+                elif isinstance(alert, cvelib.scan.ScanOCI):
+                    what = alert.component
                 else:
                     what = alert.dependency
                 if what not in stats[sw][alert_type]:
@@ -2007,8 +2022,8 @@ Example usage:
   # similary, but with software (repo) list from a file
   $ cve-report summary --software=/path/to/software/list
 
-  # open GitHub Advanced Security (GHAS) issues
-  $ cve-report summary --ghas
+  # open GitHub Advanced Security (GHAS) and container scanning issues
+  $ cve-report summary --scans
 
   # counts of unique issues by priority for each software
   $ cve-report summary --unique
@@ -2272,9 +2287,9 @@ Example usage:
     _add_common_filter(parser_summary)
     _add_issues_filter(parser_summary)
     parser_summary.add_argument(
-        "--ghas",
-        dest="ghas",
-        help="show GitHub Advanced Security issues",
+        "--scans",
+        dest="scans",
+        help="show GitHub Advanced Security and container scan reports issues",
         action="store_true",
     )
     parser_summary.add_argument(
@@ -2471,8 +2486,8 @@ Example usage:
                 # if any are specified, only one can be
                 error("Please use only one of --all, --closed or --open with 'summary'")
         if args.software:
-            if args.ghas:
-                error("--software is not supported with 'summary --ghas'")
+            if args.scans:
+                error("--software is not supported with 'summary --scans'")
             elif args.unique:
                 error("--software is not supported with 'summary --unique'")
     elif args.cmd == "todo" and args.software:
@@ -2600,7 +2615,7 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
             elif args.closed:
                 # --closed is all the non-active statuses
                 filter_status = "DNE,ignored,not-affected,released"
-            elif args.ghas:
+            elif args.scans:
                 # getHumanSummaryGHAS() filters down internally so send all to
                 # collectCVEData
                 filter_status = None
@@ -2632,7 +2647,7 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
             elif args.all:
                 report_output = ReportOutput.BOTH
 
-            if args.ghas:
+            if args.scans:
                 getHumanSummaryGHAS(cves, args.software, report_output=report_output)
             elif args.unique:
                 getHumanReport(cves)
