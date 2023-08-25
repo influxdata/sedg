@@ -1837,7 +1837,7 @@ def _readStatsGHAS(
     return stats
 
 
-def getHumanSummaryGHAS(
+def getHumanSummaryScans(
     cves: List[CVE],
     packages: str = "",
     report_output: ReportOutput = ReportOutput.OPEN,
@@ -2616,7 +2616,7 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
                 # --closed is all the non-active statuses
                 filter_status = "DNE,ignored,not-affected,released"
             elif args.scans:
-                # getHumanSummaryGHAS() filters down internally so send all to
+                # getHumanSummaryScans() filters down internally so send all to
                 # collectCVEData
                 filter_status = None
             elif args.unique:
@@ -2648,7 +2648,7 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
                 report_output = ReportOutput.BOTH
 
             if args.scans:
-                getHumanSummaryGHAS(cves, args.software, report_output=report_output)
+                getHumanSummaryScans(cves, args.software, report_output=report_output)
             elif args.unique:
                 getHumanReport(cves)
             else:
