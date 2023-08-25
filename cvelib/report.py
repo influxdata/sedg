@@ -1954,7 +1954,7 @@ def getHumanSummaryGHAS(
 
     if report_output == ReportOutput.OPEN or report_output == ReportOutput.BOTH:
         # report on a) packages that are open and b) alerts that are needed
-        stats_open = _readStatsGHAS(
+        stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsGHAS(
             cves,
             pkg_filter_status=["needed", "needs-triage", "pending"],
             ghas_filter_status=["needed", "needs-triage"],
@@ -1968,7 +1968,7 @@ def getHumanSummaryGHAS(
         # alerts that are released/dismissed. We report on ignored issues since
         # we'll sometimes use 'ignored' for CVE status with 'dismissed' as GHAS
         # status.
-        stats_closed = _readStatsGHAS(
+        stats_closed: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsGHAS(
             cves,
             pkg_filter_status=["released", "not-affected", "ignored"],
             ghas_filter_status=["released", "dismissed"],
