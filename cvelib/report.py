@@ -1744,7 +1744,7 @@ def getInfluxDBLineProtocol(
         print(s)
 
 
-# _readStatsGHAS() takes the list of provided CVEs and generates a stats
+# _readStatsScans() takes the list of provided CVEs and generates a stats
 # dict:
 #   stats = {
 #     pkg.software: {
@@ -1759,12 +1759,12 @@ def getInfluxDBLineProtocol(
 #       }
 #     }
 #   }
-def _readStatsGHAS(
+def _readStatsScans(
     cves: List[CVE],
     pkg_filter_status: Optional[List[str]] = None,
     ghas_filter_status: Optional[List[str]] = None,
 ) -> Dict[str, _statsUniqueCVEsPkgSoftware]:
-    """Read in stats by GHAS"""
+    """Read in stats by GHAS and container scans"""
 
     def _find_adjusted_priority(priority: str, sev: str) -> str:
         if cve_priorities.index(sev) > cve_priorities.index(priority):
@@ -1842,7 +1842,9 @@ def getHumanSummaryScans(
     packages: str = "",
     report_output: ReportOutput = ReportOutput.OPEN,
 ) -> None:
-    """Show GitHub Advanced Security report in summary format"""
+    """Show GitHub Advanced Security and container scan reports in summary
+       format
+    """
 
     def _output(stats, state: str, pkgs: Optional[Set[str]] = None):
         maxlen: int = 20
@@ -1954,7 +1956,7 @@ def getHumanSummaryScans(
 
     if report_output == ReportOutput.OPEN or report_output == ReportOutput.BOTH:
         # report on a) packages that are open and b) alerts that are needed
-        stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsGHAS(
+        stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsScans(
             cves,
             pkg_filter_status=["needed", "needs-triage", "pending"],
             ghas_filter_status=["needed", "needs-triage"],
@@ -1968,7 +1970,7 @@ def getHumanSummaryScans(
         # alerts that are released/dismissed. We report on ignored issues since
         # we'll sometimes use 'ignored' for CVE status with 'dismissed' as GHAS
         # status.
-        stats_closed: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsGHAS(
+        stats_closed: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsScans(
             cves,
             pkg_filter_status=["released", "not-affected", "ignored"],
             ghas_filter_status=["released", "dismissed"],
