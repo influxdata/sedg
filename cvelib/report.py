@@ -1762,7 +1762,7 @@ def getInfluxDBLineProtocol(
 def _readStatsScans(
     cves: List[CVE],
     pkg_filter_status: Optional[List[str]] = None,
-    ghas_filter_status: Optional[List[str]] = None,
+    scan_filter_status: Optional[List[str]] = None,
 ) -> Dict[str, _statsUniqueCVEsPkgSoftware]:
     """Read in stats by GHAS and container scans"""
 
@@ -1783,10 +1783,10 @@ def _readStatsScans(
                 ):
                     continue
 
-                ghas_status: str = alert.status.split()[0]
+                scan_status: str = alert.status.split()[0]
                 if (
-                    ghas_filter_status is not None
-                    and ghas_status not in ghas_filter_status
+                    scan_filter_status is not None
+                    and scan_status not in scan_filter_status
                 ):
                     continue
 
@@ -1843,7 +1843,7 @@ def getHumanSummaryScans(
     report_output: ReportOutput = ReportOutput.OPEN,
 ) -> None:
     """Show GitHub Advanced Security and container scan reports in summary
-       format
+    format
     """
 
     def _output(stats, state: str, pkgs: Optional[Set[str]] = None):
@@ -1959,7 +1959,7 @@ def getHumanSummaryScans(
         stats_open: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsScans(
             cves,
             pkg_filter_status=["needed", "needs-triage", "pending"],
-            ghas_filter_status=["needed", "needs-triage"],
+            scan_filter_status=["needed", "needs-triage"],
         )
         _output(stats_open, "open", pkgs)
 
@@ -1973,7 +1973,7 @@ def getHumanSummaryScans(
         stats_closed: Dict[str, _statsUniqueCVEsPkgSoftware] = _readStatsScans(
             cves,
             pkg_filter_status=["released", "not-affected", "ignored"],
-            ghas_filter_status=["released", "dismissed"],
+            scan_filter_status=["released", "dismissed"],
         )
         _output(stats_closed, "closed", pkgs)
 
