@@ -3875,12 +3875,12 @@ Totals:
         self.assertEqual(expClosed, output.getvalue().strip())
 
     #
-    # getHumanSummaryGHAS()
+    # getHumanSummaryScans()
     #
-    def test_getHumanSummaryGHAS(self):
-        """Test getHumanSummaryGHAS()"""
+    def test_getHumanSummaryScans(self):
+        """Test getHumanSummaryScans()"""
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummaryGHAS(
+            cvelib.report.getHumanSummaryScans(
                 [], "", report_output=cvelib.report.ReportOutput.BOTH
             )
         self.assertEqual("", error.getvalue().strip())
@@ -3916,7 +3916,7 @@ Totals:
             cveDirs, False, filter_status="needs-triage,needed,pending,released"
         )
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummaryGHAS(
+            cvelib.report.getHumanSummaryScans(
                 cves, "", report_output=cvelib.report.ReportOutput.BOTH
             )
         self.assertEqual("", error.getvalue().strip())
@@ -3959,7 +3959,7 @@ Totals:
             cveDirs, False, filter_status="needs-triage,needed,pending,released"
         )
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummaryGHAS(
+            cvelib.report.getHumanSummaryScans(
                 cves, "nonexistent", report_output=cvelib.report.ReportOutput.BOTH
             )
         self.assertEqual("", error.getvalue().strip())
@@ -3996,7 +3996,7 @@ Totals:
             cveDirs, False, filter_status="needs-triage,needed,pending,released"
         )
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummaryGHAS(
+            cvelib.report.getHumanSummaryScans(
                 cves, "nonexistent", report_output=cvelib.report.ReportOutput.BOTH
             )
         self.assertEqual("", error.getvalue().strip())
@@ -4036,7 +4036,7 @@ Totals:
             cveDirs, False, filter_status="needs-triage,needed,pending,released"
         )
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.report.getHumanSummaryGHAS(
+            cvelib.report.getHumanSummaryScans(
                 cves, "", report_output=cvelib.report.ReportOutput.BOTH
             )
         self.assertEqual("", error.getvalue().strip())
