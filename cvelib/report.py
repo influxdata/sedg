@@ -1232,6 +1232,13 @@ def getOCIReports(
                         break
 
                 if not found_rep:
+                    # don't report as removed if the file already shows it as
+                    # remediated
+                    if cve_report.status == "released" or cve_report.status.startswith(
+                        "dismissed"
+                    ):
+                        continue
+
                     if repo_full not in del_files:
                         del_files[repo_full] = []
 
