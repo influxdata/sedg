@@ -3,8 +3,10 @@
 # SPDX-License-Identifier: MIT
 
 import argparse
+import csv
 import os
 import sqlite3
+import sys
 import textwrap
 from typing import Dict, List, Tuple
 
@@ -220,6 +222,17 @@ def convertDateISO8601(d: str, candidate: str) -> str:
     return ""
 
 
+def print_results(res: List[Tuple], format: str) -> None:
+    if format == "raw":
+        for r in res:
+            print(r)
+    else:  # default to csv
+        try:
+            csv.writer(sys.stdout).writerows(res)
+        except BrokenPipeError:
+            pass
+
+
 #
 # CLI mains
 #
@@ -259,14 +272,34 @@ cve-query ...
 
     parser.add_argument(
         "-q",
+        "--query",
         dest="query",
         help="SQL to execute",
         metavar="SQL",
     )
 
+    parser.add_argument(
+        "-f",
+        "--query-file",
+        dest="query_file",
+        help="SQL to execute from file",
+        metavar="FILENAME",
+    )
+
+    parser.add_argument(
+        "--output-format",
+        dest="output_format",
+        help="Output format (available: csv, raw; default csv)",
+        metavar="FORMAT",
+        default="csv",
+    )
+
     args: argparse.Namespace = parser.parse_args()
 
-    driver, _, _, _, dbname = parse_dsn(args.dsn)
+    dsn: str = args.dsn
+    if "SEDG_CVE_QUERY_DSN" in os.environ:
+        dsn = os.environ["SEDG_CVE_QUERY_DSN"]
+    driver, _, _, _, dbname = parse_dsn(dsn)
     if driver != "sqlite":
         error("only 'sqlite' supported")
 
@@ -277,13 +310,18 @@ cve-query ...
     if dbname != ":memory:" and os.path.exists(dbname) and not args.db_overwrite:
         db = CVEdb(dbname)
     else:
-        if args.db_overwrite:
+        if dbname != ":memory:" and args.db_overwrite:
             os.unlink(dbname)
 
         db = CVEdb(dbname)
         db.create_tables()
 
-        for cve in cvelib.cve.collectCVEData(cveDirs, compat, untriagedOk=True):
+        for cve in cvelib.cve.collectCVEData(
+            cveDirs,
+            compat,
+            untriagedOk=True,
+            filter_tag="-limit-report",  # XXX: don't hardcode this
+        ):
             db.insert_into_cves(cve)
             for pkg in cve.pkgs:
                 db.insert_into_pkgs(cve.candidate, pkg)
@@ -296,7 +334,20 @@ cve-query ...
         res = db.get_schema()
         for r in res:
             print(r[0])
-    elif args.query:
-        res = db.execute_query(args.query)
-        for r in res:
-            print(r)
+    elif args.query or args.query_file:
+        sql: str
+        if args.query_file:
+            if not os.path.isfile(args.query_file):
+                error("'%s' is not a regular file" % args.query_file)
+            with open(args.query_file, "r", encoding="utf-8") as fp:
+                sql = fp.read()
+        else:
+            sql = args.query
+        res = db.execute_query(sql)
+        supported_formats: List[str] = ["csv", "raw"]
+        if args.output_format not in supported_formats:
+            error(
+                "Unsupported output format '%s'. Please use: %s"
+                % (args.output_format, ", ".join(supported_formats))
+            )
+        print_results(res, format=args.output_format)
