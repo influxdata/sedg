@@ -3009,9 +3009,9 @@ upstream_baz: needed
             out = output.getvalue().strip()
             err = error.getvalue().strip()
             if retired:
-                self.assertEqual("Created retired/%s" % os.path.basename(cve_fn), out)
+                self.assertEqual("retired/%s created" % os.path.basename(cve_fn), out)
             else:
-                self.assertEqual("Created active/%s" % os.path.basename(cve_fn), out)
+                self.assertEqual("active/%s created" % os.path.basename(cve_fn), out)
             self.assertEqual("", err)
 
             with tests.testutil.capturedOutput() as (output, error):
@@ -3073,14 +3073,18 @@ CVSS:
 
         # add the first CVE
         cve_fn = os.path.join(cveDirs["active"], "CVE-2021-777777")
-        cvelib.cve.addCve(
-            cveDirs,
-            False,
-            os.path.basename(cve_fn),
-            ["git/github_foo"],
-            template=None,
-            retired=False,
-        )
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.cve.addCve(
+                cveDirs,
+                False,
+                os.path.basename(cve_fn),
+                ["git/github_foo"],
+                template=None,
+                retired=False,
+            )
+        out = output.getvalue().strip()
+        self.assertEqual("active/%s created" % os.path.basename(cve_fn), out)
+        self.assertEqual("", error.getvalue().strip())
 
         res = cvelib.common.readCve(cve_fn)
         self.assertEqual(16, len(res))
@@ -3133,14 +3137,18 @@ CVSS:
 
         # add the second CVE
         cve_fn = os.path.join(cveDirs["active"], "CVE-2021-777777")
-        cvelib.cve.addCve(
-            cveDirs,
-            False,
-            os.path.basename(cve_fn),
-            ["git/github_bar"],
-            template=None,
-            retired=False,
-        )
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.cve.addCve(
+                cveDirs,
+                False,
+                os.path.basename(cve_fn),
+                ["git/github_bar"],
+                template=None,
+                retired=False,
+            )
+        out = output.getvalue().strip()
+        self.assertEqual("active/%s updated" % os.path.basename(cve_fn), out)
+        self.assertEqual("", error.getvalue().strip())
 
         res = cvelib.common.readCve(cve_fn)
         self.assertEqual(18, len(res))
@@ -3153,6 +3161,20 @@ CVSS:
         self.assertTrue("Patches_bar" in res)
         self.assertTrue("git/github_bar" in res)
         self.assertEqual("needs-triage", res["git/github_bar"])
+
+        # add the 2nd CVE again
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.cve.addCve(
+                cveDirs,
+                False,
+                os.path.basename(cve_fn),
+                ["git/github_bar"],
+                template=None,
+                retired=False,
+            )
+        out = output.getvalue().strip()
+        self.assertEqual("active/%s unmodified" % os.path.basename(cve_fn), out)
+        self.assertEqual("", error.getvalue().strip())
 
     def test_addCvePackageTemplate(self):
         """Test addCve()"""

@@ -7,6 +7,7 @@ import copy
 import datetime
 import functools
 import glob
+import hashlib
 import os
 import re
 import shutil
@@ -1369,13 +1370,16 @@ def addCve(
         error("%s already exists in %s" % (cand, found))
         return
 
-    exists: bool = os.path.exists(cve_fn)
+    cvefn_hash: str = ""
+    if os.path.exists(cve_fn):
+        with open(cve_fn, "rb") as f:
+            cvefn_hash = hashlib.md5(f.read()).hexdigest()
 
     # For a new CVE (where the path doesn't already exist), if we can determine
     # a pkg from the candidate, then add it to the list if we haven't specified
     # any packages with --package already
     p: Optional[str] = pkgFromCandidate(cand, where)
-    if not exists and p and len(pkgs) == 0:
+    if cvefn_hash == "" and p and len(pkgs) == 0:
         pkgs.append(p)
     if not pkgs:
         raise CveException("could not find usable packages for '%s'" % orig_cve)
@@ -1415,11 +1419,18 @@ def addCve(
         assigned_to,
     )
 
-    if not exists:
-        rel: str = "active/%s" % cand
-        if retired:
-            rel = "retired/%s" % cand
-        cvelib.common.msg("Created %s" % rel)
+    rel: str = "active/%s" % cand
+    if retired:
+        rel = "retired/%s" % cand
+
+    if cvefn_hash == "":
+        cvelib.common.msg("%s created" % rel)
+    else:
+        with open(cve_fn, "rb") as f:
+            if hashlib.md5(f.read()).hexdigest() != cvefn_hash:
+                cvelib.common.msg("%s updated" % rel)
+            else:
+                cvelib.common.msg("%s unmodified" % rel)
 
 
 # misc helpers
