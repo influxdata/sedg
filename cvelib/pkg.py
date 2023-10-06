@@ -196,6 +196,12 @@ def parse(s: str, compatUbuntu: bool = False) -> CvePkg:
     """Parse a string and return a CvePkg"""
     if "\n" in s:
         raise CveException("invalid package entry '%s' (expected single line)" % s)
+    elif s.startswith("upstream/"):
+        raise CveException(
+            "invalid package entry '%s' (expected 'upstream_%s')"
+            % (s, s.split("/", maxsplit=1)[1])
+        )
+
     if compatUbuntu:
         if not rePatterns["pkg-full-ubuntu"].search(s):
             raise CveException("invalid package entry for compat '%s'" % s)
