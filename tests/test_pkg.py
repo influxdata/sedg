@@ -609,6 +609,7 @@ class TestPkg(TestCase):
     def test_parse(self):
         """Test parse()"""
         tsts = [
+            # pkg entry, compatUbuntu, isValid
             # valid
             ("upstream_foo: needed", False, True),
             ("upstream_foo: needed (123-4)", False, True),
@@ -727,6 +728,7 @@ class TestPkg(TestCase):
             ("upstream_foo/%s: needed" % ("a" * 41), False, False),
             ("upstream_foo: needed (%s)" % ("a" * 101), False, False),
             ("upstream_F@O: needed", False, False),
+            ("upstream/foo: needed", False, False),
             # invalid compatUbuntu
             ("foc@l_foo: needed", True, False),
             ("devel_grub2-signed: released (1.157)\n ", True, False),
@@ -738,6 +740,7 @@ class TestPkg(TestCase):
             ("upstream_foo_bar: needed (123-4)", True, False),
             ("upstream_FOO: needed", True, False),
             ("upstream_foo-BAR: needed", True, False),
+            ("upstream/foo: needed", True, False),
         ]
         for s, compat, valid in tsts:
             if valid:
@@ -750,6 +753,11 @@ class TestPkg(TestCase):
                     errS = "invalid package entry for compat '%s'" % s
                 if "\n" in s:
                     errS = "invalid package entry '%s' (expected single line)" % s
+                if s.startswith("upstream/"):
+                    errS = "invalid package entry '%s' (expected 'upstream_%s')" % (
+                        s,
+                        s.split("/", maxsplit=1)[1],
+                    )
                 self.assertEqual(errS, str(context.exception))
 
     def test_cmp_pkgs(self):
