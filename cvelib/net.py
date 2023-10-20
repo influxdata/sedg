@@ -23,11 +23,11 @@ def _install_request_cache(url: str):
             # if "requests_cache" not in sys.modules:
             import requests_cache
 
-            # require version 1 for match_headers
+            # require version 1 for match_headers (0.9 seems ok too)
             # pip install "requests-cache>=1.0"
-            if (
-                "requests_cache" in sys.modules
-                and int(requests_cache.__version__.split(".")[0]) > 0
+            if "requests_cache" in sys.modules and (
+                int(requests_cache.__version__.split(".")[0]) > 0
+                or int(requests_cache.__version__.split(".")[1]) >= 9
             ):
                 cache_dir: str = getCacheDirPath()
                 if not os.path.exists(os.path.dirname(cache_dir)):
@@ -53,7 +53,8 @@ def _install_request_cache(url: str):
                     ignored_parameters=["Authorization", "cookie"],
                 )
                 # for some reason, it's written with world read
-                os.chmod(cache_fn + ".sqlite", 0o0600)
+                if os.path.exists(cache_fn + ".sqlite"):
+                    os.chmod(cache_fn + ".sqlite", 0o0600)
         except Exception:
             # print("DEBUG: requests_cache could not be imported")
             pass
