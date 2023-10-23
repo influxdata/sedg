@@ -561,7 +561,7 @@ class TestGAR(TestCase):
         with tests.testutil.capturedOutput() as (output, error):
             res = gsr.getDigestForImage("valid-proj/us/valid-repo/valid-name:some-tag")
         self.assertEqual("", output.getvalue().strip())
-        self.assertTrue("mediaType not in" in error.getvalue().strip())
+        self.assertTrue("mediaType 'something-else' not in" in error.getvalue().strip())
         self.assertEqual(
             "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a",
             res,
@@ -574,7 +574,7 @@ class TestGAR(TestCase):
         with tests.testutil.capturedOutput() as (output, error):
             res = gsr.getDigestForImage("valid-proj/us/valid-repo/valid-name:some-tag")
         self.assertEqual("", output.getvalue().strip())
-        self.assertTrue("mediaType not in" in error.getvalue().strip())
+        self.assertTrue("mediaType 'something-else' not in" in error.getvalue().strip())
         self.assertEqual("", res)
 
         # bad invocation
