@@ -484,13 +484,15 @@ class GARSecurityReportNew(SecurityReportInterface):
                     "application/vnd.oci.image.index.v1+json",
                     "application/vnd.oci.image.manifest.v1+json",
                     "application/vnd.docker.distribution.manifest.v2+json",
+                    "application/vnd.docker.distribution.manifest.list.v2+json",
                 ]
                 if img["metadata"]["mediaType"] not in known_types:
                     warn(
-                        "Skipping %s (mediaType not in '%s')"
+                        "Skipping %s (mediaType '%s' not in '%s')"
                         % (
-                            ",".join(known_types),
                             img["metadata"]["name"].split("/")[-1],
+                            img["metadata"]["mediaType"],
+                            ",".join(known_types),
                         )
                     )
                     continue
