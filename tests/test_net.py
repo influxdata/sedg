@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 from unittest import TestCase, mock
+import asyncio
 import os
 
 import cvelib.net
@@ -112,7 +113,7 @@ class TestNet(TestCase):
         self.assertEqual("bar", rjson["foo"])
 
     @mock.patch("requests.get")
-    def test_ghAPIGetList(self, mock_get):
+    async def test_ghAPIGetList(self, mock_get):
         """Test ghAPIGetList()"""
         url = "https://api.github.com/orgs/valid-org/dependabot/alerts"
         link1 = '<%s?after=blah1>; rel="next", <%s>; rel="prev"' % (url, url)
@@ -122,7 +123,7 @@ class TestNet(TestCase):
         resp_headers = {"Link": link1}
         mr = self._mock_response(json_data=[{"foo": "bar"}], resp_headers=resp_headers)
         mock_get.return_value = mr
-        rc, rjson = cvelib.net.ghAPIGetList(url)
+        rc, rjson = asyncio.run(cvelib.net.ghAPIGetList(url))
         self.assertEqual(0, rc)
         self.assertTrue("foo" in rjson[0])
         self.assertEqual("bar", rjson[0]["foo"])
@@ -131,14 +132,14 @@ class TestNet(TestCase):
         resp_headers = {"Link": link2}
         mr = self._mock_response(json_data=[{"foo": "bar"}], resp_headers=resp_headers)
         mock_get.return_value = mr
-        rc, rjson = cvelib.net.ghAPIGetList(url)
+        rc, rjson = asyncio.run(cvelib.net.ghAPIGetList(url))
         self.assertEqual(0, rc)
         self.assertTrue("foo" in rjson[0])
         self.assertEqual("bar", rjson[0]["foo"])
 
         # bad link
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.net.ghAPIGetList("https://bad.link", do_exit=False)
+            asyncio.run(cvelib.net.ghAPIGetList("https://bad.link", do_exit=False))
             self.assertEqual("", output.getvalue().strip())
             self.assertEqual(
                 "ERROR: ghAPIGet() only supports https://api.github.com/ URLs",

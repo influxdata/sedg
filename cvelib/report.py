@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 import argparse
+import asyncio
 import copy
 import datetime
 from enum import Enum
@@ -85,7 +86,7 @@ def _repoSecretsScanning(repo: Dict[str, Union[bool, str]]) -> bool:
 
 
 # https://docs.github.com/en/rest/orgs?apiVersion=2022-11-28
-def _getGHReposAll(org: str) -> Dict[str, Dict[str, Union[bool, str]]]:
+async def _getGHReposAll(org: str) -> Dict[str, Dict[str, Union[bool, str]]]:
     """Obtain the list of GitHub repos for the specified org"""
     global repos_all
     if len(repos_all) > 0:
@@ -95,7 +96,7 @@ def _getGHReposAll(org: str) -> Dict[str, Dict[str, Union[bool, str]]]:
 
     # jsons is a single list of res.json()s that are alerts for these URLs
     jsons: List[Dict[str, Any]] = []
-    _, jsons = ghAPIGetList("https://api.github.com/orgs/%s/repos" % org)
+    _, jsons = await ghAPIGetList("https://api.github.com/orgs/%s/repos" % org)
 
     for repo in jsons:
         if "name" not in repo:
@@ -130,7 +131,7 @@ def _getGHReposAll(org: str) -> Dict[str, Dict[str, Union[bool, str]]]:
 
 
 # https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28
-def _getGHIssuesForRepo(
+async def _getGHIssuesForRepo(
     repo: str,
     org: str,
     labels: List[str] = [],
@@ -162,7 +163,9 @@ def _getGHIssuesForRepo(
 
         rc: int = 0
         jsons: List[Any] = []
-        rc, jsons = ghAPIGetList(url, params=params, progress=False, do_exit=False)
+        rc, jsons = await ghAPIGetList(
+            url, params=params, progress=False, do_exit=False
+        )
 
         if rc == 404:
             warn("Skipping %s (%d)" % (url, rc))
@@ -224,7 +227,7 @@ def _getKnownIssues(
     return urls
 
 
-def getMissingReport(
+async def getMissingReport(
     cves: List[CVE],
     org: str,
     repos: List[str] = [],
@@ -240,32 +243,36 @@ def getMissingReport(
     fetch_repos: List[str] = repos
 
     if len(fetch_repos) == 0:
-        repo_info = _getGHReposAll(org)
+        repo_info = await _getGHReposAll(org)
         fetch_repos = list(repo_info.keys())
-    total: int = 1
-    if len(fetch_repos) > 0:
-        total = len(fetch_repos)
 
+    tasks: List[asyncio.Task[Any]] = []
     name: str = ""
-    gh_urls: List[str] = []
-
-    count: int = 1
     for name in sorted(fetch_repos):
         if name in excluded_repos:
             continue
         if name in repo_info and _repoArchived(repo_info[name]):
             continue
-        updateProgress(count / total, prefix="Collecting issues: ")
-        count += 1
+        tasks.append(
+            asyncio.create_task(
+                _getGHIssuesForRepo(
+                    name,
+                    org,
+                    labels=labels,
+                    skip_labels=skip_labels,
+                    since=since,
+                )
+            )
+        )
 
-        url: str
-        for url in _getGHIssuesForRepo(
-            name,
-            org,
-            labels=labels,
-            skip_labels=skip_labels,
-            since=since,
-        ):
+    gh_urls: List[str] = []
+    url: str
+    responses: Dict[str, Any] = dict(
+        zip(sorted(fetch_repos), await asyncio.gather(*tasks))
+    )
+
+    for repo in responses:
+        for url in responses[repo]:
             if url not in known_urls and url not in gh_urls:
                 gh_urls.append(url)
 
@@ -278,7 +285,7 @@ def getMissingReport(
 
 
 # https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28
-def _getGHAlertsEnabled(
+async def _getGHAlertsEnabled(
     org: str, alert_type: str, repos: List[str] = [], excluded_repos: List[str] = []
 ) -> Tuple[List[str], List[str]]:
     """Obtain list of GitHub repositories with alerts enabled"""
@@ -286,7 +293,7 @@ def _getGHAlertsEnabled(
     fetch_repos: List[str] = repos
 
     if len(fetch_repos) == 0:
-        repo_info = _getGHReposAll(org)
+        repo_info = await _getGHReposAll(org)
         fetch_repos = list(repo_info.keys())
 
     enabled: List[str] = []
@@ -337,7 +344,7 @@ def _getGHAlertsEnabled(
 
 
 # https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28
-def _getGHSecretsScanningEnabled(
+async def _getGHSecretsScanningEnabled(
     org: str, repos: List[str] = [], excluded_repos: List[str] = []
 ) -> Tuple[List[str], List[str]]:
     """Obtain list of GitHub repositories with secret scanning enabled"""
@@ -347,7 +354,7 @@ def _getGHSecretsScanningEnabled(
     # secret_scanning is under security_and_analysis in
     # https://api.github.com/orgs/ORG/repos, which _getGHReposAll() fetches so
     # just need to look through repo_info
-    repo_info: Dict[str, Dict[str, Union[bool, str]]] = _getGHReposAll(org)
+    repo_info: Dict[str, Dict[str, Union[bool, str]]] = await _getGHReposAll(org)
     for name in sorted(repo_info.keys()):
         if name in excluded_repos:
             continue
@@ -373,12 +380,14 @@ def getGHAlertsStatusReport(
         enabled: List[str] = []
         disabled: List[str] = []
         if alert_type == "secret-scanning":
-            enabled, disabled = _getGHSecretsScanningEnabled(
-                org, repos, excluded_repos=excluded_repos
+            enabled, disabled = asyncio.run(
+                _getGHSecretsScanningEnabled(org, repos, excluded_repos=excluded_repos)
             )
         else:
-            enabled, disabled = _getGHAlertsEnabled(
-                org, alert_type, repos, excluded_repos=excluded_repos
+            enabled, disabled = asyncio.run(
+                _getGHAlertsEnabled(
+                    org, alert_type, repos, excluded_repos=excluded_repos
+                )
             )
         for repo in sorted(enabled + disabled):
             print(
@@ -393,32 +402,39 @@ def getGHAlertsStatusReport(
             )
 
 
-def getUpdatedReport(
+async def getUpdatedReport(
     cves: List[CVE], org: str, excluded_repos: List[str] = [], since: int = 0
 ) -> None:
     """Obtain list of URLs that have received an update since last run"""
     cachedGetGHIssuesForRepo: Dict[str, List[str]] = {}
     urls: Dict[str, List[str]] = _getKnownIssues(cves, filter_url=org)
 
-    # find updates
-    updated_urls: List[str] = []
+    tasks: List[asyncio.Task[Any]] = []
+    url: str
     print("Collecting known issues:")
+    seenRepos: List[str] = []
+
     for url in sorted(urls.keys()):
         # ['https:', '', 'github.com', '<org>', '<repo>', 'issues', '<num>']
-        tmp: List[str] = url.split("/")
-
-        repo: str = tmp[4]
+        repo: str = url.split("/")[4]
         if repo in excluded_repos:
             continue
 
-        if repo not in cachedGetGHIssuesForRepo:
-            cachedGetGHIssuesForRepo[repo] = _getGHIssuesForRepo(
-                repo,
-                org,
-                since=since,
+        # fetch only once
+        if repo not in seenRepos:
+            seenRepos.append(repo)
+            tasks.append(
+                asyncio.create_task(_getGHIssuesForRepo(repo, org, since=since))
             )
 
-        if url in cachedGetGHIssuesForRepo[repo]:
+    cachedGetGHIssuesForRepo = dict(zip(seenRepos, await asyncio.gather(*tasks)))
+
+    # find updates
+    updated_urls: List[str] = []
+    for url in sorted(urls.keys()):
+        # ['https:', '', 'github.com', '<org>', '<repo>', 'issues', '<num>']
+        repo: str = url.split("/")[4]
+        if repo in cachedGetGHIssuesForRepo and url in cachedGetGHIssuesForRepo[repo]:
             updated_urls.append(url)
 
     if len(updated_urls) == 0:
@@ -931,7 +947,7 @@ def _parseAlert(alert: Dict[str, Any]) -> Tuple[str, Dict[str, str]]:
 #   },
 #   ...
 #
-def _getGHAlertsAll(
+async def _getGHAlertsAll(
     org: str, alert_types=["code-scanning", "dependabot", "secret-scanning"]
 ) -> Dict[str, List[Dict[str, str]]]:
     """Obtain the list of GitHub alerts for the specified org"""
@@ -947,7 +963,7 @@ def _getGHAlertsAll(
     # jsons is a single list of res.json()s that are alerts for these URLs
     jsons: List[Dict[str, str]] = []
     for alert_type in alert_types:
-        _, tmp = ghAPIGetList(
+        _, tmp = await ghAPIGetList(
             "https://api.github.com/orgs/%s/%s/alerts" % (org, alert_type)
         )
         jsons += copy.deepcopy(tmp)
@@ -988,9 +1004,9 @@ def getGHAlertsReport(
 
     alerts: Dict[str, List[Dict[str, str]]] = {}
     if len(alert_types) > 0:
-        alerts = _getGHAlertsAll(org, alert_types=alert_types)
+        alerts = asyncio.run(_getGHAlertsAll(org, alert_types=alert_types))
     else:
-        alerts = _getGHAlertsAll(org)
+        alerts = asyncio.run(_getGHAlertsAll(org))
 
     repo: str
     for repo in alerts:
@@ -1995,7 +2011,7 @@ def getHumanSummaryScans(
 #
 def getReposReport(org: str, archived: Optional[bool] = False) -> None:
     """Show list of active and archived repos"""
-    repos: Dict[str, Dict[str, Union[bool, str]]] = _getGHReposAll(org)
+    repos: Dict[str, Dict[str, Union[bool, str]]] = asyncio.run(_getGHReposAll(org))
     for name in sorted(repos.keys()):
         if archived and _repoArchived(repos[name]):
             print(name)
@@ -2741,7 +2757,11 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
             if args.alerts is not None or args.missing:
                 print("\n# Updates")
 
-            getUpdatedReport(cves, args.org, excluded_repos=excluded_repos, since=since)
+            asyncio.run(
+                getUpdatedReport(
+                    cves, args.org, excluded_repos=excluded_repos, since=since
+                )
+            )
 
         if args.missing:
             if args.alerts is not None or args.updated:
@@ -2753,14 +2773,16 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
             excluded_labels: List[str] = []
             if args.excluded_labels is not None:
                 excluded_labels = args.excluded_labels.split(":")
-            getMissingReport(
-                cves,
-                args.org,
-                repos=repos,
-                excluded_repos=excluded_repos,
-                labels=labels,
-                skip_labels=excluded_labels,
-                since=since,
+            asyncio.run(
+                getMissingReport(
+                    cves,
+                    args.org,
+                    repos=repos,
+                    excluded_repos=excluded_repos,
+                    labels=labels,
+                    skip_labels=excluded_labels,
+                    since=since,
+                )
             )
 
         if args.since_stamp is not None:

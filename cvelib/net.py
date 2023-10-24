@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 
+import asyncio
 import copy
 import os
 import requests
@@ -111,6 +112,17 @@ def requestGetRaw(
     return requestRaw("get", url, headers, params)
 
 
+async def requestGetRawAsync(
+    url: str, headers: Dict[str, str] = {}, params: Mapping[str, Union[str, int]] = {}
+) -> requests.Response:
+    """Wrapper around requestGetRaw()"""
+    # concurrent write to the cache is not supported
+    os.environ["SEDG_REQUESTS_CACHE"] = "none"
+
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, requestGetRaw, url, headers, params)
+
+
 # TODO: type hint the return value (it's tricky)
 def requestGet(
     url: str, headers: Dict[str, str] = {}, params: Mapping[str, Union[str, int]] = {}
@@ -134,7 +146,7 @@ def requestPostRaw(
 
 
 # https://docs.github.com/en/rest/guides/using-pagination-in-the-rest-api?apiVersion=2022-11-28#using-link-headers
-def ghAPIGetList(
+async def ghAPIGetList(
     url: str,
     headers: Dict[str, str] = {},
     params: MutableMapping[str, Union[str, int]] = {},
@@ -167,7 +179,7 @@ def ghAPIGetList(
             print(".", end="", flush=True)
 
         try:
-            r: requests.Response = requestGetRaw(url, headers=hdrs, params=parms)
+            r: requests.Response = await requestGetRawAsync(url, hdrs, parms)
         except requests.exceptions.RequestException as e:  # pragma: nocover
             if do_exit:
                 raise

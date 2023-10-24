@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 from unittest import TestCase, mock
+import asyncio
 import copy
 import datetime
 import os
@@ -1330,7 +1331,7 @@ cve-data = %s
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHReposAll)
     def test__getGHReposAll(self, _):  # 2nd arg is 'mock_get'
         """Test _getGHReposAll()"""
-        r = cvelib.report._getGHReposAll("valid-org")
+        r = asyncio.run(cvelib.report._getGHReposAll("valid-org"))
         self.assertEqual(3, len(r))
 
         self.assertTrue("foo" in r)
@@ -1354,7 +1355,7 @@ cve-data = %s
         self.assertFalse(r["baz"]["secret_scanning"])
 
         # do it a second time to use repos_all
-        r = cvelib.report._getGHReposAll("valid-org")
+        r = asyncio.run(cvelib.report._getGHReposAll("valid-org"))
         self.assertEqual(3, len(r))
 
         self.assertTrue("foo" in r)
@@ -1426,45 +1427,51 @@ foo"""
     # _getGHIssuesForRepo() tests
     #
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
-    def test__getGHIssuesForRepo(self, _):  # 2nd arg is 'mock_get'
+    async def test__getGHIssuesForRepo(self, _):  # 2nd arg is 'mock_get'
         """Test _getGHIssuesForRepo()"""
-        r = cvelib.report._getGHIssuesForRepo("valid-repo", "valid-org")
+        r = asyncio.run(cvelib.report._getGHIssuesForRepo("valid-repo", "valid-org"))
         self.assertEqual(4, len(r))
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/1" in r)
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/2" in r)
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/3" in r)
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/4" in r)
 
-        r = cvelib.report._getGHIssuesForRepo(
-            "valid-repo", "valid-org", labels=["label1"]
+        r = asyncio.run(
+            cvelib.report._getGHIssuesForRepo(
+                "valid-repo", "valid-org", labels=["label1"]
+            )
         )
         self.assertEqual(2, len(r))
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/1" in r)
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/3" in r)
 
-        r = cvelib.report._getGHIssuesForRepo(
-            "valid-repo", "valid-org", labels=["label1"], skip_labels=["label2"]
+        r = asyncio.run(
+            cvelib.report._getGHIssuesForRepo(
+                "valid-repo", "valid-org", labels=["label1"], skip_labels=["label2"]
+            )
         )
         self.assertEqual(1, len(r))
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/1" in r)
 
         with tests.testutil.capturedOutput() as (output, error):
-            r = cvelib.report._getGHIssuesForRepo("404-repo", "valid-org")
+            r = asyncio.run(cvelib.report._getGHIssuesForRepo("404-repo", "valid-org"))
         self.assertEqual(0, len(r))
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Skipping" in error.getvalue().strip())
 
         with tests.testutil.capturedOutput() as (output, error):
-            r = cvelib.report._getGHIssuesForRepo("400-repo", "valid-org")
+            r = asyncio.run(cvelib.report._getGHIssuesForRepo("400-repo", "valid-org"))
         self.assertEqual(0, len(r))
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue("Problem fetching" in error.getvalue().strip())
 
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
-    def test__getGHIssuesForRepoSince(self, _):  # 2nd arg is 'mock_get'
+    async def test__getGHIssuesForRepoSince(self, _):  # 2nd arg is 'mock_get'
         """Test _getGHIssuesForRepo() since 2022-06-22T12:33:47Z"""
-        r = cvelib.report._getGHIssuesForRepo(
-            "valid-repo", "valid-org", since=1655901227
+        r = asyncio.run(
+            cvelib.report._getGHIssuesForRepo(
+                "valid-repo", "valid-org", since=1655901227
+            )
         )
         self.assertEqual(4, len(r))
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/1" in r)
@@ -1473,47 +1480,51 @@ foo"""
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/4" in r)
 
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
-    def test__getGHIssuesForRepoLabel1(self, _):  # 2nd arg is 'mock_get'
+    async def test__getGHIssuesForRepoLabel1(self, _):  # 2nd arg is 'mock_get'
         """Test _getGHIssuesForRepo() - with label1"""
-        r = cvelib.report._getGHIssuesForRepo(
-            "valid-repo", "valid-org", labels=["label1"]
+        r = asyncio.run(
+            cvelib.report._getGHIssuesForRepo(
+                "valid-repo", "valid-org", labels=["label1"]
+            )
         )
         self.assertEqual(2, len(r))
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/1" in r)
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/3" in r)
 
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
-    def test__getGHIssuesForRepoSkipLabel1(self, _):  # 2nd arg is 'mock_get'
+    async def test__getGHIssuesForRepoSkipLabel1(self, _):  # 2nd arg is 'mock_get'
         """Test _getGHIssuesForRepo()"""
-        r = cvelib.report._getGHIssuesForRepo(
-            "valid-repo", "valid-org", skip_labels=["label1"]
+        r = asyncio.run(
+            cvelib.report._getGHIssuesForRepo(
+                "valid-repo", "valid-org", skip_labels=["label1"]
+            )
         )
         self.assertEqual(2, len(r))
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/2" in r)
         self.assertTrue("https://github.com/valid-org/valid-repo/issues/4" in r)
 
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
-    def test__getGHIssuesForRepo410(self, _):  # 2nd arg is 'mock_get'
+    async def test__getGHIssuesForRepo410(self, _):  # 2nd arg is 'mock_get'
         """Test _getGHIssuesForRepo() - 410 status"""
-        r = cvelib.report._getGHIssuesForRepo("410-repo", "valid-org")
+        r = asyncio.run(cvelib.report._getGHIssuesForRepo("410-repo", "valid-org"))
         self.assertEqual(0, len(r))
 
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
-    def test__getGHIssuesForRepo404(self, _):  # 2nd arg is 'mock_get'
+    async def test__getGHIssuesForRepo404(self, _):  # 2nd arg is 'mock_get'
         """Test _getGHIssuesForRepo() - 404 status"""
-        r = cvelib.report._getGHIssuesForRepo("404-repo", "valid-org")
+        r = asyncio.run(cvelib.report._getGHIssuesForRepo("404-repo", "valid-org"))
         self.assertEqual(0, len(r))
 
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
-    def test__getGHIssuesForRepo400(self, _):  # 2nd arg is 'mock_get'
+    async def test__getGHIssuesForRepo400(self, _):  # 2nd arg is 'mock_get'
         """Test _getGHIssuesForRepo() - 400 status"""
-        r = cvelib.report._getGHIssuesForRepo("400-repo", "valid-org")
+        r = asyncio.run(cvelib.report._getGHIssuesForRepo("400-repo", "valid-org"))
         self.assertEqual(0, len(r))
 
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
-    def test__getGHIssuesForRepoEmpty(self, _):  # 2nd arg is 'mock_get'
+    async def test__getGHIssuesForRepoEmpty(self, _):  # 2nd arg is 'mock_get'
         """Test _getGHIssuesForRepo() - empty repo"""
-        r = cvelib.report._getGHIssuesForRepo("empty-repo", "valid-org")
+        r = asyncio.run(cvelib.report._getGHIssuesForRepo("empty-repo", "valid-org"))
         self.assertEqual(0, len(r))
 
     #
@@ -1574,11 +1585,13 @@ foo"""
     # getMissingReport()
     #
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
-    def test_getMissingReport(self, _):  # 2nd arg is mock_get
+    async def test_getMissingReport(self, _):  # 2nd arg is mock_get
         """Test getMissingReport()"""
         cves = self._mock_cve_list_basic()
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.report.getMissingReport(cves, "valid-org", repos=["valid-repo"])
+            asyncio.run(
+                cvelib.report.getMissingReport(cves, "valid-org", repos=["valid-repo"])
+            )
         self.assertEqual("", error.getvalue().strip())
         exp = """Issues missing from CVE data:
  https://github.com/valid-org/valid-repo/issues/4"""
@@ -1586,8 +1599,13 @@ foo"""
 
         # excluded
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.report.getMissingReport(
-                cves, "valid-org", repos=["valid-repo"], excluded_repos=["valid-repo"]
+            asyncio.run(
+                cvelib.report.getMissingReport(
+                    cves,
+                    "valid-org",
+                    repos=["valid-repo"],
+                    excluded_repos=["valid-repo"],
+                )
             )
         self.assertEqual("", error.getvalue().strip())
         exp = """No missing issues."""
@@ -1596,7 +1614,7 @@ foo"""
         # archived
         cves = self._mock_cve_list_basic()
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.report.getMissingReport(cves, "valid-org")
+            asyncio.run(cvelib.report.getMissingReport(cves, "valid-org"))
         self.assertEqual("", error.getvalue().strip())
         exp = """Issues missing from CVE data:
  https://github.com/valid-org/valid-repo/issues/4"""
@@ -1610,70 +1628,84 @@ foo"""
         """Test _getGHAlertsEnabled()"""
 
         # dependabot
-        enabled, disabled = cvelib.report._getGHAlertsEnabled(
-            "valid-org", "dependabot", repos=["valid-repo", "disabled-repo"]
+        enabled, disabled = asyncio.run(
+            cvelib.report._getGHAlertsEnabled(
+                "valid-org", "dependabot", repos=["valid-repo", "disabled-repo"]
+            )
         )
         self.assertEqual(1, len(enabled))
         self.assertTrue("valid-repo" in enabled)
         self.assertEqual(1, len(disabled))
         self.assertTrue("disabled-repo" in disabled)
 
-        enabled, disabled = cvelib.report._getGHAlertsEnabled(
-            "valid-org",
-            "dependabot",
-            repos=["valid-repo", "disabled-repo"],
-            excluded_repos=["disabled-repo"],
+        enabled, disabled = asyncio.run(
+            cvelib.report._getGHAlertsEnabled(
+                "valid-org",
+                "dependabot",
+                repos=["valid-repo", "disabled-repo"],
+                excluded_repos=["disabled-repo"],
+            )
         )
         self.assertEqual(1, len(enabled))
         self.assertTrue("valid-repo" in enabled)
         self.assertEqual(0, len(disabled))
 
-        enabled, disabled = cvelib.report._getGHAlertsEnabled(
-            "valid-org",
-            "dependabot",
-            repos=["valid-repo", "disabled-repo"],
-            excluded_repos=["valid-repo"],
+        enabled, disabled = asyncio.run(
+            cvelib.report._getGHAlertsEnabled(
+                "valid-org",
+                "dependabot",
+                repos=["valid-repo", "disabled-repo"],
+                excluded_repos=["valid-repo"],
+            )
         )
         self.assertEqual(0, len(enabled))
         self.assertEqual(1, len(disabled))
         self.assertTrue("disabled-repo" in disabled)
 
-        enabled, disabled = cvelib.report._getGHAlertsEnabled("valid-org", "dependabot")
+        enabled, disabled = asyncio.run(
+            cvelib.report._getGHAlertsEnabled("valid-org", "dependabot")
+        )
         self.assertEqual(1, len(enabled))
         self.assertTrue("valid-repo" in enabled)
         self.assertEqual(0, len(disabled))
 
         # code-scanning
-        enabled, disabled = cvelib.report._getGHAlertsEnabled(
-            "valid-org", "code-scanning", repos=["valid-repo", "disabled-repo"]
+        enabled, disabled = asyncio.run(
+            cvelib.report._getGHAlertsEnabled(
+                "valid-org", "code-scanning", repos=["valid-repo", "disabled-repo"]
+            )
         )
         self.assertEqual(1, len(enabled))
         self.assertTrue("valid-repo" in enabled)
         self.assertEqual(1, len(disabled))
         self.assertTrue("disabled-repo" in disabled)
 
-        enabled, disabled = cvelib.report._getGHAlertsEnabled(
-            "valid-org",
-            "code-scanning",
-            repos=["valid-repo", "disabled-repo"],
-            excluded_repos=["disabled-repo"],
+        enabled, disabled = asyncio.run(
+            cvelib.report._getGHAlertsEnabled(
+                "valid-org",
+                "code-scanning",
+                repos=["valid-repo", "disabled-repo"],
+                excluded_repos=["disabled-repo"],
+            )
         )
         self.assertEqual(1, len(enabled))
         self.assertTrue("valid-repo" in enabled)
         self.assertEqual(0, len(disabled))
 
-        enabled, disabled = cvelib.report._getGHAlertsEnabled(
-            "valid-org",
-            "code-scanning",
-            repos=["valid-repo", "disabled-repo"],
-            excluded_repos=["valid-repo"],
+        enabled, disabled = asyncio.run(
+            cvelib.report._getGHAlertsEnabled(
+                "valid-org",
+                "code-scanning",
+                repos=["valid-repo", "disabled-repo"],
+                excluded_repos=["valid-repo"],
+            )
         )
         self.assertEqual(0, len(enabled))
         self.assertEqual(1, len(disabled))
         self.assertTrue("disabled-repo" in disabled)
 
-        enabled, disabled = cvelib.report._getGHAlertsEnabled(
-            "valid-org", "code-scanning"
+        enabled, disabled = asyncio.run(
+            cvelib.report._getGHAlertsEnabled("valid-org", "code-scanning")
         )
         self.assertEqual(1, len(enabled))
         self.assertTrue("valid-repo" in enabled)
@@ -1685,39 +1717,49 @@ foo"""
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHAlertsEnabled)
     def test__getGHSecretsScanningEnabled(self, _):  # 2nd arg is mock_get
         """Test _getGHSecretsScanningEnabled()"""
-        enabled, disabled = cvelib.report._getGHSecretsScanningEnabled(
-            "valid-org", repos=["valid-repo", "disabled-repo"]
+        enabled, disabled = asyncio.run(
+            cvelib.report._getGHSecretsScanningEnabled(
+                "valid-org", repos=["valid-repo", "disabled-repo"]
+            )
         )
         self.assertEqual(1, len(enabled))
         self.assertTrue("valid-repo" in enabled)
         self.assertEqual(1, len(disabled))
         self.assertTrue("disabled-repo" in disabled)
 
-        enabled, disabled = cvelib.report._getGHSecretsScanningEnabled(
-            "valid-org",
-            repos=["valid-repo", "disabled-repo"],
-            excluded_repos=["disabled-repo"],
+        enabled, disabled = asyncio.run(
+            cvelib.report._getGHSecretsScanningEnabled(
+                "valid-org",
+                repos=["valid-repo", "disabled-repo"],
+                excluded_repos=["disabled-repo"],
+            )
         )
         self.assertEqual(1, len(enabled))
         self.assertTrue("valid-repo" in enabled)
         self.assertEqual(0, len(disabled))
 
-        enabled, disabled = cvelib.report._getGHSecretsScanningEnabled(
-            "valid-org",
-            repos=["valid-repo", "disabled-repo"],
-            excluded_repos=["valid-repo"],
+        enabled, disabled = asyncio.run(
+            cvelib.report._getGHSecretsScanningEnabled(
+                "valid-org",
+                repos=["valid-repo", "disabled-repo"],
+                excluded_repos=["valid-repo"],
+            )
         )
         self.assertEqual(0, len(enabled))
         self.assertEqual(1, len(disabled))
         self.assertTrue("disabled-repo" in disabled)
 
-        enabled, disabled = cvelib.report._getGHSecretsScanningEnabled("valid-org")
+        enabled, disabled = asyncio.run(
+            cvelib.report._getGHSecretsScanningEnabled("valid-org")
+        )
         self.assertEqual(1, len(enabled))
         self.assertTrue("valid-repo" in enabled)
         self.assertEqual(0, len(disabled))
 
-        enabled, disabled = cvelib.report._getGHSecretsScanningEnabled(
-            "valid-org", repos=["nonexistent"]
+        enabled, disabled = asyncio.run(
+            cvelib.report._getGHSecretsScanningEnabled(
+                "valid-org", repos=["nonexistent"]
+            )
         )
         self.assertEqual(0, len(enabled))
         self.assertEqual(0, len(disabled))
@@ -1745,13 +1787,13 @@ secret-scanning,enabled,valid-repo,https://github.com/valid-org/valid-repo/setti
     # getUpdatedReport()
     #
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
-    def test_getUpdatedReport(self, _):  # 2nd arg is mock_get
+    async def test_getUpdatedReport(self, _):  # 2nd arg is mock_get
         """Test _getUpdatedReport()"""
         cves = self._mock_cve_list_basic()
 
         # all updated since
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.report.getUpdatedReport(cves, "valid-org")
+            asyncio.run(cvelib.report.getUpdatedReport(cves, "valid-org"))
         self.assertEqual("", error.getvalue().strip())
         exp = """Collecting known issues:
 Updated issues:
@@ -1762,8 +1804,10 @@ Updated issues:
 
         # excluded
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.report.getUpdatedReport(
-                cves, "valid-org", excluded_repos=["valid-repo"]
+            asyncio.run(
+                cvelib.report.getUpdatedReport(
+                    cves, "valid-org", excluded_repos=["valid-repo"]
+                )
             )
         self.assertEqual("", error.getvalue().strip())
         exp = """Collecting known issues:
@@ -1772,7 +1816,9 @@ No updated issues."""
 
         # some updated since 1656792271 (2022-07-02)
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.report.getUpdatedReport(cves, "valid-org", since=1656792271)
+            asyncio.run(
+                cvelib.report.getUpdatedReport(cves, "valid-org", since=1656792271)
+            )
         self.assertEqual("", error.getvalue().strip())
         exp = """Collecting known issues:
 Updated issues:
@@ -1781,14 +1827,16 @@ Updated issues:
 
         # none updated since 1657224398 (2022-07-07)
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.report.getUpdatedReport(cves, "valid-org", since=1657224398)
+            asyncio.run(
+                cvelib.report.getUpdatedReport(cves, "valid-org", since=1657224398)
+            )
         self.assertEqual("", error.getvalue().strip())
         exp = """Collecting known issues:
 No updated issues."""
         self.assertEqual(exp, output.getvalue().strip())
 
     @mock.patch("requests.get", side_effect=mocked_requests_get__getGHIssuesForRepo)
-    def test_getUpdatedReportWithOther(self, _):  # 2nd arg is mock_get
+    async def test_getUpdatedReportWithOther(self, _):  # 2nd arg is mock_get
         """Test _getUpdatedReportWithOther()"""
         cves = self._mock_cve_list_basic()
         d = self._cve_template(
@@ -1801,7 +1849,9 @@ No updated issues."""
 
         # all updated since with other-repo in the mix
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.report.getUpdatedReport(cves, "valid-org", excluded_repos=[])
+            asyncio.run(
+                cvelib.report.getUpdatedReport(cves, "valid-org", excluded_repos=[])
+            )
         self.assertEqual("", error.getvalue().strip())
         exp = """Collecting known issues:
 Updated issues:
@@ -1813,8 +1863,10 @@ Updated issues:
 
         # other-repo updated when excluding valid-repo
         with tests.testutil.capturedOutput() as (output, error):
-            cvelib.report.getUpdatedReport(
-                cves, "valid-org", excluded_repos=["valid-repo"]
+            asyncio.run(
+                cvelib.report.getUpdatedReport(
+                    cves, "valid-org", excluded_repos=["valid-repo"]
+                )
             )
         self.assertEqual("", error.getvalue().strip())
         exp = """Collecting known issues:

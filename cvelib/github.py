@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 import argparse
+import asyncio
 import copy
 import datetime
 import json
@@ -404,8 +405,10 @@ Optionally specify a particular alert type:
 
     jsons: Dict[str, List[Any]] = {}
     for alert_type in alert_types:
-        _, tmp = ghAPIGetList(
-            "https://api.github.com/orgs/%s/%s/alerts" % (args.org, alert_type)
+        _, tmp = asyncio.run(
+            ghAPIGetList(
+                "https://api.github.com/orgs/%s/%s/alerts" % (args.org, alert_type)
+            )
         )
         if alert_type not in jsons:
             jsons[alert_type] = []
