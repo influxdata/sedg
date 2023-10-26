@@ -462,7 +462,7 @@ def _getMockedAlertsJSON(alert_type="all"):
             "dismissed_at": "2022-07-02T18:27:30Z",
             "dismissed_by": {"login": "ghuser1"},
             "dismissed_comment": "some comment",
-            "dismissed_reason": "tolerable",
+            "dismissed_reason": "tolerable_risk",
             "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/1",
             "repository": {"name": "valid-repo", "private": False},
             "security_advisory": {
@@ -1890,7 +1890,7 @@ Updated issues:
     - severity: low
     - created: 2022-07-01T18:27:30Z
     - dismissed: 2022-07-02T18:27:30Z
-    - reason: tolerable
+    - reason: tolerable_risk
     - comment: some comment
     - by: ghuser1
     - go.sum
@@ -1969,7 +1969,7 @@ Updated issues:
                     "dismissed_at": "2022-07-02T18:27:30Z",
                     "dismissed_by": {"login": "ghuser1"},
                     "dismissed_comment": "some comment",
-                    "dismissed_reason": "tolerable",
+                    "dismissed_reason": "tolerable_risk",
                     "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/1",
                     "repository": {"name": "valid-repo", "private": False},
                     "security_advisory": {
@@ -2031,6 +2031,33 @@ Updated issues:
                 "valid-repo",
                 "severity",
                 "medium",
+            ),
+            (
+                {
+                    "created_at": "2023-10-16T16:20:24Z",
+                    "dependency": {
+                        "manifest_path": "package-lock.json",
+                        "package": {
+                            "name": "undici",
+                            "ecosystem": "npm",
+                            "scope": "development",
+                        },
+                    },
+                    "dismissed_at": "2023-10-16T18:37:53Z",
+                    "dismissed_by": {"login": "ghuser1"},
+                    "dismissed_comment": "some comment",
+                    "dismissed_reason": "tolerable_risk",
+                    "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/1",
+                    "repository": {"name": "valid-repo", "private": True},
+                    "security_advisory": None,
+                    "security_vulnerability": {
+                        "package": {"ecosystem": "npm", "name": "undici"},
+                        "severity": "low",
+                    },
+                },
+                "valid-repo",
+                "dismissed_by",
+                "ghuser1",
             ),
         ]
 
@@ -2139,7 +2166,7 @@ valid-repo resolved alerts: 3
     - severity: low
     - created: 2022-07-01T18:27:30Z
     - dismissed: 2022-07-02T18:27:30Z
-    - reason: tolerable
+    - reason: tolerable_risk
     - comment: some comment
     - by: ghuser1
     - go.sum
@@ -2237,7 +2264,7 @@ valid-repo resolved alerts: 3
     - severity: low
     - created: 2022-07-01T18:27:30Z
     - dismissed: 2022-07-02T18:27:30Z
-    - reason: tolerable
+    - reason: tolerable_risk
     - comment: some comment
     - by: ghuser1
     - go.sum
@@ -2474,7 +2501,7 @@ valid-repo resolved alerts: 3
     - severity: low
     - created: 2022-07-01T18:27:30Z
     - dismissed: 2022-07-02T18:27:30Z
-    - reason: tolerable
+    - reason: tolerable_risk
     - comment: some comment
     - by: ghuser1
     - go.sum
@@ -2607,7 +2634,7 @@ valid-repo resolved alerts: 1
     - severity: low
     - created: 2022-07-01T18:27:30Z
     - dismissed: 2022-07-02T18:27:30Z
-    - reason: tolerable
+    - reason: tolerable_risk
     - comment: some comment
     - by: ghuser1
     - go.sum
@@ -2778,7 +2805,7 @@ valid-repo resolved alerts: 1
     - severity: low
     - created: 2022-07-01T18:27:30Z
     - dismissed: 2022-07-02T18:27:30Z
-    - reason: tolerable
+    - reason: tolerable_risk
     - comment: some comment
     - by: ghuser1
     - go.sum
