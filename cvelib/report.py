@@ -721,6 +721,11 @@ def _parseAlert(alert: Dict[str, Any]) -> Tuple[str, Dict[str, str]]:
         a["security_advisory_ghsa_url"] = (
             "https://github.com/advisories/%s" % alert["security_advisory"]["ghsa_id"]
         )
+    elif (
+        "security_vulnerability" in alert
+        and alert["security_vulnerability"] is not None
+    ):
+        a["severity"] = alert["security_vulnerability"]["severity"]
 
     # secret scanning specific
     # NOTE: the location of the secret needs another API call. For now, skip
