@@ -323,8 +323,8 @@ For each field in the global section:
      for tracking a non-public or a not-yet-assigned-CVE identifier issue in
      GitHub. It encodes both the GitHub repository and issue number/pull
      request, such that `CVE-2020-GH1234#foo` corresponds with
-     https://github.com/<yourorg>/foo/issues/1234. This is particularly useful
-     for organizations with lots of repositories.
+     `https://github.com/<yourorg>/foo/issues/1234`. This is particularly
+     useful for organizations with lots of repositories.
  * `OpenDate` is the date the CVE was created
  * `CloseDate` is the date the CVE was closed (nothing 'need-triage', 'needed'
    or 'pending'). Per-software close date overrides are possible in the
@@ -403,25 +403,24 @@ For each field in the software section:
      shell, snap
    * OS: alpine, android, centos, debian, distroless, flatcar, ios, opensuse,
      osx, rhel, suse, ubuntu, windows
- * `<where>` indicates where the software lives or in the case of snaps or
-   other technologies with a concept of publishers, who the publisher is. For
-   OS (eg, `ubuntu`, `debian`, `suse`, etc), `<where>` indicates the release of
-   the distribution (eg, `ubuntu/focal` indicates 20.04 for Ubuntu where
-   `ubuntu` is the `<product>` (distro) and `focal` is the `<where>` (distro
-   release)). For `git`, `<where>` could indicate the source code hosting
-   provider (eg, `github`, `gitlab`, `launchpad`, etc) or could be used to
-   indicate the organization/user in a hosting provider. Eg, `git/github_foo`
-   indicates that `foo` is somewhere in GitHub whereas `git/bar_foo` could be
-   used to indicate that `foo` is in some provider's organization/user. How
-   `<where>` is used is not prescribed and the `<product>/<where>` combination
-   is not meant to capture everything where the software lives. It is meant to
-   be flexible to allow triagers a means to discern these differences as
-   appropriate for their requirements (eg, perhaps the triager wants to track
-   the status of the `targz` vs `zip`, one might use `archive/targz` and
-   `archive/zip`).
+ * `<where>` indicates where the software lives or in the case of technologies
+   with a concept of publishers, who the publisher is. For OS (eg, `ubuntu`,
+   `debian`, `suse`, etc), `<where>` indicates the release of the distribution
+   (eg, `ubuntu/focal` indicates 20.04 for Ubuntu where `ubuntu` is the
+   `<product>` (distro) and `focal` is the `<where>` (distro release)). For
+   `git`, `<where>` could indicate the source code hosting provider (eg,
+   `github`, `gitlab`, `launchpad`, etc) or could be used to indicate the
+   organization/user in a hosting provider. Eg, `git/github_foo` indicates that
+   `foo` is somewhere in GitHub whereas `git/bar_foo` could be used to indicate
+   that `foo` is in some provider's organization/user. How `<where>` is used is
+   not prescribed and the `<product>/<where>` combination is not meant to
+   capture everything where the software lives. It is meant to be flexible to
+   allow triagers a means to discern these differences as appropriate for their
+   requirements (eg, perhaps the triager wants to track the status of the
+   `targz` vs `zip`, one might use `archive/targz` and `archive/zip`).
  * `<software>` is the name of the software as dictated by the product (eg, the
    name of the github project, the name of the OCI image, the deb source
-   package, the name of the snap, etc)
+   package, the name of the build artifact, etc)
  * `<modifier>` is an optional key for grouping collections of packages (eg,
    'v1' for the project's `v1` branch, `v2`, etc)
  * `<status>` indicates the status of fixing the issue for this software (eg,
@@ -430,15 +429,15 @@ For each field in the software section:
  * `<when>` is optional and when specified occurs within parentheses and
    indicates when the software will be/was fixed when used with the `pending`,
    `released` or `not-affected` status. When may be a version number (for
-   software with releases), a git hash (for continuous development), a snap
-   revision number or a date (eg, for an OCI image).
+   software with releases), a git hash (for continuous development), a revision
+   number or a date (eg, for an OCI image).
    * As a special case for `not-affected` and `deferred` the `<when>`
-     parenthetical might give a hint as to why (eg `code not present` with
+     parenthetical might give a hint as to why (eg `code-not-present` with
      `not-affected`). Typical hints for 'not-affected':
-     * code not present: project does not contain the vulnerable code path
-     * code not compiled: project does not compile the vulnerable code path
-     * code not imported: project does not import the vulnerable code path
-     * code not used: project contains/imports/etc the code but does use it
+     * `code-not-present`: project does not contain the vulnerable code path
+     * `code-not-compiled`: project does not compile the vulnerable code path
+     * `code-not-imported`: project does not import the vulnerable code path
+     * `code-not-used`: project contains/imports/etc the code but does use it
      * YYYY-MM-DD with deferred: date when entry was put into the deferred
        status
    * `not-affected` and `released` are similar but convey different things. Eg
@@ -476,7 +475,7 @@ Typical software stanza examples:
     Patches_corge:
     upstream_corge: released (1.2)
     debian/buster_corge: needed
-    ubuntu/xenial_corge: not-affected (code not present)
+    ubuntu/xenial_corge: not-affected (code-not-present)
     ubuntu/bionic_corge: needed
     ubuntu/focal_corge: not-affected (1.2-3)
     ubuntu/groovy_corge: not-affected (1.4-1)
@@ -484,7 +483,7 @@ Typical software stanza examples:
     # Snap for different publishers
     Patches_qux:
     snap/pub1_qux: released (1234)
-    snap/pub2_qux: not-affected (code not compiled)
+    snap/pub2_qux: not-affected (code-not-compiled)
 ```
 
 The format offers considerable flexibility. For example, to capture upstream vs
@@ -513,8 +512,8 @@ then adjust `~/.config/sedg_ubuntu.conf` to contain:
 When specifying compat mode:
 * `<product>` may specify Ubuntu releases as a shorthand (eg, `focal` instead
   of `ubuntu/focal`)
-* patches can specify various other types (eg, in addition to 'distro',
-  'other', 'upstream' and 'vendor', allow 'debdiff', 'diff', 'fork', 'merge',
+* patches can specify various other types (eg, in addition to `distro`,
+  `other`, `upstream` and `vendor`, allow `debdiff`, `diff`, `fork`, `merge`,
   etc)
 * For `Tags...` and `Priority...`, disallow `_` in `<software>`, allow `/` in
   `<modifier>` and allow `_` as the delimiter for their use of
