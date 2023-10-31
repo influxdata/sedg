@@ -1568,12 +1568,6 @@ oci/org_foo: pending
         tsts = [
             # valid
             (
-                "https://github.com/influxdata/idpe/issues/5519",
-                "CVE-%s-GH5519#idpe" % year,
-                "influxdata",
-                None,
-            ),
-            (
                 "https://github.com/foo/bar/issues/1",
                 "CVE-%s-GH1#bar" % year,
                 "foo",
@@ -1606,10 +1600,10 @@ oci/org_foo: pending
                 "unsupported url: 'https://launchpad.net/bugs/1234' (only support github)",
             ),
             (
-                "https://github.com/influxdata/idpe/pull/6238",
+                "https://github.com/foo/bar/pull/2",
                 None,
                 None,
-                "invalid url: 'https://github.com/influxdata/idpe/pull/6238' (only support github issues)",
+                "invalid url: 'https://github.com/foo/bar/pull/2' (only support github issues)",
             ),
             (
                 "https://github.com/foo/%s/issues/1" % ("a" * 51),
@@ -2192,7 +2186,7 @@ cve-data = %s
    advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
    severity: medium
    status: needed
-   url: https://github.com/influxdata/foo/security/dependabot/1
+   url: https://github.com/foo/bar/security/dependabot/1
 """
         content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["retired"], "CVE-1234-5678")
@@ -2224,7 +2218,7 @@ cve-data = %s
    advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
    severity: medium
    status: released
-   url: https://github.com/influxdata/foo/security/dependabot/1
+   url: https://github.com/foo/bar/security/dependabot/1
 """
         content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
@@ -2257,7 +2251,7 @@ cve-data = %s
    advisory: https://github.com/advisories/GHSA-xg2h-wx96-xgxr
    severity: medium
    status: released
-   url: https://github.com/influxdata/foo/security/dependabot/1
+   url: https://github.com/foo/bar/security/dependabot/1
 """
         content = tests.testutil.cveContentFromDict(tmpl)
         cve_fn = os.path.join(cveDirs["active"], "CVE-1234-5678")
