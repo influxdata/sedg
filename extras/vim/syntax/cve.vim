@@ -15,10 +15,10 @@
 "
 " Optionally add to ~/.config/nvim/init.vim to have syntax for CVE templates
 " (assumes /path/to/your-cve-data/templates):
-" autocmd BufNewFile,BufRead *cve*/templates/* set ft=cve
-" autocmd BufNewFile,BufRead *cve*/templates/* set syntax=cve
-" autocmd BufNewFile,BufRead */influx-security-tools-cve-data/templates/* set autoindent
-" autocmd BufNewFile,BufRead */influx-security-tools-cve-data/templates/* setlocal indentexpr=GetCVEIndent()
+" autocmd BufNewFile,BufRead *cve-data/templates/* set ft=cve
+" autocmd BufNewFile,BufRead *cve-data/templates/* set syntax=cve
+" autocmd BufNewFile,BufRead *cve-data/templates/* set autoindent
+" autocmd BufNewFile,BufRead *cve-data/templates/* setlocal indentexpr=GetCVEIndent()
 "
 " Reload in an open file with:
 " :set syntax=off
