@@ -124,9 +124,9 @@ class CvePkg(object):
         if len(modifier) > _patLengths["pkg-modifier"]:
             raise CveException("invalid modifier '%s'" % modifier)
         if self.compatUbuntu:
-            if not rePatterns["pkg-software-ubuntu"].search(modifier):
+            if not rePatterns["pkg-modifier-ubuntu"].search(modifier):
                 raise CveException("invalid compat modifier '%s'" % modifier)
-        elif not rePatterns["pkg-software"].search(modifier):
+        elif not rePatterns["pkg-modifier"].search(modifier):
             raise CveException("invalid modifier '%s'" % modifier)
         self.modifier = modifier
 
@@ -226,7 +226,6 @@ def parse(s: str, compatUbuntu: bool = False) -> CvePkg:
     else:
         product = product_where
 
-    # compatUbuntu allows foo_bar/baz, otherwise allow foo/bar/baz
     if "/" in software_mod:
         software, modifier = software_mod.split("/")
     else:

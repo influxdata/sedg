@@ -837,15 +837,27 @@ oci/org_foo: pending
         hdrs = self._mockHeaders(t)
         cvelib.cve.CVE().setData(hdrs)
 
-        # valid Tags_foo_bar ('_' in name)
+        # valid Tags_foo/bar ('_' in modifier)
+        t = self._cve_template()
+        t["Tags_foo/bar"] = "apparmor"
+        hdrs = self._mockHeaders(t)
+        cvelib.cve.CVE().setData(hdrs)
+
+        # valid Tags_foo_bar ('_' in software)
         t = self._cve_template()
         t["Tags_foo_bar"] = "apparmor pie"
         hdrs = self._mockHeaders(t)
         cvelib.cve.CVE().setData(hdrs)
 
-        # valid Tags_foo_bar/baz ('_' in name)
+        # valid Tags_foo_bar/baz ('_' in software)
         t = self._cve_template()
         t["Tags_foo_bar/baz"] = "apparmor pie"
+        hdrs = self._mockHeaders(t)
+        cvelib.cve.CVE().setData(hdrs)
+
+        # valid Tags_foo_bar/baz ('_' in software and modifier)
+        t = self._cve_template()
+        t["Tags_foo_bar/baz_norf"] = "apparmor pie"
         hdrs = self._mockHeaders(t)
         cvelib.cve.CVE().setData(hdrs)
 
@@ -867,15 +879,27 @@ oci/org_foo: pending
         hdrs = self._mockHeaders(t)
         cvelib.cve.CVE().setData(hdrs)
 
-        # valid Priority_foo_bar ('_' in name)
+        # valid Priority_foo/bar_baz ('_' in modifier)
+        t = self._cve_template()
+        t["Priority_foo/bar_baz"] = "medium"
+        hdrs = self._mockHeaders(t)
+        cvelib.cve.CVE().setData(hdrs)
+
+        # valid Priority_foo_bar ('_' in software)
         t = self._cve_template()
         t["Priority_foo_bar"] = "medium"
         hdrs = self._mockHeaders(t)
         cvelib.cve.CVE().setData(hdrs)
 
-        # valid Priority_foo_bar/baz ('_' in name)
+        # valid Priority_foo_bar/baz ('_' in software)
         t = self._cve_template()
         t["Priority_foo_bar/baz"] = "medium"
+        hdrs = self._mockHeaders(t)
+        cvelib.cve.CVE().setData(hdrs)
+
+        # valid Priority_foo_bar/baz ('_' in software and modifier)
+        t = self._cve_template()
+        t["Priority_foo_bar/baz_norf"] = "medium"
         hdrs = self._mockHeaders(t)
         cvelib.cve.CVE().setData(hdrs)
 
@@ -997,7 +1021,13 @@ oci/org_foo: pending
             ("Priority_foo", False, True),
             ("Priority_%s" % ("a" * 50), False, True),
             ("Priority_foo_bar", False, True),  # non-compat allows '_' in software
+            ("Priority_foo/bar_baz", False, True),  # non-compat allows '_' in modifier
             ("Priority_foo_bar/baz", False, True),
+            (
+                "Priority_foo_bar/baz_norf",
+                False,
+                True,
+            ),  # non-compat allows '_' in modifier
             ("Priority_%s/foo" % ("a" * 50), False, True),
             ("Priority_foo/%s" % ("a" * 50), False, True),
             ("Priority_FOO", False, True),
@@ -1023,6 +1053,7 @@ oci/org_foo: pending
             ("Priority_foo_%s" % ("a" * 51), True, False),
             ("Priority_foo/bar", True, False),
             ("Priority_foo_bar_baz", True, False),
+            ("Priority_foo_precise/esm_bad", True, False),
             ("Priority_FOO", True, False),
         ]
         for key, compat, valid in tsts:
