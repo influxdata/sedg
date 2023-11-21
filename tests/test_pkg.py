@@ -256,13 +256,22 @@ class TestPkg(TestCase):
         tsts = [
             # valid
             ("foo", True, False),
+            ("foo1", True, False),
+            ("foo-bar", True, False),
+            ("foo.bar", True, False),
+            ("for-bar-1.0", True, False),
             ("foo_bar", True, False),
             ("a" * 40, True, False),
             # valid compat
             ("foo", True, True),
+            ("foo1", True, True),
+            ("foo-bar", True, True),
+            ("foo.bar", True, True),
+            ("for-bar-1.0", True, True),
             ("a" * 40, True, True),
             # invalid
             ("b@d", False, False),
+            ("FOO", False, False),
             ("foo ", False, False),
             (" foo ", False, False),
             ("a" * 41, False, False),
@@ -621,6 +630,7 @@ class TestPkg(TestCase):
             ("alpine/3.16_foo: needed (123-4)", False, True),
             ("debian/buster_foo: needed (123-4)", False, True),
             ("debian/buster_foo/bar: needed (123-4)", False, True),
+            ("debian/buster_foo/bar_baz: needed (123-4)", False, True),
             ("ubuntu/focal_foo: needed", False, True),
             (
                 "ubuntu/trusty_gcc-snapshot: DNE (trusty was not-affected 20140405-0ubuntu1)",
@@ -738,6 +748,7 @@ class TestPkg(TestCase):
             ("focal_foo/%s: needed" % ("a" * 40), False, False),
             ("focal_foo: needed (%s)" % ("a" * 101), True, False),
             ("upstream_foo_bar: needed (123-4)", True, False),
+            ("upstream_foo/bar_baz: needed (123-4)", True, False),
             ("upstream_FOO: needed", True, False),
             ("upstream_foo-BAR: needed", True, False),
             ("upstream/foo: needed", True, False),

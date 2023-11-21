@@ -95,6 +95,16 @@ rePatterns: Dict[str, Pattern[str]] = {
         r"^[a-z0-9+.-]{1,%(software_len)d}$"
         % ({"software_len": _patLengths["pkg-software"]})
     ),
+    # foo, foo1, foo-bar, foo.bar, for-bar-1.0, foo_bar
+    "pkg-modifier": re.compile(
+        r"^[a-z0-9+._-]{1,%(modifier_len)d}$"
+        % ({"modifier_len": _patLengths["pkg-modifier"]})
+    ),
+    # foo, foo1, foo-bar, foo.bar, for-bar-1.0
+    "pkg-modifier-ubuntu": re.compile(
+        r"^[a-z0-9+.-]{1,%(modifier_len)d}$"
+        % ({"modifier_len": _patLengths["pkg-modifier"]})
+    ),
     # add others distros and build artifacts (oci, etc) as desired
     "pkg-product": re.compile(
         r"^(upstream|%s)$"
@@ -116,7 +126,7 @@ rePatterns: Dict[str, Pattern[str]] = {
     ),
     # the string form
     "pkg-full": re.compile(
-        r"^(upstream|%(products)s)(/[a-z0-9+.-]{1,%(where_len)d})?_[a-zA-Z0-9+._-]{1,%(software_len)d}(/[a-z0-9+.-]{1,%(modifier_len)d})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,%(when_len)d}\))?$"
+        r"^(upstream|%(products)s)(/[a-z0-9+.-]{1,%(where_len)d})?_[a-zA-Z0-9+._-]{1,%(software_len)d}(/[a-z0-9+._-]{1,%(modifier_len)d})?: (needs-triage|needed|pending|released|deferred|ignored|DNE|not-affected)( \([a-zA-Z0-9 +.,/'\":~\[\]_()<>#=|`-]{1,%(when_len)d}\))?$"
         % (
             {
                 "products": "|".join(
@@ -241,7 +251,7 @@ rePatterns: Dict[str, Pattern[str]] = {
     ),
     # TODO: reuse product/where
     "pkg-tags-key": re.compile(
-        r"^Tags_[a-zA-Z0-9+.-][a-zA-Z0-9+._-]{0,%(software_len1)d}[a-zA-Z0-9+.-](/[a-z0-9+.-]{1,%(software_len2)d})?$"
+        r"^Tags_[a-zA-Z0-9+.-][a-zA-Z0-9+._-]{0,%(software_len1)d}[a-zA-Z0-9+.-](/[a-z0-9+._-]{1,%(software_len2)d})?$"
         % (
             {
                 "software_len1": _patLengths["pkg-software"] - 2,
@@ -254,7 +264,7 @@ rePatterns: Dict[str, Pattern[str]] = {
         % ({"software_len": _patLengths["pkg-software"]})
     ),
     "pkg-priority-key": re.compile(
-        r"^Priority_[a-zA-Z0-9+.-][a-zA-Z0-9+._-]{0,%(software_len1)d}[a-zA-Z0-9+.-](/[a-z0-9+.-]{1,%(software_len2)d})?$"
+        r"^Priority_[a-zA-Z0-9+.-][a-zA-Z0-9+._-]{0,%(software_len1)d}[a-zA-Z0-9+.-](/[a-z0-9+._-]{1,%(software_len2)d})?$"
         % (
             {
                 "software_len1": _patLengths["pkg-software"] - 2,

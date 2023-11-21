@@ -57,19 +57,19 @@ syn match cveScanReportsValue contained /^ \(- type: oci\|  \(component\|detecte
 syn match cveKey "^\%(Candidate\|OpenDate\|PublicDate\|CRD\|References\|Description\|GitHub-Advanced-Security\|Scan-Reports\|Notes\|Mitigation\|CVSS\|Bugs\|Discovered-by\|Assigned-to\): *"
 
 " CloseDate[_<software>[/<modifier>]]: <date>
-syn match cveCloseDateKey "^CloseDate\(_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+.-]\+\)\?\)\?: *"
+syn match cveCloseDateKey "^CloseDate\(_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+._-]\+\)\?\)\?: *"
 
 " Priority[_<software>[/<modifier>]]: <priority>
-syn match cvePriorityKey "^Priority\(_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+.-]\+\)\?\)\?: *"
+syn match cvePriorityKey "^Priority\(_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+._-]\+\)\?\)\?: *"
 
 " Patches_<software>:
 syn match cvePatchesKey "^Patches_[a-zA-Z0-9][a-zA-Z0-9+._-]\+: *"
 
 " Tags_<software>[/<modifier>]: <tag>
-syn match cveTagKey "^Tags_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+.-]\+\)\?: *"
+syn match cveTagKey "^Tags_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+._-]\+\)\?: *"
 
 " <product>[/<where>]_<software>[/<modifier>]:
-syn match cveProductKey "^\%(upstream\|bzr\|cvs\|git\|hg\|svn\|appimage\|archive\|deb\|dmg\|exe\|flatpak\|oci\|rpm\|shell\|snap\|alpine\|android\|centos\|debian\|distroless\|flatcar\|ios\|opensuse\|osx\|rhel\|suse\|ubuntu\|windows\)\(/[a-z0-9+.-]\+\)\?_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+.-]\+\)\?: *"
+syn match cveProductKey "^\%(upstream\|bzr\|cvs\|git\|hg\|svn\|appimage\|archive\|deb\|dmg\|exe\|flatpak\|oci\|rpm\|shell\|snap\|alpine\|android\|centos\|debian\|distroless\|flatcar\|ios\|opensuse\|osx\|rhel\|suse\|ubuntu\|windows\)\(/[a-z0-9+.-]\+\)\?_[a-zA-Z0-9][a-zA-Z0-9+._-]\+\(/[a-z0-9+._-]\+\)\?: *"
 
 
 "
