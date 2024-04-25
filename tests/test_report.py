@@ -5,6 +5,7 @@
 from unittest import TestCase, mock
 import copy
 import datetime
+import json
 import os
 import tempfile
 
@@ -2588,6 +2589,224 @@ valid-repo updated alerts: 5
                 [], "valid-org", repos=["valid-repo"], since=-1
             )
 
+    #
+    # _readJSONFiles()
+    #
+    def test__readJSONFiles(self):
+        """Test _readJSONFiles()"""
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
+
+        # set up some files to read
+        fns = []
+        fns_rel = []
+        urls = []
+        for idx, j in enumerate(_getMockedAlertsJSON()):
+            fn = os.path.join(self.tmpdir, "%d.json" % idx)
+            with open(fn, "w") as fp:
+                json.dump(j, fp)
+            fns.append(fn)
+            fns_rel.append("%d.json" % idx)
+            urls.append(j["html_url"])
+        self.assertEqual(8, len(urls))
+
+        # absolute
+        jsons = cvelib.report._readJSONFiles(fns)
+        self.assertEqual(8, len(jsons))
+        for j in jsons:
+            self.assertTrue(
+                j["html_url"] in urls,
+                msg="Could not find '%s' in: %s" % (j["html_url"], urls),
+            )
+
+        # relative
+        jsons = cvelib.report._readJSONFiles(fns_rel, path=self.tmpdir)
+        self.assertEqual(8, len(jsons))
+        for j in jsons:
+            self.assertTrue(
+                j["html_url"] in urls,
+                msg="Could not find '%s' in: %s" % (j["html_url"], urls),
+            )
+
+        # bad at beginning
+        with tests.testutil.capturedOutput() as (output, error):
+            jsons = cvelib.report._readJSONFiles(
+                ["nonexistent"] + fns_rel, path=self.tmpdir
+            )
+        self.assertEqual(
+            "WARN: Skipping non-existent 'nonexistent'", error.getvalue().strip()
+        )
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(8, len(jsons))
+        for j in jsons:
+            self.assertTrue(
+                j["html_url"] in urls,
+                msg="Could not find '%s' in: %s" % (j["html_url"], urls),
+            )
+
+    #
+    # getGHAlertsReportFromFiles()
+    #
+    @mock.patch("cvelib.report._readJSONFiles")
+    def test_getGHAlertsReportFromFiles(self, mock_readJSONFiles):
+        """Test getGHAlertsReport()"""
+        self.maxDiff = 16384
+
+        # empty
+        mock_readJSONFiles.return_value = []
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getGHAlertsReportFromFiles(
+                "test-org", ["fake_fn1", "fake_fn2"]
+            )
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual("", output.getvalue().strip())
+
+        # standard set of alerts
+        mock_readJSONFiles.return_value = _getMockedAlertsJSON()
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getGHAlertsReportFromFiles(
+                "test-org", ["fake_fn1", "fake_fn2"]
+            )
+        self.assertEqual("", error.getvalue().strip())
+        exp = """Alerts:
+valid-repo read alerts: 8
+  Some Code Finding
+    - severity: high
+    - created: 2022-07-01T17:15:30Z
+    - url: https://github.com/valid-org/valid-repo/security/code-scanning/30
+
+  Some Other Code Finding
+    - severity: medium
+    - created: 2022-07-05T17:15:30Z
+    - url: https://github.com/valid-org/valid-repo/security/code-scanning/31
+
+  github.com/foo/bar
+    - severity: low
+    - created: 2022-07-01T18:27:30Z
+    - go.sum
+    - advisory: https://github.com/advisories/GHSA-a
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/1
+
+  baz
+    - severity: medium
+    - created: 2022-07-03T18:27:30Z
+    - path/yarn.lock
+    - advisory: https://github.com/advisories/GHSA-b
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/3
+
+  baz
+    - severity: medium
+    - created: 2022-07-04T18:27:30Z
+    - path/yarn.lock
+    - advisory: https://github.com/advisories/GHSA-c
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/4
+
+  @norf/quz
+    - severity: unknown
+    - created: 2022-07-05T18:27:30Z
+    - path/yarn.lock
+    - advisory: https://github.com/advisories/GHSA-d
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/5
+
+  Some Leaked Secret
+    - severity: high
+    - created: 2022-07-01T18:15:30Z
+    - url: https://github.com/valid-org/valid-repo/security/secret-scanning/20
+
+  Some Other Leaked Secret
+    - severity: high
+    - created: 2022-07-05T18:15:30Z
+    - url: https://github.com/valid-org/valid-repo/security/secret-scanning/21
+
+  References:
+  - https://github.com/test-org/valid-repo/security/code-scanning
+  - https://github.com/test-org/valid-repo/security/dependabot
+  - https://github.com/test-org/valid-repo/security/secret-scanning"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        # --with-template with one dependabot alert
+        mock_readJSONFiles.return_value = [_getMockedAlertsJSON("dependabot")[0]]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getGHAlertsReportFromFiles(
+                "test-org", ["fake_fn1", "fake_fn2"], with_templates=True
+            )
+        self.assertEqual("", error.getvalue().strip())
+        exp = """Alerts:
+## valid-repo template
+Please address alert (dependabot) in valid-repo
+
+The following alert was issued:
+- [ ] [github.com/foo/bar](https://github.com/valid-org/valid-repo/security/dependabot/1) (low)
+
+Since a 'low' severity issue is present, tentatively adding the 'security/low' label. At the time of filing, the above is untriaged. When updating the above checklist, please add supporting github comments as triaged, not affected or remediated. Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.
+
+Thanks!
+
+References:
+ * https://github.com/test-org/valid-repo/security/dependabot
+
+## end template
+
+## valid-repo CVE template
+Candidate: CVE-2024-NNNN
+OpenDate: 2024-04-25
+CloseDate:
+PublicDate:
+CRD:
+References:
+ https://github.com/valid-org/valid-repo/security/dependabot/1
+ https://github.com/advisories/GHSA-a (github.com/foo/bar)
+Description:
+ Please address alert in valid-repo
+ - [ ] github.com/foo/bar (low)
+GitHub-Advanced-Security:
+ - type: dependabot
+   dependency: github.com/foo/bar
+   detectedIn: go.sum
+   severity: low
+   advisory: https://github.com/advisories/GHSA-a
+   status: needs-triage
+   url: https://github.com/valid-org/valid-repo/security/dependabot/1
+Notes:
+Mitigation:
+Bugs:
+Priority: low
+Discovered-by: gh-dependabot
+Assigned-to:
+CVSS:
+
+Patches_valid-repo:
+git/test-org_valid-repo: needs-triage
+## end CVE template
+
+valid-repo read alerts: 1
+  github.com/foo/bar
+    - severity: low
+    - created: 2022-07-01T18:27:30Z
+    - go.sum
+    - advisory: https://github.com/advisories/GHSA-a
+    - url: https://github.com/valid-org/valid-repo/security/dependabot/1
+
+  References:
+  - https://github.com/test-org/valid-repo/security/dependabot"""
+        self.assertEqual(exp, output.getvalue().strip())
+
+        # test bad relative dir
+        with mock.patch.object(
+            cvelib.common.error,
+            "__defaults__",
+            (
+                1,
+                False,
+            ),
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.report.getGHAlertsReportFromFiles(
+                    "test-org", ["fake_fn1", "fake_fn2"], path="fake_rel"
+                )
+            self.assertEqual(
+                "ERROR: 'fake_rel' is not a directory", error.getvalue().strip()
+            )
+
     @mock.patch(
         "requests.get", side_effect=mocked_requests_get__getGHAlertsAllDependabot
     )
@@ -4206,7 +4425,7 @@ Totals:
             # gh
             (
                 ["gh"],
-                "Please specify one of --alerts, --missing, --updates or --status with 'gh'",
+                "Please specify one of --alerts, --alerts-jsons, --missing, --updates or --status with 'gh'",
             ),
             (
                 ["gh", "--alerts"],
@@ -4214,7 +4433,7 @@ Totals:
             ),
             (
                 ["gh", "--missing", "--with-templates", "--since", "1"],
-                "Please specify --alerts with --with-templates",
+                "Please specify --alerts or --alerts-jsons with --with-templates",
             ),
             (
                 ["gh", "--updated", "--since", "1", "--software", "foo"],
@@ -4228,6 +4447,26 @@ Totals:
             (
                 ["gh", "--alerts", "--since", "bad", "--org", "foo"],
                 "Please specify seconds since epoch or YYYY-MM-DD with --since",
+            ),
+            (
+                ["gh", "--alerts-jsons", "tst"],
+                "Please specify --org",
+            ),
+            (
+                ["gh", "--alerts", "--alerts-jsons", "tst"],
+                "Unsupported options --alerts with --alerts-jsons",
+            ),
+            (
+                ["gh", "--path", "tstdir", "--alerts-jsons", "tst"],
+                "Please specify --org",
+            ),
+            (
+                ["gh", "--path", "tstdir"],
+                "Please specify one of --alerts, --alerts-jsons, --missing, --updates or --status with 'gh'",
+            ),
+            (
+                ["gh", "--path", "tstdir", "--alerts"],
+                "Please specify --alerts-jsons with --path",
             ),
             # quay
             (
@@ -4752,6 +4991,56 @@ template-urls = https://url1,https://url2
         self.assertEqual("", error.getvalue().strip())
         out = output.getvalue()
         exp = "No missing issues."
+        self.assertTrue(
+            exp in out.strip(), msg="Could not find '%s' in: %s" % (exp, out)
+        )
+
+    @mock.patch("cvelib.report._readJSONFiles")
+    def test_main_report_gh_alerts_jsons(self, mock_readJSONFiles):
+        """Test main_report - gh --alerts-jsons"""
+        self._mock_cve_data_mixed()  # this creates self.tmpdir and a config
+        # adjust the config file for template-urls
+        with open(os.path.join(str(self.tmpdir), ".config/sedg/sedg.conf"), "a") as fh:
+            fh.write(
+                """
+[Behavior]
+template-urls = https://url1,https://url2
+"""
+            )
+
+        # without templates
+        mock_readJSONFiles.return_value = [_getMockedAlertsJSON("dependabot")[0]]
+        args = ["gh", "--org", "test-org", "--alerts-jsons", "fake_fn1", "fake_fn2"]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+
+        out = output.getvalue()
+        exp = "valid-repo read alerts: 1"
+        self.assertTrue(
+            exp in out.strip(), msg="Could not find '%s' in: %s" % (exp, out)
+        )
+        unexp = "https://url1"
+        self.assertTrue(
+            unexp not in out.strip(), msg="Found '%s' in: %s" % (unexp, out)
+        )
+
+        # with templates
+        mock_readJSONFiles.return_value = [_getMockedAlertsJSON("dependabot")[0]]
+        args = [
+            "gh",
+            "--org",
+            "test-org",
+            "--with-templates",
+            "--alerts-jsons",
+            "fake_fn1",
+            "fake_fn2",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        out = output.getvalue()
+        exp = "https://url1"
         self.assertTrue(
             exp in out.strip(), msg="Could not find '%s' in: %s" % (exp, out)
         )
