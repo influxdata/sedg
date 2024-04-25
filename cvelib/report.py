@@ -6,6 +6,7 @@ import argparse
 import copy
 import datetime
 from enum import Enum
+import json
 import os
 import pathlib
 import re
@@ -436,7 +437,7 @@ def _printGHAlertsSummary(
     org: str, repo: str, alerts: List[Dict[str, str]], status: str
 ) -> None:
     """Print out the alert summary"""
-    if status not in ["resolved", "updated"]:
+    if status not in ["read", "resolved", "updated"]:
         error("Unsupported alert status: %s" % status)
         return
 
@@ -1047,6 +1048,64 @@ def getGHAlertsReport(
                 _printGHAlertsTemplates(org, repo, resolved[repo], template_urls)
                 print("")
             _printGHAlertsSummary(org, repo, resolved[repo], "resolved")
+
+
+def _readJSONFiles(fns: List[str], path: str = "") -> List[Dict[str, str]]:
+    """Read JSON files from list of filenames, optionally relative to path"""
+    jsons: List[Dict[str, str]] = []
+    for fn in fns:
+        tmp_fn: str
+        if path == "":
+            tmp_fn = str(pathlib.Path(fn).expanduser())
+        else:
+            tmp_fn = os.path.join(path, fn)
+
+        try:
+            with open(tmp_fn, "r") as fd:
+                jsons.append(json.load(fd))
+        except FileNotFoundError:
+            warn("Skipping non-existent '%s'" % fn)
+            continue
+
+    return jsons
+
+
+def getGHAlertsReportFromFiles(
+    org: str,
+    fns: List[str],
+    path: str = "",
+    with_templates: bool = False,
+    template_urls: List[str] = [],
+) -> None:
+    """Show GitHub alerts from files"""
+    if path != "":
+        path = str(pathlib.Path(path).expanduser())
+        if not os.path.isdir(path):
+            error("'%s' is not a directory" % path)
+
+    # collect the specified alerts
+    jsons: List[Dict[str, str]] = _readJSONFiles(fns, path)
+    if len(jsons) == 0:
+        return
+
+    alerts: Dict[str, List[Dict[str, str]]] = {}
+    alert: Dict[str, Any] = {}
+    for alert in jsons:
+        repo: str = ""
+        a: Dict[str, str] = {}
+        repo, a = _parseAlert(alert)
+
+        if repo not in alerts:
+            alerts[repo] = []
+        alerts[repo].append(a)
+
+    # print out the alerts
+    print("Alerts:")
+    for repo in sorted(alerts.keys()):
+        if with_templates:
+            _printGHAlertsTemplates(org, repo, alerts[repo], template_urls)
+            print("")
+        _printGHAlertsSummary(org, repo, alerts[repo], "read")
 
 
 def getOCIReports(
@@ -2076,6 +2135,9 @@ Example usage:
   # show GHAS alerts for org
   $ cve-report gh --org <org> --alerts --since YYYY-MM-DD
 
+  # show GHAS alerts for org read from pre-downloaded files
+  $ cve-report gh --org <org> --alerts-jsons /path/to/1.json /path/to/2.json ...
+
   # show GitHub dependabot alerts for org with template text
   $ cve-report gh --org <org> --alerts=dependabot --with-templates --since YYYY-MM-DD
 
@@ -2346,6 +2408,21 @@ Example usage:
         type=str,
     )
     parser_gh.add_argument(
+        "--alerts-jsons",
+        nargs="+",
+        dest="alerts_jsons",
+        help="show GHAS alerts for the space-separated list of pre-fetched JSON files",
+        metavar="JSONs",
+    )
+    parser_gh.add_argument(
+        "--path",
+        dest="path",
+        help="files specified with --alerts-jsons are relative to PREFIX",
+        metavar="PREFIX",
+        type=str,
+        default="",
+    )
+    parser_gh.add_argument(
         "--missing",
         dest="missing",
         help="show URLs missing from CVE info since '--since TIME'",
@@ -2511,19 +2588,24 @@ Example usage:
             not args.missing
             and not args.updated
             and not args.alerts
+            and not args.alerts_jsons
             and not args.status
         ):
             error(
-                "Please specify one of --alerts, --missing, --updates or --status with 'gh'"
+                "Please specify one of --alerts, --alerts-jsons, --missing, --updates or --status with 'gh'"
             )
+        elif args.alerts and args.alerts_jsons:
+            error("Unsupported options --alerts with --alerts-jsons")
+        elif args.path and not args.alerts_jsons:
+            error("Please specify --alerts-jsons with --path")
         elif (args.updated or args.missing or args.alerts) and (
             args.since == "0" and args.since_stamp is None
         ):
             error(
                 "Please specify --since and/or --since-stamp with --missing/--updated/--alerts"
             )
-        elif args.with_templates and not args.alerts:
-            error("Please specify --alerts with --with-templates")
+        elif args.with_templates and not (args.alerts or args.alerts_jsons):
+            error("Please specify --alerts or --alerts-jsons with --with-templates")
         elif (
             args.updated
             and args.software is not None
@@ -2533,10 +2615,10 @@ Example usage:
             error("Unsupported option --software with --updated")
         elif args.org is None:
             error("Please specify --org")
-        elif "GHTOKEN" not in os.environ:
+        elif "GHTOKEN" not in os.environ and not args.alerts_jsons:
             error("Please export GitHub personal access token as GHTOKEN")
 
-        if args.since != "0":
+        if args.since != "0" and not args.alerts_jsons:
             try:
                 int(args.since)
             except ValueError:
@@ -2612,9 +2694,9 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
     oci_where_override: str = getConfigOciCveOverrideWhere()
 
     # XXX: skipping this makes things faster, but it is nice to have. For now
-    # only with 'gh' since it is already slow
+    # only with 'gh' since it is already slow (but not gh --alerts-jsons)
     # First, check the syntax of our CVEs
-    if args.cmd == "gh":
+    if args.cmd == "gh" and not args.alerts_jsons:
         checkSyntax(cveDirs, compat, untriagedOk=True)
 
     # Gather the CVEs
@@ -2686,6 +2768,15 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
         elif args.status == "alerts":
             getGHAlertsStatusReport(
                 args.org, repos=repos, excluded_repos=excluded_repos
+            )
+            return
+        elif args.alerts_jsons:
+            getGHAlertsReportFromFiles(
+                args.org,
+                args.alerts_jsons,
+                path=args.path,
+                with_templates=args.with_templates,
+                template_urls=template_urls,
             )
             return
 
