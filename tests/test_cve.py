@@ -3254,7 +3254,7 @@ git/bar_foo: ignored
         self.assertEqual(os.path.basename(cve_fn), res["Candidate"])
         self.assertTrue("References" in res)
         self.assertEqual(
-            "\n https://foo.com\n https://www.cve.org/CVERecord?id=CVE-2021-888888",
+            "\n https://www.cve.org/CVERecord?id=CVE-2021-888888\n https://foo.com",
             res["References"],
         )
         self.assertTrue("Description" in res)
