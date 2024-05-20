@@ -2724,6 +2724,7 @@ valid-repo read alerts: 8
         self.assertEqual(exp, output.getvalue().strip())
 
         # --with-template with one dependabot alert
+        now: datetime.datetime = datetime.datetime.now()
         mock_readJSONFiles.return_value = [_getMockedAlertsJSON("dependabot")[0]]
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsReportFromFiles(
@@ -2747,8 +2748,8 @@ References:
 ## end template
 
 ## valid-repo CVE template
-Candidate: CVE-2024-NNNN
-OpenDate: 2024-04-25
+Candidate: CVE-%s-NNNN
+OpenDate: %s
 CloseDate:
 PublicDate:
 CRD:
@@ -2787,7 +2788,10 @@ valid-repo read alerts: 1
     - url: https://github.com/valid-org/valid-repo/security/dependabot/1
 
   References:
-  - https://github.com/test-org/valid-repo/security/dependabot"""
+  - https://github.com/test-org/valid-repo/security/dependabot""" % (
+            "%d" % (now.year),
+            "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
+        )
         self.assertEqual(exp, output.getvalue().strip())
 
         # test bad relative dir
