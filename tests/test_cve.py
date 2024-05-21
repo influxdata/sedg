@@ -81,7 +81,7 @@ class TestCve(TestCase):
                 "Priority": "medium",
                 "Discovered-by": "Jane Doe (jdoe)",
                 "Assigned-to": "John Doe (johnny)",
-                "CVSS": "...",
+                "CVSS": "",
             }
         )
 
@@ -245,7 +245,7 @@ Bugs:
 Priority: medium
 Discovered-by: Jane Doe (jdoe)
 Assigned-to: John Doe (johnny)
-CVSS: ...
+CVSS:
 """
         cve = cvelib.cve.CVE(fn="fake")
         res = cve.onDiskFormat()
@@ -389,7 +389,7 @@ Bugs:
 Priority: medium
 Discovered-by: Jane Doe (jdoe)
 Assigned-to: John Doe (johnny)
-CVSS: ...
+CVSS:
 
 Patches_bar:
 upstream_bar: needed
@@ -468,7 +468,7 @@ git/github_norf: needs-triage
                 "Priority": "medium",
                 "Discovered-by": "Jane Doe (jdoe)",
                 "Assigned-to": "John Doe (johnny)",
-                "CVSS": "...",
+                "CVSS": "",
             }
         )
 
@@ -494,7 +494,7 @@ Bugs:
 Priority: medium
 Discovered-by: Jane Doe (jdoe)
 Assigned-to: John Doe (johnny)
-CVSS: ...
+CVSS:
 
 oci/org_foo: pending
 """
@@ -1476,17 +1476,146 @@ oci/org_foo: pending
     def test__verifyCVSS(self):
         """Test _verifyCVSS()"""
         tsts = [
+            # key, value, compat, err_str
             # valid
-            ("CVSS", "negligible", None),
+            ("", False, None),
+            ("\n nvd: CVSS:2.0/AV:L/AC:H/Au:M/C:N/I:N/A:N", False, None),
+            ("\n nvd: CVSS:2.0/AV:L/AC:H/Au:M/C:N/I:N/A:N (5.1 medium)", False, None),
+            (
+                "\n nvd: CVSS:2.0/AV:L/AC:H/Au:M/C:N/I:N/A:N (5.1 medium)\n debian: CVSS:3.0/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L\n redhat: CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L (3.7 low)\n alpine: CVSS:4.0/AV:P/AC:H/AT:P/PR:H/UI:A/VC:N/VI:N/VA:N/SC:N/SI:N/SA:N\n ubuntu: CVSS:4.0/AV:N/AC:H/AT:P/PR:L/UI:A/VC:L/VI:H/VA:L/SC:N/SI:L/SA:H (7.0 high)",
+                False,
+                None,
+            ),
+            # valid compat
+            ("", True, None),
+            ("CVSS:2.0/AV:L/AC:H/Au:M/C:N/I:N/A:N", True, None),
+            ("CVSS:2.0/AV:A/AC:M/Au:S/C:P/I:P/A:P", True, None),
+            ("CVSS:2.0/AV:N/AC:L/Au:N/C:C/I:C/A:C", True, None),
+            ("CVSS:2.0/AV:N/AC:H/Au:N/C:P/I:P/A:P [5.1 MEDIUM]", True, None),
+            ("CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:N", True, None),
+            ("CVSS:3.0/AV:A/AC:H/PR:L/UI:R/S:C/C:L/I:L/A:L", True, None),
+            ("CVSS:3.0/AV:L/AC:H/PR:H/UI:R/S:C/C:H/I:H/A:H", True, None),
+            ("CVSS:3.0/AV:P/AC:H/PR:H/UI:R/S:C/C:H/I:H/A:H", True, None),
+            ("CVSS:3.0/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L [3.7 LOW]", True, None),
+            ("CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L [3.7 LOW]", True, None),
+            (
+                "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H",
+                True,
+                None,
+            ),
+            (
+                "CVSS:4.0/AV:A/AC:H/AT:P/PR:L/UI:P/VC:L/VI:L/VA:L/SC:L/SI:L/SA:L",
+                True,
+                None,
+            ),
+            (
+                "CVSS:4.0/AV:L/AC:H/AT:P/PR:H/UI:A/VC:N/VI:N/VA:N/SC:N/SI:N/SA:N",
+                True,
+                None,
+            ),
+            (
+                "CVSS:4.0/AV:P/AC:H/AT:P/PR:H/UI:A/VC:N/VI:N/VA:N/SC:N/SI:N/SA:N",
+                True,
+                None,
+            ),
+            (
+                "CVSS:4.0/AV:N/AC:H/AT:P/PR:L/UI:A/VC:L/VI:H/VA:L/SC:N/SI:L/SA:H [7.0 HIGH]",
+                True,
+                None,
+            ),
             # invalid
-            ("CVSS", "bár", "invalid CVSS: 'bár' (contains non-ASCII characters)"),
+            (
+                "CVSS:2.0/AV:L/AC:H/Au:M/C:N/I:N/A:N",
+                False,
+                "invalid CVSS: 'CVSS:2.0/AV:L/AC:H/Au:M/C:N/I:N/A:N' (missing leading newline)",
+            ),
+            (
+                "\n CVSS:2.0/AV:L/AC:H/Au:M/C:N/I:N/A:N",
+                False,
+                "invalid CVSS: 'CVSS:2.0/AV:L/AC:H/Au:M/C:N/I:N/A:N' (use who: CVSS:...)",
+            ),
+            (
+                "\n <bad>: CVSS:2.0/AV:L/AC:H/Au:M/C:N/I:N/A:N",
+                False,
+                "invalid CVSS: '<bad>: CVSS:2.0/AV:L/AC:H/Au:M/C:N/I:N/A:N' (use who: CVSS:...)",
+            ),
+            (
+                "\n foo: CVSS:bad",
+                False,
+                "invalid CVSS: 'foo: CVSS:bad' (use who: CVSS:...)",
+            ),
+            # invalid compat
+            ("bár", True, "invalid CVSS: 'bár' (contains non-ASCII characters)"),
+            (
+                "CVSS:2.0/AV:l/AC:H/Au:M/C:N/I:N/A:N",
+                True,
+                "invalid CVSS: 'CVSS:2.0/AV:l/AC:H/Au:M/C:N/I:N/A:N'",
+            ),
+            (
+                "CVSS:2.0/ZV:L/AC:H/Au:M/C:N/I:N/A:N",
+                True,
+                "invalid CVSS: 'CVSS:2.0/ZV:L/AC:H/Au:M/C:N/I:N/A:N'",
+            ),
+            (
+                "CVSS:2.0/AV:N/AC:H/Au:N/C:P/I:P/A:P 5.1",
+                True,
+                "invalid CVSS: 'CVSS:2.0/AV:N/AC:H/Au:N/C:P/I:P/A:P 5.1'",
+            ),
+            (
+                "CVSS:2.0/AV:N/AC:H/Au:N/C:P/I:P/A:P medium",
+                True,
+                "invalid CVSS: 'CVSS:2.0/AV:N/AC:H/Au:N/C:P/I:P/A:P medium'",
+            ),
+            (
+                "CVSS:2.0/AV:N/AC:H/Au:N/C:P/I:P/A:P 5.1 medium",
+                True,
+                "invalid CVSS: 'CVSS:2.0/AV:N/AC:H/Au:N/C:P/I:P/A:P 5.1 medium'",
+            ),
+            (
+                "CVSS:2.0/AV:N/AC:H/Au:N/C:P/I:P/A:P [5.1]",
+                True,
+                "invalid CVSS: 'CVSS:2.0/AV:N/AC:H/Au:N/C:P/I:P/A:P [5.1]'",
+            ),
+            (
+                "CVSS:2.0/AV:N/AC:H/Au:N/C:P/I:P/A:P [5.1 medium",
+                True,
+                "invalid CVSS: 'CVSS:2.0/AV:N/AC:H/Au:N/C:P/I:P/A:P [5.1 medium'",
+            ),
+            (
+                "CVSS:2.0/AV:N/AC:H/Au:N/C:P/I:P/A:P 5.1 medium]",
+                True,
+                "invalid CVSS: 'CVSS:2.0/AV:N/AC:H/Au:N/C:P/I:P/A:P 5.1 medium]'",
+            ),
+            (
+                "CVSS:2/AV:N/AC:H/Au:N/C:P/I:P/A:P",
+                True,
+                "invalid CVSS: 'CVSS:2/AV:N/AC:H/Au:N/C:P/I:P/A:P'",
+            ),
+            (
+                "CVSS:2.0.1/AV:N/AC:H/Au:N/C:P/I:P/A:P",
+                True,
+                "invalid CVSS: 'CVSS:2.0.1/AV:N/AC:H/Au:N/C:P/I:P/A:P'",
+            ),
+            (
+                "CVSS:4.1/AV:N/AC:H/AT:P/PR:L/UI:A/VC:L/VI:H/VA:L/SC:N/SI:L/SA:H",
+                True,
+                "invalid CVSS: 'CVSS:4.1/AV:N/AC:H/AT:P/PR:L/UI:A/VC:L/VI:H/VA:L/SC:N/SI:L/SA:H'",
+            ),
+            (
+                "CVSS:5.0/AV:N/AC:H/AT:P/PR:L/UI:A/VC:L/VI:H/VA:L/SC:N/SI:L/SA:H",
+                True,
+                "invalid CVSS: 'CVSS:5.0/AV:N/AC:H/AT:P/PR:L/UI:A/VC:L/VI:H/VA:L/SC:N/SI:L/SA:H'",
+            ),
         ]
-        for (key, val, expErr) in tsts:
+        for (val, compat, expErr) in tsts:
+            cve = cvelib.cve.CVE(compatUbuntu=compat)
+            fn = cve._verifyCVSS
+
             if expErr is None:
-                cvelib.cve.CVE()._verifyCVSS(key, val)
+                fn("CVSS", val)
             else:
-                with self.assertRaises(cvelib.common.CveException) as context:
-                    cvelib.cve.CVE()._verifyCVSS(key, val)
+                with self.assertRaises(cvelib.common.CveException, msg=val) as context:
+                    fn("CVSS", val)
                 self.assertEqual(expErr, str(context.exception))
 
     def test__verifyGHAS(self):

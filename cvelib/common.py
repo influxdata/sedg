@@ -293,6 +293,18 @@ rePatterns: Dict[str, Pattern[str]] = {
     # patterns for subset of confusable quotes and dashes which pass
     # isprintable()
     "confusable-utf8": re.compile(r"[“”‟＂‘’‛＇˗‐‒–−‑﹘]"),
+    # This is just for the base score. If using supplemental metrics (4.0),
+    # temporal scores (< 4.0) or environmental scores (< 4.0) then need to
+    # adjust/add a new field
+    # CVSS:4.0/AV:N/AC:H/AT:P/PR:L/UI:A/VC:L/VI:H/VA:L/SC:N/SI:L/SA:H [7.0 HIGH]
+    # CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L [3.7 LOW]
+    # CVSS:2.0/AV:N/AC:H/Au:N/C:P/I:P/A:P [5.1 MEDIUM]
+    "cvss-entry": re.compile(
+        r"^@?[a-zA-Z0-9._-]+: CVSS:(4\.0/AV:[NALP]/AC:[LH]/AT:[NP]/PR:[NLH]/UI:[NPA]/VC:[HLN]/VI:[HLN]/VA:[HLN]/SC:[HLN]/SI:[HLN]/SA:[HLN]|3\.[01]/AV:[NALP]/AC:[LH]/PR:[NLH]/UI:[NR]/S:[UC]/C:[NLH]/I:[NLH]/A:[NLH]|2\.0/AV:[LAN]/AC:[HML]/Au:[MSN]/C:[NPC]/I:[NPC]/A:[NPC])( \((10|[0-9]).[0-9] (low|medium|high|critical)\))?$"
+    ),
+    "cvss-ubuntu": re.compile(
+        r"^CVSS:(4\.0/AV:[NALP]/AC:[LH]/AT:[NP]/PR:[NLH]/UI:[NPA]/VC:[HLN]/VI:[HLN]/VA:[HLN]/SC:[HLN]/SI:[HLN]/SA:[HLN]|3\.[01]/AV:[NALP]/AC:[LH]/PR:[NLH]/UI:[NR]/S:[UC]/C:[NLH]/I:[NLH]/A:[NLH]|2\.0/AV:[LAN]/AC:[HML]/Au:[MSN]/C:[NPC]/I:[NPC]/A:[NPC])( \[(10|[0-9]).[0-9] (LOW|MEDIUM|HIGH|CRITICAL)\])?$"
+    ),
 }
 
 # Subdirectories of CVEs in config["Locations"]["cve-data"]
