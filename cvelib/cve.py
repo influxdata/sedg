@@ -827,15 +827,25 @@ CVSS:%(cvss)s
                 raise CveException("invalid %s: '%s'" % (key, val))
 
     def _verifyAssignedTo(self, key: str, val: str) -> None:
-        self._verifySingleline(key, val, allow_utf8=True)
         """Verify CVE Assigned-to"""
+        self._verifySingleline(key, val, allow_utf8=True)
         if val != "":
             if not rePatterns["attribution"].search(val):
                 raise CveException("invalid %s: '%s'" % (key, val))
 
     def _verifyCVSS(self, key: str, val: str) -> None:
         """Verify CVE CVSS"""
-        self._verifySingleline(key, val)
+        if val != "":
+            if self.compatUbuntu:
+                self._verifySingleline(key, val)
+                if not rePatterns["cvss-ubuntu"].search(val):
+                    raise CveException("invalid %s: '%s'" % (key, val))
+            else:
+                for line in self._verifyMultiline(key, val):
+                    if not rePatterns["cvss-entry"].search(line):
+                        raise CveException(
+                            "invalid %s: '%s' (use who: CVSS:...)" % (key, line)
+                        )
 
     def _verifyGHAS(self, key: str, val: str) -> None:
         """Verify CVE GitHub-Advanced-Security"""

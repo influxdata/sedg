@@ -270,7 +270,7 @@ Items within `[]` are optional.
     Discovered-by: First Last [ @<slack> | <githubUser> ], ...
     Assigned-to: First Last [ @<slack> | <githubUser> ]
     CVSS:
-     <who>: <CVSS string; use https://cvssjs.github.io/ to calculate>
+     <who>: <CVSS string> [(<score> [low|medium|high|critical)]
 
     Patches_<software1>:
      upstream | vendor | distro | other: <url>
@@ -364,7 +364,8 @@ For each field in the global section:
    report URLs.
  * `Assigned-to` contains the name, slack handle, GitHub username, etc of the
    person assigned to this issue
- * `CVSS` contains a list of CVSS scores as assigned by different entities
+ * `CVSS` contains a list of CVSS scores as assigned by different entities (eg,
+   'nvd', 'redhat', 'ubuntu', etc)
 
 
 ## Software section
@@ -510,6 +511,8 @@ then adjust `~/.config/sedg_ubuntu.conf` to contain:
 ```
 
 When specifying compat mode:
+* `CVSS` is single line instead of multiline list. Eg:
+  `CVSS: <CVSS string> [\[<score> LOW|MEDIUM|HIGH|CRITICAL\]]`
 * `<product>` may specify Ubuntu releases as a shorthand (eg, `focal` instead
   of `ubuntu/focal`)
 * patches can specify various other types (eg, in addition to `distro`,
