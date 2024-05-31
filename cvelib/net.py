@@ -182,8 +182,9 @@ def ghAPIGetList(
             return r.status_code, []
 
         found_link: bool = False
-        if "Link" in r.headers:
-            tmp: List[str] = r.headers["Link"].split(",")
+        link_header: Union[str, None] = r.headers.get("Link")
+        if link_header is not None:
+            tmp: List[str] = link_header.split(",")
             for i in tmp:
                 # '<https://.../alerts?per_page=100&after=Y3Vyc29yOnYyOpHO0RA03w%3D%3D>; rel="next"'
                 if '>; rel="next"' in i:
