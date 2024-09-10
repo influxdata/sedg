@@ -1,19 +1,36 @@
 version: 2.1
 
 commands:
+  create_concatenated_requirements:
+    description: "Concatenate all requirements*.txt files into a single file for checksumming."
+    steps:
+      - run:
+          name: "Combine requirements*.txt files to a single file"
+          command: |
+            cat ./requirements*.txt > ./combined-requirements.txt
+            # detect if the python (micro) version changes
+            echo "# python3 --version: $(python3 --version)" >> ./combined-requirements.txt
+            # for debugging
+            echo "$ cat ./combined-requirements.txt"
+            cat ./combined-requirements.txt
+
+  # while 'make install-venv' only looks at requirements.txt, we want to
+  # additionally install 'coverage' from ./requirements_dev.txt so we want to
+  # use the combined-requirements.txt checksum as a key
   cache_restore:
     description: Restore python cache
     steps:
+      - create_concatenated_requirements
       - restore_cache:
           name: Restore python cache
-          key: deps1.1-{{ .Branch }}-{{ checksum "setup.cfg" }}
+          key: deps1.1-{{ .Branch }}-{{ checksum "combined-requirements.txt" }}
 
   cache_save:
     description: Save python cache
     steps:
       - save_cache:
           name: Save python cache
-          key: deps1.1-{{ .Branch }}-{{ checksum "setup.cfg" }}
+          key: deps1.1-{{ .Branch }}-{{ checksum "combined-requirements.txt" }}
           paths:
             - ".venv"
 
@@ -24,9 +41,37 @@ commands:
           name: Install python components
           command: |
             make install-venv
+            # install coverage separately since we don't want it in prod
             . .venv/bin/activate
-            pip install -e ".[dso]"
+            pip install $(grep '^coverage=' ./requirements_dev.txt)
             deactivate
+
+  # 'make install-venv-dev' looks at both requirements.txt and
+  # requirements_dev.txt so we need to checksum both for the cache key
+  cache_restore_dev:
+    description: Restore python cache for dev
+    steps:
+      - create_concatenated_requirements
+      - restore_cache:
+          name: Restore python cache
+          key: dev-deps1.1-{{ .Branch }}-{{ checksum "combined-requirements.txt" }}
+
+  cache_save_dev:
+    description: Save python cache for dev
+    steps:
+      - save_cache:
+          name: Save python cache
+          key: dev-deps1.1-{{ .Branch }}-{{ checksum "combined-requirements.txt" }}
+          paths:
+            - ".venv"
+
+  python_components_dev:
+    description: Install python components for dev
+    steps:
+      - run:
+          name: Install python components
+          command: |
+            make install-venv-dev
 
   # https://docs.getwoke.tech/installation/
   install_woke:
@@ -40,6 +85,7 @@ commands:
 jobs:
   tests:
     docker:
+      # increment depsX.Y, above, if change the python minor or major version
       - image: cimg/python:3.8
     steps:
       - checkout
@@ -55,31 +101,33 @@ jobs:
 
   lint:
     docker:
+      # increment dev-depsX.Y, above, if change the python minor or major version
       - image: cimg/python:3.8
     steps:
       - checkout
-      - cache_restore
-      - python_components
+      - cache_restore_dev
+      - python_components_dev
       - run:
           name: Running syntax checks
           command: |
             . .venv/bin/activate
             make syntax-check
-      - cache_save
+      - cache_save_dev
 
   fmt:
     docker:
+      # increment dev-depsX.Y, above, if change the python minor or major version
       - image: cimg/python:3.8
     steps:
       - checkout
-      - cache_restore
-      - python_components
+      - cache_restore_dev
+      - python_components_dev
       - run:
           name: Running style checks
           command: |
             . .venv/bin/activate
             make style-check
-      - cache_save
+      - cache_save_dev
 
   inclusivity:
     docker:

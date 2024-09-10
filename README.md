@@ -16,9 +16,7 @@
     ```
     $ python3 -m venv .venv
     $ . ./.venv/bin/activate
-    (venv) $ pip install -e .     # editable install (use files in current dir)
-    (venv) $ pip install .[cache] # optional
-    (venv) $ pip install .[dev]   # optional for developing sedg
+    (venv) $ pip install ./requirements.txt
     ```
 
  3. Clone CVE data into `/path/to/cve-data`
