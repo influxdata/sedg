@@ -14,15 +14,31 @@ install-venv:
 		echo "Installing to '$(VENV)'" ; \
 		. ./$(VENV)/bin/activate ; \
 		pip install -e . ; \
-		pip install -e .[cache] ; \
-		pip install -e .[dev] ; \
+		pip install -r ./requirements.txt ; \
 		echo "\nInstalled sedg to ./$(VENV). To use, run '. ./$(VENV)/bin/activate'" ; \
 	else \
 		echo "Updating '$(VENV)'" ; \
 		pip install -e . ; \
-		pip install -e .[cache] ; \
-		pip install -e .[dev] ; \
+		pip install -r ./requirements.txt ; \
 		echo "\nUpdated sedg in ./$(VENV)." ; \
+	fi
+
+install-venv-dev:
+	@if ! test -d "./$(VENV)" ; then \
+		echo "Running 'python3 -m venv $(VENV)'" ; \
+		python3 -m venv $(VENV) ; \
+	fi
+	@if test -z "$(VIRTUAL_ENV)" ; then \
+		echo "Installing to '$(VENV)'" ; \
+		. ./$(VENV)/bin/activate ; \
+		pip install -e . ; \
+		pip install -r ./requirements_dev.txt ; \
+		echo "\nInstalled sedg development to ./$(VENV). To use, run '. ./$(VENV)/bin/activate'" ; \
+	else \
+		echo "Updating '$(VENV)'" ; \
+		pip install -e . ; \
+		pip install -r ./requirements_dev.txt ; \
+		echo "\nUpdated sedg development in ./$(VENV)." ; \
 	fi
 
 test:
