@@ -1,4 +1,5 @@
 """test_gar.py: tests for gar.py module"""
+
 #
 # SPDX-License-Identifier: MIT
 

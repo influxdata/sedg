@@ -62,9 +62,9 @@ import cvelib.scan
 
 # TODO: pass these around
 repos_all: Dict[str, Dict[str, Union[str, bool]]] = {}  # keys is list of repos
-issues_ind: Dict[
-    str, Mapping[str, Any]
-] = {}  # keys are 'repo/num', values are arbitrary json docs from GitHub
+issues_ind: Dict[str, Mapping[str, Any]] = (
+    {}
+)  # keys are 'repo/num', values are arbitrary json docs from GitHub
 
 
 class ReportOutput(Enum):
@@ -566,7 +566,8 @@ def _printGHAlertsTemplates(
     plural: bool = len(alert) > 1
 
     print("## %s template" % repo)
-    template: str = """Please address alert%s (%s) in %s
+    template: str = (
+        """Please address alert%s (%s) in %s
 
 The following alert%s issued:
 %s
@@ -576,18 +577,20 @@ Thanks!
 
 References:
  * %s%s
-""" % (
-        "s" if plural else "",
-        ", ".join(sorted(alert_types)),
-        repo,
-        "s were" if plural else " was",
-        checklist,
-        "n" if sev.index("unknown") == highest else "",
-        sev[highest],
-        priority,
-        " ".join(sorted(clauses)),
-        "" if len(template_urls) == 0 else "%s\n * " % "\n * ".join(template_urls),
-        "\n * ".join(sorted(urls)),
+"""
+        % (
+            "s" if plural else "",
+            ", ".join(sorted(alert_types)),
+            repo,
+            "s were" if plural else " was",
+            checklist,
+            "n" if sev.index("unknown") == highest else "",
+            sev[highest],
+            priority,
+            " ".join(sorted(clauses)),
+            "" if len(template_urls) == 0 else "%s\n * " % "\n * ".join(template_urls),
+            "\n * ".join(sorted(urls)),
+        )
     )
 
     print(template)
@@ -1590,7 +1593,7 @@ def getHumanTodo(
 
     # descending sorted by score then ascending by key ('sw')
     v: _humanTodoScores
-    for (_, v) in sorted(scores.items(), key=lambda k: (-k[1]["score"], k)):
+    for _, v in sorted(scores.items(), key=lambda k: (-k[1]["score"], k)):
         print("%-8d %s" % (v["score"], v["msg"]))
 
 
@@ -1704,9 +1707,11 @@ def getHumanSummary(
                     print(
                         table_f(
                             pri=priority,
-                            repo=(repo[: maxlen - 3] + "...")
-                            if len(repo) > maxlen
-                            else repo,
+                            repo=(
+                                (repo[: maxlen - 3] + "...")
+                                if len(repo) > maxlen
+                                else repo
+                            ),
                             cve=cve,
                             extra=extra,
                         ).rstrip()
@@ -1752,7 +1757,9 @@ def _readStatsLineProtocol(
 ) -> List[str]:
     """Obtain InfluxDB line protocol from stats"""
     stats: List[str] = []
-    lp_f: object = '{measurement},priority={priority},status={status},product={product},where={where} id="{id}",software="{software}",modifier="{modifier}" {timestamp}'.format
+    lp_f: object = (
+        '{measurement},priority={priority},status={status},product={product},where={where} id="{id}",software="{software}",modifier="{modifier}" {timestamp}'.format
+    )
 
     base_tm: Optional[int] = None
     if base_timestamp is not None:
@@ -2007,9 +2014,11 @@ def getHumanSummaryScans(
                     print(
                         table_f(
                             pri=priority,
-                            repo=(repo[: maxlen - 3] + "...")
-                            if len(repo) > maxlen
-                            else repo,
+                            repo=(
+                                (repo[: maxlen - 3] + "...")
+                                if len(repo) > maxlen
+                                else repo
+                            ),
                             aff=aff,
                             cve=", ".join(lines[priority][repo][affected]["cves"]),
                             extra="(%s)" % lines[priority][repo][affected]["typ"],
@@ -2875,11 +2884,11 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
 
             ocis: List[Tuple[str, int]] = sr.getOCIsForNamespace(args.namespace)
             if args.cmd == "quay":
-                for (r, m) in sorted(ocis):
+                for r, m in sorted(ocis):
                     # ORG/NAME
                     print("%s/%s %s" % (args.namespace, r, formatDate(m)))
             elif args.cmd == "gar":
-                for (r, m) in sorted(ocis):
+                for r, m in sorted(ocis):
                     # PROJECT/LOCATION/REPO/NAME
                     print(
                         "%s/%s %s"

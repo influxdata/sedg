@@ -151,9 +151,11 @@ CREATE TABLE 'pkgs' (
                 candidate,
                 pkg.status,
                 pkg.when,
-                ""
-                if pkg.software not in pkg.priorities
-                else pkg.priorities[pkg.software],
+                (
+                    ""
+                    if pkg.software not in pkg.priorities
+                    else pkg.priorities[pkg.software]
+                ),
             ),
         )
 

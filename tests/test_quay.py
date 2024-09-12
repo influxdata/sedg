@@ -1,4 +1,5 @@
 """test_quay.py: tests for quay.py module"""
+
 #
 # SPDX-License-Identifier: MIT
 

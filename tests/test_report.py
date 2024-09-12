@@ -1,4 +1,5 @@
 """test_report.py: tests for report.py module"""
+
 #
 # SPDX-License-Identifier: MIT
 
@@ -751,9 +752,9 @@ class TestReport(TestCase):
             "OpenDate": "2020-06-29",
             "CloseDate": "",
             "PublicDate": "",
-            "References": "\n %s" % " \n".join(references)
-            if len(references) > 0
-            else "",
+            "References": (
+                "\n %s" % " \n".join(references) if len(references) > 0 else ""
+            ),
             "Description": "\n Some description\n more desc",
             "Notes": "\n person> some notes\n  more notes\n person2> blah",
             "Mitigation": "",

@@ -505,7 +505,7 @@ Eg, to pull all quay.io security scan reports for org 'foo':
     ocis: List[str] = []
     if sys.stdout.isatty():  # pragma: nocover
         print("Fetching digests for OCI names: ", end="", flush=True)
-    for (oci, _) in oci_names:
+    for oci, _ in oci_names:
         if sys.stdout.isatty():  # pragma: nocover
             print(".", end="", flush=True)
 

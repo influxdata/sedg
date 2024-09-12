@@ -587,7 +587,8 @@ def getScanOCIsReportTemplates(
     if priority == "unknown":
         priority = "medium"
 
-    iss_template: str = """## %s %s template
+    iss_template: str = (
+        """## %s %s template
 Please address %s alert%s in %s:
 
 The following alert%s %s issued:
@@ -599,19 +600,21 @@ Thanks!
 
 References:
  * %s%s
-""" % (
-        name.split("@")[0],
-        registry,
-        registry,
-        "s" if plural else "",
-        name.split("@")[0],
-        "s" if plural else "",
-        "were" if plural else "was",
-        "\n".join(sorted(iss_checklist)),
-        sev[highest],
-        priority,
-        "" if len(template_urls) == 0 else "%s\n * " % "\n * ".join(template_urls),
-        "\n * ".join(sorted(oci_references)),
+"""
+        % (
+            name.split("@")[0],
+            registry,
+            registry,
+            "s" if plural else "",
+            name.split("@")[0],
+            "s" if plural else "",
+            "were" if plural else "was",
+            "\n".join(sorted(iss_checklist)),
+            sev[highest],
+            priority,
+            "" if len(template_urls) == 0 else "%s\n * " % "\n * ".join(template_urls),
+            "\n * ".join(sorted(oci_references)),
+        )
     )
     iss_template += "\n## end template"
 
@@ -635,7 +638,8 @@ References:
         pkg_stanzas.append(s)
 
     now: datetime.datetime = datetime.datetime.now()
-    cve_template: str = """## %s CVE template
+    cve_template: str = (
+        """## %s CVE template
 Candidate: %s
 OpenDate: %s
 CloseDate:
@@ -656,18 +660,20 @@ Assigned-to:
 CVSS:
 
 %s
-""" % (
-        name.split("@")[0],
-        "CVE-%d-NNNN" % now.year,
-        "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
-        "\n ".join(oci_references + sorted(adv_references)),
-        "s" if plural else "",
-        name.split("@")[0],
-        cve_checklist,
-        scan_reports.rstrip(),
-        priority,
-        registry.lower(),
-        "\n".join(pkg_stanzas),
+"""
+        % (
+            name.split("@")[0],
+            "CVE-%d-NNNN" % now.year,
+            "%d-%0.2d-%0.2d" % (now.year, now.month, now.day),
+            "\n ".join(oci_references + sorted(adv_references)),
+            "s" if plural else "",
+            name.split("@")[0],
+            cve_checklist,
+            scan_reports.rstrip(),
+            priority,
+            registry.lower(),
+            "\n".join(pkg_stanzas),
+        )
     )
 
     cve_template += "\n## end CVE template"

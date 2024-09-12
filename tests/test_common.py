@@ -1,4 +1,5 @@
 """test_common.py: tests for common.py module"""
+
 #
 # SPDX-License-Identifier: MIT
 
@@ -548,7 +549,7 @@ oci-cve-override-where = %s
             ("bad", False, True, False),
             ("bad", True, True, False),
         ]
-        for (date, req, compat, valid) in tsts:
+        for date, req, compat, valid in tsts:
             if valid:
                 cvelib.common.verifyDate("TestKey", date, req, compatUbuntu=compat)
             else:

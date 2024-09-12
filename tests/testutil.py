@@ -1,4 +1,5 @@
 """util.py; utility functions for tests"""
+
 #
 # SPDX-License-Identifier: MIT
 

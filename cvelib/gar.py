@@ -597,7 +597,7 @@ class GARSecurityReportNew(SecurityReportInterface):
                 "%s/%s" % (proj_loc, repo.split("/")[-1])
             )
             oci: str = ""
-            for (oci, last_modified) in tmp:
+            for oci, last_modified in tmp:
                 ocis.append(("%s/%s" % (repo, oci), last_modified))
 
         if len(repos) > 0 and sys.stdout.isatty():  # pragma: nocover
@@ -903,7 +903,7 @@ Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
     ocis: List[str] = []
     if sys.stdout.isatty():  # pragma: nocover
         print("Fetching digests for OCI names: ", end="", flush=True)
-    for (oci, _) in oci_names:
+    for oci, _ in oci_names:
         if sys.stdout.isatty():  # pragma: nocover
             print(".", end="", flush=True)
 
