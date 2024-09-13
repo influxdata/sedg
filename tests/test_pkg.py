@@ -1,4 +1,5 @@
 """test_pkg.py: tests for pkg.py module"""
+
 #
 # SPDX-License-Identifier: MIT
 

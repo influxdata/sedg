@@ -1,4 +1,5 @@
 """test_scan.py: tests for scan.py module"""
+
 #
 # SPDX-License-Identifier: MIT
 

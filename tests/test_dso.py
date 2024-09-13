@@ -1,4 +1,5 @@
 """test_dso.py: tests for dso.py module"""
+
 #
 # SPDX-License-Identifier: MIT
 

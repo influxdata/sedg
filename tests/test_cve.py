@@ -1,4 +1,5 @@
 """test_cve.py: tests for cve.py module"""
+
 #
 # SPDX-License-Identifier: MIT
 
@@ -1150,7 +1151,7 @@ oci/org_foo: pending
             ("CVE-2020-GH1234#f@o", False),
             ("CVE-2020-GH1#%s" % ("a" * 51), False),
         ]
-        for (cand, valid) in tsts:
+        for cand, valid in tsts:
             if valid:
                 cvelib.cve.CVE()._verifyCandidate("Candidate", cand)
             else:
@@ -1309,7 +1310,7 @@ oci/org_foo: pending
             ("Priority", "needed", False, False),
             ("Priority", "needs-triage", False, False),
         ]
-        for (key, val, untriagedOk, valid) in tsts:
+        for key, val, untriagedOk, valid in tsts:
             if valid:
                 cvelib.cve.CVE()._verifyPriority(key, val, untriagedOk=untriagedOk)
             else:
@@ -1607,7 +1608,7 @@ oci/org_foo: pending
                 "invalid CVSS: 'CVSS:5.0/AV:N/AC:H/AT:P/PR:L/UI:A/VC:L/VI:H/VA:L/SC:N/SI:L/SA:H'",
             ),
         ]
-        for (val, compat, expErr) in tsts:
+        for val, compat, expErr in tsts:
             cve = cvelib.cve.CVE(compatUbuntu=compat)
             fn = cve._verifyCVSS
 
@@ -1658,7 +1659,7 @@ oci/org_foo: pending
 ' (contains non-ASCII characters)""",
             ),
         ]
-        for (key, val, expErr) in tsts:
+        for key, val, expErr in tsts:
             if expErr is None:
                 cvelib.cve.CVE()._verifyGHAS(key, val)
             else:
@@ -1712,7 +1713,7 @@ oci/org_foo: pending
 ' (contains non-ASCII characters)""",
             ),
         ]
-        for (key, val, expErr) in tsts:
+        for key, val, expErr in tsts:
             if expErr is None:
                 cvelib.cve.CVE()._verifyScanReports(key, val)
             else:
@@ -1773,7 +1774,7 @@ oci/org_foo: pending
                 % ("a" * 51),
             ),
         ]
-        for (url, exp, exp2, exp_fail) in tsts:
+        for url, exp, exp2, exp_fail in tsts:
             if exp is not None:
                 res, res2 = cvelib.cve.cveFromUrl(url)
                 self.assertEqual(exp, res)
@@ -2788,7 +2789,7 @@ cve-data = %s
                 "invalid candidate: 'CVE-2021-GH1234#' (empty package)",
             ),
         ]
-        for (cand, where, exp, exp_fail) in tsts:
+        for cand, where, exp, exp_fail in tsts:
             if exp_fail is None:
                 res = cvelib.cve.pkgFromCandidate(cand, where)
                 self.assertEqual(exp, res)

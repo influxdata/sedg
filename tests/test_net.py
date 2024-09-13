@@ -1,4 +1,5 @@
 """test_net.py: tests for net.py module"""
+
 #
 # SPDX-License-Identifier: MIT
 

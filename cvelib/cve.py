@@ -459,7 +459,8 @@ class CVE(object):
                 s.append("%s" % m)
             return s
 
-        s: str = """Candidate:%(candidate)s
+        s: str = (
+            """Candidate:%(candidate)s
 OpenDate:%(openDate)s
 CloseDate:%(closeDate)s
 PublicDate:%(publicDate)s
@@ -473,37 +474,47 @@ Priority:%(priority)s
 Discovered-by:%(discoveredBy)s
 Assigned-to:%(assignedTo)s
 CVSS:%(cvss)s
-""" % (
-            {
-                "candidate": " %s" % self.candidate if self.candidate else "",
-                "openDate": " %s" % self.openDate if self.openDate else "",
-                "closeDate": " %s" % self.closeDate if self.closeDate else "",
-                "publicDate": " %s" % self.publicDate if self.publicDate else "",
-                "crd": " %s" % self.crd if self.crd else "",
-                "references": "\n %s" % "\n ".join(self.references)
-                if self.references
-                else "",
-                "description": "\n %s" % "\n ".join(self.description)
-                if self.description
-                else "",
-                "ghas": "GitHub-Advanced-Security:\n%s\n"
-                % "\n".join(_collectGHAS(self.ghas))
-                if len(self.ghas) > 0
-                else "",
-                "scans": "Scan-Reports:\n%s\n"
-                % "\n".join(_collectScanReports(self.scan_reports))
-                if len(self.scan_reports) > 0
-                else "",
-                "notes": "\n %s" % "\n ".join(self.notes) if self.notes else "",
-                "mitigation": "\n %s" % "\n ".join(self.mitigation)
-                if self.mitigation
-                else "",
-                "bugs": "\n %s" % "\n ".join(self.bugs) if self.bugs else "",
-                "priority": " %s" % self.priority if self.priority else "",
-                "discoveredBy": " %s" % self.discoveredBy if self.discoveredBy else "",
-                "assignedTo": " %s" % self.assignedTo if self.assignedTo else "",
-                "cvss": " %s" % self.cvss if self.cvss else "",
-            }
+"""
+            % (
+                {
+                    "candidate": " %s" % self.candidate if self.candidate else "",
+                    "openDate": " %s" % self.openDate if self.openDate else "",
+                    "closeDate": " %s" % self.closeDate if self.closeDate else "",
+                    "publicDate": " %s" % self.publicDate if self.publicDate else "",
+                    "crd": " %s" % self.crd if self.crd else "",
+                    "references": (
+                        "\n %s" % "\n ".join(self.references) if self.references else ""
+                    ),
+                    "description": (
+                        "\n %s" % "\n ".join(self.description)
+                        if self.description
+                        else ""
+                    ),
+                    "ghas": (
+                        "GitHub-Advanced-Security:\n%s\n"
+                        % "\n".join(_collectGHAS(self.ghas))
+                        if len(self.ghas) > 0
+                        else ""
+                    ),
+                    "scans": (
+                        "Scan-Reports:\n%s\n"
+                        % "\n".join(_collectScanReports(self.scan_reports))
+                        if len(self.scan_reports) > 0
+                        else ""
+                    ),
+                    "notes": "\n %s" % "\n ".join(self.notes) if self.notes else "",
+                    "mitigation": (
+                        "\n %s" % "\n ".join(self.mitigation) if self.mitigation else ""
+                    ),
+                    "bugs": "\n %s" % "\n ".join(self.bugs) if self.bugs else "",
+                    "priority": " %s" % self.priority if self.priority else "",
+                    "discoveredBy": (
+                        " %s" % self.discoveredBy if self.discoveredBy else ""
+                    ),
+                    "assignedTo": " %s" % self.assignedTo if self.assignedTo else "",
+                    "cvss": " %s" % self.cvss if self.cvss else "",
+                }
+            )
         )
 
         # The package stanzas should be grouped and sorted by software, with

@@ -1,4 +1,5 @@
 """test_common.py: tests for common.py module"""
+
 #
 # SPDX-License-Identifier: MIT
 

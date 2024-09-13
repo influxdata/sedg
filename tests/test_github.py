@@ -1,4 +1,5 @@
 """test_github.py: tests for github.py module"""
+
 #
 # SPDX-License-Identifier: MIT
 
