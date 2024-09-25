@@ -60,14 +60,14 @@ Within sedg, this file was initially created with:
     $ . ./.venv/bin/activate        # enter '.venv'
     # create prod requirements.txt by installing prod deps into '.venv' based
     # on setup.cfg [options] then creating the requirements.txt lock file
-    $ pip install -e .
-    $ pip install -e .[cache]
-    $ pip install -e .[dso]
+    $ pip install .
+    $ pip install .[cache]
+    $ pip install .[dso]
     $ pip freeze | grep -Ev '^(-e|sedg==)' > ./requirements.txt
     # create dev requirements_dev.txt by installing dev deps on top of prod
     # deps based on setup.cfg [options.extras_require], then diff the output
     # with requirements.txt to create the requirements_dev.txt lock file
-    $ pip install -e .[dev]
+    $ pip install .[dev]
     $ pip freeze | grep -v '^-e' > ./requirements_dev.tmp
     $ echo "-r requirements.txt" > ./requirements_dev.txt
     $ diff -Nau ./requirements.txt ./requirements_dev.tmp | \
