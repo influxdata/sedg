@@ -92,14 +92,17 @@ Once created, can install production dependencies in a reproducible way with:
 Development dependencies are installed like so:
 
 ```
-    $ rm -rf ./.venv                       # remove exising virtual environment
-    $ python3 -m venv .venv                # create virtual environment '.venv'
-    $ . ./.venv/bin/activate               # enter '.venv'
-    $ pip install -r requirements_dev.txt  # install prod deps into '.venv'
+    $ rm -rf ./.venv                         # remove exising virtual environment
+    $ python3 -m venv .venv                  # create virtual environment '.venv'
+    $ . ./.venv/bin/activate                 # enter '.venv'
+    $ pip install -r requirements_dev.txt -e # install prod deps into '.venv'
     # alternatively
-    $ rm -rf ./.venv                       # remove exising virtual environment
-    $ make install-venv-dev                # install prod deps into '.venv'
+    $ rm -rf ./.venv                         # remove exising virtual environment
+    $ make install-venv-dev                  # install prod deps into '.venv'
 ```
+
+Note, `-e` installs the egg file in `.venv` to point to the source directory,
+which is convenient for development.
 
 #### Updating dependencies
 
