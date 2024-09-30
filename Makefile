@@ -29,11 +29,11 @@ install-venv-dev:
 	@if test -z "$(VIRTUAL_ENV)" ; then \
 		echo "Installing to '$(VENV)'" ; \
 		. ./$(VENV)/bin/activate ; \
-		pip install -r ./requirements_dev.txt . ; \
+		pip install -r ./requirements_dev.txt -e . ; \
 		echo "\nInstalled sedg development to ./$(VENV). To use, run '. ./$(VENV)/bin/activate'" ; \
 	else \
 		echo "Updating '$(VENV)'" ; \
-		pip install -r ./requirements_dev.txt . ; \
+		pip install -r ./requirements_dev.txt -e . ; \
 		echo "\nUpdated sedg development in ./$(VENV)." ; \
 	fi
 
