@@ -73,14 +73,13 @@ commands:
           command: |
             make install-venv-dev
 
-  # https://docs.getwoke.tech/installation/
-  install_woke:
-    description: Install woke non-inclusivity checker
+  install_language-checker:
+    description: Install non-inclusivity language-checker
     steps:
       - run:
-          description: Install woke non-inclusivity checker
+          description: Install language-checker non-inclusivity checker
           command: |
-            go install github.com/get-woke/woke@v0.19.0
+            go install github.com/jdstrand/language-checker@latest
 
 jobs:
   tests:
@@ -134,11 +133,11 @@ jobs:
       - image: cimg/go:1.18
     steps:
       - checkout
-      - install_woke
+      - install_language-checker
       - run:
           name: Running inclusivity checks
           command: |
-            make inclusivity-check
+            language-checker --exit-1-on-failure .
 
 # workflows can run in parallel
 workflows:
