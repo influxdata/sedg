@@ -88,12 +88,12 @@ def requestRaw(
             res = requests.get(url, headers=hdrs, params=params)
     except AttributeError as e:  # pragma: nocover
         # For some reason, requests to GitHub sometimes traceback with
-        # AttibuteError: 'dict' object has no attribute 'raw' when
+        # AttributeError: 'dict' object has no attribute 'raw' when
         # requests_cache is in use. Let's try to work around that by retrying
         # without the cache
         if reqc is None:
             raise
-        warn("requests_cache errored with AttibuteError: %s" % e)
+        warn("requests_cache errored with AttributeError: %s" % e)
         warn("Retrying %s without caching" % url)
         hdrs["Cache-Control"] = "no-cache"
         if method == "post":
