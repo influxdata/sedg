@@ -10,7 +10,7 @@ ply==3.11
 pyRFC3339==1.1
 pytz==2024.1
 PyYAML==6.0.2
-requests==2.32.3
+requests==2.32.4
 requests-cache==1.0.1
 six==1.16.0
 typing-extensions==4.12.2
