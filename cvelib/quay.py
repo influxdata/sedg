@@ -239,6 +239,13 @@ class QuaySecurityReportNew(SecurityReportInterface):
         if digest == "":
             latest_d: Optional[datetime] = None
             for tag in resj["tags"]:
+                # quay images that are signed have a tag of the form:
+                # 'sha256-<image sha>.sig'. These don't have the security
+                # reports so if we have a tag name of this form, it is safe to
+                # ignore.
+                if tag.endswith(".sig"):
+                    continue
+
                 if "last_modified" not in resj["tags"][tag]:
                     warn(
                         "Could not find 'last_modified' in response: %s"

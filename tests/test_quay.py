@@ -354,6 +354,12 @@ class TestQuay(TestCase):
                 "is_free_account": False,
                 "state": "NORMAL",
                 "tags": {
+                    "sha256-f7d94bbcf4f202b9f9d8f72c37d5650d7756f188.sig": {
+                        "name": "sha256-f7d94bbcf4f202b9f9d8f72c37d5650d7756f188.sig",
+                        "size": 250,
+                        "last_modified": "Wed, 15 Mar 2023 15:07:28 -0000",
+                        "manifest_digest": "sha256:623cef708997fa1d3ccfe86b3c884a0b9458e8aebdbe029b7d2e04269e4f2f61",
+                    },
                     "latest": {
                         "name": "latest",
                         "size": 270353940,
