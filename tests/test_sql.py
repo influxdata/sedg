@@ -3,27 +3,58 @@
 #
 # SPDX-License-Identifier: MIT
 
-import unittest
+from unittest import TestCase, mock
 import os
+import tempfile
 
+import cvelib.common
 import cvelib.cve
 import cvelib.pkg
 import cvelib.sql
 import tests.testutil
 
 
-class TestCVEdb(unittest.TestCase):
+class TestCVEdb(TestCase):
     def setUp(self):
         """Setup functions common for all tests"""
         os.environ["SEDG_EXPERIMENTAL"] = "1"
+        self.tmpdir = None
+        self.orig_xdg_config_home = None
 
     def tearDown(self):
         """Teardown functions common for all tests"""
+        if self.orig_xdg_config_home is None:
+            if "XDG_CONFIG_HOME" in os.environ:
+                del os.environ["XDG_CONFIG_HOME"]
+        else:  # pragma: nocover
+            os.environ["XDG_CONFIG_HOME"] = self.orig_xdg_config_home
+            self.orig_xdg_config_home = None
+        cvelib.common.configCache = None
+
         if "SEDG_EXPERIMENTAL" in os.environ:  # pragma: nocover
             del os.environ["SEDG_EXPERIMENTAL"]
 
         if hasattr(self, "conn"):
             self.conn.close()
+
+        if self.tmpdir is not None:
+            cvelib.common.recursive_rm(self.tmpdir)
+
+    def _setup_temp_config(self):
+        """Helper to set up temporary config with CVE data directories"""
+        self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
+        content = f"[Locations]\ncve-data = {self.tmpdir}\n"
+        self.orig_xdg_config_home, tmpdir = tests.testutil._newConfigFile(
+            content, self.tmpdir
+        )
+
+        # Create required directories
+        cveDirs = {}
+        for d in ["active", "retired", "ignored", "templates"]:
+            cveDirs[d] = os.path.join(self.tmpdir, d)
+            os.makedirs(cveDirs[d], 0o0700)
+
+        return tmpdir, cveDirs
 
     def _mock_cve(self):
         """Mock CVE object with sample data"""
@@ -44,6 +75,26 @@ class TestCVEdb(unittest.TestCase):
         cve.cvss = "9.8"
 
         return cve
+
+    def _mock_cve_file(self, cand="CVE-2023-1234"):
+        """Generate a valid CVE template"""
+        return {
+            "Candidate": cand,
+            "OpenDate": "2023-01-01",
+            "CloseDate": "",
+            "PublicDate": "2023-01-02",
+            "CRD": "2023-01-03",
+            "References": "\n https://example.com/cve-ref",
+            "Description": "\n Test CVE description",
+            "Notes": "\n test> some notes",
+            "Mitigation": "\n Test mitigation",
+            "Bugs": "\n https://example.com/bug",
+            "Priority": "medium",
+            "Discovered-by": "Test User",
+            "Assigned-to": "Test Assignee",
+            "CVSS": "",
+            "upstream_testpkg": "needs-triage",
+        }
 
     def test_parse_dsn(self):
         """Test parse_dsn()"""
@@ -360,3 +411,258 @@ class TestCVEdb(unittest.TestCase):
         # invalid
         res = db.execute_query("UPDATE...")
         self.assertEqual(0, len(res))
+
+    @mock.patch(
+        "sys.argv",
+        [
+            "cve-query",
+            "--show-schema",
+        ],
+    )
+    def test_main_cve_query_show_schema(self):
+        """Test main_cve_query() - show schema"""
+        self._setup_temp_config()
+
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.sql.main_cve_query()
+
+        self.assertEqual("", error.getvalue().strip())
+        self.assertIn("CREATE TABLE 'cves'", output.getvalue())
+        self.assertIn("CREATE TABLE 'pkgs'", output.getvalue())
+
+    @mock.patch(
+        "sys.argv",
+        [
+            "cve-query",
+            "--query",
+            "SELECT COUNT(*) FROM cves",
+        ],
+    )
+    def test_main_cve_query_from_arg(self):
+        """Test main_cve_query() - query as arg with CVE data"""
+        _, cveDirs = self._setup_temp_config()
+
+        # Create a test CVE file using _cve_template()
+        cve_data = self._mock_cve_file("CVE-2023-5555")
+        cve_content = tests.testutil.cveContentFromDict(cve_data)
+        cve_fn = os.path.join(cveDirs["active"], "CVE-2023-5555")
+        with open(cve_fn, "w") as fp:
+            fp.write(cve_content)
+
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.sql.main_cve_query()
+
+        self.assertEqual("", error.getvalue().strip())
+        self.assertIn("1", output.getvalue())  # One CVE in database
+
+    def test_main_cve_query_from_file(self):
+        """Test main_cve_query() - query from file with CVE data"""
+        tmpdir, cveDirs = self._setup_temp_config()
+
+        # Create a test CVE file using _cve_template()
+        cve_data = self._mock_cve_file("CVE-2023-6666")
+        cve_content = tests.testutil.cveContentFromDict(cve_data)
+        cve_fn = os.path.join(cveDirs["active"], "CVE-2023-6666")
+        with open(cve_fn, "w") as fp:
+            fp.write(cve_content)
+
+        query_fn = os.path.join(tmpdir, "test.sql")
+        content = "SELECT COUNT(*) FROM cves"
+        with open(query_fn, "w") as fp:
+            fp.write("%s" % content)
+
+        with mock.patch(
+            "sys.argv",
+            [
+                "cve-query",
+                "--query-file",
+                query_fn,
+            ],
+        ):
+
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.sql.main_cve_query()
+
+            self.assertEqual("", error.getvalue().strip())
+            self.assertIn("1", output.getvalue())  # One CVE in database
+
+    @mock.patch(
+        "sys.argv",
+        [
+            "cve-query",
+            "--query",
+            "SELECT COUNT(*) FROM cves",
+            "--output-format",
+            "raw",
+        ],
+    )
+    def test_main_cve_query_raw_output(self):
+        """Test main_cve_query() - raw output format"""
+        self._setup_temp_config()
+
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.sql.main_cve_query()
+
+        self.assertEqual("", error.getvalue().strip())
+        self.assertIn("(0,)", output.getvalue())
+
+    @mock.patch(
+        "sys.argv",
+        [
+            "cve-query",
+            "--show-schema",
+        ],
+    )
+    @mock.patch.dict(os.environ, {"SEDG_CVE_QUERY_DSN": "sqlite:///test.db"})
+    def test_main_cve_query_env_dsn(self):
+        """Test main_cve_query() - DSN from environment"""
+        tmpdir, _ = self._setup_temp_config()
+
+        # Change to tmpdir to ensure test.db is created there
+        orig_cwd = os.getcwd()
+        os.chdir(tmpdir)
+
+        try:
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.sql.main_cve_query()
+
+            self.assertEqual("", error.getvalue().strip())
+            self.assertIn("CREATE TABLE 'cves'", output.getvalue())
+            # Check that database file was created
+            self.assertTrue(os.path.exists("test.db"))
+        finally:
+            os.chdir(orig_cwd)
+
+    def test_main_cve_query_db_overwrite(self):
+        """Test main_cve_query() - database overwrite"""
+        tmpdir, _ = self._setup_temp_config()
+        db_path = os.path.join(tmpdir, "test.db")
+        # Write some content to the file
+        with open(db_path, "wb") as db_file:
+            db_file.write(b"existing content")
+
+        with mock.patch(
+            "sys.argv",
+            [
+                "cve-query",
+                "--dsn",
+                f"sqlite:///{db_path}",
+                "--db-overwrite",
+                "--show-schema",
+            ],
+        ):
+
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.sql.main_cve_query()
+
+            self.assertEqual("", error.getvalue().strip())
+            self.assertIn("CREATE TABLE 'cves'", output.getvalue())
+
+    def test_main_cve_query_existing_db(self):
+        """Test main_cve_query() - use existing database"""
+        tmpdir, _ = self._setup_temp_config()
+        db_path = os.path.join(tmpdir, "test.db")
+
+        # Pre-create database with schema
+        db = cvelib.sql.CVEdb(db_path)
+        db.create_tables()
+        db.conn.close()
+
+        with mock.patch(
+            "sys.argv",
+            [
+                "cve-query",
+                "--dsn",
+                f"sqlite:///{db_path}",
+                "--show-schema",
+            ],
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.sql.main_cve_query()
+
+            self.assertEqual("", error.getvalue().strip())
+            self.assertIn("CREATE TABLE 'cves'", output.getvalue())
+
+    @mock.patch(
+        "sys.argv",
+        [
+            "cve-query",
+            "--query",
+            "SELECT COUNT(*) FROM cves",
+            "--output-format",
+            "invalid",
+        ],
+    )
+    def test_main_cve_query_invalid_format(self):
+        """Test main_cve_query() - invalid output format"""
+        self._setup_temp_config()
+
+        with tests.testutil.capturedOutput() as (output, error):
+            with self.assertRaises(SystemExit):
+                cvelib.sql.main_cve_query()
+
+        self.assertEqual("", output.getvalue().strip())
+        self.assertIn("Unsupported output format 'invalid'", error.getvalue())
+
+    @mock.patch(
+        "sys.argv",
+        [
+            "cve-query",
+            "--query-file",
+            "/nonexistent/file.sql",
+        ],
+    )
+    def test_main_cve_query_nonexistent_file(self):
+        """Test main_cve_query() - nonexistent query file"""
+        self._setup_temp_config()
+
+        with tests.testutil.capturedOutput() as (output, error):
+            with self.assertRaises(SystemExit):
+                cvelib.sql.main_cve_query()
+
+        self.assertEqual("", output.getvalue().strip())
+        self.assertIn("'/nonexistent/file.sql' is not a regular file", error.getvalue())
+
+    @mock.patch(
+        "sys.argv",
+        [
+            "cve-query",
+            "--dsn",
+            "postgresql://localhost/testdb",
+            "--show-schema",
+        ],
+    )
+    def test_main_cve_query_unsupported_driver(self):
+        """Test main_cve_query() - unsupported database driver"""
+
+        with tests.testutil.capturedOutput() as (output, error):
+            with self.assertRaises(SystemExit):
+                cvelib.sql.main_cve_query()
+
+        self.assertEqual("", output.getvalue().strip())
+        self.assertIn("only 'sqlite' supported", error.getvalue())
+
+    @mock.patch(
+        "sys.argv",
+        [
+            "cve-query",
+            "--show-schema",
+        ],
+    )
+    def test_main_cve_query_with_cve_data(self):
+        """Test main_cve_query() - with actual CVE data to populate database"""
+        _, cveDirs = self._setup_temp_config()
+
+        # Create a test CVE file
+        cve_data = self._mock_cve_file("CVE-2023-9999")
+        cve_content = tests.testutil.cveContentFromDict(cve_data)
+        cve_fn = os.path.join(cveDirs["active"], "CVE-2023-9999")
+        with open(cve_fn, "w") as fp:
+            fp.write(cve_content)
+
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.sql.main_cve_query()
+
+        self.assertEqual("", error.getvalue().strip())
+        self.assertIn("CREATE TABLE 'cves'", output.getvalue())
+        self.assertIn("CREATE TABLE 'pkgs'", output.getvalue())
