@@ -3614,6 +3614,245 @@ git/valid-org_valid-repo: needs-triage
         self._mock_cve_data_mixed()  # this creates self.tmpdir and a config
 
     #
+    # _printGHAlertsTemplatesJSON()
+    #
+    def test__printGHAlertsTemplatesJSON(self):
+        """Test _printGHAlertsTemplatesJSON()"""
+        # test with dependabot alert
+        alerts = [
+            {
+                "alert_type": "dependabot",
+                "created_at": "2022-07-01T18:27:30Z",
+                "dependabot_manifest_path": "go.sum",
+                "dependabot_package_name": "github.com/foo/bar",
+                "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/1",
+                "security_advisory_ghsa_url": "https://github.com/advisories/GHSA-a",
+                "severity": "low",
+            }
+        ]
+
+        result = cvelib.report._printGHAlertsTemplatesJSON(
+            "valid-org", "valid-repo", alerts
+        )
+
+        expected_keys = [
+            "repo",
+            "org",
+            "alerts",
+            "highest_severity",
+            "alert_types",
+            "references",
+            "template_urls",
+            "clause",
+        ]
+        for key in expected_keys:
+            self.assertIn(key, result)
+
+        self.assertEqual(result["repo"], "valid-repo")
+        self.assertEqual(result["org"], "valid-org")
+        self.assertEqual(len(result["alerts"]), 1)
+        self.assertEqual(result["alerts"][0]["display_name"], "github.com/foo/bar")
+        self.assertEqual(result["alerts"][0]["severity"], "low")
+        self.assertEqual(result["alerts"][0]["type"], "dependabot")
+        self.assertEqual(result["highest_severity"], "low")
+        self.assertEqual(result["alert_types"], ["dependabot"])
+        self.assertIn("https://github.com/advisories/GHSA-a", result["references"])
+        self.assertTrue(result["clause"].startswith("Dependabot only reported"))
+
+    def test__printGHAlertsTemplatesJSON_multiple_types(self):
+        """Test _printGHAlertsTemplatesJSON() with multiple alert types"""
+        alerts = [
+            {
+                "alert_type": "dependabot",
+                "created_at": "2022-07-01T18:27:30Z",
+                "dependabot_manifest_path": "go.sum",
+                "dependabot_package_name": "github.com/foo/bar",
+                "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/1",
+                "security_advisory_ghsa_url": "https://github.com/advisories/GHSA-a",
+                "severity": "high",
+            },
+            {
+                "alert_type": "code-scanning",
+                "created_at": "2022-07-02T17:15:30Z",
+                "code_description": "SQL Injection",
+                "html_url": "https://github.com/valid-org/valid-repo/security/code-scanning/30",
+                "severity": "medium",
+            },
+        ]
+
+        result = cvelib.report._printGHAlertsTemplatesJSON(
+            "valid-org", "valid-repo", alerts
+        )
+
+        self.assertEqual(len(result["alerts"]), 2)
+        self.assertEqual(result["highest_severity"], "high")
+        self.assertEqual(sorted(result["alert_types"]), ["code-scanning", "dependabot"])
+        # Find dependabot and code-scanning alerts
+        dependabot_alert = next(
+            a for a in result["alerts"] if a["type"] == "dependabot"
+        )
+        code_scanning_alert = next(
+            a for a in result["alerts"] if a["type"] == "code-scanning"
+        )
+        self.assertIn("advisory", dependabot_alert)  # dependabot has advisory
+        self.assertNotIn("advisory", code_scanning_alert)  # code-scanning doesn't
+
+    def test__printGHAlertsTemplatesJSON_with_template_urls(self):
+        """Test _printGHAlertsTemplatesJSON() with template_urls"""
+        alerts = [
+            {
+                "alert_type": "secret-scanning",
+                "created_at": "2022-07-01T18:15:30Z",
+                "html_url": "https://github.com/valid-org/valid-repo/security/secret-scanning/20",
+                "secret_type_display_name": "GitHub Token",
+                "severity": "critical",
+            }
+        ]
+
+        template_urls = [
+            "https://example.com/template1",
+            "https://example.com/template2",
+        ]
+        result = cvelib.report._printGHAlertsTemplatesJSON(
+            "valid-org", "valid-repo", alerts, template_urls
+        )
+
+        self.assertEqual(result["template_urls"], template_urls)
+        self.assertEqual(result["alerts"][0]["display_name"], "GitHub Token")
+        self.assertEqual(result["highest_severity"], "critical")
+
+    @mock.patch("cvelib.report._readJSONFiles")
+    def test_getGHAlertsReportFromFiles_with_templates_json(self, mock_readJSONFiles):
+        """Test getGHAlertsReportFromFiles() with --with-templates-json"""
+        import json
+
+        # mock alert data
+        mock_readJSONFiles.return_value = _getMockedAlertsJSON()
+
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getGHAlertsReportFromFiles(
+                "test-org", ["fake_fn1", "fake_fn2"], with_templates_json=True
+            )
+
+        self.assertEqual("", error.getvalue().strip())
+
+        # parse the JSON output
+        output_str = output.getvalue().strip()
+        self.assertTrue(output_str.startswith("["))
+        self.assertTrue(output_str.endswith("]"))
+
+        json_data = json.loads(output_str)
+        self.assertIsInstance(json_data, list)
+        self.assertEqual(len(json_data), 1)  # one repo in mocked data
+
+        repo_data = json_data[0]
+        expected_keys = [
+            "repo",
+            "org",
+            "alerts",
+            "highest_severity",
+            "alert_types",
+            "references",
+            "template_urls",
+            "clause",
+        ]
+        for key in expected_keys:
+            self.assertIn(key, repo_data)
+
+        self.assertEqual(repo_data["repo"], "valid-repo")
+        self.assertEqual(repo_data["org"], "test-org")
+        self.assertGreater(len(repo_data["alerts"]), 0)
+
+    @mock.patch("cvelib.report._readJSONFiles")
+    def test_getGHAlertsReportFromFiles_multiple_repos_json(self, mock_readJSONFiles):
+        """Test getGHAlertsReportFromFiles() with multiple repos and JSON output"""
+        import json
+
+        # create mock data for multiple repos
+        mock_data = [
+            {
+                "created_at": "2022-07-01T18:27:30Z",
+                "dependency": {
+                    "manifest_path": "go.sum",
+                    "package": {"name": "github.com/foo/bar"},
+                },
+                "html_url": "https://github.com/test-org/repo1/security/dependabot/1",
+                "repository": {"name": "repo1", "private": False},
+                "security_advisory": {
+                    "ghsa_id": "GHSA-a",
+                    "severity": "high",
+                },
+            },
+            {
+                "created_at": "2022-07-02T18:27:30Z",
+                "dependency": {
+                    "manifest_path": "package.json",
+                    "package": {"name": "lodash"},
+                },
+                "html_url": "https://github.com/test-org/repo2/security/dependabot/2",
+                "repository": {"name": "repo2", "private": False},
+                "security_advisory": {
+                    "ghsa_id": "GHSA-b",
+                    "severity": "medium",
+                },
+            },
+        ]
+
+        mock_readJSONFiles.return_value = mock_data
+
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getGHAlertsReportFromFiles(
+                "test-org", ["fake_fn1", "fake_fn2"], with_templates_json=True
+            )
+
+        self.assertEqual("", error.getvalue().strip())
+
+        # parse the JSON output
+        json_data = json.loads(output.getvalue().strip())
+        self.assertIsInstance(json_data, list)
+        self.assertEqual(len(json_data), 2)  # two repos
+
+        # verify repos are sorted
+        self.assertEqual(json_data[0]["repo"], "repo1")
+        self.assertEqual(json_data[1]["repo"], "repo2")
+
+        # verify severities
+        self.assertEqual(json_data[0]["highest_severity"], "high")
+        self.assertEqual(json_data[1]["highest_severity"], "medium")
+
+    @mock.patch(
+        "requests.get", side_effect=mocked_requests_get__getGHAlertsAllDependabot
+    )
+    def test_getGHAlertsReport_with_templates_json(self, _):
+        """Test getGHAlertsReport() with --with-templates-json"""
+        import json
+
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getGHAlertsReport(
+                [],
+                "valid-org",
+                repos=["valid-repo"],
+                alert_types=["dependabot"],
+                with_templates_json=True,
+            )
+
+        self.assertEqual("", error.getvalue().strip())
+
+        # parse the JSON output
+        output_str = output.getvalue().strip()
+        self.assertTrue(output_str.startswith("["))
+        self.assertTrue(output_str.endswith("]"))
+
+        json_data = json.loads(output_str)
+        self.assertIsInstance(json_data, list)
+        self.assertEqual(len(json_data), 1)  # one repo
+
+        repo_data = json_data[0]
+        self.assertEqual(repo_data["repo"], "valid-repo")
+        self.assertEqual(repo_data["org"], "valid-org")
+        self.assertEqual(repo_data["alert_types"], ["dependabot"])
+
+    #
     # getHumanSoftwareInfo()
     #
     def test_getHumanSoftwareInfo(self):
@@ -4534,7 +4773,7 @@ Totals:
                     "--raw",
                     "--all",
                 ],
-                "--raw not supported with --all or --with-templates",
+                "--raw not supported with --all, --with-templates, or --with-templates-json",
             ),
             (
                 [
@@ -4547,7 +4786,7 @@ Totals:
                     "--raw",
                     "--with-templates",
                 ],
-                "--raw not supported with --all or --with-templates",
+                "--raw not supported with --all, --with-templates, or --with-templates-json",
             ),
             (
                 [
@@ -4639,7 +4878,7 @@ Totals:
                     "--raw",
                     "--all",
                 ],
-                "--raw not supported with --all or --with-templates",
+                "--raw not supported with --all, --with-templates, or --with-templates-json",
             ),
             (
                 [
@@ -4652,7 +4891,7 @@ Totals:
                     "--raw",
                     "--with-templates",
                 ],
-                "--raw not supported with --all or --with-templates",
+                "--raw not supported with --all, --with-templates, or --with-templates-json",
             ),
             (
                 [
@@ -4700,7 +4939,7 @@ Totals:
                     "--raw",
                     "--all",
                 ],
-                "--raw not supported with --all or --with-templates",
+                "--raw not supported with --all, --with-templates, or --with-templates-json",
             ),
             (
                 [
@@ -4711,7 +4950,7 @@ Totals:
                     "--raw",
                     "--with-templates",
                 ],
-                "--raw not supported with --all or --with-templates",
+                "--raw not supported with --all, --with-templates, or --with-templates-json",
             ),
             (
                 [
@@ -6143,3 +6382,133 @@ valid-proj/us/valid-repo/valid-name removed report: 1
             "ERROR: image name 'valid-repo/bad@sha256:deadbeef' should not contain '/'",
             error.getvalue().strip(),
         )
+
+    @mock.patch("sys.stdout.isatty")
+    @mock.patch("builtins.print")
+    def test__getGHReposAll_isatty(self, mock_print, mock_isatty):
+        """Test _getGHReposAll() with isatty() returning True"""
+        # Reset global repos_all to test fresh fetch
+        cvelib.report.repos_all = {"foo": {"archived": False}}
+        mock_isatty.return_value = True
+
+        result = cvelib.report._getGHReposAll("test-org")
+
+        mock_print.assert_called_once_with("Using previously fetched list of repos")
+        self.assertEqual(result, {"foo": {"archived": False}})
+
+        # Clean up global state
+        cvelib.report.repos_all = {}
+
+    def test__printGHAlertsTemplatesJSON_unknown_severity(self):
+        """Test _printGHAlertsTemplatesJSON() with unknown severity"""
+        alerts = [
+            {
+                "alert_type": "dependabot",
+                "created_at": "2022-07-01T18:15:30Z",
+                "html_url": "https://github.com/valid-org/valid-repo/security/dependabot/10",
+                "advisory": {"ghsa_id": "GHSA-test", "cve_id": "CVE-test"},
+                "dependency": {"package": {"name": "test-package"}},
+                "severity": "unknown-severity",
+                "security_advisory_ghsa_url": "https://github.com/advisories/GHSA-test",
+                "dependabot_package_name": "test-package",
+            }
+        ]
+
+        result = cvelib.report._printGHAlertsTemplatesJSON(
+            "valid-org", "valid-repo", alerts
+        )
+
+        self.assertEqual(result["highest_severity"], "medium")
+
+    @mock.patch("cvelib.cve.collectGHAlertUrls")
+    def test_getGHAlertsReport_resolved_only_json_lines_1140_1147(
+        self, mock_collectGHAlertUrls
+    ):
+        """Test getGHAlertsReport() with resolved alerts only (no updated) - covers lines 1140, 1147"""
+        mock_collectGHAlertUrls.return_value = (set(), [])
+
+        # Create a mock alert that will be classified as "resolved" (dismissed_at > since)
+        resolved_alert = {
+            "number": 10,
+            "state": "dismissed",
+            "dependency": {"package": {"name": "test-package"}},
+            "security_advisory": {"ghsa_id": "GHSA-test", "severity": "high"},
+            "html_url": "https://github.com/test-org/test-repo/security/dependabot/10",
+            "created_at": "2022-01-01T18:15:30Z",  # Old creation date
+            "dismissed_at": "2022-07-02T18:15:30Z",  # Recent dismissal - makes it "resolved"
+            "repository": {"name": "test-repo"},
+            "alert_type": "dependabot",
+            "dependabot_package_name": "test-package",
+            "security_advisory_ghsa_url": "https://github.com/advisories/GHSA-test",
+            "advisory": {"ghsa_id": "GHSA-test", "cve_id": "CVE-test"},
+            "severity": "high",  # Add this field that's expected by _printGHAlertsTemplatesJSON
+        }
+
+        # Mock _getGHAlertsAll to return alerts that will be classified as resolved
+        with mock.patch("cvelib.report._getGHAlertsAll") as mock_getGHAlertsAll:
+            mock_getGHAlertsAll.return_value = {"test-repo": [resolved_alert]}
+
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.report.getGHAlertsReport(
+                    [],
+                    "test-org",
+                    since=1640995200,  # Jan 1 2022 timestamp
+                    repos=["test-repo"],
+                    with_templates_json=True,
+                )
+
+            output_str = output.getvalue().strip()
+            # Should have "No alerts for the specified repos." first, then JSON array
+            lines = output_str.split("\n")
+            self.assertIn("No alerts for the specified repos.", lines[0])
+            # The JSON should be in the remaining output
+            json_part = "\n".join(lines[1:]).strip()
+            self.assertTrue(json_part.startswith("["))
+            import json
+
+            json_data = json.loads(json_part)
+            self.assertIsInstance(json_data, list)
+            self.assertEqual(len(json_data), 1)  # One resolved alert
+
+    def test_main_report_parse_args_error_lines_2745_2749_2805(self):
+        """Test argument parsing error conditions to cover lines 2745, 2749, 2805"""
+
+        # These tests verify that specific error conditions are triggered
+        # The coverage for lines 2745, 2749, 2805 is handled by the manual coverage script
+
+        # Test line 2745: gh --with-templates-json without --alerts but with another valid option
+        with self.assertRaises(SystemExit):
+            cvelib.report._main_report_parse_args(
+                [
+                    "gh",
+                    "--org",
+                    "test-org",
+                    "--missing",
+                    "--with-templates-json",
+                    "--since",
+                    "1",
+                    "--since-stamp",
+                    "2022-01-01",
+                ]
+            )
+
+        # Test line 2749: gh --with-templates and --with-templates-json conflict
+        with self.assertRaises(SystemExit):
+            cvelib.report._main_report_parse_args(
+                [
+                    "gh",
+                    "--org",
+                    "test-org",
+                    "--alerts",
+                    "--with-templates",
+                    "--with-templates-json",
+                    "--since",
+                    "1",
+                ]
+            )
+
+        # Test line 2805: quay --with-templates-json without --alerts (but with valid primary option)
+        with self.assertRaises(SystemExit):
+            cvelib.report._main_report_parse_args(
+                ["quay", "--namespace", "test", "--list", "--with-templates-json"]
+            )
