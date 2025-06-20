@@ -12,8 +12,8 @@ install-venv:
 	fi
 	@if test -z "$(VIRTUAL_ENV)" ; then \
 		echo "Installing to '$(VENV)'" ; \
-		. ./$(VENV)/bin/activate ; \
-		pip install -r ./requirements.txt . ; \
+		. ./$(VENV)/bin/activate && \
+		pip install -r ./requirements.txt . || exit 1; \
 		echo "\nInstalled sedg to ./$(VENV). To use, run '. ./$(VENV)/bin/activate'" ; \
 	else \
 		echo "Updating '$(VENV)'" ; \
@@ -28,8 +28,8 @@ install-venv-dev:
 	fi
 	@if test -z "$(VIRTUAL_ENV)" ; then \
 		echo "Installing to '$(VENV)'" ; \
-		. ./$(VENV)/bin/activate ; \
-		pip install -r ./requirements_dev.txt -e . ; \
+		. ./$(VENV)/bin/activate && \
+		pip install -r ./requirements_dev.txt -e . || exit 1; \
 		echo "\nInstalled sedg development to ./$(VENV). To use, run '. ./$(VENV)/bin/activate'" ; \
 	else \
 		echo "Updating '$(VENV)'" ; \
