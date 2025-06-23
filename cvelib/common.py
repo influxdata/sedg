@@ -305,6 +305,8 @@ rePatterns: Dict[str, Pattern[str]] = {
     "cvss-ubuntu": re.compile(
         r"^CVSS:(4\.0/AV:[NALP]/AC:[LH]/AT:[NP]/PR:[NLH]/UI:[NPA]/VC:[HLN]/VI:[HLN]/VA:[HLN]/SC:[HLN]/SI:[HLN]/SA:[HLN]|3\.[01]/AV:[NALP]/AC:[LH]/PR:[NLH]/UI:[NR]/S:[UC]/C:[NLH]/I:[NLH]/A:[NLH]|2\.0/AV:[LAN]/AC:[HML]/Au:[MSN]/C:[NPC]/I:[NPC]/A:[NPC])( \[(10|[0-9]).[0-9] (LOW|MEDIUM|HIGH|CRITICAL)\])?$"
     ),
+    # Notes author handle validation
+    "notes-author": re.compile(r"^@?[a-zA-Z0-9._-]+$"),
 }
 
 # Subdirectories of CVEs in config["Locations"]["cve-data"]
