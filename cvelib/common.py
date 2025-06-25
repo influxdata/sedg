@@ -33,6 +33,11 @@ cve_statuses: List[str] = [
     "not-affected",
 ]
 gh_severities: List[str] = ["unknown", "low", "medium", "high", "critical"]
+gh_template_clause_text = {
+    "dependabot": "Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.",
+    "secret-scanning": "While any secrets should be removed from the repo, they will live forever in git history so please remember to rotate the secret too.",
+    "code-scanning": "Code scanning only reported against the default branch so please be sure to check any other supported branches when researching/fixing.",
+}
 
 # TODO: pull these out into dictionaries and move to membership checks (where
 # the value of the dict could be a description of the thing (eg, for tags):

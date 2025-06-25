@@ -44,6 +44,7 @@ from cvelib.common import (
     getConfigOciCveOverrideWhere,
     getConfigTemplateURLs,
     gh_severities,
+    gh_template_clause_text,
     readFile,
     rePatterns,
     updateProgress,
@@ -491,12 +492,6 @@ def _printGHAlertsTemplatesJSON(
     org: str, repo: str, alert: List[Dict[str, str]], template_urls: List[str] = []
 ) -> Dict[str, Any]:
     """Generate the alerts issue templates as JSON and return the data"""
-    clause_txt: Dict[str, str] = {
-        "dependabot": "Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.",
-        "secret-scanning": "While any secrets should be removed from the repo, they will live forever in git history so please remember to rotate the secret too.",
-        "code-scanning": "Code scanning only reported against the default branch so please be sure to check any other supported branches when researching/fixing.",
-    }
-
     template_data = {
         "repo": repo,
         "org": org,
@@ -559,7 +554,7 @@ def _printGHAlertsTemplatesJSON(
     template_data["alert_types"] = sorted(list(alert_types))
     template_data["references"] = sorted(list(references))
     template_data["clause"] = " ".join(
-        [clause_txt.get(at, "") for at in sorted(alert_types)]
+        [gh_template_clause_text.get(at, "") for at in sorted(alert_types)]
     )
 
     return template_data
@@ -569,11 +564,6 @@ def _printGHAlertsTemplates(
     org: str, repo: str, alert: List[Dict[str, str]], template_urls: List[str] = []
 ) -> None:
     """Print out the alerts issue templates"""
-    clause_txt: Dict[str, str] = {
-        "dependabot": "Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.",
-        "secret-scanning": "While any secrets should be removed from the repo, they will live forever in git history so please remember to rotate the secret too.",
-        "code-scanning": "Code scanning only reported against the default branch so please be sure to check any other supported branches when researching/fixing.",
-    }
     urls: List[str] = []
     highest: int = 0
 
@@ -602,8 +592,8 @@ def _printGHAlertsTemplates(
         if n["alert_type"] not in alert_types:
             alert_types.append(n["alert_type"])
 
-        if clause_txt[n["alert_type"]] not in clauses:
-            clauses.append(clause_txt[n["alert_type"]])
+        if gh_template_clause_text[n["alert_type"]] not in clauses:
+            clauses.append(gh_template_clause_text[n["alert_type"]])
 
         display_name: str = ""
         if n["alert_type"] == "dependabot":
