@@ -32,6 +32,7 @@ cve_statuses: List[str] = [
     "DNE",
     "not-affected",
 ]
+gh_severities: List[str] = ["unknown", "low", "medium", "high", "critical"]
 
 # TODO: pull these out into dictionaries and move to membership checks (where
 # the value of the dict could be a description of the thing (eg, for tags):

@@ -43,6 +43,7 @@ from cvelib.common import (
     getConfigCompatUbuntu,
     getConfigOciCveOverrideWhere,
     getConfigTemplateURLs,
+    gh_severities,
     readFile,
     rePatterns,
     updateProgress,
@@ -490,7 +491,6 @@ def _printGHAlertsTemplatesJSON(
     org: str, repo: str, alert: List[Dict[str, str]], template_urls: List[str] = []
 ) -> Dict[str, Any]:
     """Generate the alerts issue templates as JSON and return the data"""
-    sev: List[str] = ["unknown", "low", "medium", "high", "critical"]
     clause_txt: Dict[str, str] = {
         "dependabot": "Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.",
         "secret-scanning": "While any secrets should be removed from the repo, they will live forever in git history so please remember to rotate the secret too.",
@@ -544,14 +544,14 @@ def _printGHAlertsTemplatesJSON(
         template_data["alerts"].append(alert_info)
 
         try:
-            cur = sev.index(n["severity"])
+            cur = gh_severities.index(n["severity"])
         except ValueError:
-            cur = sev.index("unknown")
+            cur = gh_severities.index("unknown")
 
         if cur > highest:
             highest = cur
 
-    priority: str = sev[highest]
+    priority: str = gh_severities[highest]
     if priority == "unknown":
         priority = "medium"
 
@@ -569,7 +569,6 @@ def _printGHAlertsTemplates(
     org: str, repo: str, alert: List[Dict[str, str]], template_urls: List[str] = []
 ) -> None:
     """Print out the alerts issue templates"""
-    sev: List[str] = ["unknown", "low", "medium", "high", "critical"]
     clause_txt: Dict[str, str] = {
         "dependabot": "Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.",
         "secret-scanning": "While any secrets should be removed from the repo, they will live forever in git history so please remember to rotate the secret too.",
@@ -626,9 +625,9 @@ def _printGHAlertsTemplates(
 
         cur: int
         try:
-            cur = sev.index(n["severity"])
+            cur = gh_severities.index(n["severity"])
         except ValueError:
-            cur = sev.index("unknown")
+            cur = gh_severities.index("unknown")
 
         if cur > highest:
             highest = cur
@@ -638,7 +637,7 @@ def _printGHAlertsTemplates(
     for i in sorted(html_items):
         checklist += "%s\n" % i
 
-    priority: str = sev[highest]
+    priority: str = gh_severities[highest]
     if priority == "unknown":
         priority = "medium"
 
@@ -663,8 +662,8 @@ References:
             repo,
             "s were" if plural else " was",
             checklist,
-            "n" if sev.index("unknown") == highest else "",
-            sev[highest],
+            "n" if gh_severities.index("unknown") == highest else "",
+            gh_severities[highest],
             priority,
             " ".join(sorted(clauses)),
             "" if len(template_urls) == 0 else "%s\n * " % "\n * ".join(template_urls),
