@@ -1,6 +1,6 @@
 __pycache__
 .coverage
-.venv
+.venv*
 *.swp
 active
 retired
@@ -8,5 +8,5 @@ ignored
 templates
 sedg.egg-info
 .claude/
-CLAUDE.md
+CLAUDE.local.md
 build

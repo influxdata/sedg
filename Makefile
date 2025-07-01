@@ -70,7 +70,7 @@ coverage:
 	python3 -m coverage run ./tests/run-tests
 
 coverage-report:
-	python3 -m coverage report --show-missing --omit="*/dist-packages/*"
+	python3 -m coverage report --show-missing --omit="*/dist-packages/*,/usr/lib/python3*/*"
 
 clean:
 	rm -rf ./bin/__pycache__ ./cvelib/__pycache__ ./tests/__pycache__
