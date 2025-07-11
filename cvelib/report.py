@@ -3006,7 +3006,7 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
             def formatDate(t: int) -> str:
                 s: str = "unknown"
                 if t > 0:
-                    s = str(datetime.datetime.utcfromtimestamp(t))
+                    s = str(datetime.datetime.fromtimestamp(t, datetime.timezone.utc))
                 return "(last updated: %s)" % s
 
             ocis: List[Tuple[str, int]] = sr.getOCIsForNamespace(args.namespace)

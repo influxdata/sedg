@@ -5040,7 +5040,7 @@ Totals:
             ),
         ):
             with tests.testutil.capturedOutput() as (output, error):
-                cvelib.report.main_report()
+                cvelib.report.main_report([])
             self.assertEqual("", output.getvalue().strip())
             errout = error.getvalue()
             self.assertTrue("Please specify a report command" in errout.strip())
@@ -5385,7 +5385,7 @@ template-urls = https://url1,https://url2
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
         self.assertEqual(
-            "valid-org/valid-repo (last updated: 2023-05-19 05:07:32)",
+            "valid-org/valid-repo (last updated: 2023-05-19 05:07:32+00:00)",
             output.getvalue().strip(),
         )
 
@@ -5628,7 +5628,7 @@ template-urls = https://url1,https://url2
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
         self.assertEqual(
-            "valid-proj/us/valid-repo/valid-name (last updated: 2023-05-19 05:07:32)",
+            "valid-proj/us/valid-repo/valid-name (last updated: 2023-05-19 05:07:32+00:00)",
             output.getvalue().strip(),
         )
 
