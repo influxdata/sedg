@@ -32,6 +32,12 @@ cve_statuses: List[str] = [
     "DNE",
     "not-affected",
 ]
+gh_severities: List[str] = ["unknown", "low", "medium", "high", "critical"]
+gh_template_clause_text = {
+    "dependabot": "Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.",
+    "secret-scanning": "While any secrets should be removed from the repo, they will live forever in git history so please remember to rotate the secret too.",
+    "code-scanning": "Code scanning only reported against the default branch so please be sure to check any other supported branches when researching/fixing.",
+}
 
 # TODO: pull these out into dictionaries and move to membership checks (where
 # the value of the dict could be a description of the thing (eg, for tags):
@@ -305,10 +311,15 @@ rePatterns: Dict[str, Pattern[str]] = {
     "cvss-ubuntu": re.compile(
         r"^CVSS:(4\.0/AV:[NALP]/AC:[LH]/AT:[NP]/PR:[NLH]/UI:[NPA]/VC:[HLN]/VI:[HLN]/VA:[HLN]/SC:[HLN]/SI:[HLN]/SA:[HLN]|3\.[01]/AV:[NALP]/AC:[LH]/PR:[NLH]/UI:[NR]/S:[UC]/C:[NLH]/I:[NLH]/A:[NLH]|2\.0/AV:[LAN]/AC:[HML]/Au:[MSN]/C:[NPC]/I:[NPC]/A:[NPC])( \[(10|[0-9]).[0-9] (LOW|MEDIUM|HIGH|CRITICAL)\])?$"
     ),
+    # Notes author handle validation
+    "notes-author": re.compile(r"^@?[a-zA-Z0-9._-]+$"),
 }
 
 # Subdirectories of CVEs in config["Locations"]["cve-data"]
 cve_reldirs: List[str] = ["active", "retired", "ignored", "templates"]
+
+# cve file line width
+cve_file_line_width: int = 80
 
 
 #

@@ -793,7 +793,9 @@ CVSS:%(cvss)s
         if len(lines) < 2:
             return
 
-        handle: str = "@?[a-zA-Z0-9._-]+>"
+        # Use shared pattern from common.py but adapt for notes format (with >)
+        handle_base = rePatterns["notes-author"].pattern[1:-1]  # Remove ^ and $
+        handle: str = f"{handle_base}>"
 
         # first entry must start with a handle
         pat_handle: Pattern = re.compile(r"^ %s" % handle)

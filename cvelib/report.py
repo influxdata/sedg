@@ -43,6 +43,8 @@ from cvelib.common import (
     getConfigCompatUbuntu,
     getConfigOciCveOverrideWhere,
     getConfigTemplateURLs,
+    gh_severities,
+    gh_template_clause_text,
     readFile,
     rePatterns,
     updateProgress,
@@ -486,16 +488,82 @@ def _printGHAlertsSummary(
         print("")
 
 
+def _printGHAlertsTemplatesJSON(
+    org: str, repo: str, alert: List[Dict[str, str]], template_urls: List[str] = []
+) -> Dict[str, Any]:
+    """Generate the alerts issue templates as JSON and return the data"""
+    template_data = {
+        "repo": repo,
+        "org": org,
+        "alerts": [],
+        "highest_severity": "unknown",
+        "alert_types": [],
+        "references": [],
+        "template_urls": template_urls.copy() if template_urls else [],
+    }
+
+    highest: int = 0
+    alert_types: Set[str] = set()
+    references: Set[str] = set()
+
+    for n in sorted(alert, key=lambda i: i["html_url"]):
+        url: str = "https://github.com/%s/%s/security/%s" % (org, repo, n["alert_type"])
+        references.add(url)
+        references.add(n["html_url"])
+
+        if n["alert_type"] == "dependabot":
+            references.add(n["security_advisory_ghsa_url"])
+
+        alert_types.add(n["alert_type"])
+
+        display_name: str = ""
+        if n["alert_type"] == "dependabot":
+            display_name = n["dependabot_package_name"]
+        elif n["alert_type"] == "code-scanning":
+            display_name = n["code_description"]
+        elif n["alert_type"] == "secret-scanning":
+            display_name = n["secret_type_display_name"]
+
+        alert_info = {
+            "display_name": display_name,
+            "severity": n["severity"],
+            "type": n["alert_type"],
+            "url": n["html_url"],
+            "created_at": n.get("created_at", ""),
+            "manifest_path": n.get("dependabot_manifest_path", ""),
+        }
+
+        if n["alert_type"] == "dependabot":
+            alert_info["advisory"] = n.get("security_advisory_ghsa_url", "")
+
+        template_data["alerts"].append(alert_info)
+
+        try:
+            cur = gh_severities.index(n["severity"])
+        except ValueError:
+            cur = gh_severities.index("unknown")
+
+        if cur > highest:
+            highest = cur
+
+    priority: str = gh_severities[highest]
+    if priority == "unknown":
+        priority = "medium"
+
+    template_data["highest_severity"] = priority
+    template_data["alert_types"] = sorted(list(alert_types))
+    template_data["references"] = sorted(list(references))
+    template_data["clause"] = " ".join(
+        [gh_template_clause_text.get(at, "") for at in sorted(alert_types)]
+    )
+
+    return template_data
+
+
 def _printGHAlertsTemplates(
     org: str, repo: str, alert: List[Dict[str, str]], template_urls: List[str] = []
 ) -> None:
     """Print out the alerts issue templates"""
-    sev: List[str] = ["unknown", "low", "medium", "high", "critical"]
-    clause_txt: Dict[str, str] = {
-        "dependabot": "Dependabot only reported against the default branch so please be sure to check any other supported branches when researching/fixing.",
-        "secret-scanning": "While any secrets should be removed from the repo, they will live forever in git history so please remember to rotate the secret too.",
-        "code-scanning": "Code scanning only reported against the default branch so please be sure to check any other supported branches when researching/fixing.",
-    }
     urls: List[str] = []
     highest: int = 0
 
@@ -524,8 +592,8 @@ def _printGHAlertsTemplates(
         if n["alert_type"] not in alert_types:
             alert_types.append(n["alert_type"])
 
-        if clause_txt[n["alert_type"]] not in clauses:
-            clauses.append(clause_txt[n["alert_type"]])
+        if gh_template_clause_text[n["alert_type"]] not in clauses:
+            clauses.append(gh_template_clause_text[n["alert_type"]])
 
         display_name: str = ""
         if n["alert_type"] == "dependabot":
@@ -547,9 +615,9 @@ def _printGHAlertsTemplates(
 
         cur: int
         try:
-            cur = sev.index(n["severity"])
+            cur = gh_severities.index(n["severity"])
         except ValueError:
-            cur = sev.index("unknown")
+            cur = gh_severities.index("unknown")
 
         if cur > highest:
             highest = cur
@@ -559,7 +627,7 @@ def _printGHAlertsTemplates(
     for i in sorted(html_items):
         checklist += "%s\n" % i
 
-    priority: str = sev[highest]
+    priority: str = gh_severities[highest]
     if priority == "unknown":
         priority = "medium"
 
@@ -584,8 +652,8 @@ References:
             repo,
             "s were" if plural else " was",
             checklist,
-            "n" if sev.index("unknown") == highest else "",
-            sev[highest],
+            "n" if gh_severities.index("unknown") == highest else "",
+            gh_severities[highest],
             priority,
             " ".join(sorted(clauses)),
             "" if len(template_urls) == 0 else "%s\n * " % "\n * ".join(template_urls),
@@ -976,6 +1044,7 @@ def getGHAlertsReport(
     repos: List[str] = [],
     excluded_repos: List[str] = [],
     with_templates: bool = False,
+    with_templates_json: bool = False,
     alert_types: List[str] = [],
     template_urls: List[str] = [],
 ) -> None:
@@ -1036,21 +1105,41 @@ def getGHAlertsReport(
     if len(updated) == 0:
         print("No alerts for the specified repos.")
     else:
-        print("Alerts:")
-        for repo in sorted(updated.keys()):
-            if with_templates:
-                _printGHAlertsTemplates(org, repo, updated[repo], template_urls)
-                print("")
-            _printGHAlertsSummary(org, repo, updated[repo], "updated")
+        if with_templates_json:
+            # Collect all template data into an array
+            templates_array = []
+            for repo in sorted(updated.keys()):
+                template_data = _printGHAlertsTemplatesJSON(
+                    org, repo, updated[repo], template_urls
+                )
+                templates_array.append(template_data)
+            print(json.dumps(templates_array, indent=2))
+        else:
+            print("Alerts:")
+            for repo in sorted(updated.keys()):
+                if with_templates:
+                    _printGHAlertsTemplates(org, repo, updated[repo], template_urls)
+                    print("")
+                _printGHAlertsSummary(org, repo, updated[repo], "updated")
 
     if len(resolved) > 0:
-        print("Resolved alerts:")
-        for repo in sorted(resolved.keys()):
-            print("")
-            if with_templates:
-                _printGHAlertsTemplates(org, repo, resolved[repo], template_urls)
+        if with_templates_json:
+            templates_array = []
+            for repo in sorted(resolved.keys()):
+                template_data = _printGHAlertsTemplatesJSON(
+                    org, repo, resolved[repo], template_urls
+                )
+                templates_array.append(template_data)
+            if len(updated) == 0:
+                print(json.dumps(templates_array, indent=2))
+        else:
+            print("Resolved alerts:")
+            for repo in sorted(resolved.keys()):
                 print("")
-            _printGHAlertsSummary(org, repo, resolved[repo], "resolved")
+                if with_templates:
+                    _printGHAlertsTemplates(org, repo, resolved[repo], template_urls)
+                    print("")
+                _printGHAlertsSummary(org, repo, resolved[repo], "resolved")
 
 
 def _readJSONFiles(fns: List[str], path: str = "") -> List[Dict[str, str]]:
@@ -1078,6 +1167,7 @@ def getGHAlertsReportFromFiles(
     fns: List[str],
     path: str = "",
     with_templates: bool = False,
+    with_templates_json: bool = False,
     template_urls: List[str] = [],
 ) -> None:
     """Show GitHub alerts from files"""
@@ -1103,12 +1193,22 @@ def getGHAlertsReportFromFiles(
         alerts[repo].append(a)
 
     # print out the alerts
-    print("Alerts:")
-    for repo in sorted(alerts.keys()):
-        if with_templates:
-            _printGHAlertsTemplates(org, repo, alerts[repo], template_urls)
-            print("")
-        _printGHAlertsSummary(org, repo, alerts[repo], "read")
+    if with_templates_json:
+        # Collect all template data into an array
+        templates_array = []
+        for repo in sorted(alerts.keys()):
+            template_data = _printGHAlertsTemplatesJSON(
+                org, repo, alerts[repo], template_urls
+            )
+            templates_array.append(template_data)
+        print(json.dumps(templates_array, indent=2))
+    else:
+        print("Alerts:")
+        for repo in sorted(alerts.keys()):
+            if with_templates:
+                _printGHAlertsTemplates(org, repo, alerts[repo], template_urls)
+                print("")
+            _printGHAlertsSummary(org, repo, alerts[repo], "read")
 
 
 def getOCIReports(
@@ -1118,6 +1218,7 @@ def getOCIReports(
     images: List[str] = [],
     excluded_images: List[str] = [],
     with_templates: bool = False,
+    with_templates_json: bool = False,
     template_urls: List[str] = [],
     raw: bool = False,
     fixable: bool = True,
@@ -2335,6 +2436,12 @@ Example usage:
             action="store_true",
         )
         p.add_argument(
+            "--with-templates-json",
+            dest="with_templates_json",
+            help="show issue templates as JSON with %s security reports" % what,
+            action="store_true",
+        )
+        p.add_argument(
             "--raw",
             dest="raw",
             help="display raw JSON for %s security reports" % what,
@@ -2518,6 +2625,12 @@ Example usage:
         help="show issue templates with GHAS alerts",
         action="store_true",
     )
+    parser_gh.add_argument(
+        "--with-templates-json",
+        dest="with_templates_json",
+        help="show issue templates as JSON with GHAS alerts",
+        action="store_true",
+    )
 
     # quay
     parser_quay = sub.add_parser("quay")
@@ -2615,6 +2728,14 @@ Example usage:
             )
         elif args.with_templates and not (args.alerts or args.alerts_jsons):
             error("Please specify --alerts or --alerts-jsons with --with-templates")
+        elif args.with_templates_json and not (args.alerts or args.alerts_jsons):
+            error(
+                "Please specify --alerts or --alerts-jsons with --with-templates-json"
+            )
+        elif args.with_templates and args.with_templates_json:
+            error(
+                "Please specify only one of --with-templates or --with-templates-json"
+            )
         elif (
             args.updated
             and args.software is not None
@@ -2667,6 +2788,8 @@ Example usage:
         elif not args.alerts:
             if args.with_templates:
                 error("Please specify --alerts with --with-templates")
+            if args.with_templates_json:
+                error("Please specify --alerts with --with-templates-json")
             if args.all:
                 error("Please specify --alerts with --all")
             if args.raw:
@@ -2674,8 +2797,10 @@ Example usage:
             if args.filter_priority:
                 error("Please specify --alerts with --filter-priority")
         # below here are --alerts specific
-        elif args.raw and (args.with_templates or args.all):
-            error("--raw not supported with --all or --with-templates")
+        elif args.raw and (args.with_templates or args.with_templates_json or args.all):
+            error(
+                "--raw not supported with --all, --with-templates, or --with-templates-json"
+            )
         elif args.cmd in ["gar", "quay"] and args.list:
             error("Unsupported option --list with --alerts")
         elif args.list_digest:
@@ -2785,6 +2910,7 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
                 args.alerts_jsons,
                 path=args.path,
                 with_templates=args.with_templates,
+                with_templates_json=args.with_templates_json,
                 template_urls=template_urls,
             )
             return
@@ -2833,6 +2959,7 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
                 repos=repos,
                 excluded_repos=excluded_repos,
                 with_templates=args.with_templates,
+                with_templates_json=args.with_templates_json,
                 alert_types=alert_types,
                 template_urls=template_urls,
             )
@@ -2879,7 +3006,7 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
             def formatDate(t: int) -> str:
                 s: str = "unknown"
                 if t > 0:
-                    s = str(datetime.datetime.utcfromtimestamp(t))
+                    s = str(datetime.datetime.fromtimestamp(t, datetime.timezone.utc))
                 return "(last updated: %s)" % s
 
             ocis: List[Tuple[str, int]] = sr.getOCIsForNamespace(args.namespace)
@@ -2954,6 +3081,7 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
                 images=images,
                 excluded_images=excluded_images,
                 with_templates=args.with_templates,
+                with_templates_json=args.with_templates_json,
                 template_urls=template_urls,
                 raw=args.raw,
                 fixable=(not args.all),
