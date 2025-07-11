@@ -7,6 +7,6 @@ retired
 ignored
 templates
 sedg.egg-info
-.claude/
+.claude*
 CLAUDE.local.md
 build

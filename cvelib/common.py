@@ -318,6 +318,9 @@ rePatterns: Dict[str, Pattern[str]] = {
 # Subdirectories of CVEs in config["Locations"]["cve-data"]
 cve_reldirs: List[str] = ["active", "retired", "ignored", "templates"]
 
+# cve file line width
+cve_file_line_width: int = 80
+
 
 #
 # Utility functions
