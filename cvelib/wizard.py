@@ -585,6 +585,12 @@ def _parseOrgRepoInput(orig: str, default_org: str) -> Tuple[str, str]:
             "Invalid format. No leading, trailing, or multiple forward slashes allowed."
         )
 
+    # Validate input - must be longer than a single character
+    if len(input_str) == 1:
+        raise ValueError(
+            "Invalid format (when specified, must be longer than 1 character)"
+        )
+
     # Parse org/repo and return tuple
     org: str = default_org
     repo: str

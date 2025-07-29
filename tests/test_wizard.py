@@ -1757,6 +1757,7 @@ References:
         # Simulate user inputs including invalid inputs that need validation
         with self._mock_user_input_sequence(
             [
+                "",  # org/repo (use default)
                 "e",  # edit - First action: edit
                 "u",  # url - Edit field: url
                 "/invalid/input/",  # Invalid input with leading/trailing slashes
@@ -4334,6 +4335,13 @@ References:
             cvelib.wizard._parseOrgRepoInput("org/repo/extra", "default-org")
         self.assertIn(
             "Invalid format. Use 'org/repo' or just 'repo'", str(cm.exception)
+        )
+
+        # Test with too short response
+        with self.assertRaises(ValueError) as cm:
+            cvelib.wizard._parseOrgRepoInput("e", "default-org")
+        self.assertIn(
+            "when specified, must be longer than 1 character", str(cm.exception)
         )
 
     def test__parseOrgRepoInput_invalid_org_validation(self):
