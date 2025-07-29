@@ -1533,17 +1533,17 @@ oci/org_foo: pending
             (
                 "\n CVSS:2.0/AV:L/AC:H/Au:M/C:N/I:N/A:N",
                 False,
-                "invalid CVSS: 'CVSS:2.0/AV:L/AC:H/Au:M/C:N/I:N/A:N' (use who: CVSS:...)",
+                "invalid CVSS: 'CVSS:2.0/AV:L/AC:H/Au:M/C:N/I:N/A:N' (use 'who: CVSS:... (<score> <priority)')",
             ),
             (
                 "\n <bad>: CVSS:2.0/AV:L/AC:H/Au:M/C:N/I:N/A:N",
                 False,
-                "invalid CVSS: '<bad>: CVSS:2.0/AV:L/AC:H/Au:M/C:N/I:N/A:N' (use who: CVSS:...)",
+                "invalid CVSS: '<bad>: CVSS:2.0/AV:L/AC:H/Au:M/C:N/I:N/A:N' (use 'who: CVSS:... (<score> <priority)')",
             ),
             (
                 "\n foo: CVSS:bad",
                 False,
-                "invalid CVSS: 'foo: CVSS:bad' (use who: CVSS:...)",
+                "invalid CVSS: 'foo: CVSS:bad' (use 'who: CVSS:... (<score> <priority)')",
             ),
             # invalid compat
             ("bár", True, "invalid CVSS: 'bár' (contains non-ASCII characters)"),
