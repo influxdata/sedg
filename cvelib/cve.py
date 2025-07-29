@@ -857,7 +857,8 @@ CVSS:%(cvss)s
                 for line in self._verifyMultiline(key, val):
                     if not rePatterns["cvss-entry"].search(line):
                         raise CveException(
-                            "invalid %s: '%s' (use who: CVSS:...)" % (key, line)
+                            "invalid %s: '%s' (use 'who: CVSS:... (<score> <priority)')"
+                            % (key, line)
                         )
 
     def _verifyGHAS(self, key: str, val: str) -> None:
