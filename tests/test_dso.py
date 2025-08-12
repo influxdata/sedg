@@ -420,6 +420,10 @@ class TestDockerDSO(TestCase):
         self.assertEqual(1, len(res))
         self.assertEqual("1.0-valid-name", res[0][0])
 
+        res = cvelib.dso._getTagsForRepo("valid-org/valid-repo")
+        self.assertEqual(1, len(res))
+        self.assertEqual("1.0-valid-name", res[0][0])
+
         # should be able to do #self.assertEqual(1691503749, res[0][1]) but
         # circleci's python gives different epoch (weird). Confirm the datetime
         # object is correct
@@ -504,7 +508,7 @@ class TestDockerDSO(TestCase):
                 res = cvelib.dso._getTagsForRepo("valid-repo:dont-use-tag")
         self.assertEqual("", output.getvalue().strip())
         self.assertTrue(
-            "Please use REPO (without :TAG or @sha256:SHA256)"
+            "Please use REPO or PROJECT/REPO (without :TAG or @sha256:SHA256)"
             in error.getvalue().strip()
         )
         self.assertEqual(0, len(res))

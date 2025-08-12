@@ -280,11 +280,11 @@ class DockerDSOSecurityReportNew(SecurityReportInterface):
         return ocis, ""
 
     def getOCIsForNamespace(self, _: str) -> List[Tuple[str, int]]:  # pragma: nocover
-        # dso doesn't have a concept of namespaces
+        # dso doesn't have a concept of namespaces in the way other registries do
         raise NotImplementedError
 
     def getReposForNamespace(self, _: str) -> List[str]:  # pragma: nocover
-        # dso doesn't have a concept of repos within namespaces
+        # dso doesn't have a concept of repos within namespaces in the way other registries do
         raise NotImplementedError
 
 
@@ -773,8 +773,8 @@ def _getListEDN(namespace: str, days: int = 365) -> Dict:
 # }
 def _getTagsForRepo(repo_name: str) -> List[Tuple[str, int]]:
     """Obtain the list of DockerDSO tags for the specified repo"""
-    if ":" in repo_name or "@" in repo_name or "/" in repo_name:
-        error("Please use REPO (without :TAG or @sha256:SHA256)")
+    if ":" in repo_name or "@" in repo_name or repo_name.count("/") > 1:
+        error("Please use REPO or PROJECT/REPO (without :TAG or @sha256:SHA256)")
         return []  # for tests
 
     if sys.stdout.isatty():
