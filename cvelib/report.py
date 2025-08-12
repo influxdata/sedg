@@ -2274,17 +2274,17 @@ Example usage:
 # OCI reports
 
   # Show latest SHA256 digest with a scan result for image name
-  $ cve-report dso --list-digest <name>
+  $ cve-report dso --list-digest [<project>/]<name>
   $ cve-report gar --namespace <project>/<location> --list-digest <repo>/<name>
   $ cve-report quay --namespace <org> --list-digest <name>
 
   # Show SHA256 digest for image name with tag
-  $ cve-report dso --list-digest <name>:<tag>
+  $ cve-report dso --list-digest [<project>/]<name>:<tag>
   $ cve-report gar --namespace <project>/<location> --list-digest <repo>/<name>:<tag>
   $ cve-report quay --namespace <org> --list-digest <name>:<tag>
 
   # Show security report for image name with digest
-  $ cve-report dso --alerts --images <name>@<digest>
+  $ cve-report dso --alerts --images [<project>/]<name>@<digest>
   $ cve-report gar --alerts --namespace <project>/<location> --images <repo>/<name>@<digest>
   $ cve-report quay --alerts --namespace <org> --images <name>@<digest>
 
@@ -2311,13 +2311,16 @@ Example usage:
 
   Note that different artifact registries organize containers differently:
   * Docker Hub organizes by 'repo' for a single logical piece of software, with
-    tags used to differentiate containers. Eg:
+    tags used to differentiate containers. An optional 'project' (aka
+    organization or namespace) may be used. Eg:
     * foo:latest
     * foo:1.0
     * foo:1.0.1
     * foo:alpine
     * foo:1.0-alpine
     * foo:1.0.1-alpine
+    * my-project/foo:latest
+    * my-project/foo:1.0.1-alpine
   * Quay.io organizes by 'organization' and 'repo' where 'repo' is for a single
     logical piece of software, with tags used to differentiate containers. Eg:
     * org foo:latest
