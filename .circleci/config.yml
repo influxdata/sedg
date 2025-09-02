@@ -85,7 +85,7 @@ jobs:
   tests:
     docker:
       # increment depsX.Y, above, if change the python minor or major version
-      - image: cimg/python:3.8
+      - image: cimg/python:3.10
     steps:
       - checkout
       - cache_restore
@@ -101,7 +101,7 @@ jobs:
   lint:
     docker:
       # increment dev-depsX.Y, above, if change the python minor or major version
-      - image: cimg/python:3.8
+      - image: cimg/python:3.10
     steps:
       - checkout
       - cache_restore_dev
@@ -116,7 +116,7 @@ jobs:
   fmt:
     docker:
       # increment dev-depsX.Y, above, if change the python minor or major version
-      - image: cimg/python:3.8
+      - image: cimg/python:3.10
     steps:
       - checkout
       - cache_restore_dev
