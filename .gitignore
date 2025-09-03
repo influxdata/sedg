@@ -8,5 +8,5 @@ ignored
 templates
 sedg.egg-info
 .claude*
-CLAUDE.local.md
+*.local.md
 build
