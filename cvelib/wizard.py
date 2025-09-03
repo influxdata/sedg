@@ -107,7 +107,9 @@ def _formatAsNoteText(text: str, attribution: str = "PERSON") -> str:
     for para_idx, paragraph in enumerate(paragraphs):
         # Wrap the current paragraph
         wrapped_lines: List[str] = textwrap.wrap(
-            paragraph, width=first_line_width if para_idx == 0 else continuation_width
+            paragraph,
+            width=first_line_width if para_idx == 0 else continuation_width,
+            break_on_hyphens=False,
         )
 
         if not wrapped_lines:
@@ -118,7 +120,9 @@ def _formatAsNoteText(text: str, attribution: str = "PERSON") -> str:
             result_lines.append(f"{first_line_prefix}{wrapped_lines[0]}")
             # Continuation lines for first paragraph
             for line in wrapped_lines[1:]:
-                continuation_wrapped = textwrap.wrap(line, width=continuation_width)
+                continuation_wrapped = textwrap.wrap(
+                    line, width=continuation_width, break_on_hyphens=False
+                )
                 for cont_line in continuation_wrapped:
                     result_lines.append(f"{continuation_prefix}{cont_line}")
         else:
@@ -126,7 +130,9 @@ def _formatAsNoteText(text: str, attribution: str = "PERSON") -> str:
             result_lines.append(paragraph_separator)
             # Add all lines of the paragraph with continuation prefix
             for line in wrapped_lines:
-                continuation_wrapped = textwrap.wrap(line, width=continuation_width)
+                continuation_wrapped = textwrap.wrap(
+                    line, width=continuation_width, break_on_hyphens=False
+                )
                 for cont_line in continuation_wrapped:
                     result_lines.append(f"{continuation_prefix}{cont_line}")
 
