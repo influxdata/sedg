@@ -11,6 +11,7 @@ import contextlib
 import json
 import os
 import subprocess
+import sys
 import tempfile
 from typing import Any, Dict, List, Optional
 
@@ -42,14 +43,14 @@ class TestWizard(TestCase):
         """Create sample alerts JSON data"""
         return [
             {
-                "repo": "granite",
-                "org": "influxdata",
+                "repo": "testrepo",
+                "org": "testorg",
                 "alerts": [
                     {
                         "display_name": "github.com/uptrace/bun",
                         "severity": "medium",
                         "type": "dependabot",
-                        "url": "https://github.com/influxdata/granite/security/dependabot/86",
+                        "url": "https://github.com/testorg/testrepo/security/dependabot/86",
                         "created_at": "2025-01-01T00:00:00Z",
                         "manifest_path": "go.mod",
                         "advisory": "https://github.com/advisories/GHSA-h4h6-vccr-44h2",
@@ -58,7 +59,7 @@ class TestWizard(TestCase):
                         "display_name": "github.com/uptrace/bun",
                         "severity": "low",
                         "type": "dependabot",
-                        "url": "https://github.com/influxdata/granite/security/dependabot/87",
+                        "url": "https://github.com/testorg/testrepo/security/dependabot/87",
                         "created_at": "2025-01-01T00:00:00Z",
                         "manifest_path": "go.mod",
                         "advisory": "https://github.com/advisories/GHSA-h4h6-vccr-55i3",
@@ -67,9 +68,9 @@ class TestWizard(TestCase):
                 "highest_severity": "medium",
                 "alert_types": ["dependabot"],
                 "references": [
-                    "https://github.com/influxdata/granite/security/dependabot",
-                    "https://github.com/influxdata/granite/security/dependabot/86",
-                    "https://github.com/influxdata/granite/security/dependabot/87",
+                    "https://github.com/testorg/testrepo/security/dependabot",
+                    "https://github.com/testorg/testrepo/security/dependabot/86",
+                    "https://github.com/testorg/testrepo/security/dependabot/87",
                 ],
                 "template_urls": [],
             }
@@ -621,10 +622,10 @@ References:
     def test__generateCveContent(self):
         """Test generate_cve_content function"""
         alerts = self._create_sample_alerts_json()[0]["alerts"]
-        tracking_url = "https://github.com/influxdata/granite/issues/123"
+        tracking_url = "https://github.com/testorg/testrepo/issues/123"
 
         cve_content = cvelib.wizard._generateCveContent(
-            alerts, "influxdata", "granite", tracking_url
+            alerts, "testorg", "testrepo", tracking_url
         )
 
         # Check key components
@@ -636,8 +637,8 @@ References:
         self.assertIn("dependency: github.com/uptrace/bun", cve_content)
         self.assertIn("Priority: medium", cve_content)
         self.assertIn("Discovered-by: gh-dependabot", cve_content)
-        self.assertIn("Patches_granite:", cve_content)
-        self.assertIn("git/influxdata_granite: needs-triage", cve_content)
+        self.assertIn("Patches_testrepo:", cve_content)
+        self.assertIn("git/testorg_testrepo: needs-triage", cve_content)
 
     def test__generateCveContent_at_symbol_display_name(self):
         """Test _generateCveContent with display_name starting with @"""
@@ -736,40 +737,40 @@ References:
     def test__generateCveContent_with_custom_priority(self):
         """Test generate_cve_content function with custom priority override"""
         alerts = self._create_sample_alerts_json()[0]["alerts"]
-        tracking_url = "https://github.com/influxdata/granite/issues/123"
+        tracking_url = "https://github.com/testorg/testrepo/issues/123"
 
         # Test with custom priority different from calculated priority
         cve_content = cvelib.wizard._generateCveContent(
-            alerts, "influxdata", "granite", tracking_url, "critical"
+            alerts, "testorg", "testrepo", tracking_url, "critical"
         )
 
         # Check that both global priority and per-package override are present
         self.assertIn("Priority: medium", cve_content)  # Calculated priority
-        self.assertIn("Priority_granite: critical", cve_content)  # Override
+        self.assertIn("Priority_testrepo: critical", cve_content)  # Override
 
         # Verify priority override comes before Patches section
-        priority_idx = cve_content.find("Priority_granite: critical")
-        patches_idx = cve_content.find("Patches_granite:")
+        priority_idx = cve_content.find("Priority_testrepo: critical")
+        patches_idx = cve_content.find("Patches_testrepo:")
         self.assertGreater(
             patches_idx, priority_idx
         )  # Patches should come after priority override
 
         # Test with custom priority same as calculated priority (no override)
         cve_content_same = cvelib.wizard._generateCveContent(
-            alerts, "influxdata", "granite", tracking_url, "medium"
+            alerts, "testorg", "testrepo", tracking_url, "medium"
         )
 
         self.assertIn("Priority: medium", cve_content_same)
-        self.assertNotIn("Priority_granite:", cve_content_same)  # No override
+        self.assertNotIn("Priority_testrepo:", cve_content_same)  # No override
 
     def test__generateCveContent_with_description_changes(self):
         """Test generate_cve_content function with description changes"""
         alerts = self._create_sample_alerts_json()[0]["alerts"]
-        tracking_url = "https://github.com/influxdata/granite/issues/123"
+        tracking_url = "https://github.com/testorg/testrepo/issues/123"
         description_changes = "Adding the 'critical' label due to FILL ME IN"
 
         cve_content = cvelib.wizard._generateCveContent(
-            alerts, "influxdata", "granite", tracking_url, "", description_changes
+            alerts, "testorg", "testrepo", tracking_url, "", description_changes
         )
 
         # Check that Notes section contains the description changes
@@ -780,7 +781,7 @@ References:
 
         # Test with no description changes
         cve_content_no_changes = cvelib.wizard._generateCveContent(
-            alerts, "influxdata", "granite", tracking_url, "", ""
+            alerts, "testorg", "testrepo", tracking_url, "", ""
         )
 
         # Notes section should be empty
@@ -795,7 +796,7 @@ References:
         """Test generate_issue_description function"""
         alerts = self._create_sample_alerts_json()[0]["alerts"]
         description = cvelib.wizard._generateIssueDescription(
-            alerts, "influxdata", "granite"
+            alerts, "testorg", "testrepo"
         )
 
         # Check key components
@@ -805,7 +806,7 @@ References:
         self.assertIn("(low)", description)
         self.assertIn("security/medium", description)
         self.assertIn(
-            "https://github.com/influxdata/granite/security/dependabot", description
+            "https://github.com/testorg/testrepo/security/dependabot", description
         )
 
     def test__generateIssueDescription_code_scanning(self):
@@ -903,13 +904,13 @@ References:
 
         # Verify the sort order:
         # 1. All axios entries should come first (alphabetically before lodash and zlib)
-        # 2. Within axios entries, they should be sorted by URL
+        # 2. Within axios entries, they should be sorted by URL (using numeric sorting)
         # 3. Then lodash
         # 4. Then zlib
         expected_order = [
             "- [ ] [axios](https://github.com/org/repo/security/dependabot/1) (medium)",
-            "- [ ] [axios](https://github.com/org/repo/security/dependabot/10) (high)",
             "- [ ] [axios](https://github.com/org/repo/security/dependabot/2) (low)",
+            "- [ ] [axios](https://github.com/org/repo/security/dependabot/10) (high)",
             "- [ ] [lodash](https://github.com/org/repo/security/dependabot/4) (critical)",
             "- [ ] [zlib](https://github.com/org/repo/security/dependabot/3) (high)",
         ]
@@ -923,8 +924,8 @@ References:
             self._create_test_alert(alert_type="dependabot"),
             self._create_test_alert(alert_type="dependabot"),
         ]
-        summary = cvelib.wizard._generateIssueSummary(alerts, "granite")
-        self.assertEqual(summary, "Please address alerts (dependabot) in granite")
+        summary = cvelib.wizard._generateIssueSummary(alerts, "testrepo")
+        self.assertEqual(summary, "Please address alerts (dependabot) in testrepo")
 
         # Test with single alert
         alerts = [self._create_test_alert(alert_type="secret-scanning")]
@@ -1035,28 +1036,26 @@ References:
             display_name="secret-key",
             severity="high",
             alert_type="secret-scanning",
-            url="https://github.com/influxdata/foo/security/secret-scanning/1",
+            url="https://github.com/testorg/foo/security/secret-scanning/1",
         )
         alerts_data.append(
             self._create_test_alert_data(
                 repo="foo",
-                org="influxdata",
+                org="testorg",
                 alerts=[secret_alert],
                 highest_severity="high",
                 alert_types=["secret-scanning"],
-                references=[
-                    "https://github.com/influxdata/foo/security/secret-scanning"
-                ],
+                references=["https://github.com/testorg/foo/security/secret-scanning"],
             )
         )
 
         grouped = cvelib.wizard._groupAlertsByRepo(alerts_data)
 
         self.assertEqual(len(grouped), 2)
-        self.assertIn("influxdata/granite", grouped)
-        self.assertIn("influxdata/foo", grouped)
-        self.assertEqual(len(grouped["influxdata/granite"]["alerts"]), 2)
-        self.assertEqual(len(grouped["influxdata/foo"]["alerts"]), 1)
+        self.assertIn("testorg/testrepo", grouped)
+        self.assertIn("testorg/foo", grouped)
+        self.assertEqual(len(grouped["testorg/testrepo"]["alerts"]), 2)
+        self.assertEqual(len(grouped["testorg/foo"]["alerts"]), 1)
 
     def test__groupAlertsByRepo_multiple_repos(self):
         """Test _groupAlertsByRepo with multiple entries for same repo"""
@@ -3963,8 +3962,8 @@ References:
 
             # Check the call arguments
             call_args = mock_process.call_args[0]
-            self.assertEqual(call_args[0], "influxdata")
-            self.assertEqual(call_args[1], "granite")
+            self.assertEqual(call_args[0], "testorg")
+            self.assertEqual(call_args[1], "testrepo")
         finally:
             # Clean up the temp file
             os.unlink(alerts_file)
@@ -4664,6 +4663,181 @@ References:
                 self.assertIn(
                     "ERROR: --priority-prefix cannot contain commas", error.getvalue()
                 )
+
+    def test__naturalSortKey(self):
+        """Test _naturalSortKey function for numeric URL sorting"""
+        # Test URLs with numeric suffixes
+        self.assertEqual(
+            cvelib.wizard._naturalSortKey(
+                "https://github.com/org/repo/security/dependabot/9"
+            ),
+            ("https://github.com/org/repo/security/dependabot", 9),
+        )
+        self.assertEqual(
+            cvelib.wizard._naturalSortKey(
+                "https://github.com/org/repo/security/dependabot/10"
+            ),
+            ("https://github.com/org/repo/security/dependabot", 10),
+        )
+        self.assertEqual(
+            cvelib.wizard._naturalSortKey(
+                "https://github.com/org/repo/security/dependabot/100"
+            ),
+            ("https://github.com/org/repo/security/dependabot", 100),
+        )
+
+        # Test URL with trailing slash
+        self.assertEqual(
+            cvelib.wizard._naturalSortKey(
+                "https://github.com/org/repo/security/dependabot/5/"
+            ),
+            ("https://github.com/org/repo/security/dependabot", 5),
+        )
+
+        # Test non-numeric endings
+        self.assertEqual(
+            cvelib.wizard._naturalSortKey(
+                "https://github.com/org/repo/security/dependabot"
+            ),
+            ("https://github.com/org/repo/security/dependabot", sys.maxsize),
+        )
+        self.assertEqual(
+            cvelib.wizard._naturalSortKey(
+                "https://github.com/org/repo/security/dependabot/abc"
+            ),
+            ("https://github.com/org/repo/security/dependabot/abc", sys.maxsize),
+        )
+
+        # Test sorting a list of URLs with numeric suffixes
+        urls = [
+            "https://github.com/org/repo/security/dependabot/10",
+            "https://github.com/org/repo/security/dependabot/2",
+            "https://github.com/org/repo/security/dependabot/100",
+            "https://github.com/org/repo/security/dependabot/9",
+            "https://github.com/org/repo/security/dependabot/21",
+        ]
+        sorted_urls = sorted(urls, key=cvelib.wizard._naturalSortKey)
+        expected = [
+            "https://github.com/org/repo/security/dependabot/2",
+            "https://github.com/org/repo/security/dependabot/9",
+            "https://github.com/org/repo/security/dependabot/10",
+            "https://github.com/org/repo/security/dependabot/21",
+            "https://github.com/org/repo/security/dependabot/100",
+        ]
+        self.assertEqual(sorted_urls, expected)
+
+    def test__extractUrlFromChecklistItem(self):
+        """Test _extractUrlFromChecklistItem function"""
+        # Test typical markdown checklist item
+        item = "- [ ] [tracing-subscriber](https://github.com/testorg/testrepo/security/dependabot/10) (low)"
+        expected_url = "https://github.com/testorg/testrepo/security/dependabot/10"
+        self.assertEqual(cvelib.wizard._extractUrlFromChecklistItem(item), expected_url)
+
+        # Test checked item
+        item = (
+            "- [x] [package](https://github.com/org/repo/security/dependabot/5) (high)"
+        )
+        expected_url = "https://github.com/org/repo/security/dependabot/5"
+        self.assertEqual(cvelib.wizard._extractUrlFromChecklistItem(item), expected_url)
+
+        # Test item without URL (fallback case)
+        item = "- [ ] Some text without URL"
+        self.assertEqual(cvelib.wizard._extractUrlFromChecklistItem(item), item)
+
+    def test__generateIssueDescription_numeric_sorting(self):
+        """Test that _generateIssueDescription sorts URLs with numeric suffixes correctly"""
+        # Create alerts with same display name but numeric suffixes that would be incorrectly sorted as strings
+        alerts = [
+            self._create_test_alert(
+                display_name="tracing-subscriber",
+                severity="low",
+                url="https://github.com/testorg/testrepo/security/dependabot/10",
+            ),
+            self._create_test_alert(
+                display_name="tracing-subscriber",
+                severity="low",
+                url="https://github.com/testorg/testrepo/security/dependabot/9",
+            ),
+            self._create_test_alert(
+                display_name="tracing-subscriber",
+                severity="medium",
+                url="https://github.com/testorg/testrepo/security/dependabot/21",
+            ),
+            self._create_test_alert(
+                display_name="tracing-subscriber",
+                severity="high",
+                url="https://github.com/testorg/testrepo/security/dependabot/2",
+            ),
+        ]
+
+        description = cvelib.wizard._generateIssueDescription(
+            alerts, "testorg", "testrepo"
+        )
+
+        # Extract checklist lines
+        lines = description.split("\n")
+        checklist_lines = [line for line in lines if line.startswith("- [ ]")]
+
+        # Verify the order is numerically correct within the same display name (2, 9, 10, 21)
+        self.assertIn("/dependabot/2", checklist_lines[0])
+        self.assertIn("/dependabot/9", checklist_lines[1])
+        self.assertIn("/dependabot/10", checklist_lines[2])
+        self.assertIn("/dependabot/21", checklist_lines[3])
+
+    def test__generateCveContent_numeric_sorting(self):
+        """Test that _generateCveContent sorts URLs with numeric suffixes correctly"""
+        # Create alerts with numeric suffixes
+        alerts = [
+            self._create_test_alert(
+                display_name="package-b",
+                url="https://github.com/org/repo/security/dependabot/10",
+            ),
+            self._create_test_alert(
+                display_name="package-a",
+                url="https://github.com/org/repo/security/dependabot/9",
+            ),
+            self._create_test_alert(
+                display_name="package-c",
+                url="https://github.com/org/repo/security/dependabot/100",
+            ),
+        ]
+
+        content = cvelib.wizard._generateCveContent(
+            alerts,
+            "org",
+            "repo",
+            "https://github.com/org/repo/issues/1",
+            "",
+            "",
+            "",
+        )
+
+        # Extract references section
+        lines = content.split("\n")
+        ref_start = lines.index("References:") + 1
+        ref_lines = []
+        for i in range(ref_start, len(lines)):
+            if lines[i].strip() and not lines[i].startswith(" "):
+                break
+            if lines[i].strip():
+                ref_lines.append(lines[i].strip())
+
+        # Check that references are sorted numerically
+        # Should be: issue URL, then dependabot/9, dependabot/10, dependabot/100
+        self.assertIn("/dependabot/9", ref_lines[1])
+        self.assertIn("/dependabot/10", ref_lines[2])
+        self.assertIn("/dependabot/100", ref_lines[3])
+
+        # Check GitHub-Advanced-Security section is also sorted
+        ghas_start = lines.index("GitHub-Advanced-Security:") + 1
+        ghas_urls = []
+        for i in range(ghas_start, len(lines)):
+            if lines[i].strip().startswith("url:"):
+                ghas_urls.append(lines[i].strip())
+
+        self.assertIn("/dependabot/9", ghas_urls[0])
+        self.assertIn("/dependabot/10", ghas_urls[1])
+        self.assertIn("/dependabot/100", ghas_urls[2])
 
     def test_main_cve_add_wizard_no_subcommand(self):
         """Test main_cve_add_wizard prints help when no subcommand"""
