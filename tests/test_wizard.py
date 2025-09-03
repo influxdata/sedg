@@ -582,6 +582,42 @@ References:
         self.assertEqual(lines[1], "  .")
         self.assertEqual(lines[2], "  Second paragraph also with another line break.")
 
+    def test__formatAsNoteText_hyphenated_words(self):
+        """Test that hyphenated words are not split across lines"""
+        # Test long text with hyphenated word at the end
+        text_with_hyphen = "This is a very long line with lots of text and it ends with a long-hyphenated-word."
+        formatted = cvelib.wizard._formatAsNoteText(text_with_hyphen)
+        lines = formatted.split("\n")
+
+        # Verify hyphenated word is not split
+        all_text = " ".join(line.strip() for line in lines)
+        self.assertIn("long-hyphenated-word", all_text)
+
+        # Check that hyphenated word is not split across lines
+        for line in lines:
+            # If the line contains part of the hyphenated word, it should contain the whole word
+            if "hyphenated" in line:
+                self.assertIn("long-hyphenated-word", line)
+
+        # Test with multiple hyphenated words in a long paragraph
+        long_text = (
+            "This is a document with multiple long-hyphenated-words and another-compound-term "
+            "that should not be split across lines when text wrapping occurs during formatting."
+        )
+        formatted = cvelib.wizard._formatAsNoteText(long_text)
+        lines = formatted.split("\n")
+
+        # Verify each hyphenated word remains intact
+        for hyphenated_word in ["long-hyphenated-words", "another-compound-term"]:
+            found = False
+            for line in lines:
+                if hyphenated_word in line:
+                    found = True
+                    break
+            self.assertTrue(
+                found, f"'{hyphenated_word}' should appear intact in the formatted text"
+            )
+
     def test__generateCveContent(self):
         """Test generate_cve_content function"""
         alerts = self._create_sample_alerts_json()[0]["alerts"]
