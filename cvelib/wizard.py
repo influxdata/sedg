@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import textwrap
 from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
@@ -25,6 +26,63 @@ from cvelib.common import (
     warn,
 )
 from cvelib.cve import collectCVEData, cveFromUrl
+
+
+def _naturalSortKey(url: str) -> Tuple[str, int]:
+    """Generate a natural sort key for URLs with numeric suffixes.
+
+    For URLs ending in /number, extract the numeric part for proper sorting.
+    For example:
+    - https://github.com/org/repo/security/dependabot/9 -> (..., 9)
+    - https://github.com/org/repo/security/dependabot/10 -> (..., 10)
+
+    This ensures that /9 sorts before /10.
+    """
+    # Split URL by '/' and check if last part is a number
+    parts: List[str] = url.rstrip("/").split("/")
+    if parts and parts[-1].isdigit():
+        # Return base URL and numeric value for proper sorting
+        base_url: str = "/".join(parts[:-1])
+        return (base_url, int(parts[-1]))
+    # For non-numeric endings, use sys.maxsize to sort them after numeric ones
+    return (url, sys.maxsize)
+
+
+def _extractUrlFromChecklistItem(item: str) -> str:
+    """Extract URL from a markdown checklist item.
+
+    Example input: '- [ ] [name](https://github.com/org/repo/security/dependabot/10) (low)'
+    Returns: 'https://github.com/org/repo/security/dependabot/10'
+    """
+    # Extract URL from markdown link format [text](url)
+    import re
+
+    match = re.search(r"\]\(([^)]+)\)", item)
+    if match:
+        return match.group(1)
+    return item  # Return original if no URL found
+
+
+def _checklistItemSortKey(item: str) -> Tuple[str, Tuple[str, int]]:
+    """Generate a sort key for markdown checklist items.
+
+    Sorts first by display name, then by URL with numeric suffix handling.
+
+    Example: '- [ ] [axios](https://github.com/.../10) (low)'
+    Returns: ('axios', ('https://github.com/...', 10))
+    """
+    import re
+
+    # Extract display name from [name](...) pattern
+    # Look for pattern after the checkbox: ] [name](
+    name_match = re.search(r"\] \[([^\]]+)\]", item)
+    display_name = name_match.group(1) if name_match else ""
+
+    # Extract and sort URL
+    url = _extractUrlFromChecklistItem(item)
+    url_key = _naturalSortKey(url)
+
+    return (display_name, url_key)
 
 
 def _isMarkdownCheckboxLine(line: str) -> bool:
@@ -322,8 +380,8 @@ def _generateIssueDescription(alerts: List[Dict[str, Any]], org: str, repo: str)
         if item not in checklist_items:
             checklist_items.append(item)
 
-    # Sort the checklist items (sorts by display name, then url naturally)
-    checklist: str = "\n".join(sorted(checklist_items))
+    # Sort the checklist items by display name first, then by URL with numeric sorting
+    checklist: str = "\n".join(sorted(checklist_items, key=_checklistItemSortKey))
     highest_severity: str = _getHighestSeverity(alerts)
     plural: str = "s were" if len(alerts) > 1 else " was"
 
@@ -337,7 +395,7 @@ def _generateIssueDescription(alerts: List[Dict[str, Any]], org: str, repo: str)
         elif alert["type"] == "secret-scanning":
             urls.add(f"https://github.com/{org}/{repo}/security/secret-scanning")
 
-    references: str = "\n * ".join(sorted(urls))
+    references: str = "\n * ".join(sorted(urls, key=_naturalSortKey))
 
     return f"""The following alert{plural} issued:
 {checklist}
@@ -379,7 +437,7 @@ def _generateCveContent(
     references: List[str] = [tracking_url]
     advisories: List[str] = []
 
-    for alert in sorted(alerts, key=lambda x: x.get("url", "")):
+    for alert in sorted(alerts, key=lambda x: _naturalSortKey(x.get("url", ""))):
         references.append(alert["url"])
         if alert["type"] == "dependabot" and "advisory" in alert and alert["advisory"]:
             adv: str = f"{alert['advisory']} ({alert['display_name']})"
@@ -410,7 +468,7 @@ def _generateCveContent(
     ghas_items: List[str] = []
     discovered_by: Set[str] = set()
 
-    for alert in sorted(alerts, key=lambda x: x.get("url", "")):
+    for alert in sorted(alerts, key=lambda x: _naturalSortKey(x.get("url", ""))):
         ghas_item: str = f" - type: {alert['type']}\n"
 
         if alert["type"] == "dependabot":
