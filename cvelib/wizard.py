@@ -438,7 +438,9 @@ def _generateCveContent(
     advisories: List[str] = []
 
     for alert in sorted(alerts, key=lambda x: _naturalSortKey(x.get("url", ""))):
-        references.append(alert["url"])
+        alert_url: str = alert.get("url", "")
+        if alert_url and alert_url not in references:
+            references.append(alert_url)
         if alert["type"] == "dependabot" and "advisory" in alert and alert["advisory"]:
             adv: str = f"{alert['advisory']} ({alert['display_name']})"
             if adv not in advisories:
@@ -467,8 +469,15 @@ def _generateCveContent(
     # Build GitHub-Advanced-Security section
     ghas_items: List[str] = []
     discovered_by: Set[str] = set()
+    seen_urls: Set[str] = set()
 
     for alert in sorted(alerts, key=lambda x: _naturalSortKey(x.get("url", ""))):
+        # Skip duplicate alerts (same URL)
+        alert_url: str = alert.get("url", "")
+        if alert_url in seen_urls:
+            continue
+        seen_urls.add(alert_url)
+
         ghas_item: str = f" - type: {alert['type']}\n"
 
         if alert["type"] == "dependabot":

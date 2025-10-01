@@ -792,6 +792,66 @@ References:
         ].strip()
         self.assertEqual(notes_content, "")
 
+    def test__generateCveContent_deduplicates_alerts(self):
+        """Test _generateCveContent deduplicates alerts with same URL"""
+        # Create duplicate alerts with the same URL
+        alert_url = "https://github.com/test-org/test-repo/security/dependabot/145"
+        alerts = [
+            self._create_test_alert(
+                display_name="@parcel/reporter-dev-server",
+                severity="medium",
+                url=alert_url,
+                manifest_path="yarn.lock",
+                advisory="https://github.com/advisories/GHSA-qm9p-f9j5-w83w",
+            ),
+            self._create_test_alert(
+                display_name="@parcel/reporter-dev-server",
+                severity="medium",
+                url=alert_url,
+                manifest_path="yarn.lock",
+                advisory="https://github.com/advisories/GHSA-qm9p-f9j5-w83w",
+            ),
+        ]
+        tracking_url = "https://github.com/test-org/test-repo/issues/1"
+
+        result = cvelib.wizard._generateCveContent(
+            alerts, "test-org", "test-repo", tracking_url
+        )
+
+        # Extract References section
+        ref_start = result.find("References:")
+        desc_start = result.find("Description:")
+        ref_section = result[ref_start:desc_start]
+
+        # Alert URL should appear exactly once in References section
+        self.assertEqual(
+            ref_section.count(alert_url),
+            1,
+            "Alert URL should appear exactly once in References section",
+        )
+
+        # Extract GitHub-Advanced-Security section
+        ghas_start = result.find("GitHub-Advanced-Security:")
+        notes_start = result.find("Notes:")
+        ghas_section = result[ghas_start:notes_start]
+
+        # Should have exactly one GHAS entry
+        self.assertEqual(
+            ghas_section.count(" - type: dependabot"),
+            1,
+            "Should have exactly one GHAS entry for duplicate alerts",
+        )
+
+        # Verify the entry contains correct details
+        self.assertIn('dependency: "@parcel/reporter-dev-server"', ghas_section)
+        self.assertIn("detectedIn: yarn.lock", ghas_section)
+        self.assertIn("severity: medium", ghas_section)
+        self.assertIn(
+            "advisory: https://github.com/advisories/GHSA-qm9p-f9j5-w83w",
+            ghas_section,
+        )
+        self.assertIn(f"url: {alert_url}", ghas_section)
+
     def test__generateIssueDescription(self):
         """Test generate_issue_description function"""
         alerts = self._create_sample_alerts_json()[0]["alerts"]
