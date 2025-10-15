@@ -53,15 +53,15 @@ style-check: clean
 style-fix: clean
 	black ./cvelib/*py ./tests/*py
 
-# require woke to be installed in CI but not one local system
+# require language-checker to be installed in CI but not one local system
 inclusivity-check: clean
 	@echo "\n# Check for non-inclusive language"; \
 	if test -n "$(CI)" ; then \
-		woke --exit-1-on-failure . ; \
-	elif which woke >/dev/null ; then \
-		woke --exit-1-on-failure . ; \
+		language-checker --exit-1-on-failure . ; \
+	elif which language-checker >/dev/null ; then \
+		language-checker --exit-1-on-failure . ; \
 	else \
-		echo "Could not find woke!" ; \
+		echo "Could not find language-checker!" ; \
 	fi \
 
 check: test inclusivity-check syntax-check style-check
