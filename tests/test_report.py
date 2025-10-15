@@ -3869,8 +3869,6 @@ git/valid-org_valid-repo: needs-triage
     @mock.patch("cvelib.report._readJSONFiles")
     def test_getGHAlertsReportFromFiles_with_templates_json(self, mock_readJSONFiles):
         """Test getGHAlertsReportFromFiles() with --with-templates-json"""
-        import json
-
         # mock alert data
         mock_readJSONFiles.return_value = _getMockedAlertsJSON()
 
@@ -3911,8 +3909,6 @@ git/valid-org_valid-repo: needs-triage
     @mock.patch("cvelib.report._readJSONFiles")
     def test_getGHAlertsReportFromFiles_multiple_repos_json(self, mock_readJSONFiles):
         """Test getGHAlertsReportFromFiles() with multiple repos and JSON output"""
-        import json
-
         # create mock data for multiple repos
         mock_data = [
             {
@@ -3970,8 +3966,6 @@ git/valid-org_valid-repo: needs-triage
     )
     def test_getGHAlertsReport_with_templates_json(self, _):
         """Test getGHAlertsReport() with --with-templates-json"""
-        import json
-
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsReport(
                 [],
@@ -6566,10 +6560,8 @@ valid-proj/us/valid-repo/valid-name removed report: 1
         self.assertEqual(result["highest_severity"], "medium")
 
     @mock.patch("cvelib.cve.collectGHAlertUrls")
-    def test_getGHAlertsReport_resolved_only_json_lines_1140_1147(
-        self, mock_collectGHAlertUrls
-    ):
-        """Test getGHAlertsReport() with resolved alerts only (no updated) - covers lines 1140, 1147"""
+    def test_getGHAlertsReport_resolved_only(self, mock_collectGHAlertUrls):
+        """Test getGHAlertsReport() with resolved alerts only (no updated)"""
         mock_collectGHAlertUrls.return_value = (set(), [])
 
         # Create a mock alert that will be classified as "resolved" (dismissed_at > since)
@@ -6611,19 +6603,15 @@ valid-proj/us/valid-repo/valid-name removed report: 1
             # The JSON should be in the remaining output
             json_part = "\n".join(lines[1:]).strip()
             self.assertTrue(json_part.startswith("["))
-            import json
 
             json_data = json.loads(json_part)
             self.assertIsInstance(json_data, list)
             self.assertEqual(len(json_data), 1)  # One resolved alert
 
-    def test_main_report_parse_args_error_lines_2745_2749_2805(self):
-        """Test argument parsing error conditions to cover lines 2745, 2749, 2805"""
+    def test_main_report_parse_args_error_misc(self):
+        """Test argument parsing misc error conditions"""
 
         # These tests verify that specific error conditions are triggered
-        # The coverage for lines 2745, 2749, 2805 is handled by the manual coverage script
-
-        # Test line 2745: gh --with-templates-json without --alerts but with another valid option
         with self.assertRaises(SystemExit):
             cvelib.report._main_report_parse_args(
                 [
@@ -6639,7 +6627,6 @@ valid-proj/us/valid-repo/valid-name removed report: 1
                 ]
             )
 
-        # Test line 2749: gh --with-templates and --with-templates-json conflict
         with self.assertRaises(SystemExit):
             cvelib.report._main_report_parse_args(
                 [
@@ -6654,7 +6641,6 @@ valid-proj/us/valid-repo/valid-name removed report: 1
                 ]
             )
 
-        # Test line 2805: quay --with-templates-json without --alerts (but with valid primary option)
         with self.assertRaises(SystemExit):
             cvelib.report._main_report_parse_args(
                 ["quay", "--namespace", "test", "--list", "--with-templates-json"]
