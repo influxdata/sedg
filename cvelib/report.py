@@ -52,7 +52,7 @@ from cvelib.common import (
 )
 import cvelib.dso
 import cvelib.gar
-from cvelib.github import GHDependabot, GHSecret, GHCode
+from cvelib.github import GHDependabot, GHSecret, GHCode, SECRET_SCANNING_TYPES
 from cvelib.net import requestGetRaw, ghAPIGetList
 import cvelib.quay
 import cvelib.scan
@@ -1006,7 +1006,13 @@ def _parseAlert(alert: Dict[str, Any]) -> Tuple[str, Dict[str, str]]:
 def _getGHAlertsAll(
     org: str, alert_types=["code-scanning", "dependabot", "secret-scanning"]
 ) -> Dict[str, List[Dict[str, str]]]:
-    """Obtain the list of GitHub alerts for the specified org"""
+    """Obtain the list of GitHub alerts for the specified org
+
+    For secret-scanning alerts, this function makes two API calls:
+    1. A regular call to fetch all secret-scanning alerts
+    2. A filtered call with specific secret_type parameters to ensure certain
+       secret types are included
+    """
 
     for a in alert_types:
         if a not in ["code-scanning", "dependabot", "secret-scanning"]:
@@ -1024,8 +1030,25 @@ def _getGHAlertsAll(
         )
         jsons += copy.deepcopy(tmp)
 
+        # For secret-scanning, make a second call with specific secret types
+        if alert_type == "secret-scanning":
+            _, tmp2 = ghAPIGetList(
+                "https://api.github.com/orgs/%s/%s/alerts" % (org, alert_type),
+                params={"secret_type": ",".join(SECRET_SCANNING_TYPES)},
+            )
+            jsons += copy.deepcopy(tmp2)
+
+    # Deduplicate alerts by html_url (in case an alert appears in multiple API calls)
+    seen_urls: set = set()
+    deduplicated_jsons: List[Dict[str, str]] = []
+    for alert_json in jsons:
+        if "html_url" in alert_json:
+            if alert_json["html_url"] not in seen_urls:
+                seen_urls.add(alert_json["html_url"])
+                deduplicated_jsons.append(alert_json)
+
     alert: Dict[str, Any] = {}
-    for alert in jsons:
+    for alert in deduplicated_jsons:
         repo: str = ""
         a: Dict[str, str] = {}
         repo, a = _parseAlert(alert)

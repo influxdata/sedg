@@ -16,6 +16,21 @@ from cvelib.common import CveException, rePatterns, error, warn
 from cvelib.net import ghAPIGetList
 
 
+# Secret types to fetch in addition to the default secret-scanning alerts.
+# These are used when making a second API call to ensure specific secret types
+# are included in the results.
+SECRET_SCANNING_TYPES: List[str] = [
+    "password",
+    "token",
+    "http_basic_authentication_header",
+    "http_bearer_authentication_header",
+    "openssh_private_key",
+    "pgp_private_key",
+    "postgres_connection_string",
+    "rsa_private_key",
+]
+
+
 class GHDependabot(object):
     required: List[str] = [
         "dependency",
@@ -410,6 +425,26 @@ Optionally specify a particular alert type:
         if alert_type not in jsons:
             jsons[alert_type] = []
         jsons[alert_type] += copy.deepcopy(tmp)
+
+        # For secret-scanning, make a second call with specific secret types
+        # since the default omits these
+        if alert_type == "secret-scanning":
+            _, tmp2 = ghAPIGetList(
+                "https://api.github.com/orgs/%s/%s/alerts" % (args.org, alert_type),
+                params={"secret_type": ",".join(SECRET_SCANNING_TYPES)},
+            )
+            jsons[alert_type] += copy.deepcopy(tmp2)
+
+    # Deduplicate alerts by html_url to avoid processing the same alert twice
+    for alert_type in jsons:
+        seen_urls: set = set()
+        deduplicated: List[Any] = []
+        for alert in jsons[alert_type]:
+            if "html_url" in alert:
+                if alert["html_url"] not in seen_urls:
+                    seen_urls.add(alert["html_url"])
+                    deduplicated.append(alert)
+        jsons[alert_type] = copy.deepcopy(deduplicated)
 
     dir: str = args.path
     if not os.path.exists(dir):

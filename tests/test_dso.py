@@ -650,7 +650,7 @@ class TestDockerDSO(TestCase):
                 False,
             ),
         ):
-            for org, repo, sha, expErr in tsts:
+            for _, repo, sha, expErr in tsts:
                 digest = "%s@%s" % (repo, sha)
                 with tests.testutil.capturedOutput() as (output, error):
                     r1, r2, r3 = dsr.parseImageDigest(digest)

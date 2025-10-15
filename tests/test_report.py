@@ -12,7 +12,6 @@ import tempfile
 
 import cvelib.common
 import cvelib.cve
-import cvelib.github
 import cvelib.report
 import cvelib.scan
 import tests.testutil
@@ -674,6 +673,56 @@ def mocked_requests_get__getGHAlertsAllSecret(*args, **kwargs):
 
     if args[0] == "https://api.github.com/orgs/valid-org/secret-scanning/alerts":
         return MockResponse(_getMockedAlertsJSON("secret-scanning"), 200)
+
+    # catch-all
+    print(
+        "DEBUG: should be unreachable: args='%s', kwargs='%s'" % (args, kwargs)
+    )  # pragma: nocover
+    assert False  # pragma: nocover
+
+
+def mocked_requests_get__getGHAlertsAllSecretWithTypes(*args, **kwargs):
+    class MockResponse:
+        def __init__(self, json_data, status_code):
+            self.json_data = json_data
+            self.status_code = status_code
+            self.headers = {}
+
+        def json(self):  # pragma: no cover
+            return self.json_data
+
+    if args[0] == "https://api.github.com/orgs/valid-org/secret-scanning/alerts":
+        # Check if secret_type parameter is present
+        if "params" in kwargs and "secret_type" in kwargs["params"]:
+            # Return additional alerts for the typed secret-scanning call
+            return MockResponse(
+                [
+                    {
+                        "created_at": "2022-07-06T18:15:30Z",
+                        "secret_type_display_name": "OpenSSH Private Key",
+                        "resolved_at": None,
+                        "resolved_by": None,
+                        "resolution_comment": None,
+                        "resolution": None,
+                        "html_url": "https://github.com/valid-org/valid-repo/security/secret-scanning/22",
+                        "repository": {"name": "valid-repo", "private": False},
+                    },
+                    {
+                        "created_at": "2022-07-07T18:15:30Z",
+                        "secret_type_display_name": "HTTP bearer authentication header",
+                        "resolved_at": None,
+                        "resolved_by": None,
+                        "resolution_comment": None,
+                        "resolution": None,
+                        "html_url": "https://github.com/valid-org/valid-repo/security/secret-scanning/23",
+                        "repository": {"name": "valid-repo", "private": False},
+                    },
+                ],
+                200,
+            )
+        else:
+            # Return regular secret-scanning alerts
+            return MockResponse(_getMockedAlertsJSON("secret-scanning"), 200)
 
     # catch-all
     print(
@@ -3384,6 +3433,102 @@ valid-repo resolved alerts: 1
         self.assertEqual(exp, output.getvalue().strip())
 
     @mock.patch(
+        "requests.get", side_effect=mocked_requests_get__getGHAlertsAllSecretWithTypes
+    )
+    def test_getGHAlertsReportSecretWithTypes(self, _):  # 2nd arg is mock_get
+        """Test getGHAlertsReport() - secret-scanning with secret_type parameter"""
+        self.maxDiff = 16384
+
+        # Test that both regular and typed secret-scanning alerts are fetched
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getGHAlertsReport(
+                [], "valid-org", repos=["valid-repo"], alert_types=["secret-scanning"]
+            )
+        self.assertEqual("", error.getvalue().strip())
+
+        # The output should contain alerts from both calls:
+        # - Regular call: "Some Leaked Secret" and "Some Other Leaked Secret"
+        # - Typed call: "OpenSSH Private Key" and "HTTP bearer authentication header"
+        output_str = output.getvalue().strip()
+
+        # Check that all 3 unresolved alerts are present
+        self.assertIn("Some Other Leaked Secret", output_str)
+        self.assertIn("OpenSSH Private Key", output_str)
+        self.assertIn("HTTP bearer authentication header", output_str)
+        self.assertIn("secret-scanning/21", output_str)
+        self.assertIn("secret-scanning/22", output_str)
+        self.assertIn("secret-scanning/23", output_str)
+
+        # Check that we have 3 updated alerts (not 1)
+        self.assertIn("valid-repo updated alerts: 3", output_str)
+
+        # Check that resolved alert is also present
+        self.assertIn("Some Leaked Secret", output_str)
+        self.assertIn("secret-scanning/20", output_str)
+
+    @mock.patch(
+        "requests.get",
+        side_effect=mocked_requests_get__getGHAlertsAllSecretWithTypes,
+    )
+    def test_getGHAlertsReportSecretWithTypes_dedup(self, mock_get):
+        """Test getGHAlertsReport() - secret-scanning deduplication"""
+        self.maxDiff = 16384
+
+        # Modify the mock to return duplicates (simulate an alert appearing in both calls)
+        def mock_with_duplicates(*args, **kwargs):
+            class MockResponse:
+                def __init__(self, json_data, status_code):
+                    self.json_data = json_data
+                    self.status_code = status_code
+                    self.headers = {}
+
+                def json(self):  # pragma: no cover
+                    return self.json_data
+
+            if (
+                args[0]
+                == "https://api.github.com/orgs/valid-org/secret-scanning/alerts"
+            ):
+                # Both calls return the same alert (simulating overlap)
+                duplicate_alert = {
+                    "created_at": "2022-07-05T18:15:30Z",
+                    "secret_type_display_name": "Some Other Leaked Secret",
+                    "resolved_at": None,
+                    "resolved_by": None,
+                    "resolution_comment": None,
+                    "resolution": None,
+                    "html_url": "https://github.com/valid-org/valid-repo/security/secret-scanning/21",
+                    "repository": {"name": "valid-repo", "private": False},
+                }
+                return MockResponse([duplicate_alert], 200)
+
+            print(
+                "DEBUG: should be unreachable: args='%s', kwargs='%s'" % (args, kwargs)
+            )  # pragma: nocover
+            assert False  # pragma: nocover
+
+        mock_get.side_effect = mock_with_duplicates
+
+        # Test that duplicate alerts are deduplicated
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.getGHAlertsReport(
+                [], "valid-org", repos=["valid-repo"], alert_types=["secret-scanning"]
+            )
+        self.assertEqual("", error.getvalue().strip())
+
+        output_str = output.getvalue().strip()
+
+        # Should only have 1 alert, not 2 (deduplication worked)
+        self.assertIn("valid-repo updated alerts: 1", output_str)
+        self.assertIn("Some Other Leaked Secret", output_str)
+        self.assertIn("secret-scanning/21", output_str)
+
+        # Count occurrences - should only appear once in the alert details
+        # The URL appears in the full form in alert details but not in References
+        count = output_str.count("secret-scanning/21")
+        self.assertEqual(1, count)
+
+    @mock.patch(
         "requests.get", side_effect=mocked_requests_get__getGHAlertsAllSecretPrivate
     )
     def test_getGHAlertsReportSecretPrivate(self, _):  # 2nd arg is mock_get
@@ -3724,8 +3869,6 @@ git/valid-org_valid-repo: needs-triage
     @mock.patch("cvelib.report._readJSONFiles")
     def test_getGHAlertsReportFromFiles_with_templates_json(self, mock_readJSONFiles):
         """Test getGHAlertsReportFromFiles() with --with-templates-json"""
-        import json
-
         # mock alert data
         mock_readJSONFiles.return_value = _getMockedAlertsJSON()
 
@@ -3766,8 +3909,6 @@ git/valid-org_valid-repo: needs-triage
     @mock.patch("cvelib.report._readJSONFiles")
     def test_getGHAlertsReportFromFiles_multiple_repos_json(self, mock_readJSONFiles):
         """Test getGHAlertsReportFromFiles() with multiple repos and JSON output"""
-        import json
-
         # create mock data for multiple repos
         mock_data = [
             {
@@ -3825,8 +3966,6 @@ git/valid-org_valid-repo: needs-triage
     )
     def test_getGHAlertsReport_with_templates_json(self, _):
         """Test getGHAlertsReport() with --with-templates-json"""
-        import json
-
         with tests.testutil.capturedOutput() as (output, error):
             cvelib.report.getGHAlertsReport(
                 [],
@@ -6421,10 +6560,8 @@ valid-proj/us/valid-repo/valid-name removed report: 1
         self.assertEqual(result["highest_severity"], "medium")
 
     @mock.patch("cvelib.cve.collectGHAlertUrls")
-    def test_getGHAlertsReport_resolved_only_json_lines_1140_1147(
-        self, mock_collectGHAlertUrls
-    ):
-        """Test getGHAlertsReport() with resolved alerts only (no updated) - covers lines 1140, 1147"""
+    def test_getGHAlertsReport_resolved_only(self, mock_collectGHAlertUrls):
+        """Test getGHAlertsReport() with resolved alerts only (no updated)"""
         mock_collectGHAlertUrls.return_value = (set(), [])
 
         # Create a mock alert that will be classified as "resolved" (dismissed_at > since)
@@ -6457,6 +6594,8 @@ valid-proj/us/valid-repo/valid-name removed report: 1
                     with_templates_json=True,
                 )
 
+            self.assertEqual("", error.getvalue().strip())
+
             output_str = output.getvalue().strip()
             # Should have "No alerts for the specified repos." first, then JSON array
             lines = output_str.split("\n")
@@ -6464,19 +6603,15 @@ valid-proj/us/valid-repo/valid-name removed report: 1
             # The JSON should be in the remaining output
             json_part = "\n".join(lines[1:]).strip()
             self.assertTrue(json_part.startswith("["))
-            import json
 
             json_data = json.loads(json_part)
             self.assertIsInstance(json_data, list)
             self.assertEqual(len(json_data), 1)  # One resolved alert
 
-    def test_main_report_parse_args_error_lines_2745_2749_2805(self):
-        """Test argument parsing error conditions to cover lines 2745, 2749, 2805"""
+    def test_main_report_parse_args_error_misc(self):
+        """Test argument parsing misc error conditions"""
 
         # These tests verify that specific error conditions are triggered
-        # The coverage for lines 2745, 2749, 2805 is handled by the manual coverage script
-
-        # Test line 2745: gh --with-templates-json without --alerts but with another valid option
         with self.assertRaises(SystemExit):
             cvelib.report._main_report_parse_args(
                 [
@@ -6492,7 +6627,6 @@ valid-proj/us/valid-repo/valid-name removed report: 1
                 ]
             )
 
-        # Test line 2749: gh --with-templates and --with-templates-json conflict
         with self.assertRaises(SystemExit):
             cvelib.report._main_report_parse_args(
                 [
@@ -6507,7 +6641,6 @@ valid-proj/us/valid-repo/valid-name removed report: 1
                 ]
             )
 
-        # Test line 2805: quay --with-templates-json without --alerts (but with valid primary option)
         with self.assertRaises(SystemExit):
             cvelib.report._main_report_parse_args(
                 ["quay", "--namespace", "test", "--list", "--with-templates-json"]
