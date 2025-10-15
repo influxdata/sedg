@@ -8,7 +8,6 @@ import datetime
 from unittest import TestCase
 
 import cvelib.common
-import cvelib.github
 import cvelib.scan
 
 

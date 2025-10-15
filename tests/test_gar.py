@@ -12,7 +12,6 @@ from unittest import TestCase, mock
 
 import cvelib.common
 import cvelib.gar
-import cvelib.scan
 import tests.testutil
 
 

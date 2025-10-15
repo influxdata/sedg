@@ -8,7 +8,6 @@ import os
 
 import cvelib.net
 import tests.testutil
-import cvelib.common
 
 debug: bool = True
 
