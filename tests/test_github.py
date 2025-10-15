@@ -945,6 +945,7 @@ class TestGitHubCommon(TestCase):
             "created_at": "2021-04-24T22:20:52Z",
             "updated_at": "2021-05-16T16:33:27Z",
             "repository": {"name": "foo"},
+            "html_url": "https://github.com/valid-org/foo/security/dependabot/1",
         }
         mock_get.return_value = self._mock_response_for_ghAPIGetList([alert])
 
@@ -1008,6 +1009,7 @@ class TestGitHubCommon(TestCase):
             "created_at": "2021-04-24T22:20:52Z",
             "updated_at": "2021-05-16T16:33:27Z",
             "repository": {"name": "foo"},
+            "html_url": "https://github.com/valid-org/foo/security/dependabot/1",
         }
         mock_get.return_value = self._mock_response_for_ghAPIGetList([alert])
 
@@ -1034,6 +1036,7 @@ class TestGitHubCommon(TestCase):
             "created_at": "2021-04-24T22:20:52Z",
             "updated_at": "2021-05-16T16:33:27Z",
             "repository": {},
+            "html_url": "https://github.com/valid-org/foo/security/dependabot/1",
         }
         mock_get.return_value = self._mock_response_for_ghAPIGetList([alert])
 
@@ -1063,6 +1066,7 @@ class TestGitHubCommon(TestCase):
             "created_at": "2021-04-24T22:20:52Z",
             "updated_at": "2021-05-16T16:33:27Z",
             "repository": {"name": "foo"},
+            "html_url": "https://github.com/valid-org/foo/security/dependabot/1",
         }
         mock_get.return_value = self._mock_response_for_ghAPIGetList([alert])
 
