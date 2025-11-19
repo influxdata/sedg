@@ -20,14 +20,16 @@ from cvelib.net import ghAPIGetList
 # These are used when making a second API call to ensure specific secret types
 # are included in the results.
 SECRET_SCANNING_TYPES: List[str] = [
-    "password",
-    "token",
+    "ec_private_key",
+    "generic_private_key",
     "http_basic_authentication_header",
     "http_bearer_authentication_header",
     "openssh_private_key",
+    "password",
     "pgp_private_key",
     "postgres_connection_string",
     "rsa_private_key",
+    "token",
 ]
 
 
