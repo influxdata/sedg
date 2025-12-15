@@ -15,4 +15,4 @@ requests-cache==1.0.1
 six==1.16.0
 typing-extensions==4.12.2
 url-normalize==1.4.3
-urllib3==2.5.0
+urllib3==2.6.0
