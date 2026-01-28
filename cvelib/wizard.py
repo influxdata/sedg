@@ -454,9 +454,14 @@ def _generateCveContent(
     references.extend(sorted(advisories))
     references_str: str = "\n ".join(references)
 
-    # Build description checklist
+    # Build description checklist (dedupe by URL)
     checklist_items: Dict[str, int] = {}
+    checklist_seen_urls: Set[str] = set()
     for alert in alerts:
+        alert_url = alert.get("url", "")
+        if alert_url in checklist_seen_urls:
+            continue
+        checklist_seen_urls.add(alert_url)
         key: str = f"- [ ] {alert['display_name']} ({alert['severity']})"
         if key not in checklist_items:
             checklist_items[key] = 1
