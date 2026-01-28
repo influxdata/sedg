@@ -1568,7 +1568,7 @@ def collectCVEData(
         cve: CVE = CVE(fn=cve_fn, compatUbuntu=compatUbuntu, untriagedOk=untriagedOk)
 
         # Check if the CVE has package data that meets our search criteria
-        pkgs: List[CvePkg] = copy.deepcopy(cve.pkgs)
+        pkgs: List[CvePkg] = list(cve.pkgs)
         remove_indexes: List[int] = []
         idx: int
         pkg: CvePkg
@@ -1636,25 +1636,25 @@ def collectCVEData(
         # By now, the CVE should only have package data that meets our search
         # criteria. If there are any packages left, add it to the list
         if len(cve.pkgs) > 0:
-            cves.append(copy.deepcopy(cve))
+            cves.append(cve)
 
     return cves
 
 
 def collectGHAlertUrls(cves: List[CVE]) -> Tuple[Set[str], Set[str]]:
     """Collect all known alerts urls"""
-    urls: List[str] = []
-    dupes: List[str] = []
+    urls: Set[str] = set()
+    dupes: Set[str] = set()
     for cve in cves:
         a: Union[
             cvelib.github.GHDependabot, cvelib.github.GHSecret, cvelib.github.GHCode
         ]
         for a in cve.ghas:
             if a.url not in urls:
-                urls.append(a.url)
-            elif a.url != "unavailable" and a.url not in dupes:
-                dupes.append(a.url)
-    return set(urls), set(dupes)
+                urls.add(a.url)
+            elif a.url != "unavailable":
+                dupes.add(a.url)
+    return urls, dupes
 
 
 #
