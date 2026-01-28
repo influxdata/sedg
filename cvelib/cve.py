@@ -1568,7 +1568,7 @@ def collectCVEData(
         cve: CVE = CVE(fn=cve_fn, compatUbuntu=compatUbuntu, untriagedOk=untriagedOk)
 
         # Check if the CVE has package data that meets our search criteria
-        pkgs: List[CvePkg] = copy.deepcopy(cve.pkgs)
+        pkgs: List[CvePkg] = list(cve.pkgs)
         remove_indexes: List[int] = []
         idx: int
         pkg: CvePkg
@@ -1636,7 +1636,7 @@ def collectCVEData(
         # By now, the CVE should only have package data that meets our search
         # criteria. If there are any packages left, add it to the list
         if len(cve.pkgs) > 0:
-            cves.append(copy.deepcopy(cve))
+            cves.append(cve)
 
     return cves
 

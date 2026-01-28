@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: MIT
 
 import configparser
-import copy
 import datetime
 import os
 import re
@@ -452,7 +451,7 @@ def readFile(fn: str) -> Optional[Set[str]]:
     # Encode to to utf-8 since we might want to do isprintable() checks
     # elsewhere
     with open(fn, "r", encoding="utf-8", errors="backslashreplace") as fp:
-        return copy.deepcopy(set(fp.read().splitlines()))
+        return set(fp.read().splitlines())
 
 
 def readCve(fn: str) -> Dict[str, str]:
@@ -466,9 +465,7 @@ def readCve(fn: str) -> Dict[str, str]:
     with open(fn, "r", encoding="utf-8", errors="backslashreplace") as fp:
         content: str = fp.read()
 
-    return copy.deepcopy(
-        parseHeaders(content, warnFn=lambda msg: warn("%s in %s" % (msg, rel_fn)))
-    )
+    return parseHeaders(content, warnFn=lambda msg: warn("%s in %s" % (msg, rel_fn)))
 
 
 def getCacheDirPath() -> str:
