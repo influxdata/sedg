@@ -1643,18 +1643,18 @@ def collectCVEData(
 
 def collectGHAlertUrls(cves: List[CVE]) -> Tuple[Set[str], Set[str]]:
     """Collect all known alerts urls"""
-    urls: List[str] = []
-    dupes: List[str] = []
+    urls: Set[str] = set()
+    dupes: Set[str] = set()
     for cve in cves:
         a: Union[
             cvelib.github.GHDependabot, cvelib.github.GHSecret, cvelib.github.GHCode
         ]
         for a in cve.ghas:
             if a.url not in urls:
-                urls.append(a.url)
-            elif a.url != "unavailable" and a.url not in dupes:
-                dupes.append(a.url)
-    return set(urls), set(dupes)
+                urls.add(a.url)
+            elif a.url != "unavailable":
+                dupes.add(a.url)
+    return urls, dupes
 
 
 #
