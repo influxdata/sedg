@@ -861,7 +861,7 @@ References:
 
         # Check key components
         self.assertIn("The following alerts were issued:", description)
-        self.assertIn("- [ ] [github.com/uptrace/bun]", description)
+        self.assertIn("- [ ] [github.com/uptrace/bun (#86)]", description)
         self.assertIn("(medium)", description)
         self.assertIn("(low)", description)
         self.assertIn("security/medium", description)
@@ -914,6 +914,40 @@ References:
         self.assertIn("(critical)", description)
         self.assertIn("(low)", description)
         self.assertIn("security/critical", description)
+
+    def test__generateIssueDescription_with_number(self):
+        """Test generate_issue_description extracts alert number from URL"""
+        alerts = [
+            {
+                "display_name": "lodash",
+                "severity": "medium",
+                "type": "dependabot",
+                "url": "https://github.com/org/repo/security/dependabot/63",
+            },
+            {
+                "display_name": "axios",
+                "severity": "high",
+                "type": "dependabot",
+                "url": "https://github.com/org/repo/security/dependabot/42",
+            },
+            {
+                "display_name": "no-number-pkg",
+                "severity": "low",
+                "type": "dependabot",
+                "url": "https://example.com/no-number-here",
+            },
+        ]
+
+        description = cvelib.wizard._generateIssueDescription(
+            alerts, "test-org", "test-repo"
+        )
+
+        # Check that numbers extracted from URLs are included in display names
+        self.assertIn("- [ ] [lodash (#63)]", description)
+        self.assertIn("- [ ] [axios (#42)]", description)
+        # URL without numeric suffix should not have (#...) in display
+        self.assertIn("- [ ] [no-number-pkg]", description)
+        self.assertNotIn("no-number-pkg (#", description)
 
     def test__generateIssueDescription_sorting(self):
         """Test that checklist items are sorted by display name then URL"""
@@ -968,11 +1002,11 @@ References:
         # 3. Then lodash
         # 4. Then zlib
         expected_order = [
-            "- [ ] [axios](https://github.com/org/repo/security/dependabot/1) (medium)",
-            "- [ ] [axios](https://github.com/org/repo/security/dependabot/2) (low)",
-            "- [ ] [axios](https://github.com/org/repo/security/dependabot/10) (high)",
-            "- [ ] [lodash](https://github.com/org/repo/security/dependabot/4) (critical)",
-            "- [ ] [zlib](https://github.com/org/repo/security/dependabot/3) (high)",
+            "- [ ] [axios (#1)](https://github.com/org/repo/security/dependabot/1) (medium)",
+            "- [ ] [axios (#2)](https://github.com/org/repo/security/dependabot/2) (low)",
+            "- [ ] [axios (#10)](https://github.com/org/repo/security/dependabot/10) (high)",
+            "- [ ] [lodash (#4)](https://github.com/org/repo/security/dependabot/4) (critical)",
+            "- [ ] [zlib (#3)](https://github.com/org/repo/security/dependabot/3) (high)",
         ]
 
         self.assertEqual(checklist_lines, expected_order)

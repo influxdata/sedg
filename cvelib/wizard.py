@@ -68,7 +68,7 @@ def _checklistItemSortKey(item: str) -> Tuple[str, Tuple[str, int]]:
 
     Sorts first by display name, then by URL with numeric suffix handling.
 
-    Example: '- [ ] [axios](https://github.com/.../10) (low)'
+    Example: '- [ ] [axios (#10)](https://github.com/.../10) (low)'
     Returns: ('axios', ('https://github.com/...', 10))
     """
     import re
@@ -77,6 +77,9 @@ def _checklistItemSortKey(item: str) -> Tuple[str, Tuple[str, int]]:
     # Look for pattern after the checkbox: ] [name](
     name_match = re.search(r"\] \[([^\]]+)\]", item)
     display_name = name_match.group(1) if name_match else ""
+
+    # Strip (#number) suffix from display name for sorting purposes
+    display_name = re.sub(r" \(#\d+\)$", "", display_name)
 
     # Extract and sort URL
     url = _extractUrlFromChecklistItem(item)
@@ -373,10 +376,12 @@ def _generateIssueDescription(alerts: List[Dict[str, Any]], org: str, repo: str)
         ):
             clauses.append(gh_template_clause_text[alert["type"]])
 
-        # Create checklist item
-        item: str = (
-            f"- [ ] [{alert['display_name']}]({alert['url']}) ({alert['severity']})"
-        )
+        # Create checklist item - extract number from URL if present
+        display_text: str = alert["display_name"]
+        url_parts: List[str] = alert["url"].rstrip("/").split("/")
+        if url_parts and url_parts[-1].isdigit():
+            display_text = f"{alert['display_name']} (#{url_parts[-1]})"
+        item: str = f"- [ ] [{display_text}]({alert['url']}) ({alert['severity']})"
         if item not in checklist_items:
             checklist_items.append(item)
 
