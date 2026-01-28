@@ -852,6 +852,94 @@ References:
         )
         self.assertIn(f"url: {alert_url}", ghas_section)
 
+    def test__generateCveContent_deduplicates_description_counts(self):
+        """Test _generateCveContent deduplicates alerts in Description checklist counts"""
+        # Create alerts with duplicates (same URL) to verify counting is correct
+        # 3 unique high alerts, 2 unique medium alerts
+        alerts = [
+            # 3 unique high alerts
+            self._create_test_alert(
+                display_name="react-router",
+                severity="high",
+                url="https://github.com/test-org/test-repo/security/dependabot/1",
+            ),
+            self._create_test_alert(
+                display_name="react-router",
+                severity="high",
+                url="https://github.com/test-org/test-repo/security/dependabot/2",
+            ),
+            self._create_test_alert(
+                display_name="react-router",
+                severity="high",
+                url="https://github.com/test-org/test-repo/security/dependabot/3",
+            ),
+            # Duplicate of alert 1 (same URL) - should NOT be counted
+            self._create_test_alert(
+                display_name="react-router",
+                severity="high",
+                url="https://github.com/test-org/test-repo/security/dependabot/1",
+            ),
+            # Duplicate of alert 2 (same URL) - should NOT be counted
+            self._create_test_alert(
+                display_name="react-router",
+                severity="high",
+                url="https://github.com/test-org/test-repo/security/dependabot/2",
+            ),
+            # Duplicate of alert 3 (same URL) - should NOT be counted
+            self._create_test_alert(
+                display_name="react-router",
+                severity="high",
+                url="https://github.com/test-org/test-repo/security/dependabot/3",
+            ),
+            # 2 unique medium alerts
+            self._create_test_alert(
+                display_name="react-router",
+                severity="medium",
+                url="https://github.com/test-org/test-repo/security/dependabot/4",
+            ),
+            self._create_test_alert(
+                display_name="react-router",
+                severity="medium",
+                url="https://github.com/test-org/test-repo/security/dependabot/5",
+            ),
+            # Duplicate of alert 4 (same URL) - should NOT be counted
+            self._create_test_alert(
+                display_name="react-router",
+                severity="medium",
+                url="https://github.com/test-org/test-repo/security/dependabot/4",
+            ),
+            # Duplicate of alert 5 (same URL) - should NOT be counted
+            self._create_test_alert(
+                display_name="react-router",
+                severity="medium",
+                url="https://github.com/test-org/test-repo/security/dependabot/5",
+            ),
+        ]
+        tracking_url = "https://github.com/test-org/test-repo/issues/1"
+
+        result = cvelib.wizard._generateCveContent(
+            alerts, "test-org", "test-repo", tracking_url
+        )
+
+        # Extract Description section
+        desc_start = result.find("Description:")
+        ghas_start = result.find("GitHub-Advanced-Security:")
+        desc_section = result[desc_start:ghas_start]
+
+        # Should show "3 high" not "6 high" (duplicates should not be counted)
+        self.assertIn(
+            "- [ ] react-router (3 high)",
+            desc_section,
+            f"Expected '3 high' but got: {desc_section}",
+        )
+
+        # Should show "2 medium" not "4 medium" (duplicates should not be counted)
+        self.assertIn(
+            "- [ ] react-router (2 medium)",
+            desc_section,
+            f"Expected '2 medium' but got: {desc_section}",
+        )
+
     def test__generateIssueDescription(self):
         """Test generate_issue_description function"""
         alerts = self._create_sample_alerts_json()[0]["alerts"]
