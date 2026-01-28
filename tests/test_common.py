@@ -3,12 +3,12 @@
 #
 # SPDX-License-Identifier: MIT
 
-from email.message import EmailMessage
 import json
 import os
 from unittest import TestCase, mock, skipIf
 
 import cvelib.common
+import cvelib.rfc5322
 import tests.testutil
 
 
@@ -102,27 +102,6 @@ class TestCommon(TestCase):
             else:
                 with self.assertRaises(ValueError):
                     cvelib.common.epochToISO8601(input)
-
-    def test_setCveHeader(self):
-        """Test setCveHeader()"""
-        m = EmailMessage()
-        self.assertEqual(0, len(m))
-
-        # add
-        cvelib.common.setCveHeader(m, "foo", "bar")
-        self.assertEqual(1, len(m))
-        self.assertTrue("foo" in m)
-        self.assertEqual("bar", m["foo"])
-
-        # replace
-        cvelib.common.setCveHeader(m, "foo", "baz")
-        self.assertEqual(1, len(m))
-        self.assertTrue("foo" in m)
-        self.assertEqual("baz", m["foo"])
-
-        # delete
-        cvelib.common.setCveHeader(m, "foo", None)
-        self.assertEqual(0, len(m))
 
     def test_getCacheDirPath(self):
         """Test getCacheDirPath()"""
@@ -448,11 +427,8 @@ oci-cve-override-where = %s
                 "dupe-test2: bar\nbaz: norf\n\ndupe-test2: bar\n",
                 {"dupe-test2": "bar", "baz": "norf"},
             ),
-            # weird cases
-            ("bad", {}),
-            ("f\x00o: bar", {}),
+            # values with unusual characters are fine
             ("foo: b\xaar", {"foo": "b\xaar"}),
-            ("😀: bar", {}),  # utf-8 F09F9880
             ("foo: 😀", {"foo": "😀"}),
         ]
         for inp, exp in tsts:
@@ -473,6 +449,30 @@ oci-cve-override-where = %s
             else:
                 self.assertEqual("", output.getvalue().strip())
                 self.assertEqual("", error.getvalue().strip())
+
+        # test malformed input raises exception
+        fn = os.path.join(self.tmpdir, "testcve")
+
+        # line without colon
+        with open(fn, "w") as f:
+            f.write("bad")
+        with self.assertRaises(cvelib.rfc5322.Rfc5322Exception) as ctx:
+            cvelib.common.readCve(fn)
+        self.assertEqual("line without colon: 'bad'", ctx.exception.value)
+
+        # invalid key with null byte
+        with open(fn, "w") as f:
+            f.write("f\x00o: bar")
+        with self.assertRaises(cvelib.rfc5322.Rfc5322Exception) as ctx:
+            cvelib.common.readCve(fn)
+        self.assertEqual("invalid key: 'f\x00o'", ctx.exception.value)
+
+        # invalid key with emoji
+        with open(fn, "w") as f:
+            f.write("😀: bar")
+        with self.assertRaises(cvelib.rfc5322.Rfc5322Exception) as ctx:
+            cvelib.common.readCve(fn)
+        self.assertEqual("invalid key: '😀'", ctx.exception.value)
 
     def test_readFile(self):
         """Test readFile()"""

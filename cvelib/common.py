@@ -13,9 +13,7 @@ import tempfile
 import time
 from typing import Any, Dict, List, Optional, Pattern, Set, Tuple, Union
 
-from email.message import Message
-from email.parser import HeaderParser, Parser
-from email.policy import Compat32
+from cvelib.rfc5322 import parseHeaders
 
 
 # cache of config
@@ -459,52 +457,18 @@ def readFile(fn: str) -> Optional[Set[str]]:
 
 def readCve(fn: str) -> Dict[str, str]:
     """Read raw CVE data from file"""
-    # Read in the data, but let callers do any specific formatting
-    d: Dict[str, str] = {}
-
     # Use a relative filename for warnings
     rel_fn: str = os.path.basename(fn)
     parent: str = os.path.basename(os.path.dirname(fn))
     if parent in cve_reldirs:
         rel_fn = "%s/%s" % (parent, rel_fn)
 
-    # Encode to to utf-8 since we do isprintable() checks elsewhere
     with open(fn, "r", encoding="utf-8", errors="backslashreplace") as fp:
-        policy: Compat32 = Compat32()
+        content: str = fp.read()
 
-        # Obtain the header content
-        headers: Message = Parser(policy=policy).parse(fp)
-        for k in headers:
-            if k in d:
-                warn("duplicate key '%s' in %s" % (k, rel_fn))
-            d[k] = headers[k]
-
-        # Obtain the header content for any other stanzas (stanzas are
-        # separated by newlines so we need to grab the stanza'a headers from
-        # the payload in a loop.
-        last: Optional[str] = None
-        while True:
-            s: str = headers.get_payload()
-            if s == last:
-                break
-            last = s
-            headers: Message = HeaderParser(policy=policy).parsestr(s)
-            for k in headers:
-                if k in d:
-                    warn("duplicate key '%s' in %s" % (k, rel_fn))
-                d[k] = headers[k]
-
-    return copy.deepcopy(d)
-
-
-def setCveHeader(headers: Message, key: str, val: Optional[str]) -> None:
-    """Set header for CVE"""
-    if val is None:
-        headers.__delitem__(key)  # no exception if missing
-    elif key in headers:
-        headers.replace_header(key, val)
-    else:
-        headers.add_header(key, val)
+    return copy.deepcopy(
+        parseHeaders(content, warnFn=lambda msg: warn("%s in %s" % (msg, rel_fn)))
+    )
 
 
 def getCacheDirPath() -> str:
