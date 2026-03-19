@@ -57,7 +57,6 @@ from cvelib.net import requestGetRaw, ghAPIGetList
 import cvelib.quay
 import cvelib.scan
 
-
 #
 # cve-report-updated-bugs
 #
@@ -634,8 +633,7 @@ def _printGHAlertsTemplates(
     plural: bool = len(alert) > 1
 
     print("## %s template" % repo)
-    template: str = (
-        """Please address alert%s (%s) in %s
+    template: str = """Please address alert%s (%s) in %s
 
 The following alert%s issued:
 %s
@@ -645,20 +643,18 @@ Thanks!
 
 References:
  * %s%s
-"""
-        % (
-            "s" if plural else "",
-            ", ".join(sorted(alert_types)),
-            repo,
-            "s were" if plural else " was",
-            checklist,
-            "n" if gh_severities.index("unknown") == highest else "",
-            gh_severities[highest],
-            priority,
-            " ".join(sorted(clauses)),
-            "" if len(template_urls) == 0 else "%s\n * " % "\n * ".join(template_urls),
-            "\n * ".join(sorted(urls)),
-        )
+""" % (
+        "s" if plural else "",
+        ", ".join(sorted(alert_types)),
+        repo,
+        "s were" if plural else " was",
+        checklist,
+        "n" if gh_severities.index("unknown") == highest else "",
+        gh_severities[highest],
+        priority,
+        " ".join(sorted(clauses)),
+        "" if len(template_urls) == 0 else "%s\n * " % "\n * ".join(template_urls),
+        "\n * ".join(sorted(urls)),
     )
 
     print(template)
@@ -1608,7 +1604,7 @@ def _readStatsUniqueCVEs(
 
 
 def getHumanReportOpenByPkgPriority(
-    stats: Dict[str, _statsUniqueCVEsPkgSoftware]
+    stats: Dict[str, _statsUniqueCVEsPkgSoftware],
 ) -> None:
     """Show report of open issues by package priority"""
     maxlen: int = 30
@@ -2201,8 +2197,7 @@ def _main_report_parse_args(sysargs: Sequence[str]) -> argparse.Namespace:
         prog="cve-report",
         description="Generate reports",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=textwrap.dedent(
-            """\
+        epilog=textwrap.dedent("""\
 Use -h or --help for additional options for report commands (positional
 arguments). Eg:
 
@@ -2373,8 +2368,7 @@ Example usage:
   * Docker HUB: use --images <imgname>,...
   * GAR: use --namespace <proj>/<loc> and --images <repo>/<imgname>,...
   * Quay.io: use --namespace <org> and --images <imgname>,...
-        """
-        ),
+        """),
     )
 
     def _add_common_filter(p):

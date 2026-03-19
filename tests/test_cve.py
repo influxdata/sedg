@@ -121,9 +121,7 @@ class TestCve(TestCase):
         """Test onDiskFormat()"""
         self.maxDiff = 4096
         tmpl = self._cve_template()
-        tmpl[
-            "GitHub-Advanced-Security"
-        ] = """
+        tmpl["GitHub-Advanced-Security"] = """
  - type: dependabot
    dependency: foo
    detectedIn: go.sum
@@ -144,9 +142,7 @@ class TestCve(TestCase):
    status: dismissed (false-positive; who)
    url: https://github.com/bar/baz/security/code-scanning/1
 """
-        tmpl[
-            "Scan-Reports"
-        ] = """
+        tmpl["Scan-Reports"] = """
  - type: oci
    component: foo
    detectedIn: Distro 1.0
@@ -319,9 +315,7 @@ CVSS:
 
         cve.setPackages(pkgs)
 
-        exp2 = (
-            exp
-            + """
+        exp2 = exp + """
 Patches_pkg1:
 git_pkg1: needed
 
@@ -360,7 +354,6 @@ CloseDate_pkg6: 2023-03-17
 git_pkg6: needed
 oci/pub_pkg6: needed (deadbeef)
 """
-        )
         res = cve.onDiskFormat()
         self.assertEqual(exp2, res)
 
@@ -566,7 +559,7 @@ oci/org_foo: pending
             ("Key", "foo\tbar", False, "invalid Key (contains unprintable characters)"),
             (
                 "Key",
-                "foo b\u00A0r",
+                "foo b\u00a0r",
                 False,
                 "invalid Key (contains unprintable characters)",
             ),
@@ -587,7 +580,7 @@ oci/org_foo: pending
             ("Key", "foo\tbar", True, "invalid Key (contains unprintable characters)"),
             (
                 "Key",
-                "foo b\u00A0r",
+                "foo b\u00a0r",
                 True,
                 "invalid Key (contains unprintable characters)",
             ),
@@ -685,7 +678,7 @@ oci/org_foo: pending
             ),
             (
                 "Key",
-                "\n foo b\u00A0r",
+                "\n foo b\u00a0r",
                 False,
                 None,
                 "invalid Key (contains unprintable characters)",
@@ -744,7 +737,7 @@ oci/org_foo: pending
             ),
             (
                 "Key",
-                "\n foo b\u00A0r",
+                "\n foo b\u00a0r",
                 True,
                 None,
                 "invalid Key (contains unprintable characters)",
@@ -1455,7 +1448,7 @@ oci/org_foo: pending
             ("Joe ()", "invalid %(key)s: 'Joe ()'"),
             ("Joe (@)", "invalid %(key)s: 'Joe (@)'"),
             ("Joe @joeschmoe", "invalid %(key)s: 'Joe @joeschmoe'"),
-            ("Joe B\u00A0r", "invalid %(key)s (contains unprintable characters)"),
+            ("Joe B\u00a0r", "invalid %(key)s (contains unprintable characters)"),
         ]
         for tstType in ["Discovered-by", "Assigned-to"]:
             fn = None
@@ -1863,12 +1856,9 @@ oci/org_foo: pending
     def test_checkSyntax(self):
         """Test checkSyntax"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        content = (
-            """[Locations]
+        content = """[Locations]
 cve-data = %s
-"""
-            % self.tmpdir
-        )
+""" % self.tmpdir
         self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
@@ -2290,9 +2280,7 @@ cve-data = %s
         for dsc, expErr in ghasTsts:
             tmpl = self._cve_template()
             tmpl["git/github_pkg1"] = "needed"
-            tmpl[
-                "GitHub-Advanced-Security"
-            ] = """
+            tmpl["GitHub-Advanced-Security"] = """
  - type: dependabot
    dependency: foo
    detectedIn: go.sum
@@ -2338,9 +2326,7 @@ cve-data = %s
         tmpl["CloseDate"] = today
         tmpl["git/github_pkg1"] = "released"
         tmpl["Discovered-by"] = "gh-dependabot"
-        tmpl[
-            "GitHub-Advanced-Security"
-        ] = """
+        tmpl["GitHub-Advanced-Security"] = """
  - type: dependabot
    dependency: foo
    detectedIn: yarn.lock
@@ -2370,9 +2356,7 @@ cve-data = %s
         tmpl["Candidate"] = "CVE-1234-5678"
         tmpl["git/github_pkg1"] = "needed"
         tmpl["Discovered-by"] = "gh-dependabot"
-        tmpl[
-            "GitHub-Advanced-Security"
-        ] = """
+        tmpl["GitHub-Advanced-Security"] = """
  - type: dependabot
    dependency: foo
    detectedIn: yarn.lock
@@ -2403,9 +2387,7 @@ cve-data = %s
         tmpl["git/github_pkg1"] = "released"
         tmpl["git/github_pkg1"] = "pending"
         tmpl["Discovered-by"] = "gh-dependabot"
-        tmpl[
-            "GitHub-Advanced-Security"
-        ] = """
+        tmpl["GitHub-Advanced-Security"] = """
  - type: dependabot
    dependency: foo
    detectedIn: yarn.lock
@@ -2468,9 +2450,7 @@ cve-data = %s
             tmpl["oci/quay-org_pkg1"] = "needed"
             tmpl["oci/gar-us.proj_pkg1"] = "needed"
             tmpl["oci/dockerhub_pkg1"] = "needed"
-            tmpl[
-                "Scan-Reports"
-            ] = """
+            tmpl["Scan-Reports"] = """
  - type: oci
    component: foo
    detectedIn: Distro 1.01
@@ -2523,9 +2503,7 @@ cve-data = %s
         tmpl["Candidate"] = "CVE-1234-5678"
         tmpl["CloseDate"] = today
         tmpl["git/github_pkg1"] = "released"
-        tmpl[
-            "Scan-Reports"
-        ] = """
+        tmpl["Scan-Reports"] = """
  - type: oci
    component: foo
    detectedIn: Distro 1.0
@@ -2556,9 +2534,7 @@ cve-data = %s
         tmpl = self._cve_template()
         tmpl["Candidate"] = "CVE-1234-5678"
         tmpl["git/github_pkg1"] = "needed"
-        tmpl[
-            "Scan-Reports"
-        ] = """
+        tmpl["Scan-Reports"] = """
  - type: oci
    component: foo
    detectedIn: Distro 1.0
@@ -2590,9 +2566,7 @@ cve-data = %s
         tmpl["Candidate"] = "CVE-1234-5678"
         tmpl["git/github_pkg1"] = "released"
         tmpl["git/github_pkg1"] = "pending"
-        tmpl[
-            "Scan-Reports"
-        ] = """
+        tmpl["Scan-Reports"] = """
  - type: oci
    component: foo
    detectedIn: Distro 1.0
@@ -2621,9 +2595,7 @@ cve-data = %s
         tmpl["Candidate"] = "CVE-1234-5678"
         tmpl["Discovered-by"] = "quay.io"
         tmpl["git/github_pkg1"] = "needed"
-        tmpl[
-            "Scan-Reports"
-        ] = """
+        tmpl["Scan-Reports"] = """
  - type: oci
    component: foo
    detectedIn: Distro 1.0
@@ -2655,9 +2627,7 @@ cve-data = %s
         tmpl["Candidate"] = "CVE-1234-5678"
         tmpl["Discovered-by"] = "quay.io, dso"
         tmpl["git/github_pkg1"] = "needed"
-        tmpl[
-            "Scan-Reports"
-        ] = """
+        tmpl["Scan-Reports"] = """
  - type: oci
    component: foo
    detectedIn: Distro 1.0
@@ -2696,12 +2666,9 @@ cve-data = %s
     def test_checkSyntaxCrossChecks(self):
         """Test checkSyntax() - cross checks"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        content = (
-            """[Locations]
+        content = """[Locations]
 cve-data = %s
-"""
-            % self.tmpdir
-        )
+""" % self.tmpdir
         self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
@@ -2715,9 +2682,7 @@ cve-data = %s
         tmpl["Candidate"] = "CVE-2022-0001"
         tmpl["git/github_pkg1"] = "needed"
         tmpl["Discovered-by"] = "gh-dependabot"
-        tmpl[
-            "GitHub-Advanced-Security"
-        ] = """
+        tmpl["GitHub-Advanced-Security"] = """
  - type: dependabot
    dependency: foo
    detectedIn: go.sum
@@ -2735,9 +2700,7 @@ cve-data = %s
         tmpl["Candidate"] = "CVE-2022-0002"
         tmpl["git/github_pkg1"] = "released"
         tmpl["Discovered-by"] = "gh-dependabot"
-        tmpl[
-            "GitHub-Advanced-Security"
-        ] = """
+        tmpl["GitHub-Advanced-Security"] = """
  - type: dependabot
    dependency: foo
    detectedIn: go.sum
@@ -3023,19 +2986,14 @@ CVSS:
 
         template_baz_fn = os.path.join(cveDirs["templates"], "baz")
         with open(template_baz_fn, "w") as fp:
-            fp.write(
-                "%s" % template_content
-                + """
+            fp.write("%s" % template_content + """
 Patches_baz:
 upstream_baz: needed
-"""
-            )
+""")
 
         template_ubuntu_fn = "%s.ubuntu" % template_fn
         with open(template_ubuntu_fn, "w") as fp:
-            fp.write(
-                "%s" % template_content
-                + """
+            fp.write("%s" % template_content + """
 #precise/esm_PKG:
 #trusty_PKG:
 #trusty/esm_PKG:
@@ -3044,8 +3002,7 @@ upstream_baz: needed
 #focal_PKG:
 #groovy_PKG:
 #devel_PKG:
-"""
-            )
+""")
 
         tsts = [
             # valid strict
@@ -3459,12 +3416,9 @@ CVSS:
     def test_addCveExistsInOther(self):
         """Test addCve() - exists in other"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        content = (
-            """[Locations]
+        content = """[Locations]
 cve-data = %s
-"""
-            % self.tmpdir
-        )
+""" % self.tmpdir
         self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
@@ -3533,12 +3487,9 @@ CVSS:
     def test_main_cve_add(self, _):  # 2nd arg is 'mock_args'
         """Test main_cve_add()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        content = (
-            """[Locations]
+        content = """[Locations]
 cve-data = %s
-"""
-            % self.tmpdir
-        )
+""" % self.tmpdir
         self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
@@ -3658,12 +3609,9 @@ CVSS:
     def test_main_cve_check_syntax(self, _):  # second arg is 'mock_args'
         """Test main_cve_check_syntax()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        content = (
-            """[Locations]
+        content = """[Locations]
 cve-data = %s
-"""
-            % self.tmpdir
-        )
+""" % self.tmpdir
         self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
@@ -3692,12 +3640,9 @@ cve-data = %s
     def test_main_cve_check_syntax_fns(self, _):  # second arg is 'mock_args'
         """Test main_cve_check_syntax() - -f"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        content = (
-            """[Locations]
+        content = """[Locations]
 cve-data = %s
-"""
-            % self.tmpdir
-        )
+""" % self.tmpdir
         self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
@@ -3719,12 +3664,9 @@ cve-data = %s
     def test__findNextPlaceholder(self):
         """Test _findNextPlaceholder"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        content = (
-            """[Locations]
+        content = """[Locations]
 cve-data = %s
-"""
-            % self.tmpdir
-        )
+""" % self.tmpdir
         self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
@@ -3784,12 +3726,9 @@ cve-data = %s
     def test__cveExists(self):
         """Test _cveExists"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        content = (
-            """[Locations]
+        content = """[Locations]
 cve-data = %s
-"""
-            % self.tmpdir
-        )
+""" % self.tmpdir
         self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
@@ -3816,12 +3755,9 @@ cve-data = %s
     def test__getCVEPaths(self):
         """Test _getCVEPaths"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        content = (
-            """[Locations]
+        content = """[Locations]
 cve-data = %s
-"""
-            % self.tmpdir
-        )
+""" % self.tmpdir
         self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
@@ -4018,12 +3954,9 @@ cve-data = %s
     def test_collectCVEDataSimple(self):
         """Test collectCVEData()"""
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        content = (
-            """[Locations]
+        content = """[Locations]
 cve-data = %s
-"""
-            % self.tmpdir
-        )
+""" % self.tmpdir
         self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
@@ -4081,12 +4014,9 @@ cve-data = %s
                 fp.write("%s" % content)
 
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        content = (
-            """[Locations]
+        content = """[Locations]
 cve-data = %s
-"""
-            % self.tmpdir
-        )
+""" % self.tmpdir
         self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
@@ -4448,8 +4378,7 @@ cve-data = %s
         """Test collectGHAlertUrls()"""
         self._mock_readCve(self._cve_template())
         cve1 = cvelib.cve.CVE(fn="fake")
-        cve1.setGHAS(
-            """ - type: dependabot
+        cve1.setGHAS(""" - type: dependabot
    dependency: foo
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-foo
@@ -4468,38 +4397,31 @@ cve-data = %s
    severity: medium
    status: dismissed (false-positive; who)
    url: https://github.com/bar/baz/security/code-scanning/1
-"""
-        )
+""")
         cve2 = cvelib.cve.CVE(fn="fake")
-        cve2.setGHAS(
-            """ - type: dependabot
+        cve2.setGHAS(""" - type: dependabot
    dependency: bar
    detectedIn: go.sum
    advisory: https://github.com/advisories/GHSA-bar
    severity: medium
    status: dismissed (inaccurate; who)
-   url: https://github.com/bar/baz/security/dependabot/2"""
-        )
+   url: https://github.com/bar/baz/security/dependabot/2""")
         cve3 = cvelib.cve.CVE(fn="fake")
-        cve3.setGHAS(
-            """ - type: secret-scanning
+        cve3.setGHAS(""" - type: secret-scanning
    secret: Slack Incoming Webhook URL
    detectedIn: /path/to/file
    severity: medium
    status: dismissed (revoked; who)
    url: https://github.com/bar/baz/security/secret-scanning/1
-"""
-        )
+""")
         cve4 = cvelib.cve.CVE(fn="fake")
-        cve4.setGHAS(
-            """ - type: code-scanning
+        cve4.setGHAS(""" - type: code-scanning
    description: Some Code Violation
    detectedIn: /path/to/file
    severity: medium
    status: dismissed (false-positive; who)
    url: https://github.com/bar/baz/security/code-scanning/1
-"""
-        )
+""")
         urls, dupes = cvelib.cve.collectGHAlertUrls([cve1, cve2, cve3, cve4])
         self.assertEqual(4, len(urls))
         self.assertTrue("https://github.com/bar/baz/security/dependabot/1" in urls)

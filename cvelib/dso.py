@@ -824,8 +824,7 @@ def main_dso_dump_reports():
         prog="dso-dump-reports",
         description="Fetch dso reports and save locally",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=textwrap.dedent(
-            """\
+        epilog=textwrap.dedent("""\
 dso-dump-reports pulls all the latest security reports for the tagged images in
 the REPO and outputs them to:
 
@@ -834,8 +833,7 @@ the REPO and outputs them to:
 Eg, to pull all dso security scan reports for org 'foo':
 
   $ dso-dump-reports --path /path/to/reports --name org
-        """
-        ),
+        """),
     )
     parser.add_argument(
         "-p",

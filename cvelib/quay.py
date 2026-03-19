@@ -469,8 +469,7 @@ def main_quay_dump_reports():
         prog="quay-dump-reports",
         description="Fetch quay.io reports and save locally",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=textwrap.dedent(
-            """\
+        epilog=textwrap.dedent("""\
 quay-dump-reports pulls all the latest security reports for OCI images in
 ORG and outputs them to:
 
@@ -479,8 +478,7 @@ ORG and outputs them to:
 Eg, to pull all quay.io security scan reports for org 'foo':
 
   $ quay-dump-reports --path /path/to/reports --name org
-        """
-        ),
+        """),
     )
     parser.add_argument(
         "-p",

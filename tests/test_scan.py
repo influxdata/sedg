@@ -778,9 +778,7 @@ class TestScanCommon(TestCase):
         ]
 
         for url, whr, expP, expW, expS, expM in tsts:
-            (resP, resW, resS, resM) = cvelib.scan._parseScanURL(
-                url, where_override=whr
-            )
+            resP, resW, resS, resM = cvelib.scan._parseScanURL(url, where_override=whr)
             self.assertEqual(expP, resP, msg="url=%s" % url)
             self.assertEqual(expW, resW, msg="url=%s" % url)
             self.assertEqual(expS, resS, msg="url=%s" % url)
@@ -801,7 +799,7 @@ class TestScanCommon(TestCase):
         ]
 
         for oci_type, ns, img, whr, expP, expW, expS, expM in tsts:
-            (resP, resW, resS, resM) = cvelib.scan.parseNsAndImageToPkg(
+            resP, resW, resS, resM = cvelib.scan.parseNsAndImageToPkg(
                 oci_type, ns, img, where_override=whr
             )
             self.assertEqual(
@@ -1089,8 +1087,7 @@ some-repo report: 1
    fixedBy: 1.2.2
    severity: low
    status: released
-   url: https://blah.com/BAR-a"""
-                % (now.year, now.year, now.month, now.day),
+   url: https://blah.com/BAR-a""" % (now.year, now.year, now.month, now.day),
             ),
         ]
 
@@ -1201,8 +1198,7 @@ CVSS:
 Patches_TBD:
 oci/unknown_TBD: needs-triage
 
-## end CVE template"""
-                % (now.year, now.year, now.month, now.day),
+## end CVE template""" % (now.year, now.year, now.month, now.day),
             ),
             (
                 "foo",
@@ -1294,8 +1290,7 @@ CVSS:
 Patches_TBD:
 oci/unknown_TBD: needs-triage
 
-## end CVE template"""
-                % (now.year, now.year, now.month, now.day),
+## end CVE template""" % (now.year, now.year, now.month, now.day),
             ),
             (
                 "gar",
@@ -1366,8 +1361,7 @@ CVSS:
 Patches_TBD:
 oci/unknown_TBD: needs-triage
 
-## end CVE template"""
-                % (now.year, now.year, now.month, now.day),
+## end CVE template""" % (now.year, now.year, now.month, now.day),
             ),
             (
                 "quay",
@@ -1438,8 +1432,7 @@ CVSS:
 Patches_TBD:
 oci/unknown_TBD: needs-triage
 
-## end CVE template"""
-                % (now.year, now.year, now.month, now.day),
+## end CVE template""" % (now.year, now.year, now.month, now.day),
             ),
             (
                 "foo",
@@ -1507,8 +1500,7 @@ CVSS:
 Patches_TBD:
 oci/unknown_TBD: needs-triage
 
-## end CVE template"""
-                % (now.year, now.year, now.month, now.day),
+## end CVE template""" % (now.year, now.year, now.month, now.day),
             ),
             (
                 "foo",
@@ -1576,8 +1568,7 @@ CVSS:
 Patches_TBD:
 oci/unknown_TBD: needs-triage
 
-## end CVE template"""
-                % (now.year, now.year, now.month, now.day),
+## end CVE template""" % (now.year, now.year, now.month, now.day),
             ),
             (
                 "foo",
@@ -1646,8 +1637,7 @@ CVSS:
 Patches_TBD:
 oci/some-override_TBD: needs-triage
 
-## end CVE template"""
-                % (now.year, now.year, now.month, now.day),
+## end CVE template""" % (now.year, now.year, now.month, now.day),
             ),
         ]
 

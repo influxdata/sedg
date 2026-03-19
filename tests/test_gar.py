@@ -780,9 +780,7 @@ class TestGAR(TestCase):
     def test_getGARDiscovery(self, mock_get, mock_getDigestForImage):
         """Test getGARDiscovery()"""
         # clean
-        mr = self._mock_response_for_gar(
-            json.loads(
-                """{
+        mr = self._mock_response_for_gar(json.loads("""{
   "occurrences": [
     {
       "kind": "DISCOVERY",
@@ -793,9 +791,7 @@ class TestGAR(TestCase):
     }
   ]
 }
-"""
-            )
-        )
+"""))
         mock_get.return_value = mr
         res = cvelib.gar.getGARDiscovery(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
@@ -803,9 +799,7 @@ class TestGAR(TestCase):
         self.assertEqual("CLEAN", res)
 
         # inactive
-        mr = self._mock_response_for_gar(
-            json.loads(
-                """{
+        mr = self._mock_response_for_gar(json.loads("""{
   "occurrences": [
     {
       "kind": "DISCOVERY",
@@ -816,9 +810,7 @@ class TestGAR(TestCase):
     }
   ]
 }
-"""
-            )
-        )
+"""))
         mock_get.return_value = mr
         res = cvelib.gar.getGARDiscovery(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
@@ -826,9 +818,7 @@ class TestGAR(TestCase):
         self.assertEqual("INACTIVE", res)
 
         # unsupported
-        mr = self._mock_response_for_gar(
-            json.loads(
-                """{
+        mr = self._mock_response_for_gar(json.loads("""{
   "occurrences": [
     {
       "kind": "DISCOVERY",
@@ -838,9 +828,7 @@ class TestGAR(TestCase):
     }
   ]
 }
-"""
-            )
-        )
+"""))
         mock_get.return_value = mr
         res = cvelib.gar.getGARDiscovery(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"
@@ -848,9 +836,7 @@ class TestGAR(TestCase):
         self.assertEqual("UNSUPPORTED", res)
 
         # other
-        mr = self._mock_response_for_gar(
-            json.loads(
-                """{
+        mr = self._mock_response_for_gar(json.loads("""{
   "occurrences": [
     {
       "kind": "DISCOVERY",
@@ -860,9 +846,7 @@ class TestGAR(TestCase):
     }
   ]
 }
-"""
-            )
-        )
+"""))
         mock_get.return_value = mr
         res = cvelib.gar.getGARDiscovery(
             "valid-proj/us/valid-repo/valid-name@sha256:deadbeef"

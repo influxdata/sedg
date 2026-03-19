@@ -216,7 +216,7 @@ def parse(s: str, compatUbuntu: bool = False) -> CvePkg:
     when: str = ""
 
     # when may have ':', so only split on the first one
-    (product_software, status_when) = s.split(":", 1)
+    product_software, status_when = s.split(":", 1)
 
     # Ubuntu disallows "_" in <software>, but otherwise we allow it
     product_where, software_mod = product_software.split("_", maxsplit=1)

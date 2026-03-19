@@ -147,7 +147,7 @@ class TestCommon(TestCase):
 
         # create
         with tests.testutil.capturedOutput() as (output, error):
-            (exp_conf, exp_fn) = cvelib.common.readConfig()
+            exp_conf, exp_fn = cvelib.common.readConfig()
         self.assertEqual(exp_fn, fn)
         self.assertTrue("Locations" in exp_conf)
 
@@ -158,7 +158,7 @@ class TestCommon(TestCase):
 
         # reuse
         with tests.testutil.capturedOutput() as (output, error):
-            (exp_conf2, exp_fn2) = cvelib.common.readConfig()
+            exp_conf2, exp_fn2 = cvelib.common.readConfig()
         self.assertEqual(exp_conf, exp_conf2)  # same object
         self.assertEqual(exp_fn, exp_fn2)
         self.assertTrue("Locations" in exp_conf2)
@@ -184,12 +184,9 @@ class TestCommon(TestCase):
 
         fn = os.path.expandvars("$XDG_CONFIG_HOME/sedg/sedg.conf")
         with open(fn, "w") as fp:
-            fp.write(
-                """[Locations]
+            fp.write("""[Locations]
 cve-data = %s
-"""
-                % dataDir
-            )
+""" % dataDir)
 
         return fn, dataDir
 
@@ -294,8 +291,7 @@ cve-data = %s
             self.orig_xdg_config_home, tmpdir = tests.testutil._newConfigFile(
                 """[Behavior]
 compat-ubuntu = %s
-"""
-                % val
+""" % val
             )
 
             with tests.testutil.capturedOutput() as (output, error):
@@ -340,8 +336,7 @@ compat-ubuntu = %s
             self.orig_xdg_config_home, tmpdir = tests.testutil._newConfigFile(
                 """[Behavior]
 template-urls = %s
-"""
-                % val
+""" % val
             )
 
             with tests.testutil.capturedOutput() as (output, error):
@@ -379,8 +374,7 @@ template-urls = %s
             self.orig_xdg_config_home, tmpdir = tests.testutil._newConfigFile(
                 """[Behavior]
 oci-cve-override-where = %s
-"""
-                % val
+""" % val
             )
 
             with tests.testutil.capturedOutput() as (output, error):

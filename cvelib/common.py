@@ -14,7 +14,6 @@ from typing import Any, Dict, List, Optional, Pattern, Set, Tuple, Union
 
 from cvelib.rfc5322 import parseHeaders
 
-
 # cache of config
 configCache: Optional[configparser.ConfigParser] = None
 
@@ -527,7 +526,7 @@ def getConfigCveDataPaths() -> Dict[str, str]:
     configFilePath: str
     top: Optional[str] = None
 
-    (config, configFilePath) = readConfig()
+    config, configFilePath = readConfig()
     if "Locations" in config and "cve-data" in config["Locations"]:
         path: str = config["Locations"]["cve-data"]
         if not os.path.isdir(path):
@@ -558,7 +557,7 @@ def getConfigCveDataPaths() -> Dict[str, str]:
 def getConfigCompatUbuntu() -> bool:
     """Read Ubuntu compat configuration from config"""
     config: configparser.ConfigParser
-    (config, _) = readConfig()
+    config, _ = readConfig()
     if "Behavior" in config and "compat-ubuntu" in config["Behavior"]:
         if config["Behavior"]["compat-ubuntu"].lower() == "yes":
             return True
@@ -571,7 +570,7 @@ def getConfigCompatUbuntu() -> bool:
 def getConfigTemplateURLs() -> List[str]:
     """Read template-urls configuration from config"""
     config: configparser.ConfigParser
-    (config, _) = readConfig()
+    config, _ = readConfig()
     urls: List[str] = []
     if "Behavior" in config and "template-urls" in config["Behavior"]:
         for tmp in config["Behavior"]["template-urls"].split(","):
@@ -587,7 +586,7 @@ def getConfigTemplateURLs() -> List[str]:
 def getConfigOciCveOverrideWhere() -> str:
     """Read oci-cve-override-where configuration from config"""
     config: configparser.ConfigParser
-    (config, _) = readConfig()
+    config, _ = readConfig()
     where: str = ""
     if "Behavior" in config and "oci-cve-override-where" in config["Behavior"]:
         where = config["Behavior"]["oci-cve-override-where"].strip("\"' ")
@@ -649,7 +648,7 @@ def verifyDate(
 
 
 def _sorted_json_deep(
-    data: Union[Dict, List, int, bool, str, float, None]
+    data: Union[Dict, List, int, bool, str, float, None],
 ) -> Union[Dict, List, int, bool, str, float, None]:
     """Deeply sort data that consists of JSON data types
 

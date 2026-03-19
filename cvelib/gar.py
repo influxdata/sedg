@@ -856,8 +856,7 @@ def main_gar_dump_reports():
         prog="gar-dump-reports",
         description="Fetch GAR reports and save locally",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=textwrap.dedent(
-            """\
+        epilog=textwrap.dedent("""\
 gar-dump-reports pulls all the latest security reports for OCI images in
 PROJECT/LOCATION and outputs them to:
 
@@ -866,8 +865,7 @@ PROJECT/LOCATION and outputs them to:
 Eg, to pull all GAR security scan reports for project 'foo' at location 'us':
 
   $ gar-dump-reports --path /path/to/reports --name foo/us
-        """
-        ),
+        """),
     )
     parser.add_argument(
         "-p",
