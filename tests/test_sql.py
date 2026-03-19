@@ -188,7 +188,7 @@ class TestCVEdb(TestCase):
         ]
 
         for dsn, exp_drv, exp_loc, exp_user, exp_pw, exp_db in tsts:
-            (drv, loc, user, pw, db) = cvelib.sql.parse_dsn(dsn)
+            drv, loc, user, pw, db = cvelib.sql.parse_dsn(dsn)
             self.assertEqual(exp_drv, drv)
             self.assertEqual(exp_loc, loc)
             self.assertEqual(exp_user, user)

@@ -513,7 +513,7 @@ References:
         self.assertEqual(result, "")
 
         # Text with paragraphs that are only whitespace/special chars
-        text = "\t\t\t\n\n    \n\n\r\r\n\n   \u00A0\u00A0  \n\n"
+        text = "\t\t\t\n\n    \n\n\r\r\n\n   \u00a0\u00a0  \n\n"
         result = cvelib.wizard._formatAsNoteText(text)
         self.assertEqual(result, "")
 

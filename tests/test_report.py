@@ -837,12 +837,9 @@ class TestReport(TestCase):
                 fp.write("%s" % content)
 
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        content = (
-            """[Locations]
+        content = """[Locations]
 cve-data = %s
-"""
-            % self.tmpdir
-        )
+""" % self.tmpdir
         self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
@@ -948,12 +945,9 @@ cve-data = %s
                 fp.write("%s" % content)
 
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        content = (
-            """[Locations]
+        content = """[Locations]
 cve-data = %s
-"""
-            % self.tmpdir
-        )
+""" % self.tmpdir
         self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
@@ -988,9 +982,7 @@ cve-data = %s
         d["Priority"] = "high"
         d["git/org_bar"] = "needed"
         d["Discovered-by"] = "gh-secrets, gh-dependabot, gh-code"
-        d[
-            "GitHub-Advanced-Security"
-        ] = """
+        d["GitHub-Advanced-Security"] = """
  - type: dependabot
    dependency: foo
    detectedIn: go.sum
@@ -1047,9 +1039,7 @@ cve-data = %s
         d["Priority"] = "medium"
         d["git/org_bar"] = "needed"
         d["Discovered-by"] = "gh-dependabot"
-        d[
-            "GitHub-Advanced-Security"
-        ] = """
+        d["GitHub-Advanced-Security"] = """
  - type: dependabot
    dependency: foo
    detectedIn: go.sum
@@ -1067,9 +1057,7 @@ cve-data = %s
         d["Priority"] = "low"
         d["git/org_bar"] = "released"
         d["Discovered-by"] = "gh-dependabot"
-        d[
-            "GitHub-Advanced-Security"
-        ] = """
+        d["GitHub-Advanced-Security"] = """
  - type: dependabot
    dependency: corge
    detectedIn: go.sum
@@ -1088,9 +1076,7 @@ cve-data = %s
         d["Priority_bar"] = "negligible"
         d["git/org_bar"] = "needed"
         d["Discovered-by"] = "gh-dependabot"
-        d[
-            "GitHub-Advanced-Security"
-        ] = """
+        d["GitHub-Advanced-Security"] = """
  - type: dependabot
    dependency: qux
    detectedIn: go.sum
@@ -1131,12 +1117,9 @@ cve-data = %s
                 fp.write("%s" % content)
 
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        content = (
-            """[Locations]
+        content = """[Locations]
 cve-data = %s
-"""
-            % self.tmpdir
-        )
+""" % self.tmpdir
         self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
@@ -1162,9 +1145,7 @@ cve-data = %s
         d["Priority"] = "medium"
         d["oci/gar-us.valid-proj_valid-repo/valid-name"] = "needed"
         d["Discovered-by"] = "gar"
-        d[
-            "Scan-Reports"
-        ] = """
+        d["Scan-Reports"] = """
  - type: oci
    component: curl
    detectedIn: cpe:/o:debian:debian_linux:11
@@ -1196,12 +1177,9 @@ cve-data = %s
                 fp.write("%s" % content)
 
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        content = (
-            """[Locations]
+        content = """[Locations]
 cve-data = %s
-"""
-            % self.tmpdir
-        )
+""" % self.tmpdir
         self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
@@ -1227,9 +1205,7 @@ cve-data = %s
         d["Priority"] = "medium"
         d["oci/gar-us.valid-proj_valid-repo/valid-name"] = "needed"
         d["Discovered-by"] = "gar"
-        d[
-            "Scan-Reports"
-        ] = """
+        d["Scan-Reports"] = """
  - type: oci
    component: curl
    detectedIn: cpe:/o:debian:debian_linux:11
@@ -1276,9 +1252,7 @@ cve-data = %s
         d["Priority"] = "medium"
         d["oci/gar-us.valid-proj_valid-repo/valid-other"] = "needed"
         d["Discovered-by"] = "gar"
-        d[
-            "Scan-Reports"
-        ] = """
+        d["Scan-Reports"] = """
  - type: oci
    component: some-other
    detectedIn: cpe:/o:debian:debian_linux:11
@@ -1301,12 +1275,9 @@ cve-data = %s
                 fp.write("%s" % content)
 
         self.tmpdir = tempfile.mkdtemp(prefix="sedg-")
-        content = (
-            """[Locations]
+        content = """[Locations]
 cve-data = %s
-"""
-            % self.tmpdir
-        )
+""" % self.tmpdir
         self.orig_xdg_config_home, self.tmpdir = tests.testutil._newConfigFile(
             content, self.tmpdir
         )
@@ -1332,9 +1303,7 @@ cve-data = %s
         d["Priority"] = "medium"
         d["oci/gar-us.valid-proj_valid-repo/valid-name"] = "needed"
         d["Discovered-by"] = "gar"
-        d[
-            "Scan-Reports"
-        ] = """
+        d["Scan-Reports"] = """
  - type: oci
    component: curl
    detectedIn: cpe:/o:debian:debian_linux:11
@@ -2113,7 +2082,7 @@ Updated issues:
         ]
 
         for alert, expRepo, expK, expV in tsts:
-            (resRepo, resAlert) = cvelib.report._parseAlert(alert)
+            resRepo, resAlert = cvelib.report._parseAlert(alert)
             self.assertEqual(expRepo, resRepo)
             self.assertTrue(len(resAlert) > 0)
             if expK is not None:
@@ -2246,9 +2215,7 @@ valid-repo resolved alerts: 3
             cand="CVE-2022-GH1001#valid-repo",
             references=["https://github.com/advisories/GHSA-a"],
         )
-        c[
-            "GitHub-Advanced-Security"
-        ] = """
+        c["GitHub-Advanced-Security"] = """
  - type: dependabot
    dependency: github.com/foo/bar
    detectedIn: go.sum
@@ -4258,9 +4225,7 @@ Totals:
                 cves, "", report_output=cvelib.report.ReportOutput.BOTH
             )
         self.assertEqual("", error.getvalue().strip())
-        expClosed = (
-            exp
-            + """
+        expClosed = exp + """
 
 
 # Closed
@@ -4276,7 +4241,6 @@ Totals:
 - medium: 0 in 0 repos
 - low: 0 in 0 repos
 - negligible: 1 in 1 repos"""
-        )
         self.assertEqual(expClosed, output.getvalue().strip())
 
         # clear out the above
@@ -4346,9 +4310,7 @@ Totals:
                 cves, pkg_fn, report_output=cvelib.report.ReportOutput.BOTH
             )
         self.assertEqual("", error.getvalue().strip())
-        expClosed = (
-            exp
-            + """
+        expClosed = exp + """
 
 
 # Closed
@@ -4363,7 +4325,6 @@ Totals:
 - medium: 0 in 0 repos
 - low: 0 in 0 repos
 - negligible: 1 in 1 repos"""
-        )
         self.assertEqual(expClosed, output.getvalue().strip())
 
     def test_getHumanSummaryWithFilterProduct(self):
@@ -4402,9 +4363,7 @@ Totals:
                 cves, "", report_output=cvelib.report.ReportOutput.BOTH
             )
         self.assertEqual("", error.getvalue().strip())
-        expClosed = (
-            exp
-            + """
+        expClosed = exp + """
 
 
 # Closed
@@ -4419,7 +4378,6 @@ Totals:
 - medium: 0 in 0 repos
 - low: 0 in 0 repos
 - negligible: 1 in 1 repos"""
-        )
         self.assertEqual(expClosed, output.getvalue().strip())
 
     def test_getHumanSummaryWithFilterPriority(self):
@@ -4457,9 +4415,7 @@ Totals:
                 cves, "", report_output=cvelib.report.ReportOutput.BOTH
             )
         self.assertEqual("", error.getvalue().strip())
-        expClosed = (
-            exp
-            + """
+        expClosed = exp + """
 
 
 # Closed
@@ -4474,7 +4430,6 @@ Totals:
 - medium: 0 in 0 repos
 - low: 0 in 0 repos
 - negligible: 0 in 0 repos"""
-        )
         self.assertEqual(expClosed, output.getvalue().strip())
 
     def test_getHumanSummaryWithFilterTag(self):
@@ -4516,9 +4471,7 @@ Totals:
                 cves, "", report_output=cvelib.report.ReportOutput.BOTH
             )
         self.assertEqual("", error.getvalue().strip())
-        expClosed = (
-            exp
-            + """
+        expClosed = exp + """
 
 
 # Closed
@@ -4534,7 +4487,6 @@ Totals:
 - medium: 0 in 0 repos
 - low: 0 in 0 repos
 - negligible: 1 in 1 repos"""
-        )
         self.assertEqual(expClosed, output.getvalue().strip())
 
         cves = cvelib.cve.collectCVEData(
@@ -4567,9 +4519,7 @@ Totals:
                 cves, "", report_output=cvelib.report.ReportOutput.BOTH
             )
         self.assertEqual("", error.getvalue().strip())
-        expClosed = (
-            exp
-            + """
+        expClosed = exp + """
 
 
 # Closed
@@ -4583,7 +4533,6 @@ Totals:
 - medium: 0 in 0 repos
 - low: 0 in 0 repos
 - negligible: 0 in 0 repos"""
-        )
         self.assertEqual(expClosed, output.getvalue().strip())
 
     #
@@ -5198,12 +5147,10 @@ Totals:
 
         # adjust the config file for template-urls
         with open(os.path.join(str(self.tmpdir), ".config/sedg/sedg.conf"), "a") as fh:
-            fh.write(
-                """
+            fh.write("""
 [Behavior]
 template-urls = https://url1,https://url2
-"""
-            )
+""")
 
         tsts = [
             (
@@ -5312,9 +5259,7 @@ template-urls = https://url1,https://url2
         d["Priority"] = "medium"
         d["git/valid-org_valid-repo"] = "needed"
         d["Discovered-by"] = "gh-dependabot"
-        d[
-            "GitHub-Advanced-Security"
-        ] = """
+        d["GitHub-Advanced-Security"] = """
  - type: dependabot
    dependency: baz
    detectedIn: path/yarn.lock
@@ -5384,12 +5329,10 @@ template-urls = https://url1,https://url2
         self._mock_cve_data_mixed()  # this creates self.tmpdir and a config
         # adjust the config file for template-urls
         with open(os.path.join(str(self.tmpdir), ".config/sedg/sedg.conf"), "a") as fh:
-            fh.write(
-                """
+            fh.write("""
 [Behavior]
 template-urls = https://url1,https://url2
-"""
-            )
+""")
 
         # without templates
         mock_readJSONFiles.return_value = [_getMockedAlertsJSON("dependabot")[0]]

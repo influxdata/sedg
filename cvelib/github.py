@@ -15,7 +15,6 @@ from yaml import load, CBaseLoader
 from cvelib.common import CveException, rePatterns, error, warn
 from cvelib.net import ghAPIGetList
 
-
 # Secret types to fetch in addition to the default secret-scanning alerts.
 # These are used when making a second API call to ensure specific secret types
 # are included in the results.
@@ -367,8 +366,7 @@ def main_dump_alerts():
         prog="gh-dump-alerts",
         description="Fetch alerts and save locally",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=textwrap.dedent(
-            """\
+        epilog=textwrap.dedent("""\
 gh-dump-alerts pulls GitHub security alerts for repos in the GitHub org and
 outputs them to:
 
@@ -381,8 +379,7 @@ Eg, to pull all GitHub security alerts for org 'foo':
 Optionally specify a particular alert type:
 
   $ gh-dump-alerts --path /path/to/alerts --org foo --alert-type dependabot
-        """
-        ),
+        """),
     )
     parser.add_argument(
         "-p",

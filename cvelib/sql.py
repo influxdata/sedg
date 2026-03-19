@@ -46,8 +46,7 @@ class CVEdb(object):
         """Create all the tables"""
         cursor = self.conn.cursor()
 
-        cursor.execute(
-            """
+        cursor.execute("""
 CREATE TABLE 'cves' (
     'candidate' TEXT PRIMARY KEY NOT NULL,
     'openDate' DATE,
@@ -64,11 +63,9 @@ CREATE TABLE 'cves' (
     'assignedTo' TEXT,
     'cvss' TEXT
 )
-"""
-        )
+""")
 
-        cursor.execute(
-            """
+        cursor.execute("""
 CREATE TABLE 'pkgs' (
     'product' TEXT,
     'where' TEXT,
@@ -80,8 +77,7 @@ CREATE TABLE 'pkgs' (
     'priority' TEXT,
     PRIMARY KEY ('product', 'where', 'software', 'modifier', 'candidate')
 )
-"""
-        )
+""")
 
     def insert_into_cves(self, cve: cvelib.cve.CVE):
         """Insert a CVE into the database"""
@@ -290,11 +286,9 @@ def main_cve_query():
         prog="cve-query",
         description="Query cve database with SQL",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=textwrap.dedent(
-            """\
+        epilog=textwrap.dedent("""\
 cve-query ...
-            """
-        ),
+            """),
     )
 
     parser.add_argument(
