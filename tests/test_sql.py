@@ -286,6 +286,43 @@ class TestCVEdb(TestCase):
                 ["a", "b"],
                 '[{"a": "foo", "b": "bar"}, {"a": "baz", "b": "quz"}]',
             ),
+            # markdown with ellipsize and column alignment
+            ([], "markdown", ["a", "b"], "| a | b |\n| - | - |"),
+            (
+                [("foo", "bar")],
+                "markdown",
+                ["a", "b"],
+                "| a   | b   |\n| --- | --- |\n| foo | bar |",
+            ),
+            # markdown ellipsizes long values
+            (
+                [("x" * 50, "bar")],
+                "markdown",
+                ["a", "b"],
+                "| a%s | b   |\n| %s | --- |\n| %s... | bar |"
+                % (" " * 39, "-" * 40, "x" * 37),
+            ),
+            # markdown flattens newlines
+            (
+                [("foo\nbar", "baz")],
+                "markdown",
+                ["a", "b"],
+                "| a%s | b   |\n| %s | --- |\n| foo\\nbar | baz |" % (" " * 7, "-" * 8),
+            ),
+            # markdown escapes pipes
+            (
+                [("a|b", "c")],
+                "markdown",
+                ["a", "b"],
+                "| a%s | b |\n| %s | - |\n| a\\|b | c |" % (" " * 3, "-" * 4),
+            ),
+            # markdown-full does not ellipsize
+            (
+                [("x" * 50, "bar")],
+                "markdown-full",
+                ["a", "b"],
+                "| a | b |\n| --- | --- |\n| %s | bar |" % ("x" * 50),
+            ),
             ([], "raw", [], ""),
             ([("foo", "bar")], "raw", [], "('foo', 'bar')"),
             ([("foo", "bar")], "raw", ["a", "b"], "('foo', 'bar')"),
@@ -1030,6 +1067,29 @@ class TestCVEdb(TestCase):
 
         self.assertEqual("", error.getvalue().strip())
         self.assertEqual('[{"COUNT(*)": 0}]', output.getvalue().strip())
+
+    @mock.patch(
+        "sys.argv",
+        [
+            "cve-query",
+            "--query",
+            "SELECT COUNT(*) FROM cves",
+            "--output-format",
+            "markdown",
+        ],
+    )
+    def test_main_cve_query_markdown_output(self):
+        """Test main_cve_query() - markdown output format"""
+        self._setup_temp_config()
+
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.sql.main_cve_query()
+
+        self.assertEqual("", error.getvalue().strip())
+        out = output.getvalue().strip()
+        self.assertIn("| COUNT(*) |", out)
+        self.assertIn("| -------- |", out)
+        self.assertIn("| 0        |", out)
 
     @mock.patch(
         "sys.argv",

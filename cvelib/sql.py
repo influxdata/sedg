@@ -710,9 +710,61 @@ def convertCveDateToISO8601(cve_date: str, candidate: str) -> str:
     return iso_date
 
 
+def _flattenNewlines(v: str) -> str:
+    """Replace embedded newlines with literal \\n"""
+    return v.replace("\r\n", "\\n").replace("\n", "\\n")
+
+
+def _markdownEscape(v: str) -> str:
+    """Escape pipe characters for markdown table cells"""
+    return v.replace("|", "\\|")
+
+
+def _printMarkdown(res: List[Tuple], columns: List[str], ellipsize: bool) -> None:
+    """Print results as a markdown table"""
+    max_len: int = 40
+
+    def _fmt(v) -> str:
+        s = _markdownEscape(_flattenNewlines(str(v)))
+        if ellipsize and len(s) > max_len:
+            return s[: max_len - 3] + "..."
+        return s
+
+    if ellipsize:
+        # pre-format all cells so we can compute column widths
+        formatted: List[List[str]] = [[_fmt(v) for v in row] for row in res]
+        ncols: int = len(columns)
+        widths: List[int] = [0] * ncols
+        for i, col in enumerate(columns):
+            widths[i] = len(col)
+        for row in formatted:
+            for i, cell in enumerate(row):
+                if len(cell) > widths[i]:
+                    widths[i] = len(cell)
+
+        hdr = (
+            "| " + " | ".join(c.ljust(widths[i]) for i, c in enumerate(columns)) + " |"
+        )
+        sep = "| " + " | ".join("-" * widths[i] for i in range(ncols)) + " |"
+        print(hdr)
+        print(sep)
+        for row in formatted:
+            print(
+                "| " + " | ".join(row[i].ljust(widths[i]) for i in range(ncols)) + " |"
+            )
+    else:
+        if columns:
+            print("| %s |" % " | ".join(columns))
+            print("| %s |" % " | ".join("---" for _ in columns))
+        for row in res:
+            print("| %s |" % " | ".join(_fmt(v) for v in row))
+
+
 def print_results(res: List[Tuple], format: str, columns: List[str]) -> None:
     if format == "json":
         print(json.dumps([dict(zip(columns, row)) for row in res]))
+    elif format in ("markdown", "markdown-full"):
+        _printMarkdown(res, columns, ellipsize=(format == "markdown"))
     elif format == "raw":
         for r in res:
             print(r)
@@ -724,12 +776,7 @@ def print_results(res: List[Tuple], format: str, columns: List[str]) -> None:
             # flatten embedded newlines so each row is one terminal line
             flat = [
                 tuple(
-                    (
-                        str(v).replace("\r\n", "\\n").replace("\n", "\\n")
-                        if isinstance(v, str)
-                        else v
-                    )
-                    for v in row
+                    _flattenNewlines(str(v)) if isinstance(v, str) else v for v in row
                 )
                 for row in res
             ]
@@ -940,7 +987,13 @@ Example queries:
         else:
             sql = args.query
         columns, res = db.execute_query(sql)
-        supported_formats: List[str] = ["csv", "json", "raw"]
+        supported_formats: List[str] = [
+            "csv",
+            "json",
+            "markdown",
+            "markdown-full",
+            "raw",
+        ]
         if args.output_format not in supported_formats:
             error(
                 "Unsupported output format '%s'. Please use: %s"
