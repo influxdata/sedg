@@ -340,20 +340,27 @@ def parse(s: str) -> List[Union[GHDependabot, GHSecret, GHCode]]:
         raise CveException("invalid yaml:\n'%s'" % s)
 
     ghas: List[Union[GHDependabot, GHSecret, GHCode]] = []
+    seen_urls: set = set()
     for item in yml:
         if "type" not in item:
             raise CveException("invalid GHAS document: 'type' missing for item")
 
+        obj: Union[GHDependabot, GHSecret, GHCode]
         if item["type"] == "dependabot":
-            ghas.append(GHDependabot(item))
+            obj = GHDependabot(item)
         elif item["type"] == "secret-scanning":
-            ghas.append(GHSecret(item))
+            obj = GHSecret(item)
         elif item["type"] == "code-scanning":
-            ghas.append(GHCode(item))
+            obj = GHCode(item)
         else:
             raise CveException(
                 "invalid GHAS document: unknown GHAS type '%s'" % item["type"]
             )
+
+        if obj.url != "unavailable" and obj.url in seen_urls:
+            raise CveException("duplicate GHAS url '%s'" % obj.url)
+        seen_urls.add(obj.url)
+        ghas.append(obj)
 
     return ghas
 

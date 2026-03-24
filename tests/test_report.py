@@ -1000,10 +1000,10 @@ cve-data = %s
  - type: dependabot
    dependency: foo
    detectedIn: go.sum
-   advisory: https://github.com/advisories/GHSA-b
+   advisory: https://github.com/advisories/GHSA-d
    severity: high
    status: needed
-   url: https://github.com/org/bar/security/dependabot/2
+   url: https://github.com/org/bar/security/dependabot/4
  - type: dependabot
    dependency: corge
    detectedIn: go.sum

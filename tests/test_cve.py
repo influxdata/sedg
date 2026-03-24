@@ -916,6 +916,12 @@ oci/org_foo: pending
             cvelib.cve.CVE().setData(hdrs)
         self.assertEqual("duplicate bug 'http://1'", str(context.exception))
 
+        hdrs = self._mockHeaders(self._cve_template())
+        hdrs["Discovered-by"] = "Alice (alice), Alice (alice)"
+        with self.assertRaises(cvelib.common.CveException) as context:
+            cvelib.cve.CVE().setData(hdrs)
+        self.assertEqual("duplicate discoverer 'Alice (alice)'", str(context.exception))
+
     def test_setDataPatchesKeys(self):
         """Test setData() - Patches_"""
         tsts = [

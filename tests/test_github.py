@@ -877,16 +877,35 @@ class TestGitHubCommon(TestCase):
     def test_parse(self):
         """Test parse()"""
         tsts = [
-            # valid
-            (self._getValidYaml(), None),
-            ("", None),
+            # valid (yaml, expected_count, expected_error)
+            (self._getValidYaml(), 3, None),
+            ("", 0, None),
+            (
+                """ - type: dependabot
+   dependency: foo
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-a
+   severity: medium
+   status: needed
+   url: unavailable
+ - type: dependabot
+   dependency: bar
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-b
+   severity: medium
+   status: needed
+   url: unavailable""",
+                2,
+                None,
+            ),
             # invalid
-            (None, "invalid yaml:\n'None'"),
-            ("bad", "invalid GHAS document: 'type' missing for item"),
+            (None, 0, "invalid yaml:\n'None'"),
+            ("bad", 0, "invalid GHAS document: 'type' missing for item"),
             (
                 """ - type: other
    foo: bar
    baz: norf""",
+                0,
                 "invalid GHAS document: unknown GHAS type 'other'",
             ),
             (
@@ -897,17 +916,33 @@ class TestGitHubCommon(TestCase):
    severity: medium
    status: needed
    url: https://github.com/bar/baz/security/dependabot/1""",
+                0,
                 "invalid yaml: uses unquoted 'dependency: @...'",
+            ),
+            (
+                """ - type: dependabot
+   dependency: foo
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-a
+   severity: medium
+   status: needed
+   url: https://github.com/bar/baz/security/dependabot/1
+ - type: dependabot
+   dependency: bar
+   detectedIn: go.sum
+   advisory: https://github.com/advisories/GHSA-b
+   severity: medium
+   status: needed
+   url: https://github.com/bar/baz/security/dependabot/1""",
+                0,
+                "duplicate GHAS url 'https://github.com/bar/baz/security/dependabot/1'",
             ),
         ]
 
-        for s, expErr in tsts:
+        for s, expLen, expErr in tsts:
             if expErr is None:
                 res = cvelib.github.parse(s)
-                if s == "":
-                    self.assertEqual(0, len(res))
-                else:
-                    self.assertEqual(3, len(res))
+                self.assertEqual(expLen, len(res))
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
                     cvelib.github.parse(s)

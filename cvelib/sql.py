@@ -9,7 +9,7 @@ import os
 import sqlite3
 import sys
 import textwrap
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple
 
 from cvelib.common import (
     _experimental,
