@@ -258,17 +258,30 @@ class TestCVEdb(TestCase):
     def test_print_results(self):
         """Test print_results"""
         tsts = [
-            # list, format, exp
-            ([], "csv", ""),
-            ([("foo", "bar")], "csv", "foo,bar"),
-            ([("foo", "bar"), ("baz", "quz")], "csv", "foo,bar\r\nbaz,quz"),
-            ([], "raw", ""),
-            ([("foo", "bar")], "raw", "('foo', 'bar')"),
-            ([("foo", "bar"), ("baz", "quz")], "raw", "('foo', 'bar')\n('baz', 'quz')"),
+            # list, format, columns, exp
+            ([], "csv", [], ""),
+            ([], "csv", ["a", "b"], "#a,b"),
+            ([("foo", "bar")], "csv", [], "foo,bar"),
+            ([("foo", "bar")], "csv", ["a", "b"], "#a,b\r\nfoo,bar"),
+            (
+                [("foo", "bar"), ("baz", "quz")],
+                "csv",
+                ["a", "b"],
+                "#a,b\r\nfoo,bar\r\nbaz,quz",
+            ),
+            ([], "raw", [], ""),
+            ([("foo", "bar")], "raw", [], "('foo', 'bar')"),
+            ([("foo", "bar")], "raw", ["a", "b"], "('foo', 'bar')"),
+            (
+                [("foo", "bar"), ("baz", "quz")],
+                "raw",
+                [],
+                "('foo', 'bar')\n('baz', 'quz')",
+            ),
         ]
-        for lst, fmt, exp in tsts:
+        for lst, fmt, cols, exp in tsts:
             with tests.testutil.capturedOutput() as (output, error):
-                cvelib.sql.print_results(lst, fmt)
+                cvelib.sql.print_results(lst, fmt, cols)
             self.assertEqual("", error.getvalue().strip())
             self.assertEqual(exp, output.getvalue().strip())
 
@@ -397,7 +410,7 @@ class TestCVEdb(TestCase):
         db.insert_into_cves(cve)
 
         query = "SELECT * FROM 'cves'"
-        res = db.execute_query(query)
+        columns, res = db.execute_query(query)
         exp = (
             cve.candidate,
             cve.openDate,
@@ -413,40 +426,61 @@ class TestCVEdb(TestCase):
         )
         self.assertEqual(1, len(res))
         self.assertEqual(exp, res[0])
+        self.assertEqual(
+            [
+                "candidate",
+                "openDate",
+                "closeDate",
+                "publicDate",
+                "crd",
+                "description",
+                "notes",
+                "mitigation",
+                "priority",
+                "assignedTo",
+                "cvss",
+            ],
+            columns,
+        )
 
         # invalid - write operations are denied by authorizer
         with tests.testutil.capturedOutput() as (output, error):
-            res = db.execute_query("DELETE FROM cves")
+            columns, res = db.execute_query("DELETE FROM cves")
         self.assertEqual(0, len(res))
+        self.assertEqual(0, len(columns))
         self.assertIn("Query error:", output.getvalue())
 
         # malformed SQL
         with tests.testutil.capturedOutput() as (output, error):
-            res = db.execute_query("UPDATE...")
+            columns, res = db.execute_query("UPDATE...")
         self.assertEqual(0, len(res))
+        self.assertEqual(0, len(columns))
         self.assertIn("Query error:", output.getvalue())
 
         # case-insensitive select works
-        res = db.execute_query("select * from 'cves'")
+        columns, res = db.execute_query("select * from 'cves'")
         self.assertEqual(1, len(res))
         self.assertEqual(exp, res[0])
+        self.assertTrue(len(columns) > 0)
 
         # INSERT denied
         with tests.testutil.capturedOutput() as (output, error):
-            res = db.execute_query(
+            columns, res = db.execute_query(
                 "INSERT INTO cves (candidate) VALUES ('CVE-2023-HACK')"
             )
         self.assertEqual(0, len(res))
+        self.assertEqual(0, len(columns))
         self.assertIn("Query error:", output.getvalue())
 
         # DROP denied
         with tests.testutil.capturedOutput() as (output, error):
-            res = db.execute_query("DROP TABLE cves")
+            columns, res = db.execute_query("DROP TABLE cves")
         self.assertEqual(0, len(res))
+        self.assertEqual(0, len(columns))
         self.assertIn("Query error:", output.getvalue())
 
         # verify data is unchanged after denied operations
-        res = db.execute_query("SELECT COUNT(*) FROM cves")
+        columns, res = db.execute_query("SELECT COUNT(*) FROM cves")
         self.assertEqual(1, res[0][0])
 
     def test_insert_into_cve_references(self):

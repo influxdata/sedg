@@ -581,7 +581,7 @@ CREATE TABLE 'pkg_close_dates' (
         """Commit the current transaction"""
         self.conn.commit()
 
-    def execute_query(self, q: str) -> List:
+    def execute_query(self, q: str) -> Tuple[List[str], List]:
         """Execute a read-only query using set_authorizer()"""
 
         def _readOnlyAuthorizer(action, arg1, arg2, dbname, trigger):
@@ -608,12 +608,15 @@ CREATE TABLE 'pkg_close_dates' (
             cursor = self.conn.cursor()
             cursor.execute(q)
             results = cursor.fetchall()
+            columns = (
+                [desc[0] for desc in cursor.description] if cursor.description else []
+            )
         except sqlite3.DatabaseError as e:
             print("Query error: %s" % e)
-            return []
+            return [], []
         finally:
             self.conn.set_authorizer(None)
-        return results
+        return columns, results
 
 
 def parse_dsn(dsn: str) -> Tuple:
@@ -706,12 +709,15 @@ def convertCveDateToISO8601(cve_date: str, candidate: str) -> str:
     return iso_date
 
 
-def print_results(res: List[Tuple], format: str) -> None:
+def print_results(res: List[Tuple], format: str, columns: List[str]) -> None:
     if format == "raw":
         for r in res:
             print(r)
     else:  # default to csv
         try:
+            if columns:
+                # use \r\n to match csv.writer line endings
+                sys.stdout.write("#%s\r\n" % ",".join(columns))
             csv.writer(sys.stdout).writerows(res)
         except BrokenPipeError:  # pragma: nocover
             pass
@@ -918,11 +924,11 @@ Example queries:
                 sql = fp.read()
         else:
             sql = args.query
-        res = db.execute_query(sql)
+        columns, res = db.execute_query(sql)
         supported_formats: List[str] = ["csv", "raw"]
         if args.output_format not in supported_formats:
             error(
                 "Unsupported output format '%s'. Please use: %s"
                 % (args.output_format, ", ".join(supported_formats))
             )
-        print_results(res, format=args.output_format)
+        print_results(res, format=args.output_format, columns=columns)
