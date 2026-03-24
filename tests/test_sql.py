@@ -269,6 +269,15 @@ class TestCVEdb(TestCase):
                 ["a", "b"],
                 "#a,b\r\nfoo,bar\r\nbaz,quz",
             ),
+            ([], "json", [], "[]"),
+            ([], "json", ["a", "b"], "[]"),
+            ([("foo", "bar")], "json", ["a", "b"], '[{"a": "foo", "b": "bar"}]'),
+            (
+                [("foo", "bar"), ("baz", "quz")],
+                "json",
+                ["a", "b"],
+                '[{"a": "foo", "b": "bar"}, {"a": "baz", "b": "quz"}]',
+            ),
             ([], "raw", [], ""),
             ([("foo", "bar")], "raw", [], "('foo', 'bar')"),
             ([("foo", "bar")], "raw", ["a", "b"], "('foo', 'bar')"),
@@ -993,6 +1002,26 @@ class TestCVEdb(TestCase):
 
         self.assertEqual("", error.getvalue().strip())
         self.assertIn("(0,)", output.getvalue())
+
+    @mock.patch(
+        "sys.argv",
+        [
+            "cve-query",
+            "--query",
+            "SELECT COUNT(*) FROM cves",
+            "--output-format",
+            "json",
+        ],
+    )
+    def test_main_cve_query_json_output(self):
+        """Test main_cve_query() - json output format"""
+        self._setup_temp_config()
+
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.sql.main_cve_query()
+
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual('[{"COUNT(*)": 0}]', output.getvalue().strip())
 
     @mock.patch(
         "sys.argv",

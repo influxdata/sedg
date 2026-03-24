@@ -5,6 +5,7 @@
 import argparse
 import csv
 import datetime
+import json
 import os
 import sqlite3
 import sys
@@ -710,7 +711,9 @@ def convertCveDateToISO8601(cve_date: str, candidate: str) -> str:
 
 
 def print_results(res: List[Tuple], format: str, columns: List[str]) -> None:
-    if format == "raw":
+    if format == "json":
+        print(json.dumps([dict(zip(columns, row)) for row in res]))
+    elif format == "raw":
         for r in res:
             print(r)
     else:  # default to csv
@@ -925,7 +928,7 @@ Example queries:
         else:
             sql = args.query
         columns, res = db.execute_query(sql)
-        supported_formats: List[str] = ["csv", "raw"]
+        supported_formats: List[str] = ["csv", "json", "raw"]
         if args.output_format not in supported_formats:
             error(
                 "Unsupported output format '%s'. Please use: %s"
