@@ -721,7 +721,19 @@ def print_results(res: List[Tuple], format: str, columns: List[str]) -> None:
             if columns:
                 # use \r\n to match csv.writer line endings
                 sys.stdout.write("#%s\r\n" % ",".join(columns))
-            csv.writer(sys.stdout).writerows(res)
+            # flatten embedded newlines so each row is one terminal line
+            flat = [
+                tuple(
+                    (
+                        str(v).replace("\r\n", "\\n").replace("\n", "\\n")
+                        if isinstance(v, str)
+                        else v
+                    )
+                    for v in row
+                )
+                for row in res
+            ]
+            csv.writer(sys.stdout).writerows(flat)
         except BrokenPipeError:  # pragma: nocover
             pass
 

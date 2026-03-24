@@ -269,6 +269,14 @@ class TestCVEdb(TestCase):
                 ["a", "b"],
                 "#a,b\r\nfoo,bar\r\nbaz,quz",
             ),
+            # csv flattens embedded newlines
+            ([("foo\nbar", "baz")], "csv", ["a", "b"], "#a,b\r\nfoo\\nbar,baz"),
+            (
+                [("foo\r\nbar", "baz")],
+                "csv",
+                ["a", "b"],
+                "#a,b\r\nfoo\\nbar,baz",
+            ),
             ([], "json", [], "[]"),
             ([], "json", ["a", "b"], "[]"),
             ([("foo", "bar")], "json", ["a", "b"], '[{"a": "foo", "b": "bar"}]'),
