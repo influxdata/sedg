@@ -1,4 +1,4 @@
-"""test_common.py: tests for common.py module"""
+"""test_sql.py: tests for sql.py module"""
 
 #
 # SPDX-License-Identifier: MIT
@@ -9,7 +9,9 @@ import tempfile
 
 import cvelib.common
 import cvelib.cve
+import cvelib.github
 import cvelib.pkg
+import cvelib.scan
 import cvelib.sql
 import tests.testutil
 
@@ -282,21 +284,18 @@ class TestCVEdb(TestCase):
 
         self.cursor.execute("SELECT * FROM cves WHERE candidate=?", (cve.candidate,))
         res = self.cursor.fetchone()
-        self.assertEqual(14, len(res))
+        self.assertEqual(11, len(res))
         self.assertEqual(cve.candidate, res[0])
         self.assertEqual(cve.openDate, res[1])
         self.assertEqual(cve.closeDate, res[2])
         self.assertEqual(cve.publicDate, res[3])
         self.assertEqual(cve.crd, res[4])
-        self.assertEqual(" \n".join(cve.references), res[5])
-        self.assertEqual(" \n".join(cve.description), res[6])
-        self.assertEqual(" \n".join(cve.notes), res[7])
-        self.assertEqual(" \n".join(cve.mitigation), res[8])
-        self.assertEqual(" \n".join(cve.bugs), res[9])
-        self.assertEqual(cve.priority, res[10])
-        self.assertEqual(cve.discoveredBy, res[11])
-        self.assertEqual(cve.assignedTo, res[12])
-        self.assertEqual(cve.cvss, res[13])
+        self.assertEqual(" \n".join(cve.description), res[5])
+        self.assertEqual(" \n".join(cve.notes), res[6])
+        self.assertEqual(" \n".join(cve.mitigation), res[7])
+        self.assertEqual(cve.priority, res[8])
+        self.assertEqual(cve.assignedTo, res[9])
+        self.assertEqual(cve.cvss, res[10])
 
     def test_insert_into_pkgs(self):
         """Test insert_into_pkgs()"""
@@ -311,7 +310,7 @@ class TestCVEdb(TestCase):
 
         self.cursor.execute("SELECT * FROM pkgs WHERE candidate=?", (cve_cand1,))
         res = self.cursor.fetchone()
-        self.assertEqual(8, len(res))
+        self.assertEqual(7, len(res))
         self.assertEqual(pkg.product, res[0])
         self.assertEqual(pkg.where, res[1])
         self.assertEqual(pkg.software, res[2])
@@ -319,20 +318,16 @@ class TestCVEdb(TestCase):
         self.assertEqual(cve_cand1, res[4])
         self.assertEqual(pkg.status, res[5])
         self.assertEqual(pkg.when, res[6])
-        self.assertEqual("", res[7])
 
         cve_cand2 = "CVE-2023-NNN2"
         pkg = cvelib.pkg.parse("upstream_baz: needed")
-        pkg_pri_override = "low"
-        pkg.setPriorities([("baz", pkg_pri_override), ("other", "critical")])
         db.insert_into_pkgs(cve_cand2, pkg)
 
         self.cursor.execute("SELECT * FROM pkgs WHERE candidate=?", (cve_cand2,))
         res = self.cursor.fetchone()
-        self.assertEqual(8, len(res))
+        self.assertEqual(7, len(res))
         self.assertEqual(pkg.software, res[2])
         self.assertEqual(cve_cand2, res[4])
-        self.assertEqual(pkg_pri_override, res[7])
 
     def test_get_schema(self):
         """Test get_schema()"""
@@ -343,28 +338,24 @@ class TestCVEdb(TestCase):
         self.cursor = self.conn.cursor()
 
         res = db.get_schema()
-        self.assertEqual(2, len(res))
+        self.assertEqual(13, len(res))
 
-        # XXX: brittle
-        exp0 = """CREATE TABLE 'cves' (
+        exp_cves = """CREATE TABLE 'cves' (
     'candidate' TEXT PRIMARY KEY NOT NULL,
     'openDate' DATE,
     'closeDate' DATE,
     'publicDate' DATE,
     'crd' DATE,
-    'references' TEXT,
     'description' TEXT,
     'notes' TEXT,
     'mitigation' TEXT,
-    'bugs' TEXT,
     'priority' TEXT,
-    'discoveredBy' TEXT,
     'assignedTo' TEXT,
     'cvss' TEXT
 )"""
-        self.assertEqual(exp0, res[0][0])
+        self.assertEqual(exp_cves, res[3][0])
 
-        exp1 = """CREATE TABLE 'pkgs' (
+        exp_pkgs = """CREATE TABLE 'pkgs' (
     'product' TEXT,
     'where' TEXT,
     'software' TEXT NOT NULL,
@@ -372,10 +363,28 @@ class TestCVEdb(TestCase):
     'candidate' TEXT NOT NULL,
     'status' TEXT NOT NULL,
     'when' TEXT,
-    'priority' TEXT,
     PRIMARY KEY ('product', 'where', 'software', 'modifier', 'candidate')
 )"""
-        self.assertEqual(exp1, res[1][0])
+        self.assertEqual(exp_pkgs, res[11][0])
+
+        # Verify all table names are present
+        table_names = [r[0].split("'")[1] for r in res]
+        for exp_table in [
+            "cves",
+            "pkgs",
+            "cve_references",
+            "cve_bugs",
+            "cve_discovered_by",
+            "ghas_dependabot",
+            "ghas_secret",
+            "ghas_code",
+            "scan_oci",
+            "pkg_patches",
+            "pkg_tags",
+            "pkg_priorities",
+            "pkg_close_dates",
+        ]:
+            self.assertIn(exp_table, table_names)
 
     def test_execute_query(self):
         """Test execute_query()"""
@@ -395,21 +404,451 @@ class TestCVEdb(TestCase):
             cve.closeDate,
             cve.publicDate,
             cve.crd,
-            " \n".join(cve.references),
             " \n".join(cve.description),
             " \n".join(cve.notes),
             " \n".join(cve.mitigation),
-            " \n".join(cve.bugs),
             cve.priority,
-            cve.discoveredBy,
             cve.assignedTo,
             cve.cvss,
         )
         self.assertEqual(1, len(res))
         self.assertEqual(exp, res[0])
 
-        # invalid
-        res = db.execute_query("UPDATE...")
+        # invalid - write operations are denied by authorizer
+        with tests.testutil.capturedOutput() as (output, error):
+            res = db.execute_query("DELETE FROM cves")
+        self.assertEqual(0, len(res))
+        self.assertIn("Query error:", output.getvalue())
+
+        # malformed SQL
+        with tests.testutil.capturedOutput() as (output, error):
+            res = db.execute_query("UPDATE...")
+        self.assertEqual(0, len(res))
+        self.assertIn("Query error:", output.getvalue())
+
+        # case-insensitive select works
+        res = db.execute_query("select * from 'cves'")
+        self.assertEqual(1, len(res))
+        self.assertEqual(exp, res[0])
+
+        # INSERT denied
+        with tests.testutil.capturedOutput() as (output, error):
+            res = db.execute_query(
+                "INSERT INTO cves (candidate) VALUES ('CVE-2023-HACK')"
+            )
+        self.assertEqual(0, len(res))
+        self.assertIn("Query error:", output.getvalue())
+
+        # DROP denied
+        with tests.testutil.capturedOutput() as (output, error):
+            res = db.execute_query("DROP TABLE cves")
+        self.assertEqual(0, len(res))
+        self.assertIn("Query error:", output.getvalue())
+
+        # verify data is unchanged after denied operations
+        res = db.execute_query("SELECT COUNT(*) FROM cves")
+        self.assertEqual(1, res[0][0])
+
+    def test_insert_into_cve_references(self):
+        """Test insert_into_cve_references()"""
+        db = cvelib.sql.CVEdb(":memory:")
+        db.create_tables()
+        self.conn = db.conn
+        self.cursor = self.conn.cursor()
+
+        cand = "CVE-2023-0001"
+        refs = ["https://ref1", "https://ref2"]
+        db.insert_into_cve_references(cand, refs)
+
+        self.cursor.execute("SELECT * FROM cve_references WHERE candidate=?", (cand,))
+        res = self.cursor.fetchall()
+        self.assertEqual(2, len(res))
+        self.assertEqual((cand, "https://ref1"), res[0])
+        self.assertEqual((cand, "https://ref2"), res[1])
+
+        # empty list
+        db.insert_into_cve_references("CVE-2023-0002", [])
+        self.cursor.execute(
+            "SELECT * FROM cve_references WHERE candidate=?", ("CVE-2023-0002",)
+        )
+        res = self.cursor.fetchall()
+        self.assertEqual(0, len(res))
+
+        # whitespace-only entries are skipped
+        db.insert_into_cve_references("CVE-2023-0003", [" ", "https://ref3"])
+        self.cursor.execute(
+            "SELECT * FROM cve_references WHERE candidate=?", ("CVE-2023-0003",)
+        )
+        res = self.cursor.fetchall()
+        self.assertEqual(1, len(res))
+        self.assertEqual("https://ref3", res[0][1])
+
+    def test_insert_into_cve_bugs(self):
+        """Test insert_into_cve_bugs()"""
+        db = cvelib.sql.CVEdb(":memory:")
+        db.create_tables()
+        self.conn = db.conn
+        self.cursor = self.conn.cursor()
+
+        cand = "CVE-2023-0001"
+        bugs = ["https://bug1", "https://bug2"]
+        db.insert_into_cve_bugs(cand, bugs)
+
+        self.cursor.execute("SELECT * FROM cve_bugs WHERE candidate=?", (cand,))
+        res = self.cursor.fetchall()
+        self.assertEqual(2, len(res))
+        self.assertEqual((cand, "https://bug1"), res[0])
+        self.assertEqual((cand, "https://bug2"), res[1])
+
+        # empty list
+        db.insert_into_cve_bugs("CVE-2023-0002", [])
+        self.cursor.execute(
+            "SELECT * FROM cve_bugs WHERE candidate=?", ("CVE-2023-0002",)
+        )
+        res = self.cursor.fetchall()
+        self.assertEqual(0, len(res))
+
+    def test_insert_into_cve_discovered_by(self):
+        """Test insert_into_cve_discovered_by()"""
+        db = cvelib.sql.CVEdb(":memory:")
+        db.create_tables()
+        self.conn = db.conn
+        self.cursor = self.conn.cursor()
+
+        cand = "CVE-2023-0001"
+        db.insert_into_cve_discovered_by(cand, "Alice, Bob")
+
+        self.cursor.execute(
+            "SELECT * FROM cve_discovered_by WHERE candidate=?", (cand,)
+        )
+        res = self.cursor.fetchall()
+        self.assertEqual(2, len(res))
+        self.assertEqual((cand, "Alice"), res[0])
+        self.assertEqual((cand, "Bob"), res[1])
+
+        # single discoverer
+        db.insert_into_cve_discovered_by("CVE-2023-0002", "Charlie")
+        self.cursor.execute(
+            "SELECT * FROM cve_discovered_by WHERE candidate=?", ("CVE-2023-0002",)
+        )
+        res = self.cursor.fetchall()
+        self.assertEqual(1, len(res))
+        self.assertEqual(("CVE-2023-0002", "Charlie"), res[0])
+
+        # empty string
+        db.insert_into_cve_discovered_by("CVE-2023-0003", "")
+        self.cursor.execute(
+            "SELECT * FROM cve_discovered_by WHERE candidate=?", ("CVE-2023-0003",)
+        )
+        res = self.cursor.fetchall()
+        self.assertEqual(0, len(res))
+
+    def test_insert_into_ghas_dependabot(self):
+        """Test insert_into_ghas_dependabot()"""
+        db = cvelib.sql.CVEdb(":memory:")
+        db.create_tables()
+        self.conn = db.conn
+        self.cursor = self.conn.cursor()
+
+        cand = "CVE-2023-0001"
+        dep = cvelib.github.GHDependabot(
+            {
+                "dependency": "lodash",
+                "detectedIn": "package-lock.json",
+                "advisory": "https://github.com/advisories/GHSA-test-1234-5678",
+                "severity": "high",
+                "status": "needs-triage",
+                "url": "https://github.com/org/repo/security/dependabot/1",
+            }
+        )
+        db.insert_into_ghas_dependabot(cand, dep)
+
+        self.cursor.execute("SELECT * FROM ghas_dependabot WHERE candidate=?", (cand,))
+        res = self.cursor.fetchall()
+        self.assertEqual(1, len(res))
+        self.assertEqual(cand, res[0][0])
+        self.assertEqual("lodash", res[0][1])
+        self.assertEqual("package-lock.json", res[0][2])
+        self.assertEqual("https://github.com/advisories/GHSA-test-1234-5678", res[0][3])
+        self.assertEqual("high", res[0][4])
+        self.assertEqual("needs-triage", res[0][5])
+        self.assertEqual("https://github.com/org/repo/security/dependabot/1", res[0][6])
+
+    def test_insert_into_ghas_secret(self):
+        """Test insert_into_ghas_secret()"""
+        db = cvelib.sql.CVEdb(":memory:")
+        db.create_tables()
+        self.conn = db.conn
+        self.cursor = self.conn.cursor()
+
+        cand = "CVE-2023-0001"
+        sec = cvelib.github.GHSecret(
+            {
+                "secret": "github_personal_access_token",
+                "detectedIn": "config.yml",
+                "severity": "critical",
+                "status": "needs-triage",
+                "url": "https://github.com/org/repo/security/secret-scanning/1",
+            }
+        )
+        db.insert_into_ghas_secret(cand, sec)
+
+        self.cursor.execute("SELECT * FROM ghas_secret WHERE candidate=?", (cand,))
+        res = self.cursor.fetchall()
+        self.assertEqual(1, len(res))
+        self.assertEqual(cand, res[0][0])
+        self.assertEqual("github_personal_access_token", res[0][1])
+        self.assertEqual("config.yml", res[0][2])
+        self.assertEqual("critical", res[0][3])
+        self.assertEqual("needs-triage", res[0][4])
+        self.assertEqual(
+            "https://github.com/org/repo/security/secret-scanning/1", res[0][5]
+        )
+
+    def test_insert_into_ghas_code(self):
+        """Test insert_into_ghas_code()"""
+        db = cvelib.sql.CVEdb(":memory:")
+        db.create_tables()
+        self.conn = db.conn
+        self.cursor = self.conn.cursor()
+
+        cand = "CVE-2023-0001"
+        code = cvelib.github.GHCode(
+            {
+                "description": "SQL injection vulnerability",
+                "detectedIn": "src/app.py",
+                "severity": "high",
+                "status": "needs-triage",
+                "url": "https://github.com/org/repo/security/code-scanning/1",
+            }
+        )
+        db.insert_into_ghas_code(cand, code)
+
+        self.cursor.execute("SELECT * FROM ghas_code WHERE candidate=?", (cand,))
+        res = self.cursor.fetchall()
+        self.assertEqual(1, len(res))
+        self.assertEqual(cand, res[0][0])
+        self.assertEqual("SQL injection vulnerability", res[0][1])
+        self.assertEqual("src/app.py", res[0][2])
+        self.assertEqual("high", res[0][3])
+        self.assertEqual("needs-triage", res[0][4])
+        self.assertEqual(
+            "https://github.com/org/repo/security/code-scanning/1", res[0][5]
+        )
+
+    def test_insert_into_ghas(self):
+        """Test insert_into_ghas()"""
+        db = cvelib.sql.CVEdb(":memory:")
+        db.create_tables()
+        self.conn = db.conn
+        self.cursor = self.conn.cursor()
+
+        cand = "CVE-2023-0001"
+
+        dep = cvelib.github.GHDependabot(
+            {
+                "dependency": "lodash",
+                "detectedIn": "package-lock.json",
+                "advisory": "https://github.com/advisories/GHSA-test-1234-5678",
+                "severity": "high",
+                "status": "needs-triage",
+                "url": "https://github.com/org/repo/security/dependabot/1",
+            }
+        )
+        db.insert_into_ghas(cand, dep)
+        self.cursor.execute("SELECT COUNT(*) FROM ghas_dependabot")
+        self.assertEqual(1, self.cursor.fetchone()[0])
+
+        sec = cvelib.github.GHSecret(
+            {
+                "secret": "github_personal_access_token",
+                "detectedIn": "config.yml",
+                "severity": "critical",
+                "status": "needs-triage",
+                "url": "https://github.com/org/repo/security/secret-scanning/1",
+            }
+        )
+        db.insert_into_ghas(cand, sec)
+        self.cursor.execute("SELECT COUNT(*) FROM ghas_secret")
+        self.assertEqual(1, self.cursor.fetchone()[0])
+
+        code = cvelib.github.GHCode(
+            {
+                "description": "SQL injection vulnerability",
+                "detectedIn": "src/app.py",
+                "severity": "high",
+                "status": "needs-triage",
+                "url": "https://github.com/org/repo/security/code-scanning/1",
+            }
+        )
+        db.insert_into_ghas(cand, code)
+        self.cursor.execute("SELECT COUNT(*) FROM ghas_code")
+        self.assertEqual(1, self.cursor.fetchone()[0])
+
+    def test_insert_into_ghas_unsupported_type(self):
+        """Test insert_into_ghas() with unsupported type"""
+        db = cvelib.sql.CVEdb(":memory:")
+        db.create_tables()
+
+        cand = "CVE-2023-0001"
+        with mock.patch("cvelib.sql.warn") as mock_warn:
+            db.insert_into_ghas(cand, "not a ghas object")  # type: ignore[arg-type]
+            mock_warn.assert_called_once_with("unsupported GHAS type: str")
+
+    def test_insert_into_scan_oci(self):
+        """Test insert_into_scan_oci()"""
+        db = cvelib.sql.CVEdb(":memory:")
+        db.create_tables()
+        self.conn = db.conn
+        self.cursor = self.conn.cursor()
+
+        cand = "CVE-2023-0001"
+        oci = cvelib.scan.ScanOCI(
+            {
+                "component": "libssl3",
+                "detectedIn": "myimage@sha256:abc123",
+                "advisory": "https://security.example.com/CVE-2023-0001",
+                "version": "3.0.2-0ubuntu1.6",
+                "fixedBy": "3.0.2-0ubuntu1.7",
+                "severity": "high",
+                "status": "needs-triage",
+                "url": "https://quay.io/repository/org/myimage/manifest/sha256:abc123",
+            }
+        )
+        db.insert_into_scan_oci(cand, oci)
+
+        self.cursor.execute("SELECT * FROM scan_oci WHERE candidate=?", (cand,))
+        res = self.cursor.fetchall()
+        self.assertEqual(1, len(res))
+        self.assertEqual(cand, res[0][0])
+        self.assertEqual("libssl3", res[0][1])
+        self.assertEqual("myimage@sha256:abc123", res[0][2])
+        self.assertEqual("https://security.example.com/CVE-2023-0001", res[0][3])
+        self.assertEqual("3.0.2-0ubuntu1.6", res[0][4])
+        self.assertEqual("3.0.2-0ubuntu1.7", res[0][5])
+        self.assertEqual("high", res[0][6])
+        self.assertEqual("needs-triage", res[0][7])
+        self.assertEqual(
+            "https://quay.io/repository/org/myimage/manifest/sha256:abc123",
+            res[0][8],
+        )
+
+    def test_insert_into_pkg_patches(self):
+        """Test insert_into_pkg_patches()"""
+        db = cvelib.sql.CVEdb(":memory:")
+        db.create_tables()
+        self.conn = db.conn
+        self.cursor = self.conn.cursor()
+
+        cand = "CVE-2023-0001"
+        pkg = cvelib.pkg.parse("upstream_foo: needed")
+        pkg.setPatches(
+            [
+                "upstream: https://example.com/patch1",
+                "vendor: https://example.com/patch2",
+            ],
+            False,
+        )
+        db.insert_into_pkg_patches(cand, pkg)
+
+        self.cursor.execute("SELECT * FROM pkg_patches WHERE candidate=?", (cand,))
+        res = self.cursor.fetchall()
+        self.assertEqual(2, len(res))
+        self.assertEqual("upstream: https://example.com/patch1", res[0][5])
+        self.assertEqual("vendor: https://example.com/patch2", res[1][5])
+
+        # empty patches
+        pkg2 = cvelib.pkg.parse("upstream_bar: needed")
+        db.insert_into_pkg_patches("CVE-2023-0002", pkg2)
+        self.cursor.execute(
+            "SELECT * FROM pkg_patches WHERE candidate=?", ("CVE-2023-0002",)
+        )
+        res = self.cursor.fetchall()
+        self.assertEqual(0, len(res))
+
+    def test_insert_into_pkg_tags(self):
+        """Test insert_into_pkg_tags()"""
+        db = cvelib.sql.CVEdb(":memory:")
+        db.create_tables()
+        self.conn = db.conn
+        self.cursor = self.conn.cursor()
+
+        cand = "CVE-2023-0001"
+        pkg = cvelib.pkg.parse("upstream_foo: needed")
+        pkg.setTags([("foo", "apparmor hardlink-restriction")])
+        db.insert_into_pkg_tags(cand, pkg)
+
+        self.cursor.execute("SELECT * FROM pkg_tags WHERE candidate=?", (cand,))
+        res = self.cursor.fetchall()
+        self.assertEqual(2, len(res))
+        self.assertEqual("foo", res[0][5])
+        self.assertEqual("apparmor", res[0][6])
+        self.assertEqual("foo", res[1][5])
+        self.assertEqual("hardlink-restriction", res[1][6])
+
+        # empty tags
+        pkg2 = cvelib.pkg.parse("upstream_bar: needed")
+        db.insert_into_pkg_tags("CVE-2023-0002", pkg2)
+        self.cursor.execute(
+            "SELECT * FROM pkg_tags WHERE candidate=?", ("CVE-2023-0002",)
+        )
+        res = self.cursor.fetchall()
+        self.assertEqual(0, len(res))
+
+    def test_insert_into_pkg_priorities(self):
+        """Test insert_into_pkg_priorities()"""
+        db = cvelib.sql.CVEdb(":memory:")
+        db.create_tables()
+        self.conn = db.conn
+        self.cursor = self.conn.cursor()
+
+        cand = "CVE-2023-0001"
+        pkg = cvelib.pkg.parse("upstream_foo: needed")
+        pkg.setPriorities([("foo", "high"), ("other", "low")])
+        db.insert_into_pkg_priorities(cand, pkg)
+
+        self.cursor.execute("SELECT * FROM pkg_priorities WHERE candidate=?", (cand,))
+        res = self.cursor.fetchall()
+        self.assertEqual(2, len(res))
+        # Check both rows exist (order may vary by dict iteration)
+        priorities = {r[5]: r[6] for r in res}
+        self.assertEqual("high", priorities["foo"])
+        self.assertEqual("low", priorities["other"])
+
+        # empty priorities
+        pkg2 = cvelib.pkg.parse("upstream_bar: needed")
+        db.insert_into_pkg_priorities("CVE-2023-0002", pkg2)
+        self.cursor.execute(
+            "SELECT * FROM pkg_priorities WHERE candidate=?", ("CVE-2023-0002",)
+        )
+        res = self.cursor.fetchall()
+        self.assertEqual(0, len(res))
+
+    def test_insert_into_pkg_close_dates(self):
+        """Test insert_into_pkg_close_dates()"""
+        db = cvelib.sql.CVEdb(":memory:")
+        db.create_tables()
+        self.conn = db.conn
+        self.cursor = self.conn.cursor()
+
+        cand = "CVE-2023-0001"
+        pkg = cvelib.pkg.parse("upstream_foo: needed")
+        pkg.setCloseDates([("foo", "2023-06-01")])
+        db.insert_into_pkg_close_dates(cand, pkg)
+
+        self.cursor.execute("SELECT * FROM pkg_close_dates WHERE candidate=?", (cand,))
+        res = self.cursor.fetchall()
+        self.assertEqual(1, len(res))
+        self.assertEqual("foo", res[0][5])
+        self.assertEqual("2023-06-01", res[0][6])
+
+        # empty closeDates
+        pkg2 = cvelib.pkg.parse("upstream_bar: needed")
+        db.insert_into_pkg_close_dates("CVE-2023-0002", pkg2)
+        self.cursor.execute(
+            "SELECT * FROM pkg_close_dates WHERE candidate=?", ("CVE-2023-0002",)
+        )
+        res = self.cursor.fetchall()
         self.assertEqual(0, len(res))
 
     @mock.patch(
@@ -427,8 +866,23 @@ class TestCVEdb(TestCase):
             cvelib.sql.main_cve_query()
 
         self.assertEqual("", error.getvalue().strip())
-        self.assertIn("CREATE TABLE 'cves'", output.getvalue())
-        self.assertIn("CREATE TABLE 'pkgs'", output.getvalue())
+        out = output.getvalue()
+        for table in [
+            "cves",
+            "pkgs",
+            "cve_references",
+            "cve_bugs",
+            "cve_discovered_by",
+            "ghas_dependabot",
+            "ghas_secret",
+            "ghas_code",
+            "scan_oci",
+            "pkg_patches",
+            "pkg_tags",
+            "pkg_priorities",
+            "pkg_close_dates",
+        ]:
+            self.assertIn("CREATE TABLE '%s'" % table, out)
 
     @mock.patch(
         "sys.argv",
@@ -664,5 +1118,129 @@ class TestCVEdb(TestCase):
             cvelib.sql.main_cve_query()
 
         self.assertEqual("", error.getvalue().strip())
-        self.assertIn("CREATE TABLE 'cves'", output.getvalue())
-        self.assertIn("CREATE TABLE 'pkgs'", output.getvalue())
+        out = output.getvalue()
+        self.assertIn("CREATE TABLE 'cves'", out)
+        self.assertIn("CREATE TABLE 'pkgs'", out)
+
+    def test_main_cve_query_with_ghas_data(self):
+        """Test main_cve_query() - with GHAS data"""
+        _, cveDirs = self._setup_temp_config()
+
+        cve_data = self._mock_cve_file("CVE-2023-8888")
+        cve_data["GitHub-Advanced-Security"] = (
+            "\n"
+            " - type: dependabot\n"
+            "   dependency: lodash\n"
+            "   detectedIn: package-lock.json\n"
+            "   advisory: https://github.com/advisories/GHSA-test-1234-5678\n"
+            "   severity: high\n"
+            "   status: needs-triage\n"
+            "   url: https://github.com/org/repo/security/dependabot/1\n"
+            " - type: secret-scanning\n"
+            "   secret: github_personal_access_token\n"
+            "   detectedIn: config.yml\n"
+            "   severity: critical\n"
+            "   status: needs-triage\n"
+            "   url: https://github.com/org/repo/security/secret-scanning/1\n"
+            " - type: code-scanning\n"
+            "   description: SQL injection\n"
+            "   detectedIn: src/app.py\n"
+            "   severity: high\n"
+            "   status: needs-triage\n"
+            "   url: https://github.com/org/repo/security/code-scanning/1"
+        )
+        cve_content = tests.testutil.cveContentFromDict(cve_data)
+        cve_fn = os.path.join(cveDirs["active"], "CVE-2023-8888")
+        with open(cve_fn, "w") as fp:
+            fp.write(cve_content)
+
+        with mock.patch(
+            "sys.argv",
+            [
+                "cve-query",
+                "--query",
+                "SELECT COUNT(*) FROM ghas_dependabot",
+            ],
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.sql.main_cve_query()
+
+            self.assertEqual("", error.getvalue().strip())
+            self.assertIn("1", output.getvalue())
+
+    def test_main_cve_query_with_ghas_data_unavailable(self):
+        """Test main_cve_query() - with GHAS data using unavailable URLs"""
+        _, cveDirs = self._setup_temp_config()
+
+        cve_data = self._mock_cve_file("CVE-2023-8889")
+        cve_data["GitHub-Advanced-Security"] = (
+            "\n"
+            " - type: dependabot\n"
+            "   dependency: foo\n"
+            "   detectedIn: go.sum\n"
+            "   advisory: https://github.com/advisories/GHSA-a\n"
+            "   severity: high\n"
+            "   status: needed\n"
+            "   url: unavailable\n"
+            " - type: dependabot\n"
+            "   dependency: bar\n"
+            "   detectedIn: go.sum\n"
+            "   advisory: https://github.com/advisories/GHSA-b\n"
+            "   severity: medium\n"
+            "   status: needed\n"
+            "   url: unavailable"
+        )
+        cve_content = tests.testutil.cveContentFromDict(cve_data)
+        cve_fn = os.path.join(cveDirs["active"], "CVE-2023-8889")
+        with open(cve_fn, "w") as fp:
+            fp.write(cve_content)
+
+        with mock.patch(
+            "sys.argv",
+            [
+                "cve-query",
+                "--query",
+                "SELECT COUNT(*) FROM ghas_dependabot",
+            ],
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.sql.main_cve_query()
+
+            self.assertEqual("", error.getvalue().strip())
+            self.assertIn("2", output.getvalue())
+
+    def test_main_cve_query_with_scan_data(self):
+        """Test main_cve_query() - with scan report data"""
+        _, cveDirs = self._setup_temp_config()
+
+        cve_data = self._mock_cve_file("CVE-2023-7777")
+        cve_data["Scan-Reports"] = (
+            "\n"
+            " - type: oci\n"
+            "   component: libssl3\n"
+            "   detectedIn: Distro 1.0\n"
+            "   advisory: https://www.cve.org/CVERecord?id=CVE-2023-7777\n"
+            "   version: 3.0.2\n"
+            "   fixedBy: 3.0.3\n"
+            "   severity: high\n"
+            "   status: needs-triage\n"
+            "   url: https://quay.io/repository/org/myimage/manifest/sha256:abc123"
+        )
+        cve_content = tests.testutil.cveContentFromDict(cve_data)
+        cve_fn = os.path.join(cveDirs["active"], "CVE-2023-7777")
+        with open(cve_fn, "w") as fp:
+            fp.write(cve_content)
+
+        with mock.patch(
+            "sys.argv",
+            [
+                "cve-query",
+                "--query",
+                "SELECT COUNT(*) FROM scan_oci",
+            ],
+        ):
+            with tests.testutil.capturedOutput() as (output, error):
+                cvelib.sql.main_cve_query()
+
+            self.assertEqual("", error.getvalue().strip())
+            self.assertIn("1", output.getvalue())
