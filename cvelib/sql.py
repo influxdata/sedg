@@ -802,6 +802,18 @@ Example queries:
   cve-query -q "SELECT candidate, status FROM ghas_dependabot
     WHERE dependency = 'lodash' AND status LIKE 'dismissed%%'"
 
+  # Dismissed dependabot alerts for the 'lodash' dependency for a repo
+  cve-query -q "SELECT candidate, status FROM ghas_dependabot
+    WHERE dependency = 'lodash' AND status LIKE 'dismissed%%'
+    AND url LIKE 'https://github.com/org/repo/security/dependabot/%%'"
+
+  # Dismissed dependabot alerts for the 'lodash' dependency for a repo with notes
+  cve-query -q "SELECT g.candidate, g.status, c.notes FROM ghas_dependabot g
+    JOIN cves c ON g.candidate = c.candidate
+    WHERE g.dependency = 'lodash' AND g.status LIKE 'dismissed%%'
+    AND g.url LIKE
+    AND url LIKE 'https://github.com/org/repo/security/dependabot/%%'"
+
   # CVEs for 'go' opened between dates with priority >= medium
   cve-query -q "SELECT DISTINCT c.candidate, COALESCE(pp.priority, c.priority) as priority
     FROM pkgs p
