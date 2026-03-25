@@ -605,6 +605,7 @@ class TestPkg(TestCase):
                 [("test-key", "apparmor"), ("test-key_3", "pie bad")],
                 "invalid tag 'bad'",
             ),
+            ([("test-key", "apparmor pie apparmor")], "duplicate tag 'apparmor'"),
             # ([("test-key", "")], "invalid tag 'bad'"),
         ]
         pkg = cvelib.pkg.CvePkg("git", "foo", "needed")

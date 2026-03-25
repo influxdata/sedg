@@ -267,16 +267,26 @@ def parse(s: str) -> List[ScanOCI]:
         raise CveException("invalid yaml:\n'%s'" % s)
 
     mans: List[ScanOCI] = []
+    seen_keys: set = set()
     for item in yml:
         if "type" not in item:
             raise CveException("invalid Scan-Reports document: 'type' missing for item")
 
         if item["type"] == "oci":
-            mans.append(ScanOCI(item))
+            obj = ScanOCI(item)
         else:
             raise CveException(
                 "invalid Scan-Reports document: unknown type '%s'" % item["type"]
             )
+
+        key = (obj.component, obj.detectedIn, obj.advisory, obj.url)
+        if key in seen_keys:
+            raise CveException(
+                "duplicate scan entry '%s' '%s' '%s' '%s'"
+                % (obj.component, obj.detectedIn, obj.advisory, obj.url)
+            )
+        seen_keys.add(key)
+        mans.append(obj)
 
     return mans
 

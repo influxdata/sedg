@@ -298,6 +298,13 @@ class CVE(object):
 
     def setDiscoveredBy(self, s: str) -> None:
         """Set Discovered-by"""
+        seen: set = set()
+        for d in s.split(","):
+            d = d.strip()
+            if d != "":
+                if d in seen:
+                    raise CveException("duplicate discoverer '%s'" % d)
+                seen.add(d)
         self.discoveredBy = s
         self.data["Discovered-by"] = self.discoveredBy
 

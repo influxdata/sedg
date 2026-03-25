@@ -517,27 +517,71 @@ class TestScanCommon(TestCase):
     def test_parse(self):
         """Test parse()"""
         tsts = [
-            # valid
-            (self._getValidYaml(), None),
-            ("", None),
+            # valid (yaml, expected_count, expected_error)
+            (self._getValidYaml(), 3, None),
+            ("", 0, None),
+            (
+                """ - type: oci
+   component: foo
+   detectedIn: Distro 1.0
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.2
+   fixedBy: 1.2.3
+   severity: medium
+   status: needed
+   url: https://blah.com/BAR-a
+ - type: oci
+   component: bar
+   detectedIn: Distro 1.0
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0002
+   version: 2.3.3
+   fixedBy: 2.3.4
+   severity: medium
+   status: needed
+   url: https://blah.com/BAR-a""",
+                2,
+                None,
+            ),
             # invalid
-            (None, "invalid yaml:\n'None'"),
-            ("bad", "invalid Scan-Reports document: 'type' missing for item"),
+            (None, 0, "invalid yaml:\n'None'"),
+            ("bad", 0, "invalid Scan-Reports document: 'type' missing for item"),
             (
                 """ - type: other
    foo: bar
    baz: norf""",
+                0,
                 "invalid Scan-Reports document: unknown type 'other'",
+            ),
+            (
+                """ - type: oci
+   component: foo
+   detectedIn: Distro 1.0
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 1.2.2
+   fixedBy: 1.2.3
+   severity: medium
+   status: needed
+   url: https://blah.com/BAR-a
+ - type: oci
+   component: foo
+   detectedIn: Distro 1.0
+   advisory: https://www.cve.org/CVERecord?id=CVE-2023-0001
+   version: 2.3.3
+   fixedBy: 2.3.4
+   severity: medium
+   status: needed
+   url: https://blah.com/BAR-a""",
+                0,
+                "duplicate scan entry 'foo' 'Distro 1.0'"
+                " 'https://www.cve.org/CVERecord?id=CVE-2023-0001'"
+                " 'https://blah.com/BAR-a'",
             ),
         ]
 
-        for s, expErr in tsts:
+        for s, expLen, expErr in tsts:
             if expErr is None:
                 res = cvelib.scan.parse(s)
-                if s == "":
-                    self.assertEqual(0, len(res))
-                else:
-                    self.assertEqual(3, len(res))
+                self.assertEqual(expLen, len(res))
             else:
                 with self.assertRaises(cvelib.common.CveException) as context:
                     cvelib.scan.parse(s)

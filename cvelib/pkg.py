@@ -166,6 +166,8 @@ class CvePkg(object):
                 t = t.strip()
                 if not rePatterns["pkg-tags"].search(t):
                     raise CveException("invalid tag '%s'" % t)
+                if t in self.tags[tagKey]:
+                    raise CveException("duplicate tag '%s'" % t)
                 self.tags[tagKey].append(t)
 
     def setPriorities(self, priorityList: List[Tuple[str, str]]) -> None:
