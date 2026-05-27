@@ -301,6 +301,18 @@ def _getHighestSeverity(alerts: List[Dict[str, Any]]) -> str:
     return priority
 
 
+def _repoGroupSortKey(item: Tuple[str, Dict[str, Any]]) -> Tuple[int, str]:
+    """Sort key for grouped repo items keyed by 'org/repo'.
+
+    Repos whose name starts with 'dependabot-for-' sort after all others,
+    preserving lexicographic order within each group.
+    """
+    repo_key, _ = item
+    repo_name: str = repo_key.split("/", 1)[-1]
+    is_dependabot_for: bool = repo_name.startswith("dependabot-for-")
+    return (1 if is_dependabot_for else 0, repo_key)
+
+
 def _groupAlertsByRepo(alerts_data: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
     """Group alerts by repository"""
     grouped: Dict[str, Dict[str, Any]] = {}
@@ -1498,7 +1510,9 @@ def _runWizard(
     print(f"Found alerts for {len(grouped)} repository(ies)")
 
     # Process each repo
-    for i, (repo_key, repo_data) in enumerate(sorted(grouped.items()), 1):
+    for i, (repo_key, repo_data) in enumerate(
+        sorted(grouped.items(), key=_repoGroupSortKey), 1
+    ):
         org: str = repo_data["org"]
         repo: str = repo_data["repo"]
 
