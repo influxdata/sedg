@@ -1306,6 +1306,82 @@ References:
         self.assertEqual(len(result), 1)
         self.assertIn("test-org/single-repo", result)
 
+    def test__repoGroupSortKey(self):
+        """Test _repoGroupSortKey assigns the correct bucket prefix"""
+        # Non-dependabot-for repo: bucket 0
+        self.assertEqual(
+            cvelib.wizard._repoGroupSortKey(("org/corge", {})),
+            (0, "org/corge"),
+        )
+        # dependabot-for-* repo: bucket 1
+        self.assertEqual(
+            cvelib.wizard._repoGroupSortKey(("org/dependabot-for-alpha", {})),
+            (1, "org/dependabot-for-alpha"),
+        )
+        # 'dependabot-for-' string anywhere other than the start of the repo
+        # name must not match
+        self.assertEqual(
+            cvelib.wizard._repoGroupSortKey(("org/my-dependabot-for-thing", {})),
+            (0, "org/my-dependabot-for-thing"),
+        )
+        # Org prefix containing 'dependabot-for-' must not match (split is on
+        # the first '/' so the org is excluded from the check)
+        self.assertEqual(
+            cvelib.wizard._repoGroupSortKey(("dependabot-for-org/corge", {})),
+            (0, "dependabot-for-org/corge"),
+        )
+        # Key without an org prefix still works
+        self.assertEqual(
+            cvelib.wizard._repoGroupSortKey(("dependabot-for-alpha", {})),
+            (1, "dependabot-for-alpha"),
+        )
+
+    def test__repoGroupSortKey_sorting_order(self):
+        """Test _repoGroupSortKey produces the expected end-to-end order"""
+        grouped = {
+            "org/corge": {},
+            "org/dapper": {},
+            "org/dependabot-for-alpha": {},
+            "org/dependabot-for-beta": {},
+            "org/diva": {},
+            "org/earnest": {},
+        }
+        ordered = [
+            k for k, _ in sorted(grouped.items(), key=cvelib.wizard._repoGroupSortKey)
+        ]
+        self.assertEqual(
+            ordered,
+            [
+                "org/corge",
+                "org/dapper",
+                "org/diva",
+                "org/earnest",
+                "org/dependabot-for-alpha",
+                "org/dependabot-for-beta",
+            ],
+        )
+
+    def test__repoGroupSortKey_sorting_order_mixed_orgs(self):
+        """Test _repoGroupSortKey buckets dominate across different orgs"""
+        grouped = {
+            "acme/corge": {},
+            "zeta/dapper": {},
+            "acme/dependabot-for-alpha": {},
+            "zeta/dependabot-for-beta": {},
+        }
+        ordered = [
+            k for k, _ in sorted(grouped.items(), key=cvelib.wizard._repoGroupSortKey)
+        ]
+        self.assertEqual(
+            ordered,
+            [
+                "acme/corge",
+                "zeta/dapper",
+                "acme/dependabot-for-alpha",
+                "zeta/dependabot-for-beta",
+            ],
+        )
+
     @mock.patch("subprocess.run")
     def test__isGhCliAvailable_failure(self, mock_subprocess):
         """Test is_gh_cli_available when gh command fails"""
