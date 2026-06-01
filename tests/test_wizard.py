@@ -522,6 +522,86 @@ References:
         result = cvelib.wizard._formatAsNoteText(text, "author")
         self.assertEqual(result, "")
 
+    def test__asListItem(self):
+        """Test _asListItem list item detection"""
+        # '*' and '-' markers, with varying leading/trailing whitespace
+        self.assertEqual(cvelib.wizard._asListItem("* url 1"), ("*", "url 1"))
+        self.assertEqual(cvelib.wizard._asListItem("- url 1"), ("-", "url 1"))
+        self.assertEqual(cvelib.wizard._asListItem("  * url 1"), ("*", "url 1"))
+        self.assertEqual(cvelib.wizard._asListItem("\t-   url 1  "), ("-", "url 1"))
+        # marker requires trailing whitespace before content
+        self.assertEqual(cvelib.wizard._asListItem("*url 1"), None)
+        self.assertEqual(cvelib.wizard._asListItem("-url 1"), None)
+        # a bare marker with no trailing whitespace is not a list item
+        self.assertEqual(cvelib.wizard._asListItem("*"), None)
+        self.assertEqual(cvelib.wizard._asListItem("-"), None)
+        # not a list item
+        self.assertEqual(cvelib.wizard._asListItem("plain text"), None)
+        self.assertEqual(cvelib.wizard._asListItem("a * b"), None)
+        # marker with no content
+        self.assertEqual(cvelib.wizard._asListItem("* "), ("*", ""))
+
+    def test__formatAsNoteText_list_items(self):
+        """Test _formatAsNoteText preserves '*' and '-' list items"""
+        # The reported case: intro text followed by a '*' list
+        text = "These were fixed by:\n* url 1\n* url 2"
+        formatted = cvelib.wizard._formatAsNoteText(text, "jdstrand")
+        self.assertEqual(
+            formatted,
+            " jdstrand> These were fixed by:\n  * url 1\n  * url 2",
+        )
+
+        # Same with '-' markers; markers are preserved exactly as typed
+        text = "These were fixed by:\n- url 1\n- url 2"
+        formatted = cvelib.wizard._formatAsNoteText(text, "jdstrand")
+        self.assertEqual(
+            formatted,
+            " jdstrand> These were fixed by:\n  - url 1\n  - url 2",
+        )
+
+        # Mixed markers are each preserved
+        text = "fixes:\n* a\n- b"
+        formatted = cvelib.wizard._formatAsNoteText(text, "jdstrand")
+        self.assertEqual(formatted, " jdstrand> fixes:\n  * a\n  - b")
+
+    def test__formatAsNoteText_list_starts_note(self):
+        """Test _formatAsNoteText when a note begins with a list item"""
+        # A dangling attribution prefix on its own line is expected
+        text = "* url 1\n* url 2"
+        formatted = cvelib.wizard._formatAsNoteText(text, "jdstrand")
+        self.assertEqual(formatted, " jdstrand>\n  * url 1\n  * url 2")
+
+    def test__formatAsNoteText_list_in_paragraph(self):
+        """Test _formatAsNoteText with a list between text paragraphs"""
+        text = "Intro line\n* item one\n* item two\n\nTrailing paragraph here."
+        formatted = cvelib.wizard._formatAsNoteText(text, "jdstrand")
+        self.assertEqual(
+            formatted,
+            " jdstrand> Intro line\n"
+            "  * item one\n"
+            "  * item two\n"
+            "  .\n"
+            "  Trailing paragraph here.",
+        )
+
+    def test__formatAsNoteText_list_item_wraps(self):
+        """Test _formatAsNoteText wraps long list items with a hanging indent"""
+        long_item = "a very long url that should wrap " * 4
+        text = "* " + long_item
+        formatted = cvelib.wizard._formatAsNoteText(text, "jdstrand")
+        lines = formatted.split("\n")
+
+        # Dangling attribution, then the bullet line, then hanging continuation
+        self.assertEqual(lines[0], " jdstrand>")
+        self.assertTrue(lines[1].startswith("  * "))
+        # Continuation lines align under the content (after "  * ")
+        for line in lines[2:]:
+            self.assertTrue(line.startswith("    "))
+            self.assertFalse(line.startswith("    *"))
+        # All lines fit within the configured width
+        for line in lines:
+            self.assertLessEqual(len(line), 80)
+
     def test__formatAsNoteText_empty_wrap(self):
         """Test _formatAsNoteText when textwrap returns empty list"""
         # Create a string that would cause textwrap to return empty list
