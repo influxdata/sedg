@@ -112,6 +112,20 @@ def _parsePriorityInput(input_str: str) -> str:
     return ""
 
 
+def _asListItem(line: str) -> Optional[Tuple[str, str]]:
+    """If 'line' is a list item, return (marker, content), otherwise None.
+
+    A list item is a line that, after optional leading whitespace, begins with
+    a '*' or '-' marker followed by whitespace. The marker is returned exactly
+    as typed and 'content' is the remaining text with surrounding whitespace
+    stripped.
+    """
+    m: Optional[re.Match[str]] = re.match(r"^\s*([*-])\s+(.*)$", line)
+    if m is None:
+        return None
+    return m.group(1), m.group(2).strip()
+
+
 def _formatAsNoteText(text: str, attribution: str = "PERSON") -> str:
     """Format CVE Notes text with proper line wrapping and attribution.
 
@@ -129,6 +143,15 @@ def _formatAsNoteText(text: str, attribution: str = "PERSON") -> str:
       2nd paragraph
       .
       3rd paragraph
+
+    Lines that begin with a '*' or '-' list marker are preserved as individual
+    list items rather than being folded into the surrounding text. Eg,
+    'These were fixed by:\n* url 1\n* url 2' becomes:
+
+    Notes:
+     PERSON> These were fixed by:
+      * url 1
+      * url 2
     """
     if not text.strip():
         return ""
@@ -140,15 +163,31 @@ def _formatAsNoteText(text: str, attribution: str = "PERSON") -> str:
     # Split on double newlines to get paragraphs
     raw_paragraphs: List[str] = normalized_text.split("\n\n")
 
-    paragraph: str
-    paragraphs: List[str] = []
-    for paragraph in raw_paragraphs:
-        # Replace single newlines with spaces within each paragraph
-        cleaned_para: str = paragraph.replace("\n", " ")
-        # Normalize whitespace
-        cleaned_para = " ".join(cleaned_para.split())
-        if cleaned_para:  # Skip empty paragraphs
-            paragraphs.append(cleaned_para)
+    # Parse each paragraph into an ordered list of segments. A segment is
+    # either ("text", <joined text>) for a run of consecutive non-list lines or
+    # ("list", <marker>, <content>) for a single list item line. Paragraphs
+    # that yield no segments are dropped.
+    paragraphs: List[List[Tuple[str, ...]]] = []
+    for raw_paragraph in raw_paragraphs:
+        segments: List[Tuple[str, ...]] = []
+        text_buffer: List[str] = []
+        for line in raw_paragraph.split("\n"):
+            item: Optional[Tuple[str, str]] = _asListItem(line)
+            if item is not None:
+                joined: str = " ".join(" ".join(text_buffer).split())
+                if joined:
+                    segments.append(("text", joined))
+                text_buffer = []
+                segments.append(("list", item[0], item[1]))
+            else:
+                text_buffer.append(line)
+        # Flush any trailing text run
+        joined = " ".join(" ".join(text_buffer).split())
+        if joined:
+            segments.append(("text", joined))
+
+        if segments:
+            paragraphs.append(segments)
 
     # Wrap the text to 'cve_file_line_width' characters, accounting for
     # attribution prefix
@@ -163,39 +202,59 @@ def _formatAsNoteText(text: str, attribution: str = "PERSON") -> str:
     continuation_width: int = cve_file_line_width - len(continuation_prefix)
 
     result_lines: List[str] = []
+    emitted_attribution: bool = False
 
     para_idx: int
-    for para_idx, paragraph in enumerate(paragraphs):
-        # Wrap the current paragraph
-        wrapped_lines: List[str] = textwrap.wrap(
-            paragraph,
-            width=first_line_width if para_idx == 0 else continuation_width,
-            break_on_hyphens=False,
-        )
-
-        if not wrapped_lines:
-            continue
-
-        if para_idx == 0:
-            # First paragraph: start with attribution
-            result_lines.append(f"{first_line_prefix}{wrapped_lines[0]}")
-            # Continuation lines for first paragraph
-            for line in wrapped_lines[1:]:
-                continuation_wrapped = textwrap.wrap(
-                    line, width=continuation_width, break_on_hyphens=False
-                )
-                for cont_line in continuation_wrapped:
-                    result_lines.append(f"{continuation_prefix}{cont_line}")
-        else:
-            # Add paragraph separator before subsequent paragraphs
+    for para_idx, segments in enumerate(paragraphs):
+        # Add paragraph separator before subsequent paragraphs
+        if para_idx > 0:
             result_lines.append(paragraph_separator)
-            # Add all lines of the paragraph with continuation prefix
-            for line in wrapped_lines:
-                continuation_wrapped = textwrap.wrap(
-                    line, width=continuation_width, break_on_hyphens=False
+
+        for segment in segments:
+            if segment[0] == "text":
+                content: str = segment[1]
+                if not emitted_attribution:
+                    # First emitted line of the note carries the attribution
+                    wrapped: List[str] = textwrap.wrap(
+                        content, width=first_line_width, break_on_hyphens=False
+                    )
+                    if not wrapped:
+                        continue
+                    result_lines.append(f"{first_line_prefix}{wrapped[0]}")
+                    emitted_attribution = True
+                    for line in wrapped[1:]:
+                        result_lines.append(f"{continuation_prefix}{line}")
+                else:
+                    wrapped = textwrap.wrap(
+                        content, width=continuation_width, break_on_hyphens=False
+                    )
+                    for line in wrapped:
+                        result_lines.append(f"{continuation_prefix}{line}")
+            else:
+                # List item: render as "  <marker> <content>" with a hanging
+                # indent so wrapped continuations align under the content
+                marker: str = segment[1]
+                content = segment[2]
+                if not emitted_attribution:
+                    # Note begins with a list item; emit a bare attribution
+                    # prefix on its own line and start the list below it
+                    result_lines.append(first_line_prefix.rstrip())
+                    emitted_attribution = True
+
+                bullet_prefix: str = f"{continuation_prefix}{marker} "
+                hanging_indent: str = " " * len(bullet_prefix)
+                wrapped = textwrap.wrap(
+                    content,
+                    width=cve_file_line_width - len(bullet_prefix),
+                    break_on_hyphens=False,
                 )
-                for cont_line in continuation_wrapped:
-                    result_lines.append(f"{continuation_prefix}{cont_line}")
+                if not wrapped:
+                    # Marker followed by whitespace but no content, eg "* "
+                    result_lines.append(bullet_prefix.rstrip())
+                    continue
+                result_lines.append(f"{bullet_prefix}{wrapped[0]}")
+                for line in wrapped[1:]:
+                    result_lines.append(f"{hanging_indent}{line}")
 
     return "\n".join(result_lines)
 
