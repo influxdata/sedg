@@ -476,6 +476,8 @@ def getCacheDirPath() -> str:
 
 def getConfigFilePath() -> str:
     """Return the path to sedg.conf"""
+    if "SEDG_CONF" in os.environ:
+        return os.path.expandvars(os.environ["SEDG_CONF"])
     if "XDG_CONFIG_HOME" in os.environ:
         return os.path.expandvars("$XDG_CONFIG_HOME/sedg/sedg.conf")
     return os.path.expandvars("$HOME/.config/sedg/sedg.conf")
