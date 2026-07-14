@@ -1,4 +1,4 @@
-VENV = .venv
+VENV ?= .venv
 
 all:
 	# Nothing to install. Use 'make check'
