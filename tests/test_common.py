@@ -18,6 +18,7 @@ class TestCommon(TestCase):
     def setUp(self):
         """Setup functions common for all tests"""
         self.orig_xdg_config_home = None
+        self.orig_sedg_conf = os.environ.pop("SEDG_CONF", None)
         self.tmpdir = None
 
     def tearDown(self):
@@ -28,6 +29,11 @@ class TestCommon(TestCase):
         else:
             os.environ["XDG_CONFIG_HOME"] = self.orig_xdg_config_home
             self.orig_xdg_config_home = None
+
+        os.environ.pop("SEDG_CONF", None)
+        if self.orig_sedg_conf is not None:  # pragma: nocover
+            os.environ["SEDG_CONF"] = self.orig_sedg_conf
+            self.orig_sedg_conf = None
 
         if self.tmpdir is not None:
             cvelib.common.recursive_rm(self.tmpdir)
@@ -124,6 +130,12 @@ class TestCommon(TestCase):
         if "XDG_CONFIG_HOME" in os.environ:
             self.orig_xdg_config_home = os.environ["XDG_CONFIG_HOME"]
 
+        os.environ["SEDG_CONF"] = "$HOME/custom-sedg.conf"
+        os.environ["XDG_CONFIG_HOME"] = "/fake/.config"
+        res = cvelib.common.getConfigFilePath()
+        self.assertEqual(os.path.expandvars("$HOME/custom-sedg.conf"), res)
+
+        del os.environ["SEDG_CONF"]
         os.environ["XDG_CONFIG_HOME"] = "/fake/.config"
         res = cvelib.common.getConfigFilePath()
         self.assertEqual("/fake/.config/sedg/sedg.conf", res)
@@ -134,6 +146,25 @@ class TestCommon(TestCase):
             os.path.expandvars("$HOME/.config/sedg/sedg.conf"),
             res,
         )
+
+    def test_readConfigSedgConf(self):
+        """Test readConfig() with SEDG_CONF"""
+        self.tmpdir = tests.testutil._createTmpDir()
+
+        fn = os.path.join(self.tmpdir, "custom", "sedg.conf")
+        os.environ["SEDG_CONF"] = fn
+        os.environ["XDG_CONFIG_HOME"] = "/fake/.config"
+
+        with tests.testutil.capturedOutput() as (output, error):
+            exp_conf, exp_fn = cvelib.common.readConfig()
+        self.assertEqual(exp_fn, fn)
+        self.assertTrue(os.path.exists(fn))
+        self.assertTrue("Locations" in exp_conf)
+        self.assertEqual(
+            "Created default config in %s" % fn,
+            output.getvalue().strip(),
+        )
+        self.assertEqual("", error.getvalue().strip())
 
     def test_readConfig(self):
         """Test readConfig()"""

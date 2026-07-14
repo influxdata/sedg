@@ -44,6 +44,8 @@
     cve-data = /path/to/cve-data
     ```
 
+    Set `SEDG_CONF=/path/to/sedg.conf` to use a different configuration file.
+
     Optionally add any template URLs for GitHub alert template text to the
     `Behavior` section (comma-separated):
 
@@ -502,7 +504,7 @@ The file format was initially defined in Ubuntu and the syntax above is largely
 compatible with the Ubuntu CVE tracker (UCT) and a longer term goal of this
 project is to push this tooling to UCT. The above format is more generalized,
 strict and applicable to other projects. If using this tooling with UCT data,
-then adjust `~/.config/sedg_ubuntu.conf` to contain:
+set `SEDG_CONF=~/.config/sedg_ubuntu.conf` and adjust that file to contain:
 
 ```
     [Behavior] compat-ubuntu = yes
