@@ -160,14 +160,18 @@ likely to produce long output to temporary files, then inspect exit status and
 only targeted `tail`, `wc`, `rg`, or small `sed` excerpts. Report checks that
 fail or cannot run. Do not weaken checks to obtain a passing result.
 
-## Communication and Handoff
+## Communication
 
-* Use ASD-STE100 Simplified Technical English, Issue 9, for all authored prose,
-  including agent messages, documentation, code comments, commit messages,
-  issue content, and pull request content.
-* Use a neutral, direct tone. Question assumptions and state realistic risks or
-  limits without filler or excessive agreement.
-* Report progress only for material findings or changes in direction.
-* Lead the final response with the outcome, checks, gaps, risks, and
-  assumptions. Update tests, help text, and documentation when behavior or
-  security assumptions change.
+* Use ASD-STE100 Simplified Technical English, Issue 9, as the reference
+  standard for all authored prose, including agent messages, review findings,
+  summaries, issue content, and pull request content. In practice: short
+  sentences (approximately 20 words or fewer), active voice, one meaning per
+  word, no idioms, no metaphors or other figurative language. Use a necessary
+  technical term even when the STE dictionary does not contain it.
+* Use a neutral, direct tone. Lead with findings and omit generic praise,
+  reassurance, and filler.
+* Do not send interim progress updates. Report only material findings and
+  changes of scope.
+* Make each claim proportional to its evidence. Label inference and uncertainty.
+* Match the response length to the findings. Preserve evidence, caveats, and
+  gaps; omit repeated summaries. Keep code excerpts short.
