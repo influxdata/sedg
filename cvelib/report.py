@@ -26,6 +26,7 @@ from typing import (
     Tuple,
     TypedDict,
     Union,
+    cast,
 )
 
 from cvelib.cve import (
@@ -2296,6 +2297,10 @@ Example usage:
   $ cve-report gar --namespace <project>/<location> --list-digest <repo>/<name>
   $ cve-report quay --namespace <org> --list-digest <name>
 
+  # Show latest SHA256 digest for image name, also when its scan result is
+  # stale, pending or absent (gar)
+  $ cve-report gar --namespace <project>/<location> --list-digest <repo>/<name> --include-stale
+
   # Show SHA256 digest for image name with tag
   $ cve-report dso --list-digest [<project>/]<name>:<tag>
   $ cve-report gar --namespace <project>/<location> --list-digest <repo>/<name>:<tag>
@@ -2701,6 +2706,12 @@ Example usage:
         help="list GAR repository names",
         action="store_true",
     )
+    parser_gar.add_argument(
+        "--include-stale",
+        dest="include_stale",
+        help="with --list-digest, also use stale, pending or absent scan results",
+        action="store_true",
+    )
 
     args: argparse.Namespace = parser.parse_args(sysargs)
 
@@ -2805,6 +2816,8 @@ Example usage:
             error("--namespace '%s' should not contain '/'" % args.namespace)
         elif args.cmd == "gar" and args.namespace.count("/") != 1:
             error("--namespace '%s' should contain one '/'" % args.namespace)
+        elif args.cmd == "gar" and args.include_stale and not args.list_digest:
+            error("Please specify --list-digest with --include-stale")
         elif not args.alerts:
             if args.with_templates:
                 error("Please specify --alerts with --with-templates")
@@ -3050,6 +3063,14 @@ def main_report(sysargs: Optional[Sequence[str]] = None):
             digest: str
             if args.cmd == "dso":
                 digest = sr.getDigestForImage(args.list_digest)
+            elif args.cmd == "gar":
+                # Only GAR checks the scan results of the digest. isinstance()
+                # can't narrow sr since SecurityReportInterface.__subclasshook__
+                # matches every implementation.
+                digest = cast(cvelib.gar.GARSecurityReportNew, sr).getDigestForImage(
+                    "%s/%s" % (args.namespace, args.list_digest),
+                    include_stale=args.include_stale,
+                )
             else:
                 digest = sr.getDigestForImage(
                     "%s/%s" % (args.namespace, args.list_digest)

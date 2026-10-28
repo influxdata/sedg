@@ -659,24 +659,7 @@ class TestGAR(TestCase):
         self, mock_get, mock_getGARDiscovery
     ):
         """Test getDigestForImage() - multiple no scan results"""
-        # valid gar v1/projects.locations.repositories.packages.versions as
-        # python object
-        v = {"versions": []}
-        for i in range(11):
-            v["versions"].append(
-                {
-                    "name": "projects/valid-proj/locations/us/repositories/valid-repo/packages/valid-name/versions/sha256:%0.2d"
-                    % i,
-                    "createTime": "2023-03-%0.2dT11:52:25.232897621Z" % i,
-                    "updateTime": "2023-03-%0.2dT11:52:30.111583Z" % i,
-                    "relatedTags": [],
-                    "metadata": {
-                        "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-                        "name": "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:%0.2d"
-                        % i,
-                    },
-                }
-            )
+        v = self._validGARVersions(11)
 
         # unscanned
         mr = self._mock_response_for_gar(v)
@@ -706,6 +689,97 @@ class TestGAR(TestCase):
             in error.getvalue().strip()
         )
         self.assertEqual("", res)
+
+    def _validGARVersions(self, num: int) -> Dict[str, Any]:
+        """Return num valid gar versions, newest first, as python object"""
+        # valid gar v1/projects.locations.repositories.packages.versions as
+        # python object
+        v = {"versions": []}
+        for i in range(num):
+            v["versions"].append(
+                {
+                    "name": "projects/valid-proj/locations/us/repositories/valid-repo/packages/valid-name/versions/sha256:%0.2d"
+                    % i,
+                    "createTime": "2023-03-%0.2dT11:52:25.232897621Z" % i,
+                    "updateTime": "2023-03-%0.2dT11:52:30.111583Z" % i,
+                    "relatedTags": [],
+                    "metadata": {
+                        "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                        "name": "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:%0.2d"
+                        % i,
+                    },
+                }
+            )
+        return v
+
+    # Note, these are listed in reverse order ot the arguments to test_...
+    @mock.patch("cvelib.gar.getGARDiscovery")
+    @mock.patch("requests.get")
+    def test_getDigestForImage_include_stale(self, mock_get, mock_getGARDiscovery):
+        """Test getDigestForImage() - include_stale"""
+        mock_get.return_value = self._mock_response_for_gar(self._validGARVersions(11))
+        gsr = cvelib.gar.GARSecurityReportNew()
+        prefix = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@"
+
+        tsts = [
+            # include_stale, getGARDiscovery() results (newest first), expected
+            (False, ["UNSUPPORTED", "INACTIVE", "PENDING", "UNSCANNED", "CLEAN"], 4),
+            (True, ["UNSUPPORTED", "INACTIVE", "CLEAN"], 1),
+            (True, ["UNSUPPORTED", "PENDING", "CLEAN"], 1),
+            (True, ["UNSUPPORTED", "UNSCANNED", "CLEAN"], 1),
+            (True, ["UNSUPPORTED", "UNSUPPORTED", "CLEAN"], 2),
+            (True, ["CLEAN"], 0),
+        ]
+        for include_stale, results, exp in tsts:
+            mock_getGARDiscovery.side_effect = results
+            with tests.testutil.capturedOutput() as (output, error):
+                res = gsr.getDigestForImage(
+                    "valid-proj/us/valid-repo/valid-name", include_stale=include_stale
+                )
+            self.assertEqual("", output.getvalue().strip())
+            self.assertEqual("", error.getvalue().strip())
+            self.assertEqual("%ssha256:%0.2d" % (prefix, exp), res)
+
+        # unexpected result is used with a warning
+        mock_getGARDiscovery.side_effect = ["UNSUPPORTED", "SCANNING"]
+        with tests.testutil.capturedOutput() as (output, error):
+            res = gsr.getDigestForImage(
+                "valid-proj/us/valid-repo/valid-name", include_stale=True
+            )
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: unexpected result from getGARDiscovery(): SCANNING",
+            error.getvalue().strip(),
+        )
+        self.assertEqual("%ssha256:01" % prefix, res)
+
+        # only unsupported
+        mock_getGARDiscovery.side_effect = None
+        mock_getGARDiscovery.return_value = "UNSUPPORTED"
+        with tests.testutil.capturedOutput() as (output, error):
+            res = gsr.getDigestForImage(
+                "valid-proj/us/valid-repo/valid-name", include_stale=True
+            )
+        self.assertEqual("", output.getvalue().strip())
+        self.assertEqual(
+            "WARN: Could not find digest for valid-repo/valid-name with scan results for in 10 most recent images",
+            error.getvalue().strip(),
+        )
+        self.assertEqual("", res)
+
+        # tag search does not check scan results
+        mr = self._mock_response_for_gar(self._validGARDigestForImage())
+        mock_get.return_value = mr
+        mock_getGARDiscovery.reset_mock()
+        res = gsr.getDigestForImage(
+            "valid-proj/us/valid-repo/valid-name:some-tag", include_stale=True
+        )
+        self.assertEqual(
+            "%ssha256:fedcc66faa91b235c6cf3e74139eefccb4b783e3d3b5415e3660de792029083a"
+            % prefix,
+            res,
+        )
+        mock_getGARDiscovery.assert_not_called()
 
     def test_parseImageDigest(self):
         """Test parseImageDigest"""

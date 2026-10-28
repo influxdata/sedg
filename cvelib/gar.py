@@ -399,7 +399,7 @@ class GARSecurityReportNew(SecurityReportInterface):
     # }
     #
     # https://cloud.google.com/artifact-registry/docs/reference/rest/v1/projects.locations.repositories.packages.versions
-    def getDigestForImage(self, repo_full: str) -> str:
+    def getDigestForImage(self, repo_full: str, include_stale: bool = False) -> str:
         """Obtain the GAR digest for the specified project, location and repo"""
         if "/" not in repo_full or repo_full.count("/") != 3:
             error("Please use PROJECT/LOCATION/REPO/IMGNAME", do_exit=False)
@@ -529,6 +529,11 @@ class GARSecurityReportNew(SecurityReportInterface):
                         if why not in ["CLEAN", "ACTIVE"]:
                             # in case we missed something
                             warn("unexpected result from getGARDiscovery(): %s" % why)
+                        return img["metadata"]["name"]
+                    if include_stale and why != "UNSUPPORTED":
+                        # The caller wants the latest image even when its scan
+                        # results are stale, pending or absent. Unsupported
+                        # images (eg, cosign signatures) are still skipped.
                         return img["metadata"]["name"]
                     if count > max_attempts:
                         break
