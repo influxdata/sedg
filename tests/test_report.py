@@ -4915,6 +4915,26 @@ Totals:
                 "Please specify --alerts with --filter-priority",
             ),
             (
+                ["gar", "--list", "--namespace", "foo/us", "--include-stale"],
+                "Please specify --list-digest with --include-stale",
+            ),
+            (
+                ["gar", "--list-repos", "--namespace", "foo/us", "--include-stale"],
+                "Please specify --list-digest with --include-stale",
+            ),
+            (
+                [
+                    "gar",
+                    "--alerts",
+                    "--namespace",
+                    "foo/us",
+                    "--images",
+                    "repo/img@sha256:deadbeef",
+                    "--include-stale",
+                ],
+                "Please specify --list-digest with --include-stale",
+            ),
+            (
                 [
                     "gar",
                     "--alerts",
@@ -5743,6 +5763,30 @@ template-urls = https://url1,https://url2
             cvelib.report.main_report(args)
         self.assertEqual("", error.getvalue().strip())
         self.assertEqual("sha256:deadbeef", output.getvalue().strip())
+        mock_getDigestForImage.assert_called_once_with(
+            "valid-proj/us/valid-repo/valid-name", include_stale=False
+        )
+
+    @mock.patch("cvelib.gar.GARSecurityReportNew.getDigestForImage")
+    def test_main_report_gar_list_digest_include_stale(self, mock_getDigestForImage):
+        """Test main_report - gar --list-digest --include-stale"""
+        self._mock_cve_data_mixed()  # for cveDirs
+        mock_getDigestForImage.return_value = "projects/valid-proj/locations/us/repositories/valid-repo/dockerImages/valid-name@sha256:deadbeef"
+        args = [
+            "gar",
+            "--namespace",
+            "valid-proj/us",
+            "--list-digest",
+            "valid-repo/valid-name",
+            "--include-stale",
+        ]
+        with tests.testutil.capturedOutput() as (output, error):
+            cvelib.report.main_report(args)
+        self.assertEqual("", error.getvalue().strip())
+        self.assertEqual("sha256:deadbeef", output.getvalue().strip())
+        mock_getDigestForImage.assert_called_once_with(
+            "valid-proj/us/valid-repo/valid-name", include_stale=True
+        )
 
     # Note, these are listed in reverse order ot the arguments to test_...
     @mock.patch("cvelib.gar.GARSecurityReportNew.getDigestForImage")
