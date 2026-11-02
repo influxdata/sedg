@@ -2039,6 +2039,21 @@ Updated issues:
             ),
             (
                 {
+                    "created_at": "2022-07-01T17:15:30Z",
+                    "fixed_at": "2022-07-02T17:15:30Z",
+                    "html_url": "https://github.com/valid-org/valid-repo/security/code-scanning/31",
+                    "repository": {"name": "valid-repo", "private": False},
+                    "rule": {
+                        "description": "[GO-2026-0001] Some govulncheck finding",
+                        "severity": "note",
+                    },
+                },
+                "valid-repo",
+                "severity",
+                "unknown",
+            ),
+            (
+                {
                     "created_at": "2022-07-01T18:15:30Z",
                     "secret_type_display_name": "Some Leaked Secret",
                     "resolved_at": "2022-07-02T18:15:30Z",

@@ -776,7 +776,7 @@ def _parseAlert(alert: Dict[str, Any]) -> Tuple[str, Dict[str, str]]:
     # codeql specific
     if "rule" in alert:
         a["alert_type"] = "code-scanning"
-        a["severity"] = alert["rule"]["security_severity_level"]
+        a["severity"] = alert["rule"].get("security_severity_level")
         a["code_description"] = alert["rule"]["description"]
 
     # dependabot specific
@@ -807,7 +807,8 @@ def _parseAlert(alert: Dict[str, Any]) -> Tuple[str, Dict[str, str]]:
         a["alert_type"] = "secret-scanning"
         a["secret_type_display_name"] = alert["secret_type_display_name"]
 
-    # codeql allows 'null'
+    # codeql allows 'null' and third-party SARIF tools (eg, govulncheck) may
+    # omit security_severity_level entirely
     if a["severity"] is None:
         a["severity"] = "unknown"
 
