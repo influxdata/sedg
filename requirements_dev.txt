@@ -1,5 +1,5 @@
 -r requirements.txt
-astroid==3.2.4
+astroid==4.0.4
 black==26.10.1
 click==8.1.7
 coverage==7.6.1
